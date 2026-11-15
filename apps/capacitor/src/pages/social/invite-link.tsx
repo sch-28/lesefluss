@@ -106,14 +106,6 @@ function InviteLinkContent() {
 								>
 									<Link2 /> New link
 								</Button>
-								<Button
-									size="sm"
-									variant="ghost"
-									disabled={isBusy}
-									onClick={() => setConfirm("revoke")}
-								>
-									<Trash2 /> Revoke
-								</Button>
 							</div>
 						</>
 					) : (
@@ -136,6 +128,20 @@ function InviteLinkContent() {
 					<PasteInviteField />
 				</div>
 			</Section>
+
+			{current && (
+				<Section title="Danger zone">
+					<button
+						type="button"
+						disabled={isBusy}
+						onClick={() => setConfirm("revoke")}
+						className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-muted/60 disabled:opacity-50"
+					>
+						<Trash2 className="size-5" />
+						<span className="font-medium text-sm">Revoke invite link</span>
+					</button>
+				</Section>
+			)}
 
 			<ConfirmDialog
 				open={confirm !== null}

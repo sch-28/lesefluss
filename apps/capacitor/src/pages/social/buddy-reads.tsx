@@ -61,7 +61,7 @@ function BuddyReadsContent() {
 						</Button>
 					</div>
 				) : (
-					<div className="flex flex-col gap-2.5">
+					<div className="flex flex-col gap-3">
 						{active.map((read, i) => (
 							<BuddyReadCard key={read.id} read={read} index={i} />
 						))}
@@ -70,7 +70,7 @@ function BuddyReadsContent() {
 			</SocialSection>
 			{finished.length > 0 && (
 				<SocialSection title="Finished">
-					<div className="flex flex-col gap-2.5">
+					<div className="flex flex-col gap-3">
 						{finished.map((read, i) => (
 							<BuddyReadCard key={read.id} read={read} index={i} />
 						))}

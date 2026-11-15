@@ -12,7 +12,15 @@ const state: {
 	model: unknown;
 	books: unknown[];
 	plans: unknown[];
-} = { settings: {}, saving: { isPending: false }, model: undefined, books: [], plans: [] };
+	highlightCounts: Map<string, number> | undefined;
+} = {
+	settings: {},
+	saving: { isPending: false },
+	model: undefined,
+	books: [],
+	plans: [],
+	highlightCounts: undefined,
+};
 
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -96,6 +104,9 @@ vi.mock("@/services/db/hooks", () => ({
 		useBooks: () => ({ data: { books: state.books, covers: {} } }),
 		useActiveGoalPlans: () => ({ data: state.plans }),
 		useBook: () => ({ data: undefined }),
+		useLastReadBookId: () => ({ data: null, isPending: false }),
+		useSeriesList: () => ({ data: [] }),
+		useHighlightCounts: () => ({ data: state.highlightCounts }),
 	},
 }));
 
@@ -106,6 +117,7 @@ const diagnosticsPage = (await import("../../../routes/tabs/settings/diagnostics
 	.Route as unknown as Page;
 const listenPage = (await import("../../../routes/tabs/settings/read-aloud"))
 	.Route as unknown as Page;
+const exportPage = (await import("../../../routes/tabs/settings/export")).Route as unknown as Page;
 const { default: RsvpSettingsForm } = await import("../rsvp-settings-form");
 
 const book = (id: string, over: Record<string, unknown> = {}) => ({
@@ -152,6 +164,7 @@ beforeEach(() => {
 	state.model = undefined;
 	state.books = [];
 	state.plans = [];
+	state.highlightCounts = undefined;
 	platform.web = false;
 });
 afterEach(() => {
@@ -293,6 +306,32 @@ describe("Goals page", () => {
 		view = await renderPage(goalsPage);
 		expect(view.text()).toContain("No active goals.");
 		expect(view.container.querySelector("[data-testid=add-goal]")).not.toBeNull();
+	});
+});
+
+describe("Export page", () => {
+	const exportButton = () =>
+		[...(view?.container.querySelectorAll("button") ?? [])].find((b) =>
+			b.textContent?.includes("Export"),
+		);
+
+	it("shows one empty state with a way on and no form without highlights", async () => {
+		state.highlightCounts = new Map();
+		view = await renderPage(exportPage);
+		expect(view.container.querySelector("[data-testid=export-empty]")?.textContent).toContain(
+			"Open library",
+		);
+		expect(view.container.querySelector("#export-scope")).toBeNull();
+		expect(exportButton()).toBeUndefined();
+	});
+
+	it("holds Export until the counts load", async () => {
+		view = await renderPage(exportPage);
+		expect(exportButton()?.disabled).toBe(true);
+		view.unmount();
+		state.highlightCounts = new Map([["a", 2]]);
+		view = await renderPage(exportPage);
+		expect(exportButton()?.disabled).toBe(false);
 	});
 });
 

@@ -50,6 +50,7 @@ import { useIsOnline } from "@/services/social/cache";
 import { useBlockUser } from "@/services/social/friends";
 import { currentChapterIndex } from "@/utils/chapters";
 import { formatAgo, formatRelative } from "@/utils/date-utils";
+import { DangerButton, DangerZone } from "../_shared/danger-zone";
 import { BuddyReadDeadline } from "./buddy-read-deadline";
 import { DiscussionPanel } from "./buddy-read-discussion";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
@@ -101,7 +102,7 @@ function ParticipantRow({
 		<>
 			<SocialAvatar name={p.identity.name} avatarUrl={p.identity.avatarUrl} size="md" />
 			<div className="min-w-0 flex-1">
-				<div className="flex items-center gap-1.5 truncate font-medium text-foreground text-sm">
+				<div className="flex items-center gap-2 truncate font-medium text-foreground text-sm">
 					<span className="truncate">{p.isSelf ? "You" : p.identity.name}</span>
 					{p.isHost && <Crown className="size-3.5 shrink-0 text-amber-500" aria-label="Host" />}
 				</div>
@@ -251,10 +252,17 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 					}),
 			});
 		}
+		items.push({
+			label: "Report",
+			icon: Flag,
+			onSelect: () =>
+				setReportTarget({ type: "profile", userId: p.identity.userId, name: p.identity.name }),
+		});
 		if (detail.isHost && isActive) {
 			items.push({
 				label: "Remove from buddy read",
 				icon: UserMinus,
+				destructive: true,
 				onSelect: () =>
 					setConfirm({
 						title: `Remove ${p.identity.name}?`,
@@ -265,12 +273,6 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 					}),
 			});
 		}
-		items.push({
-			label: "Report",
-			icon: Flag,
-			onSelect: () =>
-				setReportTarget({ type: "profile", userId: p.identity.userId, name: p.identity.name }),
-		});
 		items.push({
 			label: "Block",
 			icon: Ban,
@@ -456,28 +458,28 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 						/>
 					)}
 
-					<Button
-						variant="outline"
-						className="mt-6 w-full"
-						disabled={isOffline || leave.isPending}
-						onClick={() =>
-							setConfirm({
-								title: "Leave this buddy read?",
-								description: detail.isHost
-									? "The book stays in your library. Someone else becomes the host, and the others stop seeing your progress."
-									: "The book stays in your library. The others stop seeing your progress.",
-								confirmLabel: "Leave",
-								run: () =>
-									leave.mutate(id, {
-										onSuccess: () => router.navigate({ to: "/tabs/social/buddy-reads" }),
-										onError,
-									}),
-							})
-						}
-					>
-						<LogOut className="size-4" />
-						Leave buddy read
-					</Button>
+					<DangerZone className="mt-6">
+						<DangerButton
+							icon={LogOut}
+							disabled={isOffline || leave.isPending}
+							onClick={() =>
+								setConfirm({
+									title: "Leave this buddy read?",
+									description: detail.isHost
+										? "The book stays in your library. Someone else becomes the host, and the others stop seeing your progress."
+										: "The book stays in your library. The others stop seeing your progress.",
+									confirmLabel: "Leave",
+									run: () =>
+										leave.mutate(id, {
+											onSuccess: () => router.navigate({ to: "/tabs/social/buddy-reads" }),
+											onError,
+										}),
+								})
+							}
+						>
+							Leave buddy read
+						</DangerButton>
+					</DangerZone>
 				</TabsContent>
 			</Tabs>
 

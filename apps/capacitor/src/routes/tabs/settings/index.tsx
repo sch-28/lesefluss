@@ -121,7 +121,7 @@ function SettingsLanding() {
 	return (
 		<div className="bg-background">
 			<TabHeader title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Reading">
 					<NavRow
 						icon={BookOpen}

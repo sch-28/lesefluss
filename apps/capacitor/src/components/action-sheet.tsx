@@ -45,6 +45,11 @@ if (typeof window !== "undefined") {
 	);
 }
 
+/** Destructive items form their own group after the working ones; a rule sets it apart. */
+function startsDangerGroup(items: readonly ActionSheetItem[], index: number): boolean {
+	return !!items[index].destructive && index > 0 && !items[index - 1].destructive;
+}
+
 function recentPress(): Point | null {
 	if (!lastPress || Date.now() - lastPress.at > ANCHOR_MAX_AGE_MS) return null;
 	return lastPress;
@@ -96,9 +101,10 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 					<DropdownMenuSeparator />
 				</>
 			)}
-			{items.map((item) => {
+			{items.map((item, i) => {
 				const Icon = item.icon;
-				return (
+				return [
+					startsDangerGroup(items, i) && <DropdownMenuSeparator key={`${item.label}-rule`} />,
 					<DropdownMenuItem
 						key={item.label}
 						disabled={item.disabled}
@@ -110,8 +116,8 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 					>
 						{Icon && <Icon className="size-4" />}
 						<span className="flex-1 truncate">{item.label}</span>
-					</DropdownMenuItem>
-				);
+					</DropdownMenuItem>,
+				];
 			})}
 		</DropdownMenuContent>
 	</DropdownMenu>
@@ -132,9 +138,12 @@ const ActionDrawer: React.FC<ActionSheetProps> = ({ open, onOpenChange, title, i
 					</DrawerHeader>
 				)}
 				<div className="flex flex-col p-2">
-					{items.map((item) => {
+					{items.map((item, i) => {
 						const Icon = item.icon;
-						return (
+						return [
+							startsDangerGroup(items, i) && (
+								<hr key={`${item.label}-rule`} className="my-1 border-border border-t" />
+							),
 							<button
 								key={item.label}
 								type="button"
@@ -147,8 +156,8 @@ const ActionDrawer: React.FC<ActionSheetProps> = ({ open, onOpenChange, title, i
 							>
 								{Icon && <Icon className="size-5 shrink-0" />}
 								<span className="flex-1 truncate">{item.label}</span>
-							</button>
-						);
+							</button>,
+						];
 					})}
 				</div>
 			</DrawerContent>

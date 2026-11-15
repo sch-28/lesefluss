@@ -21,7 +21,9 @@ const WINDOW_HINTS: Record<SpeedWindow, string> = {
 	all: "Every sitting since you started.",
 };
 
-const PREVIEW_HEIGHT = 132;
+/** Must match the loaded card, without and with its book row. */
+const PREVIEW_HEIGHT = "calc(7.5rem + 2px)";
+const PREVIEW_HEIGHT_WITH_BOOK = "calc(9.25rem + 2px)";
 
 function SpeedSettings() {
 	const settings = queryHooks.useSettings();
@@ -74,12 +76,20 @@ function SpeedSettings() {
 
 function SpeedPreview() {
 	const model = queryHooks.useStatsSpeedModel();
+	// The same queries useContinueReading reads, asked here too so the card waits
+	// for the book row rather than growing by it once the book lands.
+	const lastReadId = queryHooks.useLastReadBookId();
+	const lastRead = queryHooks.useBook(lastReadId.data ?? "");
 	const continueReading = useContinueReading();
 	const book = continueReading?.book;
 	const data = model.data;
+	const isPending = !data || lastReadId.isPending || (!!lastReadId.data && lastRead.isPending);
 	const minutesLeft = book && data ? estimateMinutesLeft(book, bookPace(data, book.id).wpm) : null;
 	return (
-		<ReservedCard isPending={!data} height={PREVIEW_HEIGHT}>
+		<ReservedCard
+			isPending={isPending}
+			height={lastReadId.data ? PREVIEW_HEIGHT_WITH_BOOK : PREVIEW_HEIGHT}
+		>
 			{data && (
 				<div
 					className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-4"

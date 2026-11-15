@@ -193,6 +193,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				cover={null}
 				title="Loading..."
 				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				headerActions={headerActions.map((action) => ({ ...action, disabled: true }))}
 				isLoading
 			/>
 		);

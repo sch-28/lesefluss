@@ -133,8 +133,10 @@ export function SpeedTile({
 				{delta !== null && (
 					<span
 						className={cn(
-							"ml-auto rounded-full px-1.5 text-[0.625rem] tabular-nums",
-							delta >= 0 ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground",
+							"ml-auto whitespace-nowrap rounded-full px-1.5 text-[0.625rem] tabular-nums",
+							delta >= 0
+								? "bg-emerald-500/15 text-[var(--goal-met)]"
+								: "bg-muted text-muted-foreground",
 						)}
 						data-testid="summary-speed-delta"
 					>
@@ -154,11 +156,9 @@ export function BookTile({ from, to }: { from: number; to: number }) {
 		<Tile icon={<BookOpen className="size-3" />} label="Book" testId="summary-book">
 			<span className="flex items-center gap-2">
 				<GoalRing size={30} fraction={to / 100} />
-				<Value>+{gained}%</Value>
+				<Value>{gained > 0 ? `+${gained}%` : `${Math.round(to)}%`}</Value>
 			</span>
-			<Caption>
-				{Math.round(from)} → {Math.round(to)}%
-			</Caption>
+			<Caption>{gained > 0 ? `${Math.round(from)} → ${Math.round(to)}%` : "read"}</Caption>
 		</Tile>
 	);
 }

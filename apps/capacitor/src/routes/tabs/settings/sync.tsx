@@ -33,7 +33,7 @@ function SyncSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Cloud sync" icon={isLoggedIn ? CloudCheck : Cloud} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				{isLoggedIn ? (
 					<>
 						<SettingsSection title="Account">

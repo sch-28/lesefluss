@@ -9,6 +9,7 @@ const EMPTY_MAP = new Map();
 export function useSeriesEntries(): {
 	entries: SeriesEntry[];
 	covers: ReadonlyMap<string, string>;
+	isPending: boolean;
 } {
 	const collections = queryHooks.useCollections().data;
 	const seriesMemberships = queryHooks.useSeriesMemberships().data;
@@ -16,6 +17,8 @@ export function useSeriesEntries(): {
 	const serials = queryHooks.useSeriesList().data;
 	const chapterCounts = queryHooks.useSeriesChapterCounts().data;
 	const serialActivity = queryHooks.useSeriesActivity().data;
+	const isPending =
+		!collections || !seriesMemberships || !books || !serials || !chapterCounts || !serialActivity;
 
 	const entries = useMemo(
 		() =>
@@ -29,7 +32,7 @@ export function useSeriesEntries(): {
 			}),
 		[collections, seriesMemberships, books, serials, chapterCounts, serialActivity],
 	);
-	return { entries, covers: books?.covers ?? EMPTY_MAP };
+	return { entries, covers: books?.covers ?? EMPTY_MAP, isPending };
 }
 
 export const ALL_SERIES_PATH = "/tabs/library/all-series";

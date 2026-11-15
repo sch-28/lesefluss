@@ -88,6 +88,11 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 				error={isError ? error : undefined}
 				onRetry={() => refetch()}
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
+				headerActions={
+					isPending
+						? [{ label: "Share", icon: Share2, disabled: true, onClick: () => undefined }]
+						: undefined
+				}
 			/>
 		);
 	}

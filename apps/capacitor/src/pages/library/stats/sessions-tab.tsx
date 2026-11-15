@@ -11,6 +11,7 @@ import { bookKeys } from "../../../services/db/hooks/query-keys";
 import { queries } from "../../../services/db/queries";
 import type { Book, ReadingSession } from "../../../services/db/schema";
 import { formatDuration } from "../../../utils/date-utils";
+import { EmptyState } from "./empty-state";
 import { SessionDetailSheet } from "./session-detail-sheet";
 import {
 	MODE_BADGE_LABELS,
@@ -93,6 +94,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 	if (sessionsQuery.isPending || booksQuery.isPending) {
 		return <ReservedCard isPending height="60vh" />;
 	}
+	if (all.length === 0) return <EmptyState />;
 
 	const bookTotals = totalsOf(bookRows, skimCutoff);
 
@@ -165,7 +167,9 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 								requestDelete(bookRows, { alongside: shortSessionsOf(all, bookId, hidden) })
 							}
 						>
-							Delete all {bookTotals.count} {bookTotals.count === 1 ? "session" : "sessions"}
+							{bookTotals.count === 1
+								? "Delete the session"
+								: `Delete all ${bookTotals.count} sessions`}
 						</Button>
 					)}
 				</section>

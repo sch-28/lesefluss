@@ -127,6 +127,15 @@ export async function deleteGoal(id: string, now: number = Date.now()): Promise<
 }
 
 /**
+ * Undo for deleteGoal. Writes the whole row back because a sync pull inside the
+ * undo window may already have hard-deleted the tombstone.
+ */
+export async function restoreGoal(goal: ReadingGoal, now: number = Date.now()): Promise<void> {
+	await upsertGoals([{ ...goal, deleted: false, updatedAt: now }]);
+	await resolveActiveGoalConflicts(now);
+}
+
+/**
  * Complete every active goal whose book crossed the finished threshold, the
  * same rule that stamps `books.finished_at`. One statement for the whole
  * library, so it is cheap to run on every goal read and after a sync pull,

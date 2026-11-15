@@ -5,7 +5,7 @@ import { requestReminderSync } from "../../goal-reminders";
 import { type GoalChange, minuteGoalOf, type NewGoalSpec } from "../../stats/reading-goal";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
-import type { Book } from "../schema";
+import type { Book, ReadingGoal } from "../schema";
 import { statsKeys } from "./query-keys";
 import { settingsHooks } from "./use-settings";
 
@@ -90,6 +90,10 @@ function useDeleteReadingGoal() {
 	return useGoalMutation(({ id }: { id: string }) => queries.deleteGoal(id));
 }
 
+function useRestoreReadingGoal() {
+	return useGoalMutation(({ goal }: { goal: ReadingGoal }) => queries.restoreGoal(goal));
+}
+
 export const readingGoalHooks = {
 	useReadingGoalPlan,
 	useActiveGoalPlans,
@@ -98,4 +102,5 @@ export const readingGoalHooks = {
 	useReplanReadingGoal,
 	useSetGoalReminder,
 	useDeleteReadingGoal,
+	useRestoreReadingGoal,
 };

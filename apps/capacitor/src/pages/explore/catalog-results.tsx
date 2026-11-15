@@ -8,7 +8,7 @@ import type { CatalogSearchFilters } from "../../services/catalog/query-keys";
 import { EmptyState, ErrorState } from "../_shared/load-states";
 import CatalogListItem from "./catalog-list-item";
 import CatalogResultCard from "./catalog-result-card";
-import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
+import { CardGridSkeleton, EXPLORE_GRID_CLASS, LIST_ROW_TEXT_HEIGHT } from "./skeletons";
 import { useCatalogSearch } from "./use-catalog-search";
 
 const SCROLL_CONTAINER = '[data-scroll-restoration-id="app-scroll"]';
@@ -111,7 +111,14 @@ const CatalogResults: React.FC<Props> = ({
 	}, canLoadMore);
 
 	if (query.isPending) {
-		return <CardGridSkeleton count={12} layout={view} className="p-4" />;
+		return (
+			<CardGridSkeleton
+				count={12}
+				layout={view}
+				listTextClassName={LIST_ROW_TEXT_HEIGHT}
+				className="p-4"
+			/>
+		);
 	}
 	if (query.isError && !query.data) {
 		return (

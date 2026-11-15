@@ -136,7 +136,7 @@ export function DangerZone({
 	};
 
 	return (
-		<section className="mt-5">
+		<section className="pt-6">
 			<div className="overflow-hidden rounded-lg border border-border bg-card">
 				<Accordion type="single" collapsible>
 					<AccordionItem value="danger-zone" className="border-b-0">

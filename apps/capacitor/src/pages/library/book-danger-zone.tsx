@@ -1,13 +1,11 @@
-import { Button } from "@lesefluss/ui/button";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import { queries } from "../../services/db/queries";
 import type { Book } from "../../services/db/schema";
+import { DangerButton, DangerZone } from "../_shared/danger-zone";
 import { useSessionDelete } from "./stats/session-list";
 import { filterSessions, shortSessionsOf } from "./stats/sessions-model";
-
-const DANGER_BUTTON = "justify-start gap-3 text-destructive hover:text-destructive";
 
 /** The book page's destructive actions, apart from everything a reader taps while reading. */
 export function BookDangerZone({
@@ -33,39 +31,29 @@ export function BookDangerZone({
 	const hasProgress = book.wordPosition > 0 || book.finishedAt !== null;
 
 	return (
-		<section aria-labelledby="book-danger-zone" className="book-detail-card mt-4">
-			<h2 id="book-danger-zone" className="book-detail-section-title">
-				Danger zone
-			</h2>
-			<div className="flex flex-col gap-2">
-				{hasProgress && (
-					<Button variant="outline" size="lg" className={DANGER_BUTTON} onClick={onResetProgress}>
-						<RotateCcw />
-						Reset progress
-					</Button>
-				)}
-				{rows.length > 0 && (
-					<Button
-						variant="outline"
-						size="lg"
-						className={DANGER_BUTTON}
-						onClick={() =>
-							requestDelete(rows, {
-								confirm: true,
-								alongside: shortSessionsOf(sessionsQuery.data ?? [], book.id, hidden),
-							})
-						}
-					>
-						<Trash2 />
-						Delete all {rows.length} {rows.length === 1 ? "session" : "sessions"}
-					</Button>
-				)}
-				<Button variant="outline" size="lg" className={DANGER_BUTTON} onClick={onDeleteBook}>
-					<Trash2 />
-					Delete book
-				</Button>
-			</div>
+		<DangerZone className="mt-4">
+			{hasProgress && (
+				<DangerButton icon={RotateCcw} onClick={onResetProgress}>
+					Reset progress
+				</DangerButton>
+			)}
+			{rows.length > 0 && (
+				<DangerButton
+					icon={Trash2}
+					onClick={() =>
+						requestDelete(rows, {
+							confirm: true,
+							alongside: shortSessionsOf(sessionsQuery.data ?? [], book.id, hidden),
+						})
+					}
+				>
+					{rows.length === 1 ? "Delete the session" : `Delete all ${rows.length} sessions`}
+				</DangerButton>
+			)}
+			<DangerButton icon={Trash2} onClick={onDeleteBook}>
+				Delete book
+			</DangerButton>
 			{dialog}
-		</section>
+		</DangerZone>
 	);
 }

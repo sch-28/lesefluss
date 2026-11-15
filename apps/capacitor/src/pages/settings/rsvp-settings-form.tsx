@@ -135,11 +135,11 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 			<SettingsSection>
 				<button
 					type="button"
-					className="mt-2 flex min-h-12 items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted"
+					className="flex min-h-12 items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted"
 					onClick={() => setAdvancedOpen((o) => !o)}
 					aria-expanded={advancedOpen}
 				>
-					<span className="font-semibold text-foreground text-sm uppercase tracking-wide">
+					<span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
 						Advanced
 					</span>
 					<ChevronDown

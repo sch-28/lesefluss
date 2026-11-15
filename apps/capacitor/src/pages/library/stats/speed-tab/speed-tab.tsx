@@ -19,7 +19,7 @@ import { BookSpeedList } from "./book-speed-list";
 import { MilestonesSection } from "./milestones-section";
 import { RsvpDial } from "./rsvp-dial";
 import { ShareSpeedButton } from "./share-speed-button";
-import { PersonalBests, SpeedInsights } from "./speed-insights";
+import { hasReadAny, PersonalBests, SpeedInsights } from "./speed-insights";
 
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
 
@@ -170,7 +170,7 @@ export function SpeedTab({ now }: { now: number }) {
 			{view === "rsvp" && model.rsvp && <RsvpDial model={model} />}
 			<SpeedInsights model={model} view={view} />
 			<PersonalBests />
-			<MilestonesSection />
+			{hasReadAny(model) && <MilestonesSection />}
 			<BookSpeedList model={model} />
 		</div>
 	);

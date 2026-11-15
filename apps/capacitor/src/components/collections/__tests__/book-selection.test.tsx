@@ -8,6 +8,8 @@ vi.mock("virtua", () => ({
 	Virtualizer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("../../book-cover", () => ({ default: () => null }));
+const navigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 
 const { BookSelection } = await import("../book-selection");
 
@@ -133,5 +135,16 @@ describe("BookSelection", () => {
 		expect(row("b1").textContent).toContain("#2");
 		await click(row("b3"));
 		expect(row("b1").textContent).toContain("#1");
+	});
+});
+
+describe("BookSelection with an empty library", () => {
+	it("shows one empty state that leads to the library, with no search or rows", async () => {
+		view = await render(<Harness books={[]} />);
+		expect(view.text()).toContain("Your library is empty.");
+		expect(view.container.querySelector("input[type=search]")).toBeNull();
+		expect(rowIds()).toEqual([]);
+		await click(view.getButton("Go to library"));
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library" });
 	});
 });

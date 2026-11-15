@@ -36,6 +36,7 @@ vi.mock("../../../../components/toast", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({
 	useRouter: () => ({ navigate: vi.fn() }),
+	useNavigate: () => vi.fn(),
 	Link: () => null,
 }));
 
@@ -94,6 +95,15 @@ async function show(bookId?: string) {
 }
 
 describe("SessionsTab", () => {
+	it("shows one empty state with a way on and no controls when nothing was read", async () => {
+		state.rows = [];
+		const v = await show();
+		expect(v.text()).toContain("No stats yet");
+		expect(v.text()).toContain("Open library");
+		const buttons = [...v.container.querySelectorAll("button")].map((b) => b.textContent);
+		expect(buttons).toEqual(["Open library"]);
+	});
+
 	it("groups every book's sessions under their days, with the totals", async () => {
 		state.rows = [
 			session("a", "mm", at(7, 9)),
@@ -158,7 +168,7 @@ describe("SessionsTab", () => {
 		];
 		vi.useFakeTimers({ shouldAdvanceTime: true });
 		const v = await show("mm");
-		await click(v.getButton("Delete all 1 session"));
+		await click(v.getButton("Delete the session"));
 		expect(state.toast).toHaveBeenCalledWith(
 			expect.stringMatching(/^1 session deleted/),
 			expect.anything(),
@@ -171,12 +181,12 @@ describe("SessionsTab", () => {
 
 	it("warns that the streak may change when a deleted session was the day's only one", async () => {
 		state.rows = [session("a", "mm", at(7, 9)), session("b", "em", at(7, 10))];
-		await click((await show("mm")).getButton("Delete all 1 session"));
+		await click((await show("mm")).getButton("Delete the session"));
 		expect(state.toast).toHaveBeenCalledWith("1 session deleted", expect.anything());
 
 		view?.unmount();
 		state.rows = [session("a", "mm", at(7, 9)), session("b", "em", at(6, 10))];
-		await click((await show("mm")).getButton("Delete all 1 session"));
+		await click((await show("mm")).getButton("Delete the session"));
 		expect(state.toast).toHaveBeenLastCalledWith(
 			"1 session deleted · Streak may change",
 			expect.anything(),

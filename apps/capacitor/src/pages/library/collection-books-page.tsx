@@ -19,6 +19,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { importRequest } from "../../commands/global";
 import { BookSelection, type QuickFilter } from "../../components/collections/book-selection";
+import { ReservedCard } from "../../components/reserved-card";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { Book } from "../../services/db/schema";
@@ -48,7 +49,7 @@ const CollectionBooksPage: React.FC<{ mode: CollectionPageMode }> = ({ mode }) =
 		memberships.isPending ||
 		(collectionId !== null && members.isPending)
 	) {
-		return <p className="p-6 text-center text-muted-foreground text-sm">Loading…</p>;
+		return <CollectionBooksLoading mode={mode} />;
 	}
 	const collection = collections.data?.find((c) => c.id === collectionId) ?? null;
 	if (collectionId !== null && !collection) {
@@ -64,6 +65,34 @@ const CollectionBooksPage: React.FC<{ mode: CollectionPageMode }> = ({ mode }) =
 			covers={library.data?.covers}
 			memberships={memberships.data}
 		/>
+	);
+};
+
+/** The form's frame with its actions held off, so the page never flashes a bare line. */
+const CollectionBooksLoading: React.FC<{ mode: CollectionPageMode }> = ({ mode }) => {
+	const router = useRouter();
+	return (
+		<BookEditLayout
+			title={
+				mode.kind === "create"
+					? "New collection"
+					: mode.kind === "add"
+						? "Add books"
+						: "Edit collection"
+			}
+			closeIcon={mode.kind === "create" ? "close" : "back"}
+			cancelLabel="Cancel"
+			saveLabel={
+				mode.kind === "create" ? "Create collection" : mode.kind === "add" ? "Add books" : "Save"
+			}
+			onCancel={() => router.history.back()}
+			onSave={noop}
+			canSave={false}
+			isSaving={false}
+			isBusy={false}
+		>
+			<ReservedCard isPending height="60vh" />
+		</BookEditLayout>
 	);
 };
 

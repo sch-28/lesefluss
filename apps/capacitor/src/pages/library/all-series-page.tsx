@@ -9,7 +9,7 @@ import { useOpenSeries, useSeriesEntries } from "./use-series-nav";
 const AllSeriesPage: React.FC = () => {
 	const navigate = useNavigate();
 	const router = useRouter();
-	const { entries, covers } = useSeriesEntries();
+	const { entries, covers, isPending } = useSeriesEntries();
 	const openSeries = useOpenSeries();
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const goBack = () =>
@@ -37,12 +37,15 @@ const AllSeriesPage: React.FC = () => {
 					</span>
 				</nav>
 				<h2 className="m-0 mt-1 font-semibold text-lg">All series</h2>
-				<p className="m-0 text-muted-foreground text-sm" data-testid="all-series-summary">
-					{seriesSummary(entries)}
+				<p
+					className="m-0 min-h-[1lh] text-muted-foreground text-sm"
+					data-testid="all-series-summary"
+				>
+					{isPending ? null : seriesSummary(entries)}
 				</p>
 			</div>
 			<div className="p-4">
-				{entries.length === 0 ? (
+				{!isPending && entries.length === 0 ? (
 					<p className="m-0 p-6 text-center text-muted-foreground text-sm">
 						Book series and serials you add show up here.
 					</p>
@@ -50,6 +53,7 @@ const AllSeriesPage: React.FC = () => {
 					<AllSeriesList
 						entries={entries}
 						covers={covers}
+						isPending={isPending}
 						onPick={openSeries}
 						onExit={goBack}
 						autoFocus={isDesktop}

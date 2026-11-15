@@ -28,11 +28,11 @@ function RsvpSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="RSVP" icon={Zap} />
-			<div className="mx-auto max-w-2xl space-y-4 px-4 pt-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				{previewSettings && <RsvpPreview settings={previewSettings} />}
 				<Button
 					variant="outline"
-					className="w-full"
+					className="mt-4 w-full first:mt-0"
 					onClick={() => void navigate({ to: "/speed-test" })}
 				>
 					<Gauge className="size-4" /> Test my speed

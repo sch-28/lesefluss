@@ -61,7 +61,7 @@ export function ModeCards<T extends string>({
 	compact = false,
 }: ModeCardsProps<T>) {
 	return (
-		<div className={cn("grid w-full grid-cols-2", compact ? "gap-1.5" : "gap-3")}>
+		<div className={cn("grid w-full grid-cols-2", compact ? "gap-2" : "gap-3")}>
 			{options.map((m) => {
 				const isActive = value === m.value;
 				const Icon = m.icon;
@@ -74,7 +74,7 @@ export function ModeCards<T extends string>({
 						disabled={disabled}
 						className={cn(
 							"flex items-center rounded-lg border-2 text-center transition-colors",
-							compact ? "justify-center gap-2 p-2" : "flex-col gap-1.5 p-3.5",
+							compact ? "justify-center gap-2 p-2" : "flex-col gap-2 p-3",
 							disabled && "opacity-50",
 							isActive
 								? "border-primary bg-primary/5"

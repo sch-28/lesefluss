@@ -50,14 +50,13 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 );
 
 /**
- * QuickAddButton just below a 2:3 cover that starts at the card's top, beside
- * the title: on the cover it hid titles printed into the art. The card's title
- * block keeps `QUICK_ADD_CLEARANCE` free for it.
+ * QuickAddButton in the card's bottom corner, beside the author and length lines:
+ * on the cover it hid titles printed into the art, beside the title it cut the
+ * title short. Those lines keep `QUICK_ADD_CLEARANCE` free for it, so the card
+ * must always render them.
  */
-export const QuickAddBesideTitle: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
-	<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
-		<QuickAddButton {...props} className="pointer-events-auto absolute top-full right-0 mt-1" />
-	</div>
+export const QuickAddBesideMeta: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
+	<QuickAddButton {...props} className="absolute right-0 bottom-0" />
 );
 
 export const QUICK_ADD_CLEARANCE = "pr-9";

@@ -112,10 +112,10 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 
 const ChapterListLoading: React.FC = () => (
 	<div className="mt-6 px-4">
-		<p className="m-0 flex items-center gap-2 font-semibold text-base">
+		<h2 className="book-detail-section-title flex items-center gap-2">
 			<span>Chapters</span>
-			<Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-		</p>
+			<Loader2 className="size-3.5 animate-spin" />
+		</h2>
 	</div>
 );
 
@@ -162,10 +162,10 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing, curren
 
 	return (
 		<div className="mt-6">
-			<p className="m-0 mb-2 flex items-center gap-2 px-4 font-semibold text-base">
+			<h2 className="book-detail-section-title mb-2 flex items-center gap-2 px-4">
 				<span>Chapters</span>
-				{isSyncing && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-			</p>
+				{isSyncing && <Loader2 className="size-3.5 animate-spin" />}
+			</h2>
 
 			{/* VList fills its explicit height (overflow: auto). Height calculated
 			 * so short series collapse to fit rather than leaving 30vh of blank. */}

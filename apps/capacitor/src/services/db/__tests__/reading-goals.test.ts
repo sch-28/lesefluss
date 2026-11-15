@@ -148,6 +148,26 @@ describe("goal lifecycle", () => {
 		expect(await goals.getGoalsForBook("aaaaaaaa")).toEqual([]);
 		expect(rows()[0]).toMatchObject({ deleted: 1, updatedAt: NOW + 3 });
 	});
+
+	it("restores a removed goal as it was, even after a pull dropped its tombstone", async () => {
+		const goal = await goals.createGoal(
+			book("aaaaaaaa"),
+			{ mode: "deadline", targetDate: "2026-03-10" },
+			NOW,
+		);
+		await goals.deleteGoal(goal.id, NOW + 1);
+		await goals.restoreGoal(goal, NOW + 2);
+		expect(await goals.getActiveGoal("aaaaaaaa")).toMatchObject({
+			id: goal.id,
+			targetDate: "2026-03-10",
+			updatedAt: NOW + 2,
+		});
+
+		await goals.deleteGoal(goal.id, NOW + 3);
+		await goals.hardDeleteGoals([goal.id]);
+		await goals.restoreGoal(goal, NOW + 4);
+		expect(rows()).toMatchObject([{ id: goal.id, deleted: 0, updatedAt: NOW + 4 }]);
+	});
 });
 
 describe("reminders", () => {

@@ -192,7 +192,8 @@ const Library: React.FC = () => {
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 	// The table needs the width; a narrow window shows a stored table as the list.
 	const shownView: LibraryViewMode = viewMode === "table" && !isDesktop ? "list" : viewMode;
-	const controls = headerControls({ isOrderedView, isDesktop });
+	const isEmptyLibrary = !isPending && books.length === 0 && series.length === 0;
+	const controls = headerControls({ isOrderedView, isDesktop, isEmptyLibrary });
 	const cardFields = useCardFields();
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
 		(shownView === "table" && columnIds.includes("highlights")) ||
@@ -943,7 +944,15 @@ const Library: React.FC = () => {
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
 					<BookOpen className="mb-4 size-16 opacity-40" />
 					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">No books yet</h2>
-					<p className="m-0">Tap the + button to import a file or paste text.</p>
+					<p className="m-0">Import a file or paste text to start reading.</p>
+					<Button
+						className="mt-5"
+						onClick={() => setImportSheetOpen(true)}
+						disabled={imports.isImporting || isTransferring}
+					>
+						<Plus className="size-4" />
+						Import books
+					</Button>
 					{isGlobalImporting && <p className="m-0 mt-4">Importing...</p>}
 				</div>
 			) : visibleItems.length === 0 ? (

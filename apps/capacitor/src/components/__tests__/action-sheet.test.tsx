@@ -68,3 +68,33 @@ describe("ActionSheet placement", () => {
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 });
+
+describe("ActionSheet danger group", () => {
+	const mixed: ActionSheetItem[] = [
+		{ label: "Edit", onSelect: () => {} },
+		{ label: "Report", onSelect: () => {} },
+		{ label: "Remove", onSelect: () => {}, destructive: true },
+		{ label: "Block", onSelect: () => {}, destructive: true },
+	];
+
+	it("sets the destructive items apart with one rule in the menu", async () => {
+		press();
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={mixed} />);
+		await flush();
+		const rules = menu()?.querySelectorAll('[role="separator"]') ?? [];
+		expect(rules).toHaveLength(1);
+		expect(rules[0]?.nextElementSibling?.textContent).toBe("Remove");
+	});
+
+	it("does the same in the sheet, and draws no rule when every item is destructive", async () => {
+		const long = [...items(5), ...mixed.slice(2)];
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={long} />);
+		await flush();
+		expect(drawer()?.querySelectorAll("hr")).toHaveLength(1);
+		view.unmount();
+		document.body.innerHTML = "";
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={mixed.slice(2)} />);
+		await flush();
+		expect(document.querySelectorAll('[role="separator"], hr')).toHaveLength(0);
+	});
+});

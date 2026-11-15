@@ -45,7 +45,9 @@ function ReadAloudSettings() {
 	const languages = useMemo(() => {
 		const byKey = new Map<string, string>();
 		for (const book of library?.books ?? []) {
-			if (book.language) byKey.set(voiceLanguageKey(book.language), book.language);
+			const key = voiceLanguageKey(book.language);
+			// "und" (undetermined) is no language a voice could be picked for.
+			if (book.language && key !== "und") byKey.set(key, book.language);
 		}
 		return [...byKey.values()].sort((a, b) => languageName(a).localeCompare(languageName(b)));
 	}, [library]);

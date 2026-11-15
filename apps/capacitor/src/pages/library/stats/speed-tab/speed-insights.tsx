@@ -158,18 +158,26 @@ function RsvpRows({ model }: { model: SpeedModel }) {
 	);
 }
 
+export function hasReadAny(model: SpeedModel): boolean {
+	return model.reading.activeMs > 0 || model.rsvp !== null;
+}
+
 export function SpeedInsights({ model, view }: { model: SpeedModel; view: SpeedView }) {
 	const { data, isPending } = queryHooks.useStatsSpeedInsights();
 	const insights: Insight[] = data?.[view] ?? [];
 	const locked: LockedInsight[] = data?.locked[view] ?? [];
 	const speedLocked = view === "reading" && model.reading.source === "default";
+	// Before the first sitting every locked row reads zero; the speed row alone says how to start.
+	const showLocked = hasReadAny(model);
+	const rows = showLocked ? INSIGHT_ROWS[view] : Number(speedLocked);
+	if (rows === 0) return null;
 	return (
 		<StatsSection
 			title="Insights"
-			aside={locked.length > 0 || speedLocked ? "Unlock as you read" : undefined}
+			aside={(showLocked && locked.length > 0) || speedLocked ? "Unlock as you read" : undefined}
 			data-testid="speed-insights"
 		>
-			<ReservedCard isPending={isPending} height={INSIGHT_ROWS[view] * STAT_ROW_HEIGHT}>
+			<ReservedCard isPending={isPending} height={rows * STAT_ROW_HEIGHT}>
 				<div className="[&>*:last-child]:border-b-0">
 					{speedLocked && <SpeedLockedRow activeMs={model.reading.activeMs} />}
 					{view === "rsvp" && <RsvpRows model={model} />}
@@ -183,9 +191,7 @@ export function SpeedInsights({ model, view }: { model: SpeedModel; view: SpeedV
 							sub={insight.sub}
 						/>
 					))}
-					{locked.map((l) => (
-						<LockedRow key={l.id} locked={l} />
-					))}
+					{showLocked && locked.map((l) => <LockedRow key={l.id} locked={l} />)}
 				</div>
 			</ReservedCard>
 		</StatsSection>

@@ -5,7 +5,7 @@ import type { SearchResult } from "../../services/serial-scrapers";
 import { ErrorState } from "../_shared/load-states";
 import ShelfFrame, { SHELF_ITEM_STYLE } from "./shelf-frame";
 import { ShelfStripSkeleton } from "./skeletons";
-import { WebNovelCard } from "./web-novel-card";
+import { WebNovelCard, webNovelCardExtraLines } from "./web-novel-card";
 
 const TRENDING_SIZE = 12;
 
@@ -19,7 +19,7 @@ const TrendingWebNovels: React.FC<Props> = ({ onOpen }) => {
 	if (popular.isSuccess && results.length === 0) return null;
 
 	const body = popular.isPending ? (
-		<ShelfStripSkeleton />
+		<ShelfStripSkeleton extraLines={webNovelCardExtraLines(true)} />
 	) : popular.isError ? (
 		<ErrorState error={popular.error} onRetry={() => popular.refetch()} className="p-4" />
 	) : undefined;

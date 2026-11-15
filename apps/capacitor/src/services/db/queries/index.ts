@@ -112,6 +112,7 @@ import {
 	hardDeleteGoals,
 	replanGoalById,
 	resolveActiveGoalConflicts,
+	restoreGoal,
 	setGoalReminder,
 	upsertGoals,
 } from "./reading-goals";
@@ -280,6 +281,7 @@ export const queries = {
 	getAllGoalsForSync,
 	createGoal,
 	deleteGoal,
+	restoreGoal,
 	completeFinishedGoals,
 	resolveActiveGoalConflicts,
 	upsertGoals,

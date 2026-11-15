@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { goalAmountLabel, goalCandidates } from "@/pages/library/reading-goal/goal-model";
 import { GoalEditSheet, GoalSheetFor } from "@/pages/library/reading-goal/goal-sheet-for";
@@ -17,6 +18,9 @@ export const Route = createFileRoute("/tabs/settings/goals")({
 	component: Goals,
 });
 
+/** Must match the "No active goals." row. */
+const NO_GOALS_ROW_HEIGHT = "calc(1.5rem + 1.25rem)";
+
 function Goals() {
 	const plans = queryHooks.useActiveGoalPlans();
 	const goals = editableGoals(plans.data ?? []);
@@ -26,6 +30,7 @@ function Goals() {
 			<PageHeader title="Goals" icon={Target} />
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Goals">
+					{!plans.data && <ReservedCard isPending height={NO_GOALS_ROW_HEIGHT} />}
 					{plans.data && goals.length === 0 && (
 						<p className="m-0 px-4 py-3 text-muted-foreground text-sm">No active goals.</p>
 					)}
@@ -33,13 +38,16 @@ function Goals() {
 						<GoalRow key={entry.goal.id} entry={entry} />
 					))}
 				</SettingsSection>
-				{plans.data && <AddGoal goalBookIds={plans.data.map((p) => p.goal.bookId)} />}
+				<AddGoal
+					goalBookIds={plans.data?.map((p) => p.goal.bookId) ?? []}
+					isDisabled={!plans.data}
+				/>
 			</div>
 		</div>
 	);
 }
 
-function AddGoal({ goalBookIds }: { goalBookIds: string[] }) {
+function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisabled: boolean }) {
 	const { data: library } = queryHooks.useBooks();
 	const [isPickerOpen, setPickerOpen] = useState(false);
 	const [picked, setPicked] = useState<Book | null>(null);
@@ -50,6 +58,7 @@ function AddGoal({ goalBookIds }: { goalBookIds: string[] }) {
 			<Button
 				variant="outline"
 				className="h-11 w-full"
+				disabled={isDisabled}
 				onClick={() => setPickerOpen(true)}
 				data-testid="add-goal"
 			>
@@ -104,7 +113,7 @@ function GoalRow({ entry }: { entry: { goal: ReadingGoal; plan: ReadingGoalPlan 
 			data-testid="goal-row"
 		>
 			<div className="min-w-0 flex-1">
-				<div className="truncate text-foreground text-sm">{book?.title ?? ""}</div>
+				<div className="min-h-[1lh] truncate text-foreground text-sm">{book?.title}</div>
 				<div className="text-muted-foreground text-xs tabular-nums">
 					{goalAmountLabel(entry.goal, entry.plan)}
 				</div>

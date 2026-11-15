@@ -13,6 +13,12 @@ describe("library header controls", () => {
 		}
 	});
 
+	it("hides them in an empty library", () => {
+		expect(
+			headerControls({ isOrderedView: false, isDesktop: false, isEmptyLibrary: true }),
+		).toEqual({ search: false, filter: false, sort: false, view: false });
+	});
+
 	it("shows them in the library, Filter on the phone only", () => {
 		expect(headerControls({ isOrderedView: false, isDesktop: true })).toEqual({
 			search: true,

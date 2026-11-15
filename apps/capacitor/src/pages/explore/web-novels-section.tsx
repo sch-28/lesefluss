@@ -57,7 +57,7 @@ const WebNovelsSection: React.FC = () => {
 				// biome-ignore lint/a11y/noRedundantRoles: see comment above
 				role="list"
 				aria-labelledby={titleId}
-				className="m-0 -mx-1 flex list-none gap-3 overflow-x-auto px-1 pt-2 pb-5"
+				className="m-0 -mx-1 flex list-none gap-3 overflow-x-auto px-1 pt-2 pb-6"
 			>
 				{VISIBLE_PROVIDERS.map((id) => (
 					<li key={id} className="flex shrink-0">

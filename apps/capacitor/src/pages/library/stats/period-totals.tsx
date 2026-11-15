@@ -1,4 +1,5 @@
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
+import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { queryHooks } from "../../../services/db/hooks";
@@ -65,6 +66,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 				booksFinished: delta(data.booksFinished, prevData.booksFinished),
 			}
 		: { minutes: null, words: null, booksFinished: null };
+	const showFinished = isPending || data.booksFinished > 0;
 
 	return (
 		<StatsSection title="Totals" data-testid="stats-totals">
@@ -77,7 +79,10 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -8 }}
 					transition={{ duration: 0.25 }}
-					className="grid grid-cols-3 gap-3 rounded-[14px] border border-border bg-card p-4 text-card-foreground"
+					className={cn(
+						"grid gap-3 rounded-[14px] border border-border bg-card p-4 text-card-foreground",
+						showFinished ? "grid-cols-3" : "grid-cols-2",
+					)}
 				>
 					<Stat
 						label="Time"
@@ -94,13 +99,15 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 						period={period}
 						isPending={isPending}
 					/>
-					<Stat
-						label="Finished"
-						value={data.booksFinished}
-						delta={deltas.booksFinished}
-						period={period}
-						isPending={isPending}
-					/>
+					{showFinished && (
+						<Stat
+							label="Finished"
+							value={data.booksFinished}
+							delta={deltas.booksFinished}
+							period={period}
+							isPending={isPending}
+						/>
+					)}
 				</motion.div>
 			</AnimatePresence>
 		</StatsSection>

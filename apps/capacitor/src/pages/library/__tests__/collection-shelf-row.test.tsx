@@ -155,10 +155,10 @@ describe("CollectionShelfRow", () => {
 	it("shows no 0 chip in the row and hides the row's scrollbar", async () => {
 		collections = [{ ...collection("empty"), bookCount: 0 }, collection("full")];
 		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
-		expect(row().map((b) => b.textContent)).toEqual(["All", "C full2", "1"]);
+		expect(row().map((b) => b.textContent)).toEqual(["All", "C full2", ""]);
 		const toolbar = rendered.container.querySelector("[role=toolbar]");
 		expect(toolbar?.className).toContain("[&::-webkit-scrollbar]:hidden");
-		await click(rendered.getButton("More, 1 more"));
+		await click(rendered.getButton("More"));
 		expect(sheet()?.textContent).toContain("C empty");
 	});
 

@@ -88,7 +88,6 @@ function DeviceSettings() {
 	const { settings, updateSetting, flush, replaceAll, isPending } = useAutoSaveSettings();
 
 	const [syncing, setSyncing] = useState(false);
-	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
 	const [forgetTarget, setForgetTarget] = useState<{ id: string; name: string } | null>(null);
 	const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
 
@@ -119,7 +118,6 @@ function DeviceSettings() {
 
 	const handleDisconnect = async () => {
 		await disconnect();
-		setShowDisconnectAlert(false);
 		showToast("Disconnected from device");
 	};
 
@@ -193,7 +191,7 @@ function DeviceSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Device" icon={Cpu} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				{isMultiBookConnected && connectedDescriptorId && (
 					<DeviceSync descriptorId={connectedDescriptorId} />
 				)}
@@ -278,27 +276,14 @@ function DeviceSettings() {
 									</div>
 								</div>
 							)}
-							<div className="flex gap-2 p-3">
+							<div className="p-3">
 								<Button
 									variant="outline"
-									className="flex-1 text-destructive"
-									onClick={() => setShowDisconnectAlert(true)}
+									className="w-full"
+									onClick={() => void handleDisconnect()}
 								>
 									<CircleX />
 									Disconnect
-								</Button>
-								<Button
-									variant="outline"
-									className="flex-1 text-destructive"
-									onClick={() =>
-										setForgetTarget({
-											id: connectedDevice.deviceId,
-											name: connectedDevice.name || "Lesefluss",
-										})
-									}
-								>
-									<Trash2 />
-									Forget
 								</Button>
 							</div>
 						</>
@@ -404,22 +389,25 @@ function DeviceSettings() {
 						</Button>
 					</div>
 				)}
-			</div>
 
-			<AlertDialog open={showDisconnectAlert} onOpenChange={setShowDisconnectAlert}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Disconnect device</AlertDialogTitle>
-						<AlertDialogDescription>
-							Disconnect from {connectedDevice?.name || "the device"}?
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleDisconnect}>Disconnect</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				{isConnected && connectedDevice && (
+					<SettingsSection title="Danger zone">
+						<button
+							type="button"
+							className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-muted/60"
+							onClick={() =>
+								setForgetTarget({
+									id: connectedDevice.deviceId,
+									name: connectedDevice.name || "Lesefluss",
+								})
+							}
+						>
+							<Trash2 className="size-5" />
+							<span className="font-medium text-sm">Forget this device</span>
+						</button>
+					</SettingsSection>
+				)}
+			</div>
 
 			<AlertDialog
 				open={forgetTarget !== null}

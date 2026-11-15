@@ -5,7 +5,7 @@ import CoverImage from "../../components/cover-image";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
-import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideTitle } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
 import { useCatalogImport } from "./use-catalog-import";
 import { useWebNovelImport } from "./use-web-novel-import";
 import { useRemoveFromWishlist } from "./use-wishlist-action";
@@ -60,26 +60,26 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 					}
 				/>
 			</div>
-			<div className={`px-0.5 pt-1 ${onImport ? QUICK_ADD_CLEARANCE : ""}`}>
+			<div className="px-0.5 pt-1">
 				<div
 					data-clips-text
-					className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+					className="min-h-[2lh] overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 				>
 					{item.title}
 				</div>
-				{item.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+				<div className={onImport ? QUICK_ADD_CLEARANCE : undefined}>
+					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 						{item.author}
 					</div>
-				)}
-				<CardMeta isInLibrary={isInLibrary} />
+					<CardMeta isInLibrary={isInLibrary} />
+				</div>
 			</div>
 		</button>
 		<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
 			<RemoveFromWishlistButton item={item} />
 		</div>
 		{onImport && (
-			<QuickAddBesideTitle
+			<QuickAddBesideMeta
 				title={item.title}
 				isAdding={isImporting}
 				onAdd={onImport}

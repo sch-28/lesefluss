@@ -10,6 +10,7 @@ import {
 	rsvpWpm as rsvpWpmOf,
 	suggestDial,
 } from "../../services/stats/speed-test";
+import { ReservedCard } from "../reserved-card";
 import { SpeedGauge } from "./gauge";
 import { pickPassage, type SpeedTestPassage } from "./passages";
 import { ReadRound } from "./read-round";
@@ -136,7 +137,7 @@ export function SpeedTest({
 		onActions?.(actions);
 	}, [actions, onActions]);
 
-	if (!settings) return null;
+	if (!settings) return <ReservedCard isPending height="20rem" />;
 
 	return (
 		<div className="flex flex-col" data-testid="speed-test">
@@ -166,7 +167,8 @@ export function SpeedTest({
 					<div className="mt-6">
 						<SpeedGauge value="?" label="wpm" animate={false} />
 					</div>
-					<div className="mt-4 grid grid-cols-3 gap-2">
+					{/* The modes tile takes the room its two names need on one line. */}
+					<div className="mt-4 grid grid-cols-[1fr_1fr_minmax(max-content,1fr)] gap-2">
 						<IntroStat value="1 min" label="Time" />
 						<IntroStat value="2" label="Rounds" />
 						<IntroStat value="Read · RSVP" label="Modes" />
@@ -240,7 +242,7 @@ export function SpeedTest({
 function IntroStat({ value, label }: { value: string; label: string }) {
 	return (
 		<div className="rounded-lg border border-border px-2 py-2">
-			<div className="font-semibold tabular-nums">{value}</div>
+			<div className="whitespace-nowrap font-semibold tabular-nums">{value}</div>
 			<div className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">{label}</div>
 		</div>
 	);

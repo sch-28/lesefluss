@@ -4,6 +4,7 @@ import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 import CoverImage from "../../components/cover-image";
+import { ReservedCard } from "../../components/reserved-card";
 import { formatRelative } from "../../utils/date-utils";
 import {
 	countLabel,
@@ -87,10 +88,20 @@ type Props = {
 	autoFocus?: boolean;
 	/** Phone sheet: the controls wrap and the rows scroll inside it. */
 	compact?: boolean;
+	/** Holds the list's place with a spinner below the working controls. */
+	isPending?: boolean;
 };
 
 /** Every series with a search, a kind filter and a sort; a row opens its page. */
-export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, compact }: Props) {
+export function AllSeriesList({
+	entries,
+	covers,
+	onPick,
+	onExit,
+	autoFocus,
+	compact,
+	isPending,
+}: Props) {
 	const [query, setQuery] = useState("");
 	const [kind, setKind] = useState<SeriesKindFilter>("all");
 	const [sort, setSort] = useState<SeriesSort>("last-read");
@@ -169,12 +180,16 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, comp
 					)}
 					data-testid="all-series-count"
 				>
-					{shown.length === entries.length
-						? entries.length
-						: `${shown.length} of ${entries.length}`}
+					{isPending
+						? null
+						: shown.length === entries.length
+							? entries.length
+							: `${shown.length} of ${entries.length}`}
 				</span>
 			</div>
-			{shown.length === 0 ? (
+			{isPending ? (
+				<ReservedCard isPending height="50vh" />
+			) : shown.length === 0 ? (
 				<p className="m-0 p-6 text-center text-muted-foreground text-sm">No series match.</p>
 			) : (
 				<ul
@@ -214,6 +229,7 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, comp
 										]
 											.filter(Boolean)
 											.join(" · ")}
+										{!compact && <span className="sm:hidden"> · {progressLabel(entry)}</span>}
 									</span>
 								</span>
 								<span
@@ -227,7 +243,7 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, comp
 									{countLabel(entry)}
 								</span>
 								{!compact && (
-									<span className="w-24 shrink-0 text-right text-muted-foreground text-xs">
+									<span className="hidden w-24 shrink-0 text-right text-muted-foreground text-xs sm:block">
 										{progressLabel(entry)}
 									</span>
 								)}

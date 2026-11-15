@@ -1,9 +1,12 @@
+import { Button } from "@lesefluss/ui/button";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { BookOpen } from "lucide-react";
 
 export function EmptyState() {
+	const navigate = useNavigate();
 	return (
-		<div className="flex flex-col items-center justify-center px-8 py-24 text-center">
+		<div className="flex flex-col items-center justify-center px-8 py-16 text-center">
 			<motion.div
 				animate={{
 					scale: [1, 1.08, 1],
@@ -18,6 +21,9 @@ export function EmptyState() {
 			<p className="max-w-xs text-muted-foreground text-sm">
 				Read a book to start tracking your time, words, and streak.
 			</p>
+			<Button variant="outline" className="mt-6" onClick={() => navigate({ to: "/tabs/library" })}>
+				Open library
+			</Button>
 		</div>
 	);
 }

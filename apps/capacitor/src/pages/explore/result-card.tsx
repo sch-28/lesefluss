@@ -2,7 +2,7 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
-import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideTitle } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
 import type { LengthLabels } from "./length";
 
 type Props = {
@@ -40,7 +40,7 @@ const ResultCard: React.FC<Props> = ({
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={cover} alt={result.title} />
 				</div>
-				<div className={`px-0.5 pt-1 ${onQuickAdd ? QUICK_ADD_CLEARANCE : ""}`}>
+				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
@@ -48,16 +48,16 @@ const ResultCard: React.FC<Props> = ({
 					>
 						{result.title}
 					</div>
-					{result.author && (
-						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+					<div className={onQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
+						<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 							{result.author}
 						</div>
-					)}
-					<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
+						<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
+					</div>
 				</div>
 			</button>
 			{onQuickAdd && (
-				<QuickAddBesideTitle title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
+				<QuickAddBesideMeta title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
 			)}
 		</div>
 	);

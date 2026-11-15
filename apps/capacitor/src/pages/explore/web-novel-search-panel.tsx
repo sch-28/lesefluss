@@ -20,7 +20,7 @@ import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
 import TextCover from "./text-cover";
 import { useReadingSpeed } from "./use-reading-speed";
 import { useWebNovelImport } from "./use-web-novel-import";
-import { WebNovelCard } from "./web-novel-card";
+import { WebNovelCard, webNovelCardExtraLines } from "./web-novel-card";
 import { chapterFallback, webNovelLength } from "./web-novel-facts";
 
 interface Props {
@@ -73,7 +73,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	}
 
 	if (isLoading || isFetching || (!data && !isError)) {
-		return <PanelSkeleton viewMode={viewMode} />;
+		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 
 	if (isError || !data) return <ErrorState error={error} onRetry={refetch} />;
@@ -115,7 +115,7 @@ const PagedSearch: React.FC<{
 	onPick: (result: SearchResult) => void;
 }> = ({ query, provider, status, viewMode, onPick }) => {
 	const pages = queryHooks.useSearchSerialPages(query, { provider, status, enabled: true });
-	if (pages.isPending) return <PanelSkeleton viewMode={viewMode} />;
+	if (pages.isPending) return <PanelSkeleton viewMode={viewMode} showProvider={false} />;
 	if (pages.isError && !pages.data) {
 		return <ErrorState error={pages.error} onRetry={() => pages.refetch()} />;
 	}
@@ -184,7 +184,7 @@ const PopularShelf: React.FC<{
 	);
 
 	if (isLoading || isFetching || (!data && !isError)) {
-		return <PanelSkeleton viewMode={viewMode} />;
+		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 	if (isError || !data) {
 		return <ErrorState error={error} message="Failed to load popular series." onRetry={refetch} />;
@@ -321,6 +321,14 @@ const ResultListItem: React.FC<{
 	);
 };
 
-const PanelSkeleton: React.FC<{ viewMode: ViewMode }> = ({ viewMode }) => (
-	<CardGridSkeleton layout={viewMode} count={viewMode === "grid" ? 12 : 6} className="pt-3" />
+const PanelSkeleton: React.FC<{ viewMode: ViewMode; showProvider: boolean }> = ({
+	viewMode,
+	showProvider,
+}) => (
+	<CardGridSkeleton
+		layout={viewMode}
+		count={viewMode === "grid" ? 12 : 6}
+		extraLines={webNovelCardExtraLines(showProvider)}
+		className="pt-3"
+	/>
 );

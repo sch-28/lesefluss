@@ -12,6 +12,7 @@ import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { toast } from "../../../components/toast";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingGoal } from "../../../services/db/schema";
 import { areRemindersSupported } from "../../../services/goal-reminders";
@@ -19,6 +20,7 @@ import type { ReadingGoalPlan } from "../../../services/stats/reading-goal";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
 import { log } from "../../../utils/log";
 import { minutesLabel, percentLabel } from "../../../utils/reading-time";
+import { UNDO_WINDOW_MS } from "../stats/use-undoable-delete";
 import {
 	daysToSlider,
 	GOAL_PRESETS,
@@ -78,7 +80,23 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 	const replan = queryHooks.useReplanReadingGoal();
 	const setReminder = queryHooks.useSetGoalReminder();
 	const remove = queryHooks.useDeleteReadingGoal();
+	const restore = queryHooks.useRestoreReadingGoal();
 	const isBusy = create.isPending || replan.isPending || setReminder.isPending || remove.isPending;
+
+	function removeGoal(goal: ReadingGoal) {
+		remove.mutate(
+			{ id: goal.id },
+			{
+				onSuccess: () => {
+					onClose();
+					toast.success("Goal removed", {
+						action: { label: "Undo", onClick: () => restore.mutate({ goal }) },
+						duration: UNDO_WINDOW_MS,
+					});
+				},
+			},
+		);
+	}
 
 	const setupBook = {
 		today,
@@ -299,7 +317,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 							variant="ghost"
 							className="text-destructive"
 							disabled={isBusy}
-							onClick={() => remove.mutate({ id: existing.goal.id }, { onSuccess: onClose })}
+							onClick={() => removeGoal(existing.goal)}
 						>
 							Remove goal
 						</Button>

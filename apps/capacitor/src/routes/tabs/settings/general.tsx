@@ -28,7 +28,7 @@ function GeneralSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="General" icon={SlidersHorizontal} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Theme">
 					<SettingsRow stacked>
 						<ThemeCards value={storedTheme} onChange={setTheme} disabled={isEinkMode} />

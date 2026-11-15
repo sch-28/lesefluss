@@ -7,12 +7,11 @@ export function FinishedShelf() {
 	// The total, not the row count: the shelf is capped, so counting the rows
 	// would freeze the subtitle at the cap forever.
 	const total = finished.data?.total ?? 0;
+	if (!finished.isPending && total === 0) return null;
 	return (
 		<BookShelf
 			title="Finished"
-			subtitle={
-				total > 0 ? `${total} ${total === 1 ? "book" : "books"} · newest first` : "all time"
-			}
+			subtitle={total > 0 ? `${total} ${total === 1 ? "book" : "books"} · newest first` : ""}
 			books={finished.data?.books ?? []}
 			isPending={finished.isPending}
 			emptyMessage="No finished books yet."

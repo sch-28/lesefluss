@@ -116,7 +116,7 @@ function RequestCard({
 	menuButton: React.ReactNode;
 }) {
 	return (
-		<div className="rounded-2xl border border-primary/35 bg-primary/5 p-3.5">
+		<div className="rounded-2xl border border-primary/35 bg-primary/5 p-3">
 			<div className="flex items-center gap-3">
 				<SocialAvatar name={person.name} avatarUrl={person.avatarUrl} size="md" />
 				<div className="min-w-0 flex-1">

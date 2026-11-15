@@ -174,6 +174,8 @@ const CollectionShelfRow: React.FC<{
 	const countOf = (c: RowChip) =>
 		c.kind === "shelf" ? c.count : c.kind === "collection" ? c.collection.bookCount : c.entry.count;
 	const { inline, more } = splitChips(chips, countOf);
+	// Empty shelves still list in the sheet, but they are no reason to badge it.
+	const moreFilled = more.filter((c) => countOf(c) > 0).length;
 
 	const openChip = (c: RowChip) => {
 		setIsMoreOpen(false);
@@ -227,11 +229,11 @@ const CollectionShelfRow: React.FC<{
 				<button
 					type="button"
 					onClick={() => setIsMoreOpen(true)}
-					aria-label={more.length > 0 ? `More, ${more.length} more` : "More"}
+					aria-label={moreFilled > 0 ? `More, ${moreFilled} more` : "More"}
 					className={cn(CHIP_BASE, "text-muted-foreground")}
 				>
 					<MoreHorizontal aria-hidden className="size-4" />
-					{more.length > 0 && <span className="text-xs tabular-nums">{more.length}</span>}
+					{moreFilled > 0 && <span className="text-xs tabular-nums">{moreFilled}</span>}
 				</button>
 			</div>
 			<Drawer open={isMoreOpen} onOpenChange={setIsMoreOpen}>

@@ -1,4 +1,6 @@
 import { AVERAGE_READER_WPM, type SpeedWindow } from "@lesefluss/core";
+import { useRef } from "react";
+import { useElementWidth } from "../../../hooks/use-element-width";
 import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
@@ -6,11 +8,12 @@ import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { formatShortDate, startOfLocalDay } from "../../../utils/date-utils";
 import { evenTickIndices } from "./chart-axis";
 
-const WIDTH = 358;
+/** Until the card is measured; the chart then draws at its real width so text never scales. */
+const DEFAULT_WIDTH = 358;
 const HEIGHT = 150;
 const PLOT_LEFT = 30;
 // Room right of the plot for the reference line labels, so they never sit on the line.
-const PLOT_RIGHT = 308;
+const LABEL_GUTTER = 50;
 const PLOT_TOP = 10;
 const PLOT_BOTTOM = 120;
 const GRID_LINES = 4;
@@ -83,11 +86,20 @@ export function trendAxisLegend(windowLabel: string, bucketStarts: readonly numb
 	return from === to ? `${windowLabel} · ${from}` : `${windowLabel} · ${from} – ${to}`;
 }
 
-function ChartFrame({ label, children }: { label: string; children?: React.ReactNode }) {
+function ChartFrame({
+	width,
+	label,
+	children,
+}: {
+	width: number;
+	label: string;
+	children?: React.ReactNode;
+}) {
 	return (
 		<svg
-			viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-			className="block h-auto w-full"
+			viewBox={`0 0 ${width} ${HEIGHT}`}
+			className="block w-full"
+			style={{ height: HEIGHT }}
 			role="img"
 			aria-label={label}
 		>
@@ -103,15 +115,27 @@ interface Props {
 	now: number;
 }
 
-export function WpmTrend({ window, mode, windowLabel, now }: Props) {
+/** The measured element stays mounted across loading and mode switches, so the width keeps following it. */
+export function WpmTrend(props: Props) {
+	const frameRef = useRef<HTMLDivElement>(null);
+	const width = useElementWidth(frameRef) || DEFAULT_WIDTH;
+	return (
+		<div ref={frameRef}>
+			<WpmTrendChart {...props} width={width} />
+		</div>
+	);
+}
+
+function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { width: number }) {
 	const trend = queryHooks.useStatsWpmTrend(window, mode, now);
+	const plotRight = width - LABEL_GUTTER;
 	const data = trend.data;
 	const tests = data?.tests ?? NO_TESTS;
 
 	if (!data) {
 		return (
 			<div data-testid="wpm-trend-loading">
-				<ChartFrame label="Reading speed chart" />
+				<ChartFrame width={width} label="Reading speed chart" />
 			</div>
 		);
 	}
@@ -129,9 +153,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 	const start = firstShownBucket(measured, tests);
 	const end = Math.max(start, measured.length - 1);
 	const x = (i: number) =>
-		end === start
-			? PLOT_RIGHT
-			: PLOT_LEFT + ((i - start) / (end - start)) * (PLOT_RIGHT - PLOT_LEFT);
+		end === start ? plotRight : PLOT_LEFT + ((i - start) / (end - start)) * (plotRight - PLOT_LEFT);
 	const domain = wpmAxisDomain([...measured.map((p) => p.avgWpm), ...tests.map((t) => t.wpm)]);
 	const y = (wpm: number) =>
 		PLOT_BOTTOM - ((wpm - domain.min) / (domain.max - domain.min)) * (PLOT_BOTTOM - PLOT_TOP);
@@ -158,14 +180,17 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 
 	return (
 		<div data-testid="wpm-trend">
-			<ChartFrame label={summariseWpmTrend(data, trendAxisLegend(windowLabel, shownStarts))}>
+			<ChartFrame
+				width={width}
+				label={summariseWpmTrend(data, trendAxisLegend(windowLabel, shownStarts))}
+			>
 				{Array.from({ length: GRID_LINES }, (_, i) => {
 					const wpm = domain.min + i * domain.step;
 					return (
 						<g key={wpm}>
 							<line
 								x1={PLOT_LEFT}
-								x2={PLOT_RIGHT}
+								x2={plotRight}
 								y1={y(wpm)}
 								y2={y(wpm)}
 								className="stroke-border"
@@ -185,12 +210,18 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 				{inRange(AVERAGE_READER_WPM) && (
 					<ReferenceLine
 						y={y(AVERAGE_READER_WPM)}
+						plotRight={plotRight}
 						lines={["Avg", "reader"]}
 						testId="wpm-trend-avg"
 					/>
 				)}
 				{dial > 0 && inRange(dial) && (
-					<ReferenceLine y={y(dial)} lines={["Dial"]} testId="wpm-trend-dial" />
+					<ReferenceLine
+						y={y(dial)}
+						plotRight={plotRight}
+						lines={["Dial"]}
+						testId="wpm-trend-dial"
+					/>
 				)}
 				{points.length > 1 && (
 					<polyline
@@ -230,7 +261,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 								<text
 									x={tx}
 									y={ty - 9}
-									textAnchor={tx > (PLOT_LEFT + PLOT_RIGHT) / 2 ? "end" : "start"}
+									textAnchor={tx > (PLOT_LEFT + plotRight) / 2 ? "end" : "start"}
 									className="fill-muted-foreground text-[10px]"
 								>
 									{testLabel(test.takenAt, now)} · {test.wpm}
@@ -266,12 +297,22 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 	);
 }
 
-function ReferenceLine({ y, lines, testId }: { y: number; lines: string[]; testId: string }) {
+function ReferenceLine({
+	y,
+	plotRight,
+	lines,
+	testId,
+}: {
+	y: number;
+	plotRight: number;
+	lines: string[];
+	testId: string;
+}) {
 	return (
 		<g data-testid={testId}>
 			<line
 				x1={PLOT_LEFT}
-				x2={PLOT_RIGHT}
+				x2={plotRight}
 				y1={y}
 				y2={y}
 				className="stroke-muted-foreground"
@@ -280,7 +321,7 @@ function ReferenceLine({ y, lines, testId }: { y: number; lines: string[]; testI
 			{lines.map((text, i) => (
 				<text
 					key={text}
-					x={PLOT_RIGHT + 6}
+					x={plotRight + 6}
 					y={y - 2 + i * 13}
 					className="fill-muted-foreground text-[10px]"
 				>

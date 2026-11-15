@@ -374,7 +374,7 @@ function SocialSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Social profile" icon={Users} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">{body}</div>
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">{body}</div>
 		</div>
 	);
 }

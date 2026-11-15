@@ -182,6 +182,7 @@ export const queryHooks = {
 	useReplanReadingGoal: readingGoalHooks.useReplanReadingGoal,
 	useSetGoalReminder: readingGoalHooks.useSetGoalReminder,
 	useDeleteReadingGoal: readingGoalHooks.useDeleteReadingGoal,
+	useRestoreReadingGoal: readingGoalHooks.useRestoreReadingGoal,
 
 	// ── Collections ───────────────────────────────────────────────────────
 	useCollections: collectionHooks.useCollections,

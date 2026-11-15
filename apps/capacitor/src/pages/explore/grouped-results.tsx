@@ -12,8 +12,15 @@ import { describeLoadError, EmptyState, ErrorState } from "../_shared/load-state
 import CatalogListItem from "./catalog-list-item";
 import Shelf from "./shelf";
 import ShelfFrame, { SHELF_ITEM_STYLE } from "./shelf-frame";
-import { EXPLORE_GRID_CLASS, ShelfSkeleton } from "./skeletons";
-import { WebNovelCard } from "./web-novel-card";
+import {
+	CardGridSkeleton,
+	EXPLORE_GRID_CLASS,
+	LIST_ROW_TEXT_HEIGHT,
+	ListItemSkeleton,
+	ShelfSkeleton,
+	ShelfStripSkeleton,
+} from "./skeletons";
+import { WebNovelCard, webNovelCardExtraLines } from "./web-novel-card";
 
 const CATALOG_PREVIEW_SIZE = 8;
 const PROVIDER_PREVIEW_SIZE = 8;
@@ -21,6 +28,7 @@ const PREVIEW_STALE_TIME_MS = 5 * 60 * 1000;
 /** A phone shows results as rows and a grid; a strip there holds three covers at most. */
 const PHONE_CATALOG_ROWS = 5;
 const PHONE_PROVIDER_CARDS = 6;
+const CATALOG_ROW_KEYS = Array.from({ length: PHONE_CATALOG_ROWS }, (_, i) => `row-${i}`);
 
 type Props = {
 	q: string;
@@ -102,7 +110,25 @@ const GroupedResults: React.FC<Props> = ({
 	return (
 		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
 			{catalog.isPending ? (
-				<ShelfSkeleton />
+				isWide ? (
+					<ShelfSkeleton />
+				) : (
+					<ShelfFrame
+						title="Public domain"
+						body={
+							<div
+								role="status"
+								aria-busy="true"
+								aria-label="Loading"
+								className="divide-y divide-border"
+							>
+								{CATALOG_ROW_KEYS.map((key) => (
+									<ListItemSkeleton key={key} textClassName={LIST_ROW_TEXT_HEIGHT} />
+								))}
+							</div>
+						}
+					/>
+				)
 			) : catalog.isError ? (
 				<section className="mb-6">
 					<h2 className="m-0 mb-2 font-semibold text-[0.95rem]">Public domain</h2>
@@ -172,7 +198,21 @@ const GroupedResults: React.FC<Props> = ({
 				),
 			)}
 
-			{isSerialsLoading && <ShelfSkeleton />}
+			{isSerialsLoading && (
+				<ShelfFrame
+					title="Web novels"
+					body={
+						isWide ? (
+							<ShelfStripSkeleton extraLines={webNovelCardExtraLines(false)} />
+						) : (
+							<CardGridSkeleton
+								count={PHONE_PROVIDER_CARDS}
+								extraLines={webNovelCardExtraLines(false)}
+							/>
+						)
+					}
+				/>
+			)}
 
 			{failed.length > 0 && !isSerialsLoading && (
 				<div

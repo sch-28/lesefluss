@@ -56,7 +56,7 @@ export const VoiceSheet: React.FC<Props> = ({
 				type="button"
 				onClick={() => onSelect(voice)}
 				className={cn(
-					"flex min-w-0 flex-1 items-center gap-3 px-5 py-3 text-left text-sm transition-colors hover:bg-muted",
+					"flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-muted",
 					selected === voice && "font-medium",
 				)}
 			>
@@ -104,13 +104,13 @@ export const VoiceSheet: React.FC<Props> = ({
 						<button
 							type="button"
 							onClick={() => setIsShowingOnline((shown) => !shown)}
-							className="w-full px-5 py-3 text-left text-muted-foreground text-sm hover:bg-muted"
+							className="w-full px-4 py-3 text-left text-muted-foreground text-sm hover:bg-muted"
 						>
 							{isShowingOnline ? "Hide online voices" : `Show online voices (${onlineCount})`}
 						</button>
 					)}
 					{!isPending && listed.length === 0 && (
-						<p className="px-5 py-4 text-muted-foreground text-sm">
+						<p className="px-4 py-4 text-muted-foreground text-sm">
 							{HAS_SYSTEM_VOICE_SETTINGS
 								? "No voice for this language yet. Download one below."
 								: "Your browser has no voice for this language."}

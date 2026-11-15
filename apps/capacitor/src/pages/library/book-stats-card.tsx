@@ -253,14 +253,16 @@ export function BookStatsCard({ book }: Props) {
 				<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
 			)}
 
-			<div className="mt-4 border-current/10 border-t pt-3">
-				<Stat
-					value={
-						data.measuredWpm != null ? <AnimatedNumber value={data.measuredWpm} /> : <span>—</span>
-					}
-					label={data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"}
-				/>
-			</div>
+			{data.measuredWpm != null && (
+				<div className="mt-4 border-current/10 border-t pt-3">
+					<Stat
+						value={<AnimatedNumber value={data.measuredWpm} />}
+						label={
+							data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"
+						}
+					/>
+				</div>
+			)}
 
 			{showSparkline && (
 				<div className="mt-4">

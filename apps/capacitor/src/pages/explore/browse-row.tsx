@@ -35,7 +35,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 			className={
 				hasFinePointer
 					? `flex min-w-0 flex-1 gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`
-					: `-mx-4 mb-5 flex gap-2 px-4 pb-1 ${HIDDEN_SCROLLBAR_X}`
+					: `-mx-4 mb-6 flex gap-2 px-4 pb-1 ${HIDDEN_SCROLLBAR_X}`
 			}
 		>
 			<Button variant="secondary" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
@@ -59,7 +59,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 
 	// A mouse has no swipe, so it gets the shelves' arrows, together at the right like theirs.
 	return (
-		<div className="mb-5 flex items-start gap-2">
+		<div className="mb-6 flex items-start gap-2">
 			{row}
 			<div className="flex shrink-0 items-center gap-1">
 				<Button

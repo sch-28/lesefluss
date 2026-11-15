@@ -1,6 +1,8 @@
+import { Button } from "@lesefluss/ui/button";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
+import { useNavigate } from "@tanstack/react-router";
 import { Check, Search } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
@@ -168,6 +170,8 @@ export const BookSelection: React.FC<Props> = ({
 		);
 	};
 
+	if (books.length === 0) return <EmptyLibrary />;
+
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="relative">
@@ -222,3 +226,17 @@ export const BookSelection: React.FC<Props> = ({
 		</div>
 	);
 };
+
+function EmptyLibrary() {
+	const navigate = useNavigate();
+	return (
+		<div className="flex flex-col items-center gap-3 py-8 text-center" data-testid="book-selection">
+			<p className="m-0 text-muted-foreground text-sm">
+				Your library is empty. Import a book first.
+			</p>
+			<Button variant="outline" onClick={() => void navigate({ to: "/tabs/library" })}>
+				Go to library
+			</Button>
+		</div>
+	);
+}

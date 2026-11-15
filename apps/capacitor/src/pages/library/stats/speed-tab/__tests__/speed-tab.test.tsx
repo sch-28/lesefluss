@@ -199,6 +199,24 @@ describe("SpeedTab", () => {
 		expect(q("insight-locked-fatigue")?.textContent).toContain("3 sittings of 30+ min · 1 of 3");
 	});
 
+	it("before the first sitting, keeps only the row that says how to start", async () => {
+		state.model = model({ reading: false, source: "default" });
+		state.insights.locked.reading = [
+			{
+				id: "fatigue",
+				title: "When you slow down",
+				need: "3 sittings of 30+ min",
+				progress: 0,
+				progressLabel: "0 of 3",
+			},
+		];
+		state.milestones = { reached: [], next: [{ kind: "words", threshold: 100_000, current: 0 }] };
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("insight-locked-fatigue")).toBeNull();
+		expect(q("speed-locked")).not.toBeNull();
+		expect(q("speed-milestones")).toBeNull();
+	});
+
 	it("asks a reader without a speed to read on, instead of showing the average reader's", async () => {
 		state.model = {
 			...model({ reading: false, source: "default" }),

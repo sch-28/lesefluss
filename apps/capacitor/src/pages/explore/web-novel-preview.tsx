@@ -66,6 +66,11 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 				onRetry={() => preview.refetch()}
 				errorSourceLink={{ href: url, label: "Open the original page" }}
 				externalLink={{ href: url }}
+				headerActions={
+					preview.isPending
+						? [{ label: "Share", icon: Share2, disabled: true, onClick: () => undefined }]
+						: undefined
+				}
 			/>
 		);
 	}

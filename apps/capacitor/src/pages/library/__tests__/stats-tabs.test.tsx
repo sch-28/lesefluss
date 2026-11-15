@@ -142,7 +142,8 @@ describe("Stats tabs", () => {
 	it("keeps the Speed tab reachable before the first sitting", async () => {
 		sessions.count = 0;
 		const router = await open("/tabs/stats");
-		expect(shown()).toBe("empty");
+		expect(view?.container.querySelector('[data-testid="empty"]')).not.toBeNull();
+		expect(view?.container.querySelector('[data-testid="overview"]')).not.toBeNull();
 		await tap("Speed");
 		expect(shown()).toBe("speed");
 		expect(router.state.location.search).toEqual({ tab: "speed" });

@@ -32,7 +32,7 @@ export interface DetailAction {
 	destructive?: boolean;
 }
 
-export type HeaderAction = Pick<DetailAction, "label" | "onClick" | "destructive"> & {
+export type HeaderAction = Pick<DetailAction, "label" | "onClick" | "destructive" | "disabled"> & {
 	icon: LucideIcon;
 };
 
@@ -74,7 +74,7 @@ export interface DetailShellProps {
 	headerActions?: readonly HeaderAction[];
 	/** Determinate progress bar at the top (0-100). */
 	progress?: number;
-	/** Centered loading spinner instead of the body. */
+	/** Hero frame with a cover placeholder and a spinner instead of the body. */
 	isLoading?: boolean;
 	/** Replace body with an error message. */
 	errorMessage?: string;
@@ -136,6 +136,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									variant="ghost"
 									size="icon"
 									onClick={action.onClick}
+									disabled={action.disabled}
 									aria-label={action.label}
 									className={
 										action.destructive ? "text-destructive hover:text-destructive" : undefined
@@ -154,9 +155,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 			)}
 
 			{isLoading ? (
-				<div className="flex min-h-[60vh] items-center justify-center">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
-				</div>
+				<DetailFrame>
+					<section className="flex gap-4" aria-busy="true">
+						<div className="aspect-2/3 w-28 shrink-0 rounded-md border border-border bg-muted" />
+						<div className="flex flex-1 items-center justify-center">
+							<Loader2 className="size-6 animate-spin text-muted-foreground" />
+						</div>
+					</section>
+				</DetailFrame>
 			) : error !== undefined ? (
 				<ErrorState
 					className="min-h-[60vh]"
@@ -170,7 +176,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					<p className="m-0 text-muted-foreground">{errorMessage}</p>
 				</div>
 			) : (
-				<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">
+				<DetailFrame>
 					{/* Wraps: at a large font scale the text drops below the cover rather than squeeze. */}
 					<section className="flex flex-wrap gap-4">
 						<div className="aspect-2/3 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
@@ -207,22 +213,25 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									<p className="mt-1 text-muted-foreground text-sm">{author}</p>
 								))}
 							{facts && facts.length > 0 && (
-								<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
-									{facts.map((fact, i) => (
-										<span
-											// Index key safe: array rebuilt each render, never reordered.
-											// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-											key={i}
-											className="inline-flex items-center gap-2"
-										>
-											{i > 0 && <span aria-hidden>·</span>}
-											{fact}
-										</span>
-									))}
+								// Every fact leads with its dot; the frame clips the dot that starts each
+								// line, so a wrap never leaves one dangling.
+								<div className="mt-2 overflow-hidden text-muted-foreground text-xs">
+									<div className="-ml-4 flex flex-wrap items-center gap-y-1">
+										{facts.map((fact, i) => (
+											<span
+												// Index key safe: array rebuilt each render, never reordered.
+												// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+												key={i}
+												className="inline-flex items-center before:w-4 before:shrink-0 before:text-center before:content-['·']"
+											>
+												{fact}
+											</span>
+										))}
+									</div>
 								</div>
 							)}
 							{statsLine && (
-								<div className="mt-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
+								<div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
 									{statsLine}
 								</div>
 							)}
@@ -249,7 +258,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					) : (
 						subjects &&
 						subjects.length > 0 && (
-							<div className="mt-4 flex flex-wrap gap-1.5">
+							<div className="mt-4 flex flex-wrap gap-2">
 								{readableSubjects(subjects)
 									.slice(0, COLLAPSED_TAG_COUNT)
 									.map((s) => (
@@ -288,11 +297,15 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					)}
 
 					{children}
-				</div>
+				</DetailFrame>
 			)}
 		</>
 	);
 };
+
+const DetailFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">{children}</div>
+);
 
 const TagList: React.FC<{
 	tags: readonly { id: string; label: string }[];
@@ -302,7 +315,7 @@ const TagList: React.FC<{
 	const visible = isExpanded ? tags : tags.slice(0, COLLAPSED_TAG_COUNT);
 	const hiddenCount = tags.length - visible.length;
 	return (
-		<div className="mt-4 flex flex-wrap gap-1.5" data-testid="detail-tags">
+		<div className="mt-4 flex flex-wrap gap-2" data-testid="detail-tags">
 			{visible.map((t) => (
 				<button
 					type="button"
