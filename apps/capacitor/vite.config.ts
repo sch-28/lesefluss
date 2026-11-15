@@ -116,7 +116,11 @@ function webAppManifest(): Plugin {
 				// Not black-translucent: its white text cannot change at runtime and vanishes
 				// on the light themes. With default, iOS paints the bar in theme-color.
 				meta("apple-mobile-web-app-status-bar-style", "default"),
-			].map((tag) => ({ ...tag, injectTo: "head" as const }));
+			].map((tag) => ({
+				...tag,
+				// Ahead of index.html's inline theme script, which repaints it from the saved theme.
+				injectTo: tag.attrs.name === "theme-color" ? ("head-prepend" as const) : ("head" as const),
+			}));
 		},
 	};
 }

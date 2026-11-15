@@ -51,7 +51,22 @@ html.eink {
 }
 
 [data-sonner-toast][data-styled="false"] > * {
-	max-width: 380px;
+	max-width: var(--width, 380px);
+}
+
+/* Unstyled toasts shrink to their content, which would pin the pill to the column's left
+ * edge. Below 601px sonner's own mobile rules already stretch them. */
+@media (min-width: 601px) {
+	[data-sonner-toast][data-styled="false"] {
+		width: 100%;
+	}
+}
+
+/* Centred over the content column, not the whole window, while the desktop sidebar shows. */
+@media (min-width: 768px) {
+	body:has([data-desktop-sidebar]) [data-sonner-toaster][data-x-position="center"] {
+		left: calc(50% + var(--side-nav-w) / 2);
+	}
 }
 
 [data-sonner-toast][data-styled="false"][data-swiping="true"] {
@@ -74,7 +89,8 @@ html.eink {
 	min-height: 48px;
 	padding: 8px;
 	border: 1px solid var(--border);
-	border-radius: 9999px;
+	/* Half the min height: round ends on one line, still a pill on two. */
+	border-radius: 24px;
 	background: var(--popover);
 	color: var(--popover-foreground);
 	box-shadow:
@@ -103,10 +119,16 @@ html.eink {
 }
 
 .toast-message {
+	display: -webkit-box;
 	min-width: 0;
 	flex: 1;
 	margin: 0;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 	font-weight: 500;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
 }
 
 .toast-icon {

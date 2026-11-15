@@ -57,4 +57,27 @@ describe("StepperRow", () => {
 		expect(increase.getAttribute("aria-disabled")).toBe("true");
 		expect(onChange).not.toHaveBeenCalled();
 	});
+
+	it("does nothing on decrease at its minimum", async () => {
+		const onChange = vi.fn();
+		view = await render(
+			<StepperRow
+				label="Gap"
+				value={0.5}
+				display="0.5"
+				min={0.5}
+				max={2.9}
+				step={0.3}
+				onChange={onChange}
+			/>,
+		);
+		const decrease = view.container.querySelector(
+			'[aria-label="Decrease Gap"]',
+		) as HTMLButtonElement;
+
+		press("Decrease Gap");
+
+		expect(decrease.getAttribute("aria-disabled")).toBe("true");
+		expect(onChange).not.toHaveBeenCalled();
+	});
 });

@@ -269,6 +269,9 @@ export const socialKeys = {
 
 	/** Read-only preview of someone else's invite link. */
 	invitePreview: (token: string) => ["social", "invite-preview", token] as const,
+	/** The same preview as a signed-out visitor sees it: only the inviter's card. */
+	invitePreviewSignedOut: (token: string) =>
+		["social", "invite-preview-signed-out", token] as const,
 
 	/** The inbox pages. */
 	inbox: ["social", "inbox"] as const,

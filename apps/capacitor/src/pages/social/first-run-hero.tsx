@@ -27,18 +27,21 @@ const STEPS = [
 /** The trailer on a cover-lit card: what social reading looks like before there is anyone to read with. */
 export function TrailerCard({
 	self,
+	isDemoBook = false,
 	children,
 }: {
 	self?: { name: string; avatarUrl: string | null };
+	isDemoBook?: boolean;
 	children: React.ReactNode;
 }) {
-	const book = useCurrentBook();
+	const currentBook = useCurrentBook();
+	const book = isDemoBook ? null : currentBook;
 	return (
 		<section className="relative mt-4 overflow-hidden rounded-3xl border border-border bg-card text-card-foreground">
 			<CoverBackdrop src={book?.coverSrc ?? null} />
 			<div className="relative p-4">
 				<div className="rounded-2xl border border-border bg-card/80 p-3">
-					<BuddyReadTrailer self={self} />
+					<BuddyReadTrailer self={self} isDemoBook={isDemoBook} />
 				</div>
 				{children}
 			</div>

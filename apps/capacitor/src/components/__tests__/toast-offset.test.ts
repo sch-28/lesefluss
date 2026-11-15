@@ -61,4 +61,17 @@ describe("toast offset", () => {
 			"--safe-bottom",
 		);
 	});
+
+	it("measures under the content column while the desktop sidebar shows", () => {
+		Object.defineProperty(window, "innerWidth", { value: 1280, configurable: true });
+		const nav = document.createElement("nav");
+		nav.setAttribute("data-desktop-sidebar", "");
+		nav.getBoundingClientRect = () => ({ left: 0, right: 240, width: 240, height: VH }) as DOMRect;
+		document.body.appendChild(nav);
+		// Under the window's centre column (450-830), left of the content column (570-950).
+		bar({ top: VH - 60, left: 480, width: 56, height: 56 });
+		expect(measureToastLift()).toBe(0);
+		bar({ top: VH - 80, left: 900, width: 56, height: 56 });
+		expect(measureToastLift()).toBe(80);
+	});
 });

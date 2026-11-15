@@ -345,6 +345,24 @@ export async function deleteEmptiedSeries(
 	}
 }
 
+/** Undoes `deleteEmptiedSeries` for one series; a series the reader deleted stays deleted. */
+export async function restoreEmptiedSeries(
+	collectionId: string,
+	seriesKey: string,
+	now = serverNow(),
+): Promise<void> {
+	await db
+		.update(collections)
+		.set({ deleted: false, seriesKey, updatedAt: now })
+		.where(
+			and(
+				eq(collections.id, collectionId),
+				eq(collections.deleted, true),
+				isNull(collections.seriesKey),
+			),
+		);
+}
+
 /** After a book's delete: the series collections it leaves without a live book go too. */
 export async function deleteSeriesEmptiedByBook(bookId: string, now = serverNow()): Promise<void> {
 	const rows = await db

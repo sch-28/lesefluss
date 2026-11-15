@@ -9,7 +9,12 @@ import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { useSyncContext } from "@/contexts/sync-context";
 import { clearPendingLink, setPendingLink } from "@/services/deep-links/pending-link";
 import { useIsOnline } from "@/services/social/cache";
-import { socialErrorMessage, useInvitePreview, useRedeemInvite } from "@/services/social/friends";
+import {
+	socialErrorMessage,
+	useInvitePreview,
+	useRedeemInvite,
+	useSignedOutInvitePreview,
+} from "@/services/social/friends";
 import { useOwnSocialProfile } from "@/services/social/profile";
 import { SignedOutSocial } from "./signed-out";
 import { OfflineNotice, Spinner } from "./social-gate";
@@ -63,15 +68,7 @@ function Outcome({
 
 	switch (preview.state) {
 		case "invalid":
-			return (
-				<>
-					<h2 className="font-semibold text-xl">This invite link is no longer valid</h2>
-					<p className="text-muted-foreground text-sm">
-						It may have expired or been replaced. Ask your friend for a new one.
-					</p>
-					<BackToSocial />
-				</>
-			);
+			return <InvalidInvite />;
 		case "own":
 			return (
 				<>
@@ -130,6 +127,40 @@ function BackToSocial() {
 	);
 }
 
+/** Names the inviter but shows no books: anyone holding the link sees this screen. */
+function SignedOutInvite({ token }: { token: string }) {
+	const preview = useSignedOutInvitePreview(token);
+	if (preview.isLoading) return <Spinner />;
+	if (preview.data?.state === "invalid") {
+		return (
+			<div className="mx-auto mt-4 flex max-w-sm flex-col gap-4 text-center">
+				<InvalidInvite />
+			</div>
+		);
+	}
+	const inviter = preview.data?.owner?.name;
+	return (
+		<SignedOutSocial
+			returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`}
+			title={inviter ? `${inviter} invited you.` : "A friend invited you."}
+			message="Sign in and the invitation is waiting for you: add them as a friend and read together."
+			isDemoBook
+		/>
+	);
+}
+
+function InvalidInvite() {
+	return (
+		<>
+			<h2 className="font-semibold text-xl">This invite link is no longer valid</h2>
+			<p className="text-muted-foreground text-sm">
+				It may have expired or been replaced. Ask your friend for a new one.
+			</p>
+			<BackToSocial />
+		</>
+	);
+}
+
 function InviteContent({ token }: { token: string }) {
 	const { isLoggedIn, isSessionResolved } = useSyncContext();
 	const profile = useOwnSocialProfile(isLoggedIn);
@@ -145,15 +176,7 @@ function InviteContent({ token }: { token: string }) {
 	}, [isSessionResolved, isLoggedIn, token]);
 
 	if (!isSessionResolved) return <Spinner />;
-	if (!isLoggedIn) {
-		return (
-			<SignedOutSocial
-				returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`}
-				title="A friend invited you."
-				message="Sign in and the invitation is waiting for you: you'll see who sent it and can read with them."
-			/>
-		);
-	}
+	if (!isLoggedIn) return <SignedOutInvite token={token} />;
 	if (profile.isPending || preview.isPending) return <Spinner />;
 	if (profile.isError || preview.isError) {
 		return (

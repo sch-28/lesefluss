@@ -11,6 +11,8 @@ const remove = vi.fn();
 const removeAsync = vi.fn();
 const createWithBooks = vi.fn();
 const addNumbered = vi.fn();
+const addNumberedAsync = vi.fn();
+let seriesMemberships = new Map<string, { collectionId: string; seriesIndex: number | null }[]>();
 let collections: Partial<CollectionWithCount>[] = [];
 let memberships = new Map<string, string[]>();
 let members: { bookId: string; seriesIndex: number | null }[] = [];
@@ -19,6 +21,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useCollections: () => ({ data: collections }),
 		useCollectionMemberships: () => ({ data: memberships }),
+		useSeriesMemberships: () => ({ data: seriesMemberships }),
 		useCollectionMembers: (id: string | null) => ({
 			data: id ? members : undefined,
 			isPending: false,
@@ -26,7 +29,11 @@ vi.mock("../../../services/db/hooks", () => ({
 		useAddBooksToCollection: () => ({ mutate: add }),
 		useRemoveBooksFromCollection: () => ({ mutate: remove, mutateAsync: removeAsync }),
 		useCreateCollectionWithBooks: () => ({ mutate: createWithBooks }),
-		useAddNumberedBooks: () => ({ mutate: addNumbered, isPending: false }),
+		useAddNumberedBooks: () => ({
+			mutate: addNumbered,
+			mutateAsync: addNumberedAsync,
+			isPending: false,
+		}),
 	},
 }));
 const toastSuccess = vi.fn();
@@ -73,6 +80,8 @@ let view: Rendered | undefined;
 beforeEach(() => {
 	for (const fn of [add, remove, createWithBooks, addNumbered, toastSuccess]) fn.mockClear();
 	removeAsync.mockReset().mockResolvedValue(undefined);
+	addNumberedAsync.mockReset().mockResolvedValue("id");
+	seriesMemberships = new Map();
 	collections = [];
 	memberships = new Map();
 	members = [];
@@ -362,7 +371,48 @@ describe("CollectionPickerSheet", () => {
 			expect(removeAsync).toHaveBeenCalledWith({ collectionId: "series-exp", bookIds: ["b"] });
 			expect(onClose).toHaveBeenCalled();
 			await vi.waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1));
-			expect(toastSuccess).toHaveBeenCalledWith("Removed from 2 series");
+			expect(toastSuccess).toHaveBeenCalledWith("Removed from 2 series", {
+				action: expect.objectContaining({ label: "Undo" }),
+			});
+		});
+
+		it("puts the books back at their old numbers on Undo", async () => {
+			collections = [
+				dune(),
+				collection({ id: "series-exp", name: "The Expanse", ordered: true, seriesKey: "exp" }),
+			];
+			memberships = new Map([
+				["a", ["series-dune"]],
+				["b", ["series-exp"]],
+			]);
+			seriesMemberships = new Map([
+				["a", [{ collectionId: "series-dune", seriesIndex: 3 }]],
+				["b", [{ collectionId: "series-exp", seriesIndex: null }]],
+			]);
+			view = await render(
+				<CollectionPickerSheet
+					books={[book("a"), book("b")]}
+					kind="series"
+					open
+					onClose={vi.fn()}
+				/>,
+			);
+			await click(pickRows()[0] as HTMLElement);
+			await vi.waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1));
+			expect(addNumberedAsync).not.toHaveBeenCalled();
+			await act(async () => {
+				toastSuccess.mock.calls[0]?.[1]?.action.onClick();
+			});
+			expect(addNumberedAsync).toHaveBeenCalledWith({
+				target: { emptiedSeries: { collectionId: "series-dune", seriesKey: "dune" } },
+				numbers: new Map([["a", 3]]),
+				isSeries: true,
+			});
+			expect(addNumberedAsync).toHaveBeenCalledWith({
+				target: { emptiedSeries: { collectionId: "series-exp", seriesKey: "exp" } },
+				numbers: new Map([["b", null]]),
+				isSeries: true,
+			});
 		});
 
 		it("confirms No series with a toast naming the series the book left", async () => {
@@ -372,7 +422,9 @@ describe("CollectionPickerSheet", () => {
 				<CollectionPickerSheet books={[book("a")]} kind="series" open onClose={vi.fn()} />,
 			);
 			await click(pickRows()[0] as HTMLElement);
-			await vi.waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Removed from Dune"));
+			await vi.waitFor(() =>
+				expect(toastSuccess).toHaveBeenCalledWith("Removed from Dune", expect.anything()),
+			);
 			expect(toastSuccess).toHaveBeenCalledTimes(1);
 		});
 

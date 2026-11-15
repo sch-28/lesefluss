@@ -96,4 +96,15 @@ test.describe("on a phone", () => {
 		await expect(page.getByRole("heading", { name: "Tide", level: 2 })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Riverkeep", exact: true })).toHaveCount(0);
 	});
+
+	test("a link to a collection that is gone says so and opens the whole library", async ({
+		page,
+	}) => {
+		await page.goto("/tabs/library?collection=gone");
+		await expect(
+			page.locator('[data-testid="toast-card"]', { hasText: "That collection no longer exists" }),
+		).toBeVisible();
+		await expect(page).not.toHaveURL(/collection=/);
+		await expect(page.locator("[data-book-title]")).toHaveCount(BOOKS.length);
+	});
 });

@@ -19,7 +19,7 @@ export function TabBar() {
 					{items.map((tab) => {
 						const isActive = pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 						return (
-							<li key={tab.to} className="flex-1">
+							<li key={tab.to} className="min-w-0 flex-1">
 								<Link
 									to={tab.to}
 									style={isActive ? { color: "var(--primary)" } : undefined}
@@ -30,7 +30,7 @@ export function TabBar() {
 										<tab.icon className="size-5" />
 										<NavBadge value={badges[tab.to]} />
 									</span>
-									<span>{tab.label}</span>
+									<span className="w-full truncate px-0.5 text-center">{tab.label}</span>
 								</Link>
 							</li>
 						);

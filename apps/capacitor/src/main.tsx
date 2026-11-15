@@ -3,6 +3,7 @@ import { ENGINE_UNSUPPORTED_CLASS } from "@lesefluss/core/engine-support";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { bootstrapCapacitor } from "./lib/bootstrap-capacitor";
+import { silenceResizeObserverLoop } from "./lib/resize-observer-loop";
 import { installStaleChunkReload } from "./lib/stale-chunk-reload";
 import { bootMiniPopup, isMiniPopupPath } from "./pages/mini/mini-popup";
 import { Providers } from "./providers";
@@ -30,6 +31,7 @@ import "./theme/legacy.css";
 import "./theme/variables.css";
 
 async function bootstrap() {
+	silenceResizeObserverLoop();
 	installStaleChunkReload(router);
 	registerReaderFonts();
 	await bootstrapCapacitor();

@@ -41,6 +41,9 @@
           if (t === "high-contrast") document.documentElement.classList.add("dark");
           document.documentElement.classList.add(t === "sepia" ? "theme-sepia" : t);
           if (eink) document.documentElement.classList.add("eink");
+          // The installed app's title bar shows from launch, long before theme-context runs.
+          const themeColor = document.querySelector('meta[name="theme-color"]');
+          if (themeColor) themeColor.content = getComputedStyle(document.documentElement).backgroundColor;
         } catch (_e) {}
         // Mirrors the OS reduce-motion setting (Android "Remove animations") into
         // a class, so theme/motion.css can switch motion off with e-ink's rule.

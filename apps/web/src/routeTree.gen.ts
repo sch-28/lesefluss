@@ -58,6 +58,7 @@ import { Route as ApiSocialLiveStreamRouteImport } from './routes/api/social/liv
 import { Route as ApiSocialLiveRouteImport } from './routes/api/social/live'
 import { Route as ApiSocialInviteRevokeRouteImport } from './routes/api/social/invite-revoke'
 import { Route as ApiSocialInviteRedeemRouteImport } from './routes/api/social/invite-redeem'
+import { Route as ApiSocialInvitePreviewSignedOutRouteImport } from './routes/api/social/invite-preview-signed-out'
 import { Route as ApiSocialInvitePreviewRouteImport } from './routes/api/social/invite-preview'
 import { Route as ApiSocialInviteRouteImport } from './routes/api/social/invite'
 import { Route as ApiSocialInboxUnreadCountRouteImport } from './routes/api/social/inbox-unread-count'
@@ -351,6 +352,12 @@ const ApiSocialInviteRedeemRoute = ApiSocialInviteRedeemRouteImport.update({
   path: '/api/social/invite-redeem',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialInvitePreviewSignedOutRoute =
+  ApiSocialInvitePreviewSignedOutRouteImport.update({
+    id: '/api/social/invite-preview-signed-out',
+    path: '/api/social/invite-preview-signed-out',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSocialInvitePreviewRoute = ApiSocialInvitePreviewRouteImport.update({
   id: '/api/social/invite-preview',
   path: '/api/social/invite-preview',
@@ -672,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -767,6 +775,7 @@ export interface FileRoutesByTo {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -864,6 +873,7 @@ export interface FileRoutesById {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -961,6 +971,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -1056,6 +1067,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -1152,6 +1164,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -1248,6 +1261,7 @@ export interface RootRouteChildren {
   ApiSocialInboxUnreadCountRoute: typeof ApiSocialInboxUnreadCountRoute
   ApiSocialInviteRoute: typeof ApiSocialInviteRoute
   ApiSocialInvitePreviewRoute: typeof ApiSocialInvitePreviewRoute
+  ApiSocialInvitePreviewSignedOutRoute: typeof ApiSocialInvitePreviewSignedOutRoute
   ApiSocialInviteRedeemRoute: typeof ApiSocialInviteRedeemRoute
   ApiSocialInviteRevokeRoute: typeof ApiSocialInviteRevokeRoute
   ApiSocialLiveRoute: typeof ApiSocialLiveRoute
@@ -1608,6 +1622,13 @@ declare module '@tanstack/react-router' {
       path: '/api/social/invite-redeem'
       fullPath: '/api/social/invite-redeem'
       preLoaderRoute: typeof ApiSocialInviteRedeemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite-preview-signed-out': {
+      id: '/api/social/invite-preview-signed-out'
+      path: '/api/social/invite-preview-signed-out'
+      fullPath: '/api/social/invite-preview-signed-out'
+      preLoaderRoute: typeof ApiSocialInvitePreviewSignedOutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/social/invite-preview': {
@@ -2035,6 +2056,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialInboxUnreadCountRoute: ApiSocialInboxUnreadCountRoute,
   ApiSocialInviteRoute: ApiSocialInviteRoute,
   ApiSocialInvitePreviewRoute: ApiSocialInvitePreviewRoute,
+  ApiSocialInvitePreviewSignedOutRoute: ApiSocialInvitePreviewSignedOutRoute,
   ApiSocialInviteRedeemRoute: ApiSocialInviteRedeemRoute,
   ApiSocialInviteRevokeRoute: ApiSocialInviteRevokeRoute,
   ApiSocialLiveRoute: ApiSocialLiveRoute,

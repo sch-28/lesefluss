@@ -278,6 +278,12 @@ export type InvitePreview = {
 	owner?: SocialIdentity;
 };
 
+/** All a caller without a session learns about an invite: never the owner's id, books or friends. */
+export type SignedOutInvitePreview = {
+	state: InvitePreviewState;
+	owner?: Pick<SocialIdentity, "handle" | "name" | "avatarUrl">;
+};
+
 /** Paths of the social API, shared by the app and the website clients. */
 export const SOCIAL_API = {
 	profile: "/api/social/profile",
@@ -295,6 +301,8 @@ export const SOCIAL_API = {
 	invite: "/api/social/invite",
 	inviteRevoke: "/api/social/invite-revoke",
 	invitePreview: "/api/social/invite-preview",
+	/** Without a session: answers only `signed_out` or `invalid`. */
+	invitePreviewSignedOut: "/api/social/invite-preview-signed-out",
 	inviteRedeem: "/api/social/invite-redeem",
 	inbox: "/api/social/inbox",
 	inboxUnreadCount: "/api/social/inbox-unread-count",

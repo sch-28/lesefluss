@@ -4,7 +4,8 @@ solutions:
     title: Lesefluss main tasks, placement, loading and themes
     body: |-
       **Main tasks** the UI check walks, on the phone first (390 px), each in the fewest taps the
-      rules allow:
+      rules allow. The whole list runs only when the user starts `/fluss-ui-check all`; a round,
+      and `/fluss-ui-check` on a ticket, a branch or the working diff, checks only that change:
       1. Continue reading the current book from the Library.
       2. Start a new book from the Library.
       3. Change font size and theme while reading: at most 2 taps, through an Aa control in the

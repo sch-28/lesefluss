@@ -75,6 +75,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		[allCollections, kind],
 	);
 	const { data: memberships } = queryHooks.useCollectionMemberships();
+	const { data: seriesMemberships } = queryHooks.useSeriesMemberships();
 	const add = queryHooks.useAddBooksToCollection();
 	const remove = queryHooks.useRemoveBooksFromCollection();
 	const createWithBooks = queryHooks.useCreateCollectionWithBooks();
@@ -154,12 +155,28 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 				left.length === 1
 					? `Removed from ${left[0]?.c.name}`
 					: `Removed from ${left.length} series`;
+			const numberIn = (bookId: string, collectionId: string) =>
+				seriesMemberships?.get(bookId)?.find((m) => m.collectionId === collectionId)?.seriesIndex ??
+				null;
+			// Taking a series' last book out deletes the series, so Undo brings it back first.
+			const restore = () =>
+				Promise.all(
+					left.map(({ c, inIt }) =>
+						addNumbered.mutateAsync({
+							target: c.seriesKey
+								? { emptiedSeries: { collectionId: c.id, seriesKey: c.seriesKey } }
+								: { collectionId: c.id },
+							numbers: new Map(inIt.map((id) => [id, numberIn(id, c.id)])),
+							isSeries: true,
+						}),
+					),
+				).catch(() => {});
 			// mutateAsync, not per-call onSuccess: useMutation fires only the last call's callbacks,
 			// and none after the sheet unmounts. The hook's onError already reports a failure.
 			Promise.all(
 				left.map(({ c, inIt }) => remove.mutateAsync({ collectionId: c.id, bookIds: inIt })),
 			).then(
-				() => toast.success(message),
+				() => toast.success(message, { action: { label: "Undo", onClick: restore } }),
 				() => {},
 			);
 			onClose();

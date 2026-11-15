@@ -1,7 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import {
 	ArrowUpDown,
 	BookOpen,
@@ -232,14 +232,20 @@ const Library: React.FC = () => {
 		wasTransferringRef.current = isTransferring;
 	}, [isTransferring, qc]);
 
-	// A collection deleted here or on another device leaves a stale id in the URL.
+	// A collection deleted here or on another device leaves a stale id in the URL. Only a link
+	// to one never shown here says so: emptying the open series already toasts, with an Undo.
+	const shownCollectionRef = useRef<string | null>(null);
 	useEffect(() => {
+		if (activeCollection) shownCollectionRef.current = activeCollection.id;
 		if (
 			collectionId &&
 			collectionsQuery.isSuccess &&
 			!collectionsQuery.isFetching &&
 			!activeCollection
 		) {
+			if (shownCollectionRef.current !== collectionId) {
+				toast.info("That collection no longer exists", { id: "missing-collection" });
+			}
 			navigate({ to: "/tabs/library", search: {}, replace: true });
 		}
 	}, [
@@ -890,23 +896,19 @@ const Library: React.FC = () => {
 					<span className="flex-1 text-muted-foreground">
 						Your books are stored locally in this browser only and will be lost if you clear browser
 						data.{" "}
-						<a
-							href="/tabs/settings/sync"
-							className="font-medium text-primary underline-offset-4 hover:underline"
-							onClick={(e) => {
-								e.preventDefault();
-								navigate({ to: "/tabs/settings/sync" });
-							}}
+						<Link
+							to="/tabs/settings/sync"
+							className="relative font-medium text-primary underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline"
 						>
 							Sign in
-						</a>{" "}
+						</Link>{" "}
 						to keep them safe across devices.
 					</span>
 					<button
 						type="button"
 						onClick={dismissNotice}
 						aria-label="Dismiss"
-						className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+						className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground before:absolute before:-inset-2 before:content-[''] hover:bg-muted hover:text-foreground"
 					>
 						<X className="size-4" />
 					</button>

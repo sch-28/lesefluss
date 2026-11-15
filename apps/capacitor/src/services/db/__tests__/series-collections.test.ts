@@ -362,3 +362,30 @@ describe("moveBooksToSeries", () => {
 		expect(memberships.get("bbbbbbbb")).toEqual([{ collectionId: expanse.id, seriesIndex: 2 }]);
 	});
 });
+
+describe("restoreEmptiedSeries", () => {
+	it("brings back a renamed series its last book left, and its books with their numbers", async () => {
+		insertBook("aaaaaaaa");
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.renameCollection(dune.id, "Arrakis", 2);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 3, new Map([["aaaaaaaa", 4]]));
+		await collections.removeBooksFromCollection(dune.id, ["aaaaaaaa"], 4);
+		expect((await collections.getCollections()).map((c) => c.id)).not.toContain(dune.id);
+
+		await collections.restoreEmptiedSeries(dune.id, "dune", 5);
+		await moveBooksToSeries(dune.id, new Map([["aaaaaaaa", 4]]), 5);
+
+		const restored = (await collections.getCollections()).find((c) => c.id === dune.id);
+		expect(restored).toMatchObject({ name: "Arrakis", seriesKey: "dune" });
+		expect((await collections.getSeriesMemberships()).get("aaaaaaaa")).toEqual([
+			{ collectionId: dune.id, seriesIndex: 4 },
+		]);
+	});
+
+	it("leaves a series the reader deleted deleted", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.deleteCollection(dune.id, 2);
+		await collections.restoreEmptiedSeries(dune.id, "dune", 3);
+		expect((await collections.getCollections()).map((c) => c.id)).not.toContain(dune.id);
+	});
+});

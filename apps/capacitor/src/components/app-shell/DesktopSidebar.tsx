@@ -36,7 +36,10 @@ export function DesktopSidebar() {
 	}, [isCollapsed]);
 
 	return (
-		<nav className="hidden md:fixed md:top-0 md:bottom-0 md:left-0 md:z-40 md:flex md:w-[var(--side-nav-w)] md:flex-col md:overflow-hidden md:border-border md:border-r md:bg-sidebar md:py-6 md:transition-[width] md:duration-200">
+		<nav
+			data-desktop-sidebar
+			className="hidden md:fixed md:top-0 md:bottom-0 md:left-0 md:z-40 md:flex md:w-[var(--side-nav-w)] md:flex-col md:overflow-hidden md:border-border md:border-r md:bg-sidebar md:py-6 md:transition-[width] md:duration-200"
+		>
 			<Link
 				to="/tabs/library"
 				className="flex items-center justify-start pb-6 text-left text-sidebar-foreground no-underline hover:text-primary"

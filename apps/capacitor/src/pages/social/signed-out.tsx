@@ -13,10 +13,12 @@ export function SignedOutSocial({
 	returnTo,
 	title = "Reading is better with company.",
 	message = "Read the same book with friends, see where everyone is and talk about each chapter as you go.",
+	isDemoBook = false,
 }: {
 	returnTo: string;
 	title?: string;
 	message?: string;
+	isDemoBook?: boolean;
 }) {
 	const [isStarting, setIsStarting] = useState(false);
 
@@ -34,7 +36,7 @@ export function SignedOutSocial({
 	};
 
 	return (
-		<TrailerCard>
+		<TrailerCard isDemoBook={isDemoBook}>
 			<h2 className="m-0 mt-6 font-bold text-[30px] text-foreground leading-[1.08] tracking-tight">
 				{title}
 			</h2>

@@ -3,7 +3,7 @@ export const TOAST_CLEAR_ATTR = "data-toast-clear";
 
 const CSS_VAR = "--toast-bottom";
 const GAP_PX = 8;
-// The pill's width: capped at 380px by toast.css, inside sonner's 16px phone gutters.
+// The pill's width: sonner's --width (packages/ui sonner.tsx), inside its 16px phone gutters.
 const COLUMN_MAX_PX = 380;
 const GUTTER_PX = 16;
 
@@ -15,9 +15,12 @@ const GUTTER_PX = 16;
 export function measureToastLift(): number {
 	const vw = window.innerWidth;
 	const vh = window.innerHeight;
-	const half = Math.min(vw - 2 * GUTTER_PX, COLUMN_MAX_PX) / 2;
-	const left = vw / 2 - half;
-	const right = vw / 2 + half;
+	const sidebar = document.querySelector("[data-desktop-sidebar]")?.getBoundingClientRect();
+	const contentLeft = sidebar && sidebar.width > 0 ? sidebar.right : 0;
+	const centre = (contentLeft + vw) / 2;
+	const half = Math.min(vw - contentLeft - 2 * GUTTER_PX, COLUMN_MAX_PX) / 2;
+	const left = centre - half;
+	const right = centre + half;
 	let lift = 0;
 	for (const el of document.querySelectorAll<HTMLElement>(`[${TOAST_CLEAR_ATTR}]`)) {
 		const r = el.getBoundingClientRect();

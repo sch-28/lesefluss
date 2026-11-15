@@ -140,7 +140,18 @@ function useAddBooksToCollection() {
 	);
 }
 
-export type NumberedTarget = { collectionId: string } | { newSeries: string };
+export type NumberedTarget =
+	| { collectionId: string }
+	| { newSeries: string }
+	| { emptiedSeries: { collectionId: string; seriesKey: string } };
+
+async function resolveNumberedTarget(target: NumberedTarget): Promise<string> {
+	if ("collectionId" in target) return target.collectionId;
+	if ("newSeries" in target) return (await queries.createSeriesCollection(target.newSeries)).id;
+	const { collectionId, seriesKey } = target.emptiedSeries;
+	await queries.restoreEmptiedSeries(collectionId, seriesKey);
+	return collectionId;
+}
 
 /** The bulk sheet's Set #N apply: membership and numbers in one write, into a
  *  collection or a series created for it. */
@@ -152,10 +163,7 @@ function useAddNumberedBooks() {
 			/** A series target: the books leave every other series. */
 			isSeries?: boolean;
 		}) => {
-			const collectionId =
-				"collectionId" in vars.target
-					? vars.target.collectionId
-					: (await queries.createSeriesCollection(vars.target.newSeries)).id;
+			const collectionId = await resolveNumberedTarget(vars.target);
 			if (vars.isSeries) {
 				await moveBooksToSeries(collectionId, vars.numbers);
 			} else {
