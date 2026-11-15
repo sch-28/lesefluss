@@ -242,7 +242,7 @@ type ReadAloudHandle = Pick<
 const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-const BookReader: React.FC<{ id: string }> = ({ id }) => {
+const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsvpStart }) => {
 	const { pushPosition, onDevicePositionUpdate } = useBookSync();
 	const { isConnected: isBleConnected } = useBLE();
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
@@ -499,6 +499,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const didSeedOffsetsRef = useRef(false);
 
 	const didSeedModeRef = useRef(false);
+	// The route drops `?mode=rsvp` once read, so the request outlives the prop.
+	const isRsvpStartPendingRef = useRef(false);
+	if (isRsvpStart) isRsvpStartPendingRef.current = true;
 
 	// Carries a position recovered from the durable localStorage fallback so a
 	// later effect can persist it to the DB once `savePosition` is in scope.
@@ -805,7 +808,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	useEffect(() => {
 		if (!didSeedModeRef.current && dbSettings && book) {
 			didSeedModeRef.current = true;
-			if (dbSettings.defaultReaderMode === "rsvp") {
+			const isRsvpStartPending = isRsvpStartPendingRef.current;
+			isRsvpStartPendingRef.current = false;
+			if (dbSettings.defaultReaderMode === "rsvp" || isRsvpStartPending) {
 				setReaderMode("rsvp");
 				setProgressBarVisible(true);
 			}
@@ -2220,6 +2225,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			exitRsvpToStandard();
 		}
 	}, [readerMode, exitRsvpToStandard, browse, isRsvpAudioOn, readAloud.stop]);
+
+	// `?mode=rsvp` also switches a reader that is already open.
+	useEffect(() => {
+		if (!isRsvpStart || !didSeedModeRef.current || !isRsvpStartPendingRef.current) return;
+		isRsvpStartPendingRef.current = false;
+		if (readerMode !== "rsvp") handleRsvpToggle();
+	}, [isRsvpStart, readerMode, handleRsvpToggle]);
 
 	useReaderBack({
 		isSelecting,

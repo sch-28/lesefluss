@@ -20,6 +20,19 @@ test("setting defaultReaderMode = rsvp opens new books in RSVP", async ({ page }
 	await expect(page.locator("span[data-word]")).toHaveCount(0);
 });
 
+test("?mode=rsvp opens a book in RSVP while the default is the standard reader", async ({
+	page,
+}) => {
+	const title = await seedStrayAnchorBook(page);
+	await openBookFromLibrary(page, title);
+	await expect(page.locator("span[data-word]").first()).toBeVisible();
+	const id = reader.bookIdFromUrl(page);
+
+	await page.goto("/tabs/library");
+	await page.goto(`/tabs/reader/${id}?mode=rsvp`);
+	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
+});
+
 /**
  * ADR-0002: Word position is canonical. After a tour through every reader view,
  * a highlight is still on its word and reopening lands on the word reached

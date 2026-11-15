@@ -1,10 +1,22 @@
 export type ChangelogTag = "App" | "ESP32" | "Website";
 
+/** The lucide icons the app's What's new popup maps these names to. */
+export type ChangelogIcon = "library-big" | "gauge" | "volume-2" | "monitor" | "bookmark" | "check";
+
+/** Show me target: an app route with its search, or `rsvp` for RSVP in the last book read. */
+export type ChangelogLink = `/${string}` | "rsvp";
+
 export type ChangelogEntry = {
 	date: string;
 	title: string;
 	tags: ChangelogTag[];
 	changes: string[];
+	/** A tile in the What's new popup, as far as the popup has room. */
+	highlight?: boolean;
+	icon?: ChangelogIcon;
+	/** The one line a tile shows instead of the changes. */
+	summary?: string;
+	link?: ChangelogLink;
 };
 
 /** A React key for an entry: one release adds several entries with the same date. */
@@ -15,6 +27,10 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "Organize your library",
 		tags: ["App"],
+		highlight: true,
+		icon: "library-big",
+		summary: "Collections, smart shelves and series, with one bar to filter, search and sort.",
+		link: "/tabs/library",
 		changes: [
 			"Put books into your own collections, or make smart shelves that fill themselves from rules you set",
 			"Books from the same series are grouped, each series with its own page in reading order",
@@ -25,6 +41,10 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "Your reading speed",
 		tags: ["App"],
+		highlight: true,
+		icon: "gauge",
+		summary: "A Speed tab in Stats, and how long each book will take you.",
+		link: "/tabs/stats?tab=speed",
 		changes: [
 			"Stats has a new Speed tab with your speed over time and a short speed test",
 			"Books show how long they'll take you, and a goal can be a number of minutes a day",
@@ -34,6 +54,10 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "RSVP with sound",
 		tags: ["App"],
+		highlight: true,
+		icon: "volume-2",
+		summary: "Turn on audio and the words are read aloud, right in RSVP.",
+		link: "rsvp",
 		changes: [
 			"RSVP has an audio switch. Turn it on and the words are read aloud, without leaving the RSVP view",
 		],
@@ -42,6 +66,7 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "Reading on a computer",
 		tags: ["App"],
+		icon: "monitor",
 		changes: [
 			"Press Ctrl+K (Cmd+K on a Mac) to find any action, and ? to see every keyboard shortcut",
 			"Quick RSVP opens a small window that reads along with the book you have open",
@@ -52,6 +77,7 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "Bookmarks, Wishlist and export",
 		tags: ["App"],
+		icon: "bookmark",
 		changes: [
 			"Bookmark any spot in a book. Bookmarks sync to your other devices",
 			"Save books and web novels from Explore to your Wishlist and import them when you're ready",
@@ -62,6 +88,7 @@ export const changelog: ChangelogEntry[] = [
 		date: "2026-11-15",
 		title: "Fixes",
 		tags: ["App"],
+		icon: "check",
 		changes: [
 			"Streaks and stats no longer count sittings shorter than a minute",
 			"Books imported before version 1.4.0 show progress and time left again",

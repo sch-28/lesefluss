@@ -1,10 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import BookReader from "@/pages/reader";
 import { bookKeys } from "@/services/db/hooks/query-keys";
 import { queries } from "@/services/db/queries";
 import { queryClient } from "@/services/query-client";
 
+/** `mode: "rsvp"` opens the book in RSVP whatever the default reader mode. */
+export type ReaderSearch = { mode?: "rsvp" };
+
 export const Route = createFileRoute("/tabs/reader/$id")({
+	validateSearch: (search: Record<string, unknown>): ReaderSearch =>
+		search.mode === "rsvp" ? { mode: "rsvp" } : {},
 	// Warm book + content + word-index queries before BookReader mounts so the
 	// component renders against a populated React Query cache. Router preloads
 	// on hover/touchstart (defaultPreload: "intent"), so the prefetches run
@@ -29,7 +35,13 @@ export const Route = createFileRoute("/tabs/reader/$id")({
 
 function ReaderRoute() {
 	const { id } = Route.useParams();
+	const { mode } = Route.useSearch();
+	const navigate = Route.useNavigate();
+	// One-shot: a later back or reload onto this entry must not force RSVP again.
+	useEffect(() => {
+		if (mode) void navigate({ search: {}, replace: true });
+	}, [mode, navigate]);
 	// Keyed: a serial chapter switch must not reuse the previous chapter's
 	// position refs, browse state or flushes.
-	return <BookReader key={id} id={id} />;
+	return <BookReader key={id} id={id} isRsvpStart={mode === "rsvp"} />;
 }
