@@ -3,7 +3,7 @@ import type React from "react";
 import { useEffect } from "react";
 import { confirmTick } from "../services/haptics";
 import { recordEmit, ToastCard, type ToastCardKind } from "./toast-card";
-import { updateToastBottom } from "./toast-offset";
+import { updateToastBottom, watchToastClearance } from "./toast-offset";
 
 /**
  * Global toast emitter. Wraps sonner so non-React callers (services, contexts)
@@ -77,18 +77,11 @@ export function useToast() {
 	};
 }
 
-const OFFSET_POLL_MS = 250;
-
 /** `dark` follows the app's theme, not the OS one (passed in: this module must not import the theme context, which imports it). */
 export const Toaster: React.FC<{ dark: boolean }> = ({ dark }) => {
 	const hasToasts = useSonner().toasts.length > 0;
-	// Bars open and close under a showing toast (selection mode, the reader's
-	// controls), so the offset follows them while any toast is up.
 	useEffect(() => {
-		if (!hasToasts) return;
-		updateToastBottom();
-		const id = setInterval(updateToastBottom, OFFSET_POLL_MS);
-		return () => clearInterval(id);
+		if (hasToasts) return watchToastClearance();
 	}, [hasToasts]);
 	return <SonnerToaster theme={dark ? "dark" : "light"} />;
 };

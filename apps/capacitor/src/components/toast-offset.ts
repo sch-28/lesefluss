@@ -41,3 +41,27 @@ export function updateToastBottom(): void {
 	lastValue = value;
 	document.documentElement.style.setProperty(CSS_VAR, value);
 }
+
+const OFFSET_POLL_MS = 250;
+
+/**
+ * Keeps the offset current while a toast shows. A bar that mounts under a
+ * showing toast is measured before the next tap reaches it (the observer runs
+ * right after the DOM change), so the toast never covers it and swallows the
+ * tap; the poll follows bars that only slide or resize.
+ */
+export function watchToastClearance(): () => void {
+	updateToastBottom();
+	const observer = new MutationObserver(updateToastBottom);
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: [TOAST_CLEAR_ATTR],
+	});
+	const id = setInterval(updateToastBottom, OFFSET_POLL_MS);
+	return () => {
+		observer.disconnect();
+		clearInterval(id);
+	};
+}

@@ -27,6 +27,14 @@ const topBarToggle = (page: Page) =>
 	page.locator("header").getByRole("button", { name: "Listen", exact: true });
 const controlsToggle = (page: Page) =>
 	page.locator(".rsvp-wpm-stepper").getByRole("button", { name: "Listen", exact: true });
+/** A Play tapped before the toggle's render lands still runs RSVP's own timer, not the voice. */
+async function turnAudioOn(page: Page) {
+	await controlsToggle(page).click();
+	await expect(controlsToggle(page)).toHaveAttribute("aria-pressed", "true");
+}
+/** The word RSVP shows; its saved row can trail it, as a step's save may land after the view is quiet. */
+const shownWordIndex = async (page: Page) =>
+	Number(await page.locator(".rsvp-display").getAttribute("data-word-index"));
 const starts = (page: Page) => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0);
 const isVoicePlaying = (page: Page) =>
 	page.evaluate(() => window.__lesefluss_e2e_tts?.isPlaying() ?? false);
@@ -103,11 +111,11 @@ test("the toggle turns the voice on and off with no read-aloud bar", async ({ pa
 
 test("the voice reads from the shown word and the words follow it", async ({ page }) => {
 	await openRsvp(page);
-	await controlsToggle(page).click();
+	await turnAudioOn(page);
 	await reader.blurFocusedControl(page);
 	for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
 	await reader.waitPositionQuiet(page);
-	const shownAt = (await reader.savedRow(page, reader.bookIdFromUrl(page)))?.wordPosition ?? 0;
+	const shownAt = await shownWordIndex(page);
 	const shown = await reader.rsvpCurrentWord(page);
 
 	await play(page);
@@ -118,14 +126,14 @@ test("the voice reads from the shown word and the words follow it", async ({ pag
 
 test("paused, a step moves the shown word and the next play reads from it", async ({ page }) => {
 	await openRsvp(page);
-	await controlsToggle(page).click();
+	await turnAudioOn(page);
 	await play(page);
 	await speak(page, 10);
 	const spoken = await pauseByTap(page);
 
 	await page.getByRole("button", { name: "Forward to next sentence" }).click();
 	await reader.waitPositionQuiet(page);
-	const stepped = (await reader.savedRow(page, reader.bookIdFromUrl(page)))?.wordPosition ?? 0;
+	const stepped = await shownWordIndex(page);
 	expect(stepped).toBeGreaterThan(spoken);
 
 	await play(page);
@@ -135,7 +143,7 @@ test("paused, a step moves the shown word and the next play reads from it", asyn
 
 test("paused, a scrub moves the shown word and the next play reads from it", async ({ page }) => {
 	await openRsvp(page);
-	await controlsToggle(page).click();
+	await turnAudioOn(page);
 	await play(page);
 	await speak(page, 10);
 	await pauseByTap(page);
@@ -151,7 +159,7 @@ test("paused, a scrub moves the shown word and the next play reads from it", asy
 	await page.mouse.move(box.x + box.width * 0.5, y, { steps: 5 });
 	await page.mouse.up();
 	await reader.waitPositionQuiet(page);
-	const scrubbed = (await reader.savedRow(page, reader.bookIdFromUrl(page)))?.wordPosition ?? 0;
+	const scrubbed = await shownWordIndex(page);
 	await expect.poll(() => reader.rsvpCurrentWord(page)).not.toBe(shown);
 
 	await play(page);
@@ -174,7 +182,7 @@ test("the audio setting survives a reload", async ({ page }) => {
 
 test("the floating buttons open the voice and sleep timer sheets", async ({ page }) => {
 	await openRsvp(page);
-	await controlsToggle(page).click();
+	await turnAudioOn(page);
 	await page.getByRole("button", { name: "Sleep timer" }).click();
 	await expect(page.getByText("Stop listening after")).toBeVisible();
 	await page.keyboard.press("Escape");
@@ -185,7 +193,7 @@ test("the floating buttons open the voice and sleep timer sheets", async ({ page
 
 test("leaving RSVP pauses the voice and saves the spoken word", async ({ page }) => {
 	await openRsvp(page);
-	await controlsToggle(page).click();
+	await turnAudioOn(page);
 	await play(page);
 	await speak(page, 40);
 

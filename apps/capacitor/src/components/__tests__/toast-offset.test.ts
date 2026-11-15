@@ -1,5 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { measureToastLift, TOAST_CLEAR_ATTR, updateToastBottom } from "../toast-offset";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	measureToastLift,
+	TOAST_CLEAR_ATTR,
+	updateToastBottom,
+	watchToastClearance,
+} from "../toast-offset";
 
 const VW = 390;
 const VH = 844;
@@ -17,12 +22,17 @@ function bar(rect: { top: number; left: number; width: number; height: number })
 	return el;
 }
 
+let stopWatch: (() => void) | null = null;
+
 beforeEach(() => {
 	Object.defineProperty(window, "innerWidth", { value: VW, configurable: true });
 	Object.defineProperty(window, "innerHeight", { value: VH, configurable: true });
 });
 
 afterEach(() => {
+	stopWatch?.();
+	stopWatch = null;
+	vi.useRealTimers();
 	document.body.innerHTML = "";
 	document.documentElement.style.removeProperty("--toast-bottom");
 });
@@ -73,5 +83,16 @@ describe("toast offset", () => {
 		expect(measureToastLift()).toBe(0);
 		bar({ top: VH - 80, left: 900, width: 56, height: 56 });
 		expect(measureToastLift()).toBe(80);
+	});
+
+	it("lifts a showing toast above a bar that mounts under it before the poll runs", async () => {
+		vi.useFakeTimers();
+		stopWatch = watchToastClearance();
+		expect(document.documentElement.style.getPropertyValue("--toast-bottom")).toContain(
+			"--safe-bottom",
+		);
+		bar({ top: VH - 120, left: 0, width: VW, height: 120 });
+		await Promise.resolve();
+		expect(document.documentElement.style.getPropertyValue("--toast-bottom")).toBe("128px");
 	});
 });
