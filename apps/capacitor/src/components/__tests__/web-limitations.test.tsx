@@ -39,7 +39,7 @@ describe("On the web card", () => {
 		rendered = await render(<OnTheWebCard />);
 		const button = rendered.getButton("Get the Android app");
 		expect(button.dataset.slot, "the kit's button, not a text link").toBe("button");
-		expect(button.className).toContain("h-11");
+		expect(button.dataset.size).toBe("default");
 		await click(button);
 		expect(openLink).toHaveBeenCalledWith(
 			"https://play.google.com/store/apps/details?id=app.lesefluss",

@@ -204,8 +204,9 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, isPe
 					trigger={
 						<Button
 							variant="outline"
-							// min-w holds the row still when the label changes; the ::before stretches the 32px button's touch target to 44px, keeping the look.
-							className="relative min-w-26 justify-between before:absolute before:inset-x-0 before:-inset-y-[7px] before:content-['']"
+							size="sm"
+							// min-w holds the row still when the label changes.
+							className="min-w-26 justify-between"
 						>
 							<span className="sr-only">Sort: </span>
 							{SORT_LABELS[sort]}

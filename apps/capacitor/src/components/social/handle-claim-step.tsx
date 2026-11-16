@@ -193,8 +193,8 @@ export function HandleClaimStep({
 
 			{submitError && <p className="text-destructive text-sm">{submitError}</p>}
 
-			<div className="flex gap-2">
-				<Button type="submit" disabled={!canSubmit} className="flex-1">
+			<div className="flex gap-2 md:justify-end">
+				<Button type="submit" disabled={!canSubmit} className="flex-1 md:flex-none">
 					{claim.isPending ? "Saving…" : profile.handle ? "Change handle" : "Confirm"}
 				</Button>
 				{onSkip && (

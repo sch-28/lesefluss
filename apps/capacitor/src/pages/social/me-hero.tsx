@@ -43,7 +43,6 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 					<SocialAvatar
 						name={me.name}
 						avatarUrl={me.avatarUrl}
-						size="lg"
 						className="size-[74px] shrink-0 text-xl"
 					/>
 					<div className="min-w-0 flex-1">

@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageContainer } from "@/components/page-container";
 import { PasteInviteField } from "@/components/social/paste-invite-field";
 import { toast } from "@/components/toast";
+import { DangerRow, DangerZone } from "@/pages/_shared/danger-zone";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	socialErrorMessage,
@@ -108,7 +109,7 @@ function InviteLinkContent() {
 						</>
 					) : (
 						<Button
-							className="w-full"
+							className="w-full md:w-fit"
 							disabled={isBusy}
 							onClick={() => create.mutate(undefined, { onError })}
 						>
@@ -128,17 +129,11 @@ function InviteLinkContent() {
 			</Section>
 
 			{current && (
-				<Section title="Danger zone">
-					<button
-						type="button"
-						disabled={isBusy}
-						onClick={() => setConfirm("revoke")}
-						className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-muted/60 disabled:opacity-50"
-					>
-						<Trash2 className="size-5" />
-						<span className="font-medium text-sm">Revoke invite link</span>
-					</button>
-				</Section>
+				<DangerZone className="mt-6">
+					<DangerRow icon={Trash2} disabled={isBusy} onClick={() => setConfirm("revoke")}>
+						Revoke invite link
+					</DangerRow>
+				</DangerZone>
 			)}
 
 			<ConfirmDialog

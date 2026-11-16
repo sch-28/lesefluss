@@ -97,7 +97,11 @@ function Outcome({
 					<p className="text-muted-foreground text-sm">
 						Adding them shares your handle, display name and avatar with them.
 					</p>
-					<Button className="w-full" onClick={confirm} disabled={!isOnline || redeem.isPending}>
+					<Button
+						className="w-full md:mx-auto md:flex md:w-fit"
+						onClick={confirm}
+						disabled={!isOnline || redeem.isPending}
+					>
 						<UserPlus />
 						{redeem.isPending ? "Accepting…" : "Accept invitation"}
 					</Button>
@@ -120,7 +124,7 @@ function BackToSocial() {
 	return (
 		<Button
 			variant="outline"
-			className="relative w-full before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
+			className="w-full md:mx-auto md:flex md:w-fit"
 			onClick={() => navigate({ to: "/tabs/social", replace: true })}
 		>
 			Back to Social

@@ -95,7 +95,7 @@ export function SpeedTestResult({
 				</dl>
 			</div>
 
-			<div className="mt-4 flex items-center gap-2" data-testid="speed-test-dial">
+			<div className="mt-4 flex items-center gap-2 md:justify-center" data-testid="speed-test-dial">
 				<Button
 					variant="outline"
 					size="icon"
@@ -106,7 +106,8 @@ export function SpeedTestResult({
 					<Minus className="size-4" />
 				</Button>
 				<Button
-					className="flex-1"
+					size="sm"
+					className="flex-1 md:flex-none"
 					variant={applied ? "secondary" : "outline"}
 					onClick={onApply}
 					disabled={applied}

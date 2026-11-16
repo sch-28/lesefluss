@@ -132,7 +132,7 @@ export function OnTheWebCard() {
 					)}
 					<Button
 						variant="outline"
-						className="mt-3 h-11 px-4"
+						className="mt-3"
 						onClick={() => openLink(PLAY_STORE_URL, { nativeTarget: "system" })}
 					>
 						<Smartphone />

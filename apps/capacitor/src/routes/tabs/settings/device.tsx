@@ -36,6 +36,7 @@ import { useToast } from "@/components/toast";
 import { useBLE } from "@/contexts/ble-context";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
 import { useDeviceCapabilities } from "@/hooks/use-device-capabilities";
+import { DangerRow, DangerZone } from "@/pages/_shared/danger-zone";
 import { ble, SCAN_BLOCKER_MESSAGES, type ScanBlocker } from "@/services/ble";
 import type { StorageInfo } from "@/services/ble/characteristics/storage";
 import { MULTI_BOOK_DESCRIPTOR_ID } from "@/services/devices";
@@ -280,7 +281,7 @@ function DeviceSettings() {
 							<div className="p-3">
 								<Button
 									variant="outline"
-									className="w-full"
+									className="w-full md:w-fit"
 									onClick={() => void handleDisconnect()}
 								>
 									<CircleX />
@@ -305,7 +306,7 @@ function DeviceSettings() {
 									{canResolveScanBlocker && (
 										<Button
 											variant="outline"
-											className="w-full"
+											className="w-full md:w-fit"
 											onClick={() => resolveScanBlocker()}
 										>
 											{SCAN_BLOCKER_ACTIONS[scanBlocker]}
@@ -339,12 +340,12 @@ function DeviceSettings() {
 							{!scanBlocker && (
 								<div className="flex gap-2 p-3">
 									{isScanning ? (
-										<Button variant="outline" className="flex-1" onClick={stopScan}>
+										<Button variant="outline" className="flex-1 md:flex-none" onClick={stopScan}>
 											<Square />
 											Stop scan
 										</Button>
 									) : (
-										<Button variant="outline" className="flex-1" onClick={startScan}>
+										<Button variant="outline" className="flex-1 md:flex-none" onClick={startScan}>
 											<Search />
 											Scan
 										</Button>
@@ -352,7 +353,7 @@ function DeviceSettings() {
 									{isScanning && (
 										<Button
 											variant="outline"
-											className="flex-1"
+											className="flex-1 md:flex-none"
 											onClick={async () => {
 												await stopScan();
 												await new Promise((r) => setTimeout(r, 300));
@@ -374,7 +375,7 @@ function DeviceSettings() {
 					<div className="mt-6 flex gap-2">
 						<Button
 							variant="outline"
-							className="flex-1"
+							className="flex-1 md:flex-none"
 							onClick={handleSyncToDevice}
 							disabled={syncing}
 						>
@@ -383,7 +384,7 @@ function DeviceSettings() {
 						</Button>
 						<Button
 							variant="outline"
-							className="flex-1"
+							className="flex-1 md:flex-none"
 							onClick={handleSyncFromDevice}
 							disabled={syncing}
 						>
@@ -394,10 +395,9 @@ function DeviceSettings() {
 				)}
 
 				{isConnected && connectedDevice && (
-					<SettingsSection title="Danger zone">
-						<button
-							type="button"
-							className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-muted/60"
+					<DangerZone className="mt-6">
+						<DangerRow
+							icon={Trash2}
 							onClick={() =>
 								setForgetTarget({
 									id: connectedDevice.deviceId,
@@ -405,10 +405,9 @@ function DeviceSettings() {
 								})
 							}
 						>
-							<Trash2 className="size-5" />
-							<span className="font-medium text-sm">Forget this device</span>
-						</button>
-					</SettingsSection>
+							Forget this device
+						</DangerRow>
+					</DangerZone>
 				)}
 			</PageContainer>
 
@@ -428,7 +427,9 @@ function DeviceSettings() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleForget}>Forget</AlertDialogAction>
+						<AlertDialogAction variant="destructive" onClick={handleForget}>
+							Forget
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

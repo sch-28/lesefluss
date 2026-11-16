@@ -175,10 +175,10 @@ function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 					</div>
 				)}
 
-				<DrawerFooter className="flex-row pb-6">
+				<DrawerFooter className="flex-row pb-6 md:justify-end">
 					<Button
 						variant="outline"
-						className="h-11 flex-1"
+						className="flex-1 md:flex-none"
 						disabled={!book.data}
 						onClick={openCard}
 						data-testid="summary-share"
@@ -186,7 +186,7 @@ function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 						<Share2 />
 						Share card
 					</Button>
-					<Button className="h-11 flex-1" onClick={onClose}>
+					<Button className="flex-1 md:flex-none" onClick={onClose}>
 						Done
 					</Button>
 				</DrawerFooter>

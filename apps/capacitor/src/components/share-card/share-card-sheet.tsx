@@ -133,8 +133,8 @@ export function ShareCardSheet({
 						/>
 					</div>
 				)}
-				<DrawerFooter>
-					<Button className="h-11" disabled={!card || isSharing} onClick={() => void share()}>
+				<DrawerFooter className="md:items-end">
+					<Button disabled={!card || isSharing} onClick={() => void share()}>
 						{isSharing ? <Loader2 className="animate-spin" /> : <Share2 />}
 						Share
 					</Button>

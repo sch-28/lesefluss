@@ -108,7 +108,6 @@ function RequestResetForm({ isExpired }: { isExpired: boolean }) {
 					{serverError && <FieldError className="mt-4">{serverError}</FieldError>}
 					<Button
 						type="submit"
-						size="lg"
 						className="mt-6 w-full"
 						disabled={status === "sending" || email.trim() === ""}
 					>
@@ -163,7 +162,7 @@ function NewPasswordForm({ token }: { token: string }) {
 					title="Password changed"
 					subtitle="Sign in with your new password, here or in the app."
 				/>
-				<Button asChild size="lg" className="w-full">
+				<Button asChild className="w-full">
 					<Link to="/login">Sign in</Link>
 				</Button>
 			</>
@@ -197,7 +196,7 @@ function NewPasswordForm({ token }: { token: string }) {
 					</Field>
 				</FieldGroup>
 				{formError && <FieldError className="mt-4">{formError}</FieldError>}
-				<Button type="submit" size="lg" className="mt-6 w-full" disabled={status === "saving"}>
+				<Button type="submit" className="mt-6 w-full" disabled={status === "saving"}>
 					{status === "saving" ? "Saving…" : "Set new password"}
 				</Button>
 			</form>

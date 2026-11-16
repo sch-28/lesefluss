@@ -3,6 +3,7 @@ import type * as React from "react";
 
 import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { buttonVariants } from "./button";
 
 function AlertDialog({
 	open,
@@ -119,15 +120,15 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
 	className,
+	variant = "default",
 	...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> & {
+	variant?: "default" | "destructive";
+}) {
 	return (
 		<AlertDialogPrimitive.Action
 			data-slot="alert-dialog-action"
-			className={cn(
-				"inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
-				className,
-			)}
+			className={cn(buttonVariants({ variant }), className)}
 			{...props}
 		/>
 	);
@@ -140,10 +141,7 @@ function AlertDialogCancel({
 	return (
 		<AlertDialogPrimitive.Cancel
 			data-slot="alert-dialog-cancel"
-			className={cn(
-				"inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
-				className,
-			)}
+			className={cn(buttonVariants({ variant: "outline" }), className)}
 			{...props}
 		/>
 	);

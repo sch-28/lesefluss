@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import { queries } from "../../services/db/queries";
 import type { Book } from "../../services/db/schema";
-import { DangerButton, DangerZone } from "../_shared/danger-zone";
+import { DangerRow, DangerZone } from "../_shared/danger-zone";
 import { useSessionDelete } from "./stats/session-list";
 import { filterSessions, shortSessionsOf } from "./stats/sessions-model";
 
@@ -33,12 +33,12 @@ export function BookDangerZone({
 	return (
 		<DangerZone className="mt-4">
 			{hasProgress && (
-				<DangerButton icon={RotateCcw} onClick={onResetProgress}>
+				<DangerRow icon={RotateCcw} onClick={onResetProgress}>
 					Reset progress
-				</DangerButton>
+				</DangerRow>
 			)}
 			{rows.length > 0 && (
-				<DangerButton
+				<DangerRow
 					icon={Trash2}
 					onClick={() =>
 						requestDelete(rows, {
@@ -48,11 +48,11 @@ export function BookDangerZone({
 					}
 				>
 					Delete reading history
-				</DangerButton>
+				</DangerRow>
 			)}
-			<DangerButton icon={Trash2} onClick={onDeleteBook}>
+			<DangerRow icon={Trash2} onClick={onDeleteBook}>
 				Delete book
-			</DangerButton>
+			</DangerRow>
 			{dialog}
 		</DangerZone>
 	);

@@ -206,10 +206,7 @@ const EditBookForm: React.FC<{
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep editing</AlertDialogCancel>
-						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={() => blocker.proceed?.()}
-						>
+						<AlertDialogAction variant="destructive" onClick={() => blocker.proceed?.()}>
 							Discard
 						</AlertDialogAction>
 					</AlertDialogFooter>

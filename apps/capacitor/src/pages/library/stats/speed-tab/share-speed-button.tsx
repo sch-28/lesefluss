@@ -48,7 +48,6 @@ export function ShareSpeedButton({
 				variant="outline"
 				onClick={open}
 				aria-label="Share speed card"
-				className="h-11"
 				data-testid="share-speed-card"
 			>
 				<Share2 />

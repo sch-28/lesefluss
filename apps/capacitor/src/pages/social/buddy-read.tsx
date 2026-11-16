@@ -52,7 +52,7 @@ import { useBlockUser } from "@/services/social/friends";
 import { currentChapterIndex } from "@/utils/chapters";
 import { formatAgo, formatRelative } from "@/utils/date-utils";
 import { formatPercent } from "@/utils/format-percent";
-import { DangerButton, DangerZone } from "../_shared/danger-zone";
+import { DangerRow, DangerZone } from "../_shared/danger-zone";
 import { BuddyReadDeadline } from "./buddy-read-deadline";
 import { DiscussionPanel } from "./buddy-read-discussion";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
@@ -465,7 +465,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 					)}
 
 					<DangerZone className="mt-6">
-						<DangerButton
+						<DangerRow
 							icon={LogOut}
 							disabled={isOffline || leave.isPending}
 							onClick={() =>
@@ -484,7 +484,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 							}
 						>
 							Leave buddy read
-						</DangerButton>
+						</DangerRow>
 					</DangerZone>
 				</TabsContent>
 			</Tabs>

@@ -242,8 +242,8 @@ function DangerZone() {
 
 	return (
 		<section className="space-y-6">
-			<h2 className="font-semibold text-base">Danger zone</h2>
-			<div className="space-y-6 rounded-lg border border-destructive/30 bg-destructive/5 p-6">
+			<h2 className="font-semibold text-base text-destructive">Danger zone</h2>
+			<div className="space-y-6 rounded-lg border border-border bg-card p-6">
 				<div className="space-y-3">
 					<div>
 						<p className="font-medium text-sm">Clear cloud data</p>
@@ -253,7 +253,7 @@ function DangerZone() {
 						</p>
 					</div>
 					{clearState === "idle" && (
-						<Button variant="outline" size="sm" onClick={() => setClearState("confirming")}>
+						<Button variant="destructive" size="sm" onClick={() => setClearState("confirming")}>
 							Clear cloud data
 						</Button>
 					)}
@@ -294,7 +294,7 @@ function DangerZone() {
 					)}
 				</div>
 
-				<Separator className="bg-destructive/20" />
+				<Separator />
 
 				<div className="space-y-3">
 					<div>
@@ -304,12 +304,7 @@ function DangerZone() {
 						</p>
 					</div>
 					{deleteState === "idle" && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="border-destructive/50 text-destructive hover:bg-destructive/10"
-							onClick={() => setDeleteState("confirming")}
-						>
+						<Button variant="destructive" size="sm" onClick={() => setDeleteState("confirming")}>
 							Delete account
 						</Button>
 					)}

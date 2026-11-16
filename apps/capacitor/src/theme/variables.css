@@ -54,6 +54,7 @@
 	--accent: #1f1f1f;
 	--accent-foreground: #ffffff;
 	--destructive: #ffa0a0;
+	--destructive-foreground: #000000;
 	--border: #8a8a8a;
 	--input: #8a8a8a;
 	--ring: #ffd60a;
@@ -123,9 +124,6 @@ body.sidebar-collapsed {
 }
 .high-contrast [data-slot="switch-thumb"][data-state="checked"] {
 	background-color: #000000;
-}
-.high-contrast [data-slot="button"][data-variant="destructive"]:hover {
-	background-color: color-mix(in srgb, var(--destructive) 20%, transparent);
 }
 .high-contrast .text-muted-foreground\/70 {
 	color: var(--muted-foreground);

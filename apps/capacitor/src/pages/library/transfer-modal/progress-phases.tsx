@@ -69,7 +69,7 @@ export const DonePhase: React.FC<DoneProps> = ({ book, onClose }) => (
 			<div className="font-semibold text-base">{book.title}</div>
 			<div className="mt-1 text-muted-foreground text-sm">Successfully uploaded to device</div>
 		</div>
-		<Button variant="outline" className="w-full" onClick={onClose}>
+		<Button variant="outline" className="w-full md:ml-auto md:flex md:w-fit" onClick={onClose}>
 			Close
 		</Button>
 	</div>
@@ -85,7 +85,7 @@ export const ErrorPhase: React.FC<ErrorProps> = ({ message, onClose }) => (
 		<div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
 			{message ?? "An unknown error occurred."}
 		</div>
-		<Button variant="outline" className="w-full" onClick={onClose}>
+		<Button variant="outline" className="w-full md:ml-auto md:flex md:w-fit" onClick={onClose}>
 			Close
 		</Button>
 	</div>

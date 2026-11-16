@@ -103,7 +103,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 				</p>
 				{next && (
 					<Button
-						className="mt-3 h-11 w-full md:w-auto"
+						className="mt-3 w-full md:w-auto"
 						data-testid="ordered-next"
 						onClick={() => onOpenBook(next.row.book)}
 					>

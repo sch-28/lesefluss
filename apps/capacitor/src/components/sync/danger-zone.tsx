@@ -1,10 +1,4 @@
 import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@lesefluss/ui/accordion";
-import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -14,17 +8,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
-import {
-	AlertCircle,
-	BarChart3,
-	BookmarkIcon,
-	BookOpen,
-	Library,
-	TriangleAlert,
-} from "lucide-react";
+import { AlertCircle, BarChart3, BookmarkIcon, BookOpen, Library } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useToast } from "@/components/toast";
+import { DangerRow, DangerZone as DangerZoneFrame } from "@/pages/_shared/danger-zone";
 import { queryHooks } from "@/services/db/hooks";
 
 type DangerAction = "highlights" | "glossary" | "stats" | "library" | "everything";
@@ -136,54 +124,31 @@ export function DangerZone({
 	};
 
 	return (
-		<section className="pt-6">
-			<div className="overflow-hidden rounded-lg border border-border bg-card">
-				<Accordion type="single" collapsible>
-					<AccordionItem value="danger-zone" className="border-b-0">
-						<AccordionTrigger className="bg-destructive/10 px-4 text-destructive">
-							<span className="flex items-center gap-2">
-								<TriangleAlert className="size-4" />
-								{isSynced ? "Danger zone" : "Delete local data"}
-							</span>
-						</AccordionTrigger>
-						<AccordionContent className="p-0">
-							<p className="px-4 py-3 text-muted-foreground text-xs">
-								{isSynced
-									? "Permanently delete data on this device. Changes sync to your cloud account and other devices on next sync. This cannot be undone."
-									: "Permanently delete data stored on this device. This cannot be undone."}
-							</p>
-							<div className="divide-y divide-border">
-								{ACTION_ORDER.map((action) => {
-									const cfg = DANGER_ACTIONS[action];
-									return (
-										<button
-											key={action}
-											type="button"
-											onClick={() => setPendingAction(action)}
-											className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
-										>
-											<cfg.icon className="size-5 text-destructive" />
-											<div className="flex-1">
-												<div
-													className={
-														action === "everything"
-															? "font-semibold text-destructive text-sm"
-															: "font-medium text-foreground text-sm"
-													}
-												>
-													{cfg.label}
-												</div>
-												<div className="text-muted-foreground text-xs">{cfg.subtitle}</div>
-											</div>
-										</button>
-									);
-								})}
-								{children}
-							</div>
-						</AccordionContent>
-					</AccordionItem>
-				</Accordion>
-			</div>
+		<div className="pt-6">
+			<DangerZoneFrame
+				collapsible
+				title={isSynced ? "Danger zone" : "Delete local data"}
+				description={
+					isSynced
+						? "Permanently delete data on this device. Changes sync to your cloud account and other devices on next sync. This cannot be undone."
+						: "Permanently delete data stored on this device. This cannot be undone."
+				}
+			>
+				{ACTION_ORDER.map((action) => {
+					const cfg = DANGER_ACTIONS[action];
+					return (
+						<DangerRow
+							key={action}
+							icon={cfg.icon}
+							subtitle={cfg.subtitle}
+							onClick={() => setPendingAction(action)}
+						>
+							{cfg.label}
+						</DangerRow>
+					);
+				})}
+				{children}
+			</DangerZoneFrame>
 
 			<AlertDialog
 				open={pendingAction !== null}
@@ -199,7 +164,7 @@ export function DangerZone({
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							variant="destructive"
 							onClick={() => {
 								if (pendingAction) runDangerAction(pendingAction);
 							}}
@@ -209,6 +174,6 @@ export function DangerZone({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</section>
+		</div>
 	);
 }

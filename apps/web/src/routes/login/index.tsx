@@ -157,7 +157,6 @@ function SocialButton({
 			<Button
 				type="button"
 				variant="outline"
-				size="lg"
 				className="w-full"
 				onClick={handleClick}
 				disabled={isLoading}
@@ -305,7 +304,7 @@ function AuthForm({
 
 				<form.Subscribe selector={(s) => s.isSubmitting}>
 					{(isSubmitting) => (
-						<Button type="submit" disabled={isSubmitting} className="mt-6 w-full" size="lg">
+						<Button type="submit" disabled={isSubmitting} className="mt-6 w-full">
 							{isSubmitting ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
 						</Button>
 					)}

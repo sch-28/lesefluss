@@ -219,13 +219,12 @@ export function SpeedTest({
 			)}
 
 			{!onActions && (
-				<div className="mt-6 flex flex-col gap-2">
-					<Button size="lg" onClick={actions.primary.onClick} disabled={actions.primary.disabled}>
+				<div className="mt-6 flex flex-col gap-2 md:items-center">
+					<Button onClick={actions.primary.onClick} disabled={actions.primary.disabled}>
 						{actions.primary.label}
 					</Button>
 					{actions.secondary && (
 						<Button
-							size="lg"
 							variant="outline"
 							onClick={actions.secondary.onClick}
 							disabled={actions.secondary.disabled}

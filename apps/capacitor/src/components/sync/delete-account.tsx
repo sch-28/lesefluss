@@ -14,6 +14,7 @@ import { UserX } from "lucide-react";
 import { useId, useState } from "react";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
+import { DangerRow } from "@/pages/_shared/danger-zone";
 import { queryHooks } from "@/services/db/hooks";
 import { AccountDeletionRefusedError, deleteAccount, IS_WEB_BUILD } from "@/services/sync";
 
@@ -90,19 +91,13 @@ export function DeleteAccountRow() {
 
 	return (
 		<>
-			<button
-				type="button"
+			<DangerRow
+				icon={UserX}
+				subtitle="Your account and everything stored in the cloud"
 				onClick={() => setIsOpen(true)}
-				className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
 			>
-				<UserX className="size-5 text-destructive" />
-				<div className="flex-1">
-					<div className="font-semibold text-destructive text-sm">Delete account</div>
-					<div className="text-muted-foreground text-xs">
-						Your account and everything stored in the cloud
-					</div>
-				</div>
-			</button>
+				Delete account
+			</DangerRow>
 
 			<AlertDialog open={isOpen} onOpenChange={close}>
 				<AlertDialogContent>

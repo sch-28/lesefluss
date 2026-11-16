@@ -202,7 +202,7 @@ function Home() {
 								))}
 							</div>
 							<div className="flex justify-center lg:justify-start">
-								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+								<Button asChild className="px-6 font-semibold">
 									<a href="/app/tabs/social">
 										<Users className="mr-2 h-4 w-4" />
 										Start a buddy read
@@ -254,7 +254,7 @@ function Home() {
 								across devices.
 							</p>
 							<div className="flex justify-center lg:justify-start">
-								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+								<Button asChild className="px-6 font-semibold">
 									<Link to="/download">
 										<GooglePlayIcon className="mr-2 h-4 w-4 fill-current" />
 										Get on Android
@@ -324,11 +324,7 @@ function Home() {
 								))}
 							</div>
 							<div className="flex justify-center lg:justify-start">
-								<Button
-									asChild
-									variant="outline"
-									className="h-auto px-6 py-2.5 font-semibold text-sm"
-								>
+								<Button asChild variant="outline" className="px-6 font-semibold">
 									<Link to="/device">Build guide →</Link>
 								</Button>
 							</div>

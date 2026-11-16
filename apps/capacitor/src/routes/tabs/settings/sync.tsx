@@ -59,7 +59,12 @@ function SyncSettings() {
 							</div>
 							{syncError && <div className="px-4 py-2 text-destructive text-sm">{syncError}</div>}
 							<div className="p-3">
-								<Button variant="outline" className="w-full" onClick={syncNow} disabled={isSyncing}>
+								<Button
+									variant="outline"
+									className="w-full md:w-fit"
+									onClick={syncNow}
+									disabled={isSyncing}
+								>
 									<RefreshCw className={isSyncing ? "animate-spin" : ""} />
 									{isSyncing ? "Syncing..." : "Sync now"}
 								</Button>

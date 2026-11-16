@@ -59,6 +59,6 @@ test("scans a picked folder and imports the selection", async ({ page }) => {
 	await expect(page.getByText("Added 2 books")).toBeVisible({ timeout: 30_000 });
 
 	await page.getByRole("button", { name: "Done" }).click();
-	await expect(page.getByText("Tidewater")).toBeVisible();
-	await expect(page.getByText("Northlight")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Tidewater", exact: true })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Northlight", exact: true })).toBeVisible();
 });

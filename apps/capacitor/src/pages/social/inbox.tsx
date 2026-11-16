@@ -434,7 +434,7 @@ function InboxContent() {
 			{inbox.hasNextPage && (
 				<Button
 					variant="outline"
-					className="mt-4 w-full"
+					className="mt-4 w-full md:mx-auto md:flex md:w-fit"
 					disabled={!isOnline || inbox.isFetchingNextPage}
 					onClick={() => void inbox.fetchNextPage()}
 				>

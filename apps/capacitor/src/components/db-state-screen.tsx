@@ -103,7 +103,7 @@ const Message: React.FC<{
 		<Glyph>{icon}</Glyph>
 		<h1 className="m-0 text-balance font-semibold text-xl">{title}</h1>
 		<p className="m-0 text-foreground/80 leading-relaxed">{body}</p>
-		<Button className="mt-2 min-h-11 min-w-44" onClick={onAction} disabled={busy}>
+		<Button className="mt-2 min-w-44" onClick={onAction} disabled={busy}>
 			{busy ? "One moment…" : action}
 		</Button>
 		<p className="m-0 text-muted-foreground text-sm" role="status">
@@ -171,7 +171,7 @@ const Unavailable: React.FC<{ onAction?: () => void; busy: boolean; failedAgain:
 				</li>
 			))}
 		</ol>
-		<Button className="mt-2 min-h-11 min-w-44" onClick={onAction} disabled={busy}>
+		<Button className="mt-2 min-w-44" onClick={onAction} disabled={busy}>
 			{busy ? "Trying…" : "Try again"}
 		</Button>
 		<p className="m-0 text-muted-foreground text-sm" role="status">

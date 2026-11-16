@@ -358,22 +358,16 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 	const Icon = action.icon;
 	return (
 		<Button
-			variant={primary ? "default" : "outline"}
-			size="lg"
+			variant={action.destructive ? "destructive" : primary ? "default" : "outline"}
 			disabled={action.disabled || action.loading}
 			onClick={action.onClick}
-			className={cn(
-				"@container w-full",
-				action.destructive &&
-					(primary
-						? "bg-destructive hover:bg-destructive/90"
-						: "border-destructive/40 text-destructive hover:bg-destructive/10"),
-			)}
+			// Desktop drops the container: inline-size containment would collapse a label-width button.
+			className="@container w-full md:w-auto md:max-w-full md:self-start md:[container-type:normal]"
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
 			<span className="min-w-0 truncate">
 				{action.label}
-				{action.detail && <span className="@md:inline hidden"> · {action.detail}</span>}
+				{action.detail && <span className="@md:inline hidden md:inline"> · {action.detail}</span>}
 			</span>
 		</Button>
 	);

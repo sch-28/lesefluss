@@ -97,7 +97,7 @@ export function FirstRunHero({
 					</ul>
 				)}
 
-				<Button asChild size="lg" className="mt-6 h-12 w-full rounded-xl text-[15px]">
+				<Button asChild className="mt-6 w-full md:mx-auto md:flex md:w-fit">
 					<Link to="/tabs/social/invite-link">
 						<Link2 /> Invite a friend
 					</Link>

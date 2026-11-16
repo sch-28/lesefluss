@@ -19,7 +19,7 @@ import { serialKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
 import { IS_WEB } from "../../utils/platform";
-import { DangerButton, DangerZone } from "../_shared/danger-zone";
+import { DangerRow, DangerZone } from "../_shared/danger-zone";
 import { type DetailAction, DetailShell, type HeaderAction } from "../_shared/detail-shell";
 import { SeriesChapterList } from "./series-chapter-list";
 import { SeriesReadingTime } from "./series-reading-time";
@@ -171,9 +171,9 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 				)}
 				<SeriesChapterList seriesId={series.id} isSyncing={isSyncing} />
 				<DangerZone className="mt-6">
-					<DangerButton icon={Trash2} onClick={() => setIsDeleteOpen(true)}>
+					<DangerRow icon={Trash2} onClick={() => setIsDeleteOpen(true)}>
 						Delete series
-					</DangerButton>
+					</DangerRow>
 				</DangerZone>
 			</DetailShell>
 
@@ -188,7 +188,7 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							variant="destructive"
 							onClick={() => {
 								deleteMutation.mutate(
 									{ id: series.id, title: series.title },

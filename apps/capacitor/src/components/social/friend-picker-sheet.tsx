@@ -141,12 +141,21 @@ export function FriendPickerSheet({
 						</>
 					)}
 				</div>
-				<DrawerFooter className="flex-row gap-2">
-					<Button variant="outline" className="flex-1" disabled={isPending} onClick={onClose}>
+				<DrawerFooter className="flex-row gap-2 md:justify-end">
+					<Button
+						variant="outline"
+						className="flex-1 md:flex-none"
+						disabled={isPending}
+						onClick={onClose}
+					>
 						{canPick ? "Cancel" : "Close"}
 					</Button>
 					{canPick && (
-						<Button className="flex-1" disabled={!canSubmit} onClick={() => onSubmit(selected)}>
+						<Button
+							className="flex-1 md:flex-none"
+							disabled={!canSubmit}
+							onClick={() => onSubmit(selected)}
+						>
 							{isPending ? pendingLabel : submitLabel}
 						</Button>
 					)}

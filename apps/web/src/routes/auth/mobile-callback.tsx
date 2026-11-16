@@ -58,7 +58,7 @@ function MobileCallback() {
 				<p className="mt-2 text-muted-foreground text-sm">
 					If the app doesn't open automatically, tap the button below.
 				</p>
-				<Button asChild className="mt-6 w-full" size="lg">
+				<Button asChild className="mt-6 w-full">
 					<a href={deepLink}>Open Lesefluss</a>
 				</Button>
 			</div>

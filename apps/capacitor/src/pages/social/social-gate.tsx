@@ -70,7 +70,7 @@ export function StaleNotice({
 					? "Couldn't refresh. Showing the last known items."
 					: "You're offline. Showing the last known items; actions are disabled."}
 			</span>
-			<Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={onRetry}>
+			<Button variant="ghost" size="sm" className="shrink-0" onClick={onRetry}>
 				Retry
 			</Button>
 		</div>

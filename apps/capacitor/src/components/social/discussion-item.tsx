@@ -352,7 +352,7 @@ export function DiscussionItemCard({ item, buddyReadId, isOffline, onReport }: P
 							<Button
 								size="sm"
 								variant="ghost"
-								className="h-7 px-2 text-muted-foreground"
+								className="text-muted-foreground"
 								disabled={isOffline}
 								onClick={() => setIsReplying(true)}
 							>

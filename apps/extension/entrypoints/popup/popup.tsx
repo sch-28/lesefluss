@@ -257,12 +257,12 @@ export function Popup() {
 
 					<div className="grid gap-2">
 						{session ? (
-							<Button size="lg" onClick={handleSavePage} disabled={busy}>
+							<Button onClick={handleSavePage} disabled={busy}>
 								{busy ? <Loader2 className="animate-spin" /> : <Save />}
 								{savedBook?.existing ? "Rescan page" : "Save this page"}
 							</Button>
 						) : (
-							<Button size="lg" onClick={handleSignIn} disabled={busy}>
+							<Button onClick={handleSignIn} disabled={busy}>
 								{busy ? null : <UserRound />}
 								Sign in with Lesefluss
 							</Button>

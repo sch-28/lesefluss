@@ -26,6 +26,7 @@ html.eink {
 	--accent: #e0e0e0;
 	--accent-foreground: #000000;
 	--destructive: #000000;
+	--destructive-foreground: #ffffff;
 	--border: #000000;
 	--input: #000000;
 	--ring: #000000;

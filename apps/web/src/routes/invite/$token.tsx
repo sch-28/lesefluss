@@ -107,7 +107,7 @@ function Confirm({ token, onDone }: { token: string; onDone: (p: InvitePreview) 
 	};
 	return (
 		<div className="space-y-3">
-			<Button onClick={redeem} disabled={isPending} className="h-12 w-full rounded-xl text-[15px]">
+			<Button onClick={redeem} disabled={isPending} className="w-full">
 				{isPending ? "Adding…" : "Add friend"}
 			</Button>
 			{error && <p className="text-destructive text-sm">{error}</p>}
@@ -159,7 +159,7 @@ function InvitePage() {
 					<p className="text-muted-foreground text-sm">
 						Pick a book together and follow each other's progress in Lesefluss.
 					</p>
-					<Button asChild className="h-12 w-full rounded-xl text-[15px]">
+					<Button asChild className="w-full">
 						{isAndroid ? (
 							<a href={appInviteIntentUrl(token)}>Open Lesefluss</a>
 						) : (
@@ -180,7 +180,7 @@ function InvitePage() {
 						Read the same book together and see where everyone is. Sign in or create an account to
 						add them.
 					</p>
-					<Button asChild className="h-12 w-full rounded-xl text-[15px]">
+					<Button asChild className="w-full">
 						<Link to="/login" search={{ redirect: `/invite/${token}` }}>
 							Sign in
 						</Link>

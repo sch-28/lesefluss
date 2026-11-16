@@ -176,10 +176,10 @@ export function ReportSheet({
 						</p>
 					)}
 				</div>
-				<DrawerFooter className="flex-row gap-2">
+				<DrawerFooter className="flex-row gap-2 md:justify-end">
 					<Button
 						variant="outline"
-						className="flex-1"
+						className="flex-1 md:flex-none"
 						disabled={report.isPending}
 						onClick={() => {
 							reset();
@@ -188,7 +188,7 @@ export function ReportSheet({
 					>
 						Cancel
 					</Button>
-					<Button className="flex-1" disabled={!canSubmit} onClick={submit}>
+					<Button className="flex-1 md:flex-none" disabled={!canSubmit} onClick={submit}>
 						{report.isPending ? "Sending…" : "Send report"}
 					</Button>
 				</DrawerFooter>

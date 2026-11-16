@@ -176,12 +176,17 @@ export function ShareSheet({
 						</>
 					)}
 				</div>
-				<DrawerFooter className="flex-row gap-2">
-					<Button variant="outline" className="flex-1" disabled={share.isPending} onClick={onClose}>
+				<DrawerFooter className="flex-row gap-2 md:justify-end">
+					<Button
+						variant="outline"
+						className="flex-1 md:flex-none"
+						disabled={share.isPending}
+						onClick={onClose}
+					>
 						{blocker || friends.length === 0 ? "Close" : "Cancel"}
 					</Button>
 					{!blocker && friends.length > 0 && (
-						<Button className="flex-1" disabled={!canSubmit} onClick={submit}>
+						<Button className="flex-1 md:flex-none" disabled={!canSubmit} onClick={submit}>
 							{share.isPending ? "Sharing…" : "Share"}
 						</Button>
 					)}

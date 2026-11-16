@@ -63,4 +63,17 @@ describe("DetailShell primary action", () => {
 		expect(detail?.className).toMatch(/(^|\s)hidden(\s|$)/);
 		expect(detail?.className).toMatch(/@md:inline/);
 	});
+
+	it("on desktop is as wide as its label, capped at its column so a long chapter truncates", async () => {
+		view = await render(
+			<DetailShell
+				cover={null}
+				title="Book"
+				primaryAction={{ label: "Continue", detail: "A very long chapter", onClick: vi.fn() }}
+			/>,
+		);
+		const classes = view.getButton(/Continue/).className.split(/\s+/);
+		expect(classes).toEqual(expect.arrayContaining(["md:w-auto", "md:max-w-full"]));
+		expect(view.getButton(/Continue/).querySelector(".truncate")).not.toBeNull();
+	});
 });

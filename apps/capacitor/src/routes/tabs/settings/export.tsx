@@ -157,7 +157,11 @@ function ExportForm({
 				</SettingsRow>
 			</SettingsSection>
 
-			<Button onClick={onExport} disabled={isExporting || !canExport} className="mt-6 w-full">
+			<Button
+				onClick={onExport}
+				disabled={isExporting || !canExport}
+				className="mt-6 w-full md:w-fit"
+			>
 				{isExporting ? <Loader2 className="animate-spin" /> : null}
 				{isExporting ? "Exporting..." : "Export"}
 			</Button>

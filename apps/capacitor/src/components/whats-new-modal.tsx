@@ -86,7 +86,8 @@ const Tile: React.FC<{ entry: ChangelogEntry; onShowMe: (link: ChangelogLink) =>
 			{entry.link && (
 				<Button
 					variant="outline"
-					className="relative mt-1.5 rounded-full pr-2 pl-3 before:absolute before:inset-x-0 before:-inset-y-[7px] before:content-['']"
+					size="sm"
+					className="mt-1.5"
 					onClick={() => entry.link && onShowMe(entry.link)}
 					aria-label={`Show me: ${entry.title}`}
 				>
@@ -256,7 +257,7 @@ const WhatsNewModal: React.FC = () => {
 				)}
 			</div>
 			<Button
-				className="mt-2 h-12 w-full shrink-0 rounded-xl text-[15px]"
+				className="mt-2 w-full shrink-0 md:mx-auto md:flex md:w-fit"
 				onClick={handleDismiss}
 				disabled={saveSettings.isPending}
 			>
@@ -265,7 +266,7 @@ const WhatsNewModal: React.FC = () => {
 			{!manualOpen && (
 				<Button
 					variant="link"
-					className="h-11 self-center text-muted-foreground text-xs"
+					className="self-center text-muted-foreground text-xs"
 					onClick={() => setManualOpen(true)}
 				>
 					Full changelog

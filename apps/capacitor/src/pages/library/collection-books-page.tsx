@@ -404,7 +404,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep editing</AlertDialogCancel>
 						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							variant="destructive"
 							onClick={() => {
 								isLeavingRef.current = true;
 								blocker.proceed?.();

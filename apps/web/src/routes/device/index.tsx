@@ -30,12 +30,12 @@ function DevicePage() {
 						with the app. About €25 in parts.
 					</p>
 					<div className="flex flex-wrap gap-4">
-						<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+						<Button asChild className="px-6 font-semibold">
 							<Link to="/docs" search={{ tab: "esp32-build-guide" }}>
 								View build guide →
 							</Link>
 						</Button>
-						<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
+						<Button asChild variant="outline" className="px-6 font-semibold">
 							<a
 								href="https://github.com/sch-28/lesefluss"
 								target="_blank"
@@ -167,7 +167,7 @@ function DevicePage() {
 								flashing firmware, and assembly.
 							</p>
 							<div className="flex flex-wrap gap-4">
-								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+								<Button asChild className="px-6 font-semibold">
 									<Link to="/docs" search={{ tab: "esp32-build-guide" }}>
 										Read the build guide →
 									</Link>

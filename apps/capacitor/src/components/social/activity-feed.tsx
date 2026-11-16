@@ -186,7 +186,7 @@ export function ActivityFeed({ isHiddenWhenEmpty = false }: { isHiddenWhenEmpty?
 				{feed.hasNextPage && (
 					<Button
 						variant="outline"
-						className="mt-3 w-full"
+						className="mt-3 w-full md:mx-auto md:flex md:w-fit"
 						disabled={!isOnline || feed.isFetchingNextPage}
 						onClick={() => void feed.fetchNextPage()}
 					>

@@ -48,11 +48,15 @@ const BulkRatingSheet: React.FC<Props> = ({ isOpen, count, onClose, onApply }) =
 						{rating === null ? "" : ratingStars(rating)}
 					</span>
 				</div>
-				<div className="flex gap-2 border-border border-t p-4">
-					<Button variant="outline" className="flex-1" onClick={() => onApply(null)}>
+				<div className="flex gap-2 border-border border-t p-4 md:justify-end">
+					<Button variant="outline" className="flex-1 md:flex-none" onClick={() => onApply(null)}>
 						No rating
 					</Button>
-					<Button className="flex-1" disabled={rating === null} onClick={() => onApply(rating)}>
+					<Button
+						className="flex-1 md:flex-none"
+						disabled={rating === null}
+						onClick={() => onApply(rating)}
+					>
 						Apply
 					</Button>
 				</div>

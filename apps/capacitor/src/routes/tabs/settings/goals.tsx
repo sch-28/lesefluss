@@ -59,7 +59,7 @@ function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisable
 		<div className="mt-3 px-4">
 			<Button
 				variant="outline"
-				className="h-11 w-full"
+				className="w-full md:w-fit"
 				disabled={isDisabled || isNoneLeft}
 				onClick={() => setPickerOpen(true)}
 				data-testid="add-goal"

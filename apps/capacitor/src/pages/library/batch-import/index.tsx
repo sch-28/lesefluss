@@ -182,7 +182,7 @@ const BatchImportSheet: React.FC<Props> = ({
 
 						<div className="border-border border-t p-4">
 							<Button
-								className="w-full"
+								className="w-full md:w-fit"
 								disabled={folder.selectedCount === 0 || folder.pendingProbes > 0}
 								onClick={folder.beginImport}
 							>
@@ -273,7 +273,7 @@ const BatchImportSheet: React.FC<Props> = ({
 							)}
 						</div>
 						<div className="border-border border-t p-4">
-							<Button className="w-full" onClick={folder.close}>
+							<Button className="w-full md:w-fit" onClick={folder.close}>
 								Done
 							</Button>
 						</div>

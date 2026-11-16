@@ -132,10 +132,10 @@ const BookActionsDrawer: React.FC<Props> = ({ book, entries, onClose }) => {
 								rate.onRate(next);
 							}}
 						/>
-						<div className="flex gap-2">
+						<div className="flex gap-2 md:justify-end">
 							<Button
 								variant="outline"
-								className="flex-1"
+								className="flex-1 md:flex-none"
 								disabled={rating === null}
 								onClick={() => {
 									setRating(null);
@@ -144,7 +144,7 @@ const BookActionsDrawer: React.FC<Props> = ({ book, entries, onClose }) => {
 							>
 								No rating
 							</Button>
-							<Button className="flex-1" onClick={onClose}>
+							<Button className="flex-1 md:flex-none" onClick={onClose}>
 								Done
 							</Button>
 						</div>

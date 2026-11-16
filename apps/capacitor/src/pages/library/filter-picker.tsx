@@ -411,21 +411,21 @@ export const FilterSheet: React.FC<PickerProps> = ({
 				<div className="overflow-y-auto px-5">
 					<FilterPanel {...panel} />
 				</div>
-				<DrawerFooter className="flex-row border-border border-t">
+				<DrawerFooter className="flex-row border-border border-t md:justify-end">
 					<Button
 						variant="outline"
-						className="flex-1"
+						className="flex-1 md:flex-none"
 						disabled={activeCount === 0}
 						onClick={() => panel.onChange({})}
 					>
 						Clear
 					</Button>
 					{onSaveShelf && (
-						<Button variant="outline" className="flex-1" onClick={onSaveShelf}>
+						<Button variant="outline" className="flex-1 md:flex-none" onClick={onSaveShelf}>
 							Save shelf
 						</Button>
 					)}
-					<Button className="flex-[1.8]" onClick={() => onOpenChange(false)}>
+					<Button className="flex-[1.8] md:flex-none" onClick={() => onOpenChange(false)}>
 						Show {resultCount} {resultCount === 1 ? "book" : "books"}
 					</Button>
 				</DrawerFooter>

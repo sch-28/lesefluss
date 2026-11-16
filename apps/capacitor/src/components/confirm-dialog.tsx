@@ -8,7 +8,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
-import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 
 export type ConfirmDialogVariant = "confirm" | "info";
@@ -53,10 +52,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					{!isInfo && <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>}
-					<AlertDialogAction
-						onClick={onConfirm}
-						className={cn(destructive && "bg-destructive text-white hover:bg-destructive/90")}
-					>
+					<AlertDialogAction onClick={onConfirm} variant={destructive ? "destructive" : "default"}>
 						{action}
 					</AlertDialogAction>
 				</AlertDialogFooter>

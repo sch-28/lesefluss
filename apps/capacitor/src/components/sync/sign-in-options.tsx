@@ -36,7 +36,7 @@ function PrimaryOption({ icon: Icon, title, description, onClick, disabled, erro
 		<div className="flex flex-col gap-2">
 			<Button
 				type="button"
-				className="h-auto min-h-12 w-full whitespace-normal py-2 text-base"
+				className="h-auto min-h-10 w-full whitespace-normal py-2 md:w-fit"
 				aria-describedby={descriptionId}
 				onClick={onClick}
 				disabled={disabled}
@@ -197,7 +197,7 @@ export function SignInOptions({
 				<Button
 					type="button"
 					variant="ghost"
-					className="h-auto min-h-11 max-w-full whitespace-normal text-center"
+					className="h-auto min-h-10 max-w-full whitespace-normal text-center"
 					aria-expanded={isEmailFormOpen}
 					aria-controls={isEmailFormOpen ? `${id}-email-form` : undefined}
 					disabled={isPending}
@@ -265,7 +265,7 @@ export function SignInOptions({
 							then sign in here with the new password.
 						</p>
 					) : (
-						<Button type="submit" className="w-full" disabled={!canSubmit}>
+						<Button type="submit" className="w-full md:w-fit" disabled={!canSubmit}>
 							{submitLabel}
 						</Button>
 					)}

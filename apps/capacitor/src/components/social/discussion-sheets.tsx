@@ -52,7 +52,7 @@ export function DiscussionThreadSheet({
 							/>
 						))}
 					</div>
-					<DrawerFooter>
+					<DrawerFooter className="md:items-end">
 						<Button asChild variant="outline" onClick={onClose}>
 							<Link
 								to="/tabs/social/buddy-read/$id"
@@ -183,12 +183,17 @@ export function ShareHighlightSheet({
 						<p className="m-0 text-muted-foreground text-xs">No note.</p>
 					)}
 				</div>
-				<DrawerFooter className="flex-row gap-2">
-					<Button variant="outline" className="flex-1" disabled={share.isPending} onClick={onClose}>
+				<DrawerFooter className="flex-row gap-2 md:justify-end">
+					<Button
+						variant="outline"
+						className="flex-1 md:flex-none"
+						disabled={share.isPending}
+						onClick={onClose}
+					>
 						Cancel
 					</Button>
 					<Button
-						className="flex-1"
+						className="flex-1 md:flex-none"
 						disabled={!isOnline || share.isPending || !snippet || !highlight}
 						onClick={() =>
 							highlight &&

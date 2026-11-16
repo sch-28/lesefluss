@@ -103,7 +103,7 @@ const ConfirmPhase: React.FC<Props> = ({
 				</div>
 			)}
 
-			<Button className="w-full" disabled={!willFit} onClick={onUpload}>
+			<Button className="w-full md:ml-auto md:flex md:w-fit" disabled={!willFit} onClick={onUpload}>
 				Upload
 			</Button>
 		</div>

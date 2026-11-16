@@ -102,7 +102,23 @@ export function textLayoutProblems(page: Page, rootSelector = "body"): Promise<s
 			return null;
 		};
 
-		type Run = { el: HTMLElement; rect: DOMRect; label: string };
+		// The part of a line its scrollers leave on screen: a line half scrolled out
+		// under a header beside the scroller is cut there, not drawn over the header.
+		const visiblePart = (r: DOMRect, el: Element): DOMRect => {
+			let { left, top, right, bottom } = r;
+			for (let e = el.parentElement; e; e = e.parentElement) {
+				const s = style(e);
+				if (!isScroll(s.overflowX) && !isScroll(s.overflowY)) continue;
+				const b = e.getBoundingClientRect();
+				left = Math.max(left, b.left);
+				top = Math.max(top, b.top);
+				right = Math.min(right, b.right);
+				bottom = Math.min(bottom, b.bottom);
+			}
+			return new DOMRect(left, top, right - left, bottom - top);
+		};
+
+		type Run = { el: HTMLElement; rect: DOMRect; seen: DOMRect; label: string };
 		const runs: Run[] = [];
 		const truncated = new Set<Element>();
 		const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -129,7 +145,7 @@ export function textLayoutProblems(page: Page, rootSelector = "body"): Promise<s
 			for (const rect of range.getClientRects()) {
 				if (rect.width === 0 || rect.height === 0) continue;
 				if (underBar(rect, el) || isScrolledAway(rect, el)) continue;
-				runs.push({ el, rect, label });
+				runs.push({ el, rect, seen: visiblePart(rect, el), label });
 			}
 		}
 
@@ -159,8 +175,8 @@ export function textLayoutProblems(page: Page, rootSelector = "body"): Promise<s
 			for (let j = i + 1; j < runs.length; j++) {
 				// A run's own lines may touch under tight leading; that is not a collision.
 				if (runs[i].el === runs[j].el) continue;
-				const a = runs[i].rect;
-				const b = runs[j].rect;
+				const a = runs[i].seen;
+				const b = runs[j].seen;
 				const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
 				const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
 				if (x > 2 && y > 2) problems.push(`overlap: ${runs[i].label} / ${runs[j].label}`);

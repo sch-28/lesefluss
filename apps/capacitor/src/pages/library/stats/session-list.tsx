@@ -400,12 +400,12 @@ export function SelectionBar({
 			data-toast-clear
 			className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card pb-[var(--safe-bottom)] md:inset-x-auto md:bottom-6 md:left-[calc(50%+var(--side-nav-w)/2)] md:-translate-x-1/2 md:rounded-xl md:border md:pb-0 md:shadow-lg"
 		>
-			<div className="flex h-[var(--tab-bar-h)] items-center gap-2 px-3 md:h-12">
+			<div className="flex h-[var(--tab-bar-h)] items-center gap-2 px-3 md:h-12 md:justify-end">
 				{onSameBook && (
 					<Button
 						variant="ghost"
 						size="sm"
-						className="flex-1"
+						className="flex-1 md:flex-none"
 						disabled={count === 0}
 						onClick={onSameBook}
 					>
@@ -415,7 +415,7 @@ export function SelectionBar({
 				<Button
 					variant="destructive"
 					size="sm"
-					className="flex-1"
+					className="flex-1 md:flex-none"
 					disabled={count === 0}
 					onClick={onDelete}
 				>

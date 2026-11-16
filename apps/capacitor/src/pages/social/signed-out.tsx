@@ -44,8 +44,7 @@ export function SignedOutSocial({
 			{SYNC_ENABLED ? (
 				<>
 					<Button
-						size="lg"
-						className="mt-6 h-12 w-full rounded-xl"
+						className="mt-6 w-full md:mx-auto md:flex md:w-fit"
 						onClick={signIn}
 						disabled={isStarting}
 					>

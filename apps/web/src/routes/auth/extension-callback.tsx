@@ -92,7 +92,7 @@ function ExtensionCallback() {
 				<p className="mt-2 text-muted-foreground text-sm">
 					If the extension doesn't continue automatically, tap the button below.
 				</p>
-				<Button asChild className="mt-6 w-full" size="lg">
+				<Button asChild className="mt-6 w-full">
 					<a href={callbackUrl}>Continue sign-in</a>
 				</Button>
 			</div>

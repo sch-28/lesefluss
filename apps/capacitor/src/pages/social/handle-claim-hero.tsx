@@ -40,8 +40,7 @@ export function HandleClaimHero({
 							confirm.
 						</p>
 						<Button
-							size="lg"
-							className="mt-5 h-12 w-full rounded-xl text-[15px]"
+							className="mt-5 w-full md:mx-auto md:flex md:w-fit"
 							onClick={() => setIsClaiming(true)}
 						>
 							<AtSign /> Pick your handle

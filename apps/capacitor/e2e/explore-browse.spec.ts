@@ -149,7 +149,7 @@ test("a tag on a book opens results for that tag, restored on reload and back", 
 test("facet chips add tags and active chips remove them", async ({ page }) => {
 	const { searches } = await mockCatalog(page);
 	await page.goto("/tabs/explore?tags=ghost-stories");
-	await expect(page.getByText("Alpha Ghosts")).toBeVisible();
+	await expect(page.getByRole("button", { name: /^Alpha Ghosts/ })).toBeVisible();
 
 	await page.getByRole("button", { name: "Add tag Romance" }).click();
 	await page.waitForURL(/tags=ghost-stories%2Cromance|tags=ghost-stories,romance/);
@@ -157,7 +157,7 @@ test("facet chips add tags and active chips remove them", async ({ page }) => {
 
 	await page.getByRole("button", { name: "Remove tag Ghost stories" }).click();
 	await page.waitForURL((url) => url.searchParams.get("tags") === "romance");
-	await expect(page.getByText("Gamma Romance")).toBeVisible();
+	await expect(page.getByRole("button", { name: /^Gamma Romance/ })).toBeVisible();
 });
 
 test("the search query is in the URL, survives a detail round trip and becomes a recent search", async ({

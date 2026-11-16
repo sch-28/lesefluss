@@ -11,7 +11,7 @@ export function InviteAppCallToAction({ token }: { token: string }) {
 				Friends, shared books and buddy reads live in the Lesefluss app.
 			</p>
 			{isAndroid && (
-				<Button asChild variant="outline" className="h-11 w-full rounded-xl">
+				<Button asChild variant="outline" className="w-full">
 					<a href={appInviteIntentUrl(token)}>Open in Lesefluss</a>
 				</Button>
 			)}

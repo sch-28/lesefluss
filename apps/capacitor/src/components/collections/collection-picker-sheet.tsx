@@ -299,11 +299,11 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 								}}
 							/>
 						</InputHitArea>
-						<div className="flex gap-2 md:pointer-fine:justify-end">
+						<div className="flex gap-2 md:justify-end">
 							{offersCollection && (
 								<Button
 									variant="outline"
-									className="flex-1 md:pointer-fine:flex-none"
+									className="flex-1 md:flex-none"
 									disabled={!draft.trim()}
 									onClick={createCollection}
 								>
@@ -313,7 +313,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 							{offersSeries && (
 								<Button
 									variant="outline"
-									className="flex-1 md:pointer-fine:flex-none"
+									className="flex-1 md:flex-none"
 									disabled={!normalizeSeriesKey(draft)}
 									onClick={createSeries}
 								>

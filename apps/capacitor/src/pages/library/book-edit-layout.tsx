@@ -105,17 +105,13 @@ export const BookEditLayout: React.FC<Props> = ({
 		<>
 			<Button
 				variant="outline"
-				className="h-11 flex-1 md:h-9 md:flex-none"
+				className="flex-1 md:flex-none"
 				onClick={onCancel}
 				disabled={isBusy}
 			>
 				{cancelLabel}
 			</Button>
-			<Button
-				className="h-11 flex-1 md:h-9 md:flex-none"
-				onClick={onSave}
-				disabled={!canSave || isBusy}
-			>
+			<Button className="flex-1 md:flex-none" onClick={onSave} disabled={!canSave || isBusy}>
 				{isSaving && <Loader2 className="size-4 animate-spin" />}
 				{saveLabel}
 			</Button>

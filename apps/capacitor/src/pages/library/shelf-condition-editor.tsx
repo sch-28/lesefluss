@@ -117,7 +117,7 @@ const MoveStrip: React.FC<{ id: string; editing: Editing; label: string }> = ({
 				<Button
 					key={name}
 					type="button"
-					size="xs"
+					size="sm"
 					variant="outline"
 					disabled={next === root}
 					onClick={() => setRoot(next)}
@@ -217,7 +217,7 @@ const GroupTools: React.FC<{ group: DraftGroup; editing: Editing }> = ({ group, 
 		<div className="flex gap-1.5" {...dropHandlers(editing, group.id, group.items.length)}>
 			<Button
 				type="button"
-				size="xs"
+				size="sm"
 				variant="ghost"
 				onClick={() => setRoot(append(root, group.id, newCondition()))}
 			>
@@ -227,7 +227,7 @@ const GroupTools: React.FC<{ group: DraftGroup; editing: Editing }> = ({ group, 
 			{canAddGroup(root, group.id) && (
 				<Button
 					type="button"
-					size="xs"
+					size="sm"
 					variant="ghost"
 					onClick={() => setRoot(append(root, group.id, newGroup()))}
 				>

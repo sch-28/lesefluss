@@ -124,8 +124,7 @@ function SessionDetailForm({
 
 			<div className="flex gap-2 pt-1">
 				<Button
-					variant="ghost"
-					className="text-destructive hover:text-destructive"
+					variant="destructive"
 					onClick={() => {
 						onClose();
 						onDelete(session);

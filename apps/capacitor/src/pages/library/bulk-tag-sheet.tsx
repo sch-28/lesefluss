@@ -174,12 +174,12 @@ const BulkTagSheet: React.FC<Props> = ({
 					})}
 				</div>
 
-				<div className="flex gap-2 border-border border-t p-4">
-					<Button variant="outline" className="flex-1" onClick={onClose}>
+				<div className="flex gap-2 border-border border-t p-4 md:justify-end">
+					<Button variant="outline" className="flex-1 md:flex-none" onClick={onClose}>
 						Cancel
 					</Button>
 					<Button
-						className="flex-1"
+						className="flex-1 md:flex-none"
 						disabled={!hasPendingIntent(withDraft(intents))}
 						onClick={() => onApply(withDraft(intents))}
 					>

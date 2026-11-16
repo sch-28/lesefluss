@@ -18,8 +18,8 @@ import SyncStep from "./steps/sync";
 import ThemeStep from "./steps/theme";
 import WelcomeStep from "./steps/welcome";
 
-/** The height of a size="lg" button. */
-const SECONDARY_SLOT = "h-9";
+/** The height of a button. */
+const SECONDARY_SLOT = "h-10";
 
 const Onboarding: React.FC = () => {
 	const router = useRouter();
@@ -127,9 +127,8 @@ const Onboarding: React.FC = () => {
 							))}
 						</div>
 						<Button
-							size="lg"
 							variant={primary?.outline ? "outline" : "default"}
-							className="w-full"
+							className="w-full md:mx-auto md:flex md:w-fit"
 							onClick={primary?.onClick ?? next}
 							disabled={primary?.disabled}
 						>
@@ -138,9 +137,8 @@ const Onboarding: React.FC = () => {
 						{/* An empty slot where a step has no second action keeps the footer one height. */}
 						{secondary ? (
 							<Button
-								size="lg"
 								variant="outline"
-								className="w-full"
+								className="w-full md:mx-auto md:flex md:w-fit"
 								onClick={secondary.onClick}
 								disabled={secondary.disabled}
 							>

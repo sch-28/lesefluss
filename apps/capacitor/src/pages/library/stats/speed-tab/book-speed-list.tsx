@@ -88,7 +88,7 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 			)}
 			{!showAll && rows.length > BOOK_LIST_PREVIEW && (
 				<div className="mt-2 flex justify-center">
-					<Button variant="outline" className="h-11" onClick={() => setShowAll(true)}>
+					<Button variant="outline" onClick={() => setShowAll(true)}>
 						Show all {rows.length} books
 					</Button>
 				</div>
