@@ -72,20 +72,45 @@ export function WebLimitsLine() {
 	);
 }
 
+const SETTLE_MS = 1500;
+const USER_SCROLL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+
+/**
+ * Scrolls `el` into view and keeps it there while the page settles: the router's
+ * scroll handling runs after this card mounts, and the sections above it grow as
+ * their queries resolve. Stops at once when the reader scrolls themselves.
+ */
+export function keepInView(el: HTMLElement, ms: number): () => void {
+	let frame = 0;
+	const scroll = () => {
+		cancelAnimationFrame(frame);
+		frame = requestAnimationFrame(() => el.scrollIntoView({ block: "start" }));
+	};
+	const container = el.closest<HTMLElement>("[data-scroll-restoration-id]") ?? document.body;
+	const observer = new ResizeObserver(scroll);
+	for (const child of Array.from(container.children)) observer.observe(child);
+	observer.observe(container);
+	const stop = () => {
+		clearTimeout(timer);
+		cancelAnimationFrame(frame);
+		observer.disconnect();
+		for (const type of USER_SCROLL_EVENTS) window.removeEventListener(type, stop, true);
+	};
+	for (const type of USER_SCROLL_EVENTS) window.addEventListener(type, stop, true);
+	const timer = setTimeout(stop, ms);
+	scroll();
+	return stop;
+}
+
 export function OnTheWebCard() {
 	const ref = useRef<HTMLDivElement>(null);
 
-	// The Settings root renders a spinner first, so the router's own hash scroll
-	// can run before this card exists, and its scroll-to-top runs after this
-	// effect. A frame later both are done.
 	useEffect(() => {
 		if (window.location.hash !== `#${ON_THE_WEB_HASH}`) return;
-		const frame = requestAnimationFrame(() => {
-			ref.current?.scrollIntoView();
-			// Dropped so a later return to Settings keeps its restored scroll position.
-			history.replaceState(history.state, "", window.location.pathname + window.location.search);
-		});
-		return () => cancelAnimationFrame(frame);
+		// Dropped so a later return to Settings keeps its restored scroll position.
+		history.replaceState(history.state, "", window.location.pathname + window.location.search);
+		const card = ref.current;
+		return card ? keepInView(card, SETTLE_MS) : undefined;
 	}, []);
 
 	return (

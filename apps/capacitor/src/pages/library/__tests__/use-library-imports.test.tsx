@@ -4,8 +4,12 @@ import { type Rendered, render } from "../../../test/render";
 
 const parsed = { payload: { title: "Dune" }, extras: {} };
 const stage = vi.fn();
-const mutation = () => ({
-	mutateAsync: async () => parsed,
+let failWith: Record<string, string> = {};
+const mutation = (name: string) => () => ({
+	mutateAsync: async () => {
+		if (failWith[name]) throw new Error(failWith[name]);
+		return parsed;
+	},
 	mutate: () => {},
 	reset: () => {},
 	isPending: false,
@@ -14,10 +18,11 @@ const mutation = () => ({
 
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useImportBook: mutation,
-		useImportBookFromClipboard: mutation,
-		useImportBookFromUrl: mutation,
-		useImportSerialFromUrl: mutation,
+		useImportBook: mutation("file"),
+		useImportBookFromClipboard: mutation("clipboard"),
+		useImportBookFromUrl: mutation("url"),
+		useImportBookFromText: mutation("text"),
+		useImportSerialFromUrl: mutation("serial"),
 	},
 }));
 vi.mock("../../../contexts/import-staging-context", () => ({
@@ -36,6 +41,7 @@ const Probe = ({ target }: { target?: string }) => {
 afterEach(() => {
 	rendered.unmount();
 	stage.mockClear();
+	failWith = {};
 });
 
 describe("useLibraryImports", () => {
@@ -49,5 +55,28 @@ describe("useLibraryImports", () => {
 		rendered = await render(<Probe />);
 		await act(async () => imports.importFromClipboard());
 		expect(stage).toHaveBeenCalledWith(parsed);
+	});
+
+	it("opens a text box on the web when the clipboard is empty or blocked, and imports what is typed", async () => {
+		failWith = { clipboard: "EMPTY" };
+		rendered = await render(<Probe />);
+		await act(async () => imports.importFromClipboard());
+		expect(stage).not.toHaveBeenCalled();
+		expect(imports.pasteTextOpen).toBe(true);
+		await act(async () => imports.importFromText("Some text"));
+		expect(stage).toHaveBeenCalledWith(parsed);
+		expect(imports.pasteTextOpen).toBe(false);
+	});
+
+	it("keeps a failed link import's error for the URL dialog, not the global alert", async () => {
+		failWith = { url: "INVALID_URL" };
+		rendered = await render(<Probe />);
+		const onSuccess = vi.fn();
+		await act(async () => imports.importFromUrl("not a link", { onSuccess }));
+		expect(onSuccess).not.toHaveBeenCalled();
+		expect(imports.urlError).toContain("doesn't look like a link");
+		expect(imports.errorMessage).toBeNull();
+		act(() => imports.clearUrlError());
+		expect(imports.urlError).toBeNull();
 	});
 });

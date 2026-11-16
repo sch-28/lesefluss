@@ -9,6 +9,9 @@ import { EntryDialog } from "../../components/entry-dialog";
 interface PasteUrlModalProps {
 	isOpen: boolean;
 	isImporting: boolean;
+	/** Why the last import failed, with what to try; shown under the field. */
+	error: string | null;
+	onClearError: () => void;
 	onClose: () => void;
 	onSubmit: (url: string) => void;
 }
@@ -16,6 +19,8 @@ interface PasteUrlModalProps {
 const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 	isOpen,
 	isImporting,
+	error,
+	onClearError,
 	onClose,
 	onSubmit,
 }) => {
@@ -36,7 +41,10 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 		<EntryDialog
 			open={isOpen}
 			onOpenChange={(open) => {
-				if (!open) onClose();
+				if (!open) {
+					onClearError();
+					onClose();
+				}
 			}}
 			title="Import from URL"
 			description="Paste an article link or a supported web novel URL from Royal Road, ScribbleHub, Archive of Our Own, or Wuxiaworld."
@@ -60,13 +68,28 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 						spellCheck={false}
 						enterKeyHint="go"
 						aria-label="Book or article URL"
+						aria-invalid={error ? true : undefined}
+						aria-describedby={error ? "url-import-error" : undefined}
 						placeholder="https://www.royalroad.com/fiction/..."
 						value={value}
-						onChange={(e) => setValue(e.target.value)}
+						onChange={(e) => {
+							setValue(e.target.value);
+							if (error) onClearError();
+						}}
 						disabled={isImporting}
 					/>
 				</InputHitArea>
-				<Button type="submit" disabled={!canSubmit} className="w-full">
+				{error && (
+					<p
+						id="url-import-error"
+						role="alert"
+						data-testid="url-import-error"
+						className="m-0 text-destructive text-sm"
+					>
+						{error}
+					</p>
+				)}
+				<Button type="submit" disabled={!canSubmit} className="w-full md:ml-auto md:w-auto">
 					{isImporting ? <Loader2 className="animate-spin" /> : null}
 					{isImporting ? "Importing..." : "Import"}
 				</Button>

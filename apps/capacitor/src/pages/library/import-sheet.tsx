@@ -7,6 +7,8 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import type React from "react";
+import { ActionSheet } from "../../components/action-sheet";
+import { FINE_POINTER_QUERY, useMediaQuery } from "../../hooks/use-media-query";
 import { batchPickerKind } from "../../services/book-import";
 import { BATCH_IMPORT_COPY } from "./batch-import/copy";
 
@@ -72,6 +74,25 @@ const ImportSheet: React.FC<ImportSheetProps> = ({
 		onClose();
 		handlers[key]();
 	};
+	const isFinePointer = useMediaQuery(FINE_POINTER_QUERY);
+
+	if (isFinePointer) {
+		return (
+			<ActionSheet
+				open={isOpen}
+				onOpenChange={(open) => {
+					if (!open) onClose();
+				}}
+				title="Add a book"
+				items={SOURCES.map((s) => ({
+					label: s.title,
+					hint: s.subtitle,
+					icon: s.icon,
+					onSelect: handlers[s.key],
+				}))}
+			/>
+		);
+	}
 
 	return (
 		<Drawer

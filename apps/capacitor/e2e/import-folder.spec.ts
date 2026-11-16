@@ -30,7 +30,7 @@ async function writeLibrary(
 async function openFolderPicker(page: Page) {
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Import folder" }).click();
+	await page.getByRole("menuitem", { name: /^Import folder/ }).click();
 	return { chooser: await chooserPromise };
 }
 

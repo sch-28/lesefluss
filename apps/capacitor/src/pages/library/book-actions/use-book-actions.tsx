@@ -31,12 +31,14 @@ import type { Book } from "../../../services/db/schema";
 import { SYNC_ENABLED } from "../../../services/sync";
 import { getServerContentIds } from "../../../services/sync/server-content-cache";
 import { shareBlockerFor } from "../book-buddy-read";
+import { openReaderLabel } from "../open-reader-label";
 import {
 	type BookActionId,
 	type BookActionSurface,
 	bookActionIds,
 	omitsDestructive,
 	opensReader,
+	seriesActionLabel,
 } from "./book-action-items";
 import { BookActionsSheet } from "./book-actions-sheet";
 
@@ -102,6 +104,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 	const [deleteBook, setDeleteBook] = useState<Book | null>(null);
 	const pickerBooks = useMemo(() => (picker ? [picker.book] : []), [picker]);
 
+	const { data: seriesMemberships } = queryHooks.useSeriesMemberships();
 	const { data: cloudStorage } = useCloudStorage(canShare);
 	const { data: serverContentIds } = useQuery({
 		queryKey: syncKeys.serverContentIds,
@@ -116,7 +119,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 			? {
 					kind: "item",
 					id: "open",
-					label: "Continue reading",
+					label: menuOpenLabel(book),
 					icon: BookOpen,
 					onSelect: () => go(`/tabs/reader/${book.id}`),
 				}
@@ -173,7 +176,11 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 						},
 					];
 				case "series":
-					return [item(id, "Add to series…", Layers, () => setPicker({ book, kind: "series" }))];
+					return [
+						item(id, seriesActionLabel(seriesMemberships?.has(book.id) ?? false), Layers, () =>
+							setPicker({ book, kind: "series" }),
+						),
+					];
 				case "collection":
 					return [
 						item(id, "Add to collection…", FolderPlus, () =>
@@ -279,4 +286,10 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 
 function item(id: string, label: string, icon: LucideIcon, onSelect: () => void): BookActionItem {
 	return { kind: "item", id, label, icon, onSelect };
+}
+
+/** The menu's reader entry, worded like the detail page's main button. */
+export function menuOpenLabel(book: Pick<Book, "wordPosition" | "wordCount" | "finishedAt">) {
+	const { label } = openReaderLabel(book, [], null);
+	return label === "Continue" ? "Continue reading" : label;
 }

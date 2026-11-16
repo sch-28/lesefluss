@@ -1,13 +1,17 @@
 import { Button } from "@lesefluss/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 import { Cloud, CloudCheck, LogOut, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { CloudStorageSection } from "@/components/sync/cloud-storage";
 import { DangerZone } from "@/components/sync/danger-zone";
 import { DeleteAccountRow } from "@/components/sync/delete-account";
 import { SignInPanel } from "@/components/sync/sign-in-panel";
+import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
 import { IS_WEB_BUILD } from "@/services/sync";
@@ -29,6 +33,12 @@ function SyncSettings() {
 		useSyncContext();
 	const { data: settings } = queryHooks.useSettings();
 	const saveSettings = queryHooks.useSaveSettings();
+	const [confirmSignOut, setConfirmSignOut] = useState(false);
+
+	const signOut = async () => {
+		await logout();
+		toast.success("Signed out. Your books stay on this device.");
+	};
 
 	return (
 		<div className="bg-background">
@@ -53,6 +63,25 @@ function SyncSettings() {
 									{isSyncing ? "Syncing..." : "Sync now"}
 								</Button>
 							</div>
+							{!IS_WEB_BUILD && (
+								<>
+									<NavRow
+										icon={LogOut}
+										title="Sign out"
+										subtitle="Stops syncing on this device. Your books stay here."
+										onClick={() => setConfirmSignOut(true)}
+										inPlace
+									/>
+									<ConfirmDialog
+										open={confirmSignOut}
+										onOpenChange={setConfirmSignOut}
+										title="Sign out?"
+										description={`This device stops syncing with ${userEmail ?? "your account"}. Your books and progress stay here.`}
+										confirmLabel="Sign out"
+										onConfirm={signOut}
+									/>
+								</>
+							)}
 						</SettingsSection>
 
 						<CloudStorageSection />
@@ -85,19 +114,6 @@ function SyncSettings() {
 						<DangerZone isSynced>
 							<DeleteAccountRow />
 						</DangerZone>
-
-						{!IS_WEB_BUILD && (
-							<SettingsSection>
-								<button
-									type="button"
-									onClick={logout}
-									className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
-								>
-									<LogOut className="size-5 text-muted-foreground" />
-									<span className="font-medium text-foreground text-sm">Sign out</span>
-								</button>
-							</SettingsSection>
-						)}
 					</>
 				) : (
 					<>

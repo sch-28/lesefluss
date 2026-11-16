@@ -8,8 +8,13 @@ vi.mock("@/services/app-update", async () => {
 	return { appUpdateReady: createFlag(), applyUpdate: () => applyUpdate() };
 });
 
+let lastReadBookId: string | null = "b1";
+vi.mock("@/services/db/hooks", () => ({
+	queryHooks: { useLastReadBookId: () => ({ data: lastReadBookId }) },
+}));
+
 import { appUpdateReady } from "@/services/app-update";
-import { tabBarHidden } from "../app-shell/tab-bar-visibility";
+import { addButtonShown, tabBarHidden } from "../app-shell/tab-bar-visibility";
 import { AppUpdateBar } from "../app-update-bar";
 
 let view: Rendered | undefined;
@@ -19,7 +24,9 @@ afterEach(() => {
 	act(() => {
 		appUpdateReady.set(false);
 		tabBarHidden.set(false);
+		addButtonShown.set(false);
 	});
+	lastReadBookId = "b1";
 });
 
 const bar = () => document.querySelector('[role="status"]');
@@ -62,11 +69,27 @@ describe("AppUpdateBar", () => {
 		expect(bar()).not.toBeNull();
 	});
 
-	it("sits above the library's add button and lets clicks through around its card", async () => {
+	it("does not promise a saved place before any book was read", async () => {
+		lastReadBookId = null;
+		appUpdateReady.set(true);
+		view = await render(<AppUpdateBar />);
+		expect(bar()?.textContent).toContain("A new version is ready");
+		expect(bar()?.textContent).not.toContain("Your place is saved.");
+	});
+
+	it("lifts above the library's add button only while it is shown", async () => {
+		appUpdateReady.set(true);
+		view = await render(<AppUpdateBar />);
+		const lifted = "bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+5rem)]";
+		expect((bar() as HTMLElement).className).not.toContain(lifted);
+		act(() => addButtonShown.set(true));
+		expect((bar() as HTMLElement).className).toContain(lifted);
+	});
+
+	it("lets clicks through around its card", async () => {
 		appUpdateReady.set(true);
 		view = await render(<AppUpdateBar />);
 		const wrapper = bar() as HTMLElement;
-		expect(wrapper.className).toContain("bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+5rem)]");
 		expect(wrapper.className).toContain("pointer-events-none");
 		expect((wrapper.firstElementChild as HTMLElement).className).toContain("pointer-events-auto");
 	});

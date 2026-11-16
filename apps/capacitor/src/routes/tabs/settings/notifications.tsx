@@ -9,6 +9,7 @@ import { SignInPanel } from "@/components/sync/sign-in-panel";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { OfflineNotice } from "@/pages/social/social-gate";
+import { isPushSupported } from "@/services/push";
 import { openPushOffer, usePushPermission } from "@/services/push/offer";
 import { usePushPreferences, useUpdatePushPreferences } from "@/services/push/preferences";
 
@@ -118,7 +119,14 @@ function NotificationSettings() {
 	const { isLoggedIn, isSessionResolved } = useSyncContext();
 
 	let body: React.ReactNode;
-	if (!isSessionResolved) {
+	if (!isPushSupported()) {
+		body = (
+			<p className="px-1 text-muted-foreground text-sm">
+				Notifications need the Android app. Here, new requests, invites and replies wait in your
+				inbox.
+			</p>
+		);
+	} else if (!isSessionResolved) {
 		body = <Spinner />;
 	} else if (!isLoggedIn) {
 		body = (

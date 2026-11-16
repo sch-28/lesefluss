@@ -34,10 +34,12 @@ const BooksStep: React.FC = () => {
 		if (!CATALOG_ENABLED) next();
 	}, [next]);
 
+	// Offline the step is optional, so it says so calmly instead of showing an error
+	// mid-setup; a failure while online keeps its Retry. React Query pauses the fetch offline.
+	const offline =
+		landingQuery.fetchStatus === "paused" || (landingQuery.isError && !navigator.onLine);
 	useEffect(() => {
-		if (landingQuery.isError) {
-			log.warn("onboarding", "landing failed:", landingQuery.error);
-		}
+		if (landingQuery.isError) log.warn("onboarding", "landing failed:", landingQuery.error);
 	}, [landingQuery.isError, landingQuery.error]);
 
 	useEffect(() => {
@@ -101,7 +103,11 @@ const BooksStep: React.FC = () => {
 				description="Tap any that catch your eye and we'll add them to your library. Optional."
 			/>
 
-			{landingQuery.isPending ? (
+			{offline && !landingQuery.data ? (
+				<p className="mt-6 text-muted-foreground text-sm" data-testid="books-offline">
+					You're offline. You can add classics later from Explore.
+				</p>
+			) : landingQuery.isPending ? (
 				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-hidden>
 					{Array.from({ length: 6 }).map((_, i) => (
 						<div

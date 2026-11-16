@@ -43,3 +43,25 @@ describe("onboarding books step", () => {
 		expect(view.text()).toContain("Frankenstein");
 	});
 });
+
+describe("onboarding books step offline", () => {
+	it("says it is offline, without an error or a skip the Back button would undo", async () => {
+		getLanding.mockRejectedValue(new TypeError("Failed to fetch"));
+		const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+		try {
+			view = await render(
+				<OnboardingFooterContext.Provider value={footer}>
+					<BooksStep />
+				</OnboardingFooterContext.Provider>,
+			);
+			await flush();
+			expect(view.container.querySelector('[role="alert"]')).toBeNull();
+			expect(view.container.querySelector("[data-testid=books-offline]")?.textContent).toContain(
+				"You're offline",
+			);
+			expect(footer.next).not.toHaveBeenCalled();
+		} finally {
+			onLine.mockRestore();
+		}
+	});
+});

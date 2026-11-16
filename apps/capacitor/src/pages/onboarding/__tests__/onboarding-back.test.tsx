@@ -64,3 +64,33 @@ describe("onboarding Android back", () => {
 		expect(seen).toEqual([true, true, true, true, true, true, false]);
 	});
 });
+
+describe("onboarding layout", () => {
+	it("keeps the step and the footer's rows in place on every step", async () => {
+		view = await render(<Onboarding />);
+		const rows: string[][] = [];
+		for (let i = 0; i < 7; i++) {
+			const step = view.container.querySelector("[data-testid=onboarding-step]");
+			expect(step?.className, `step ${i}`).toContain("pt-[min(8dvh,4rem)]");
+			const footer = view.container.querySelector("main")?.nextElementSibling?.firstElementChild;
+			rows.push(
+				[...(footer?.children ?? [])].map((el) =>
+					el.tagName === "BUTTON"
+						? "button"
+						: el.classList.contains("invisible")
+							? "hidden dots"
+							: el.getAttribute("data-testid") === "onboarding-secondary-slot"
+								? "empty slot"
+								: "dots",
+				),
+			);
+			if (i < 6) await click(view.getButton("Continue"));
+		}
+		expect(rows[0]).toEqual(["hidden dots", "button", "empty slot"]);
+		for (const row of rows.slice(1)) {
+			expect(row[0]).toBe("dots");
+			expect(row).toHaveLength(3);
+			expect(row[1]).toBe("button");
+		}
+	});
+});

@@ -10,7 +10,7 @@ import { reader } from "./page-objects/reader";
  */
 
 const palette = (page: Page) => page.getByTestId("command-palette");
-const importSheet = (page: Page) => page.getByRole("button", { name: /Import file/ });
+const importSheet = (page: Page) => page.getByRole("menuitem", { name: /Import file/ });
 
 async function pressPrevented(page: Page, key: string): Promise<boolean> {
 	const finalKey = key.split("+").pop() ?? key;

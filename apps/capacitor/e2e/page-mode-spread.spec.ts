@@ -97,6 +97,18 @@ async function wordsPerPage(page: Page): Promise<{ left: number[]; right: number
 	});
 }
 
+/** The first of `words` whose next two words sit on its line: a drag back across a
+ *  line break would pull the page along a whole column. */
+async function wordWithTwoMoreOnItsLine(page: Page, words: number[]): Promise<number> {
+	const word = await page.evaluate((candidates) => {
+		const top = (w: number) =>
+			document.querySelector(`.page-view span[data-word="${w}"]`)?.getBoundingClientRect().top;
+		return candidates.find((w) => top(w) !== undefined && top(w) === top(w + 2));
+	}, words);
+	if (word === undefined) throw new Error("No word with two more on its line");
+	return word;
+}
+
 /** Two pages side by side: the right half's text all follows the left half's. A
  *  single page's lines run across both halves, so their words interleave. */
 async function isSpreadShown(page: Page): Promise<boolean> {
@@ -258,16 +270,21 @@ test("resizing across the spread breakpoint keeps the word and does not save", a
 test("a highlight made on the right page sticks to its word", async ({ page }) => {
 	await openLongBookInPageMode(page);
 	const before = await reader.pageModeFirstVisibleWord(page);
-	const word = (await wordsPerPage(page)).right[20];
+	const word = await wordWithTwoMoreOnItsLine(page, (await wordsPerPage(page)).right.slice(20));
 	const start = await page.locator(`span[data-word="${word}"]`).boundingBox();
-	const end = await page.locator(`span[data-word="${word + 2}"]`).boundingBox();
-	if (!start || !end) throw new Error("No word boxes");
+	if (!start) throw new Error("No word box");
 
 	const y = start.y + start.height / 2;
 	await page.mouse.move(start.x + 2, y);
 	await page.mouse.down();
 	await page.mouse.move(start.x + 20, y);
-	await page.mouse.move(end.x + end.width - 2, end.y + end.height / 2, { steps: 5 });
+	// The first spread rubber-bands under a mouse drag, so word+2 moves as the
+	// pointer does: chase it until it stays under the pointer.
+	for (let i = 0; i < 6; i++) {
+		const end = await page.locator(`span[data-word="${word + 2}"]`).boundingBox();
+		if (!end) throw new Error("No end word box");
+		await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 3 });
+	}
 	await page.mouse.up();
 	expect(await reader.applyHighlight(page, "yellow")).toBe(word);
 

@@ -1,4 +1,4 @@
-import { Cloud, Loader2, Users } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect } from "react";
 import { HandleClaimStep } from "../../../components/social/handle-claim-step";
@@ -31,7 +31,6 @@ function SignInStep() {
 	return (
 		<div className="flex flex-col">
 			<StepHeader
-				icon={Cloud}
 				title="Sync across devices?"
 				description="Sign in to keep your library, progress and highlights in step across phones and web, and to read books together with friends. Optional, you can do this later in Settings."
 			/>
@@ -54,7 +53,6 @@ function HandleStep() {
 		<div className="flex flex-col">
 			<div className="mb-6">
 				<StepHeader
-					icon={Users}
 					title="Pick a handle"
 					description="Friends will know you by it when you add each other and read books together. Optional, you can set it later in Social."
 				/>

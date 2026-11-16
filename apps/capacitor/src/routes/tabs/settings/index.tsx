@@ -26,6 +26,7 @@ import {
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
+import { AppVersionLine } from "@/components/settings/app-version";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { OnTheWebCard } from "@/components/web-limitations";
@@ -36,6 +37,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
+import { areRemindersSupported } from "@/services/goal-reminders";
 import { isPushSupported } from "@/services/push";
 import { SYNC_ENABLED } from "@/services/sync";
 import {
@@ -133,7 +135,7 @@ function SettingsLanding() {
 					<NavRow
 						icon={Target}
 						title="Goals"
-						subtitle="Daily goals · Reminders"
+						subtitle={areRemindersSupported() ? "Daily goals · Reminders" : "Daily goals"}
 						to="/tabs/settings/goals"
 					/>
 					{IS_READ_ALOUD_SUPPORTED && (
@@ -261,6 +263,7 @@ function SettingsLanding() {
 						subtitle="Fonts bundled with the reader"
 						to="/tabs/settings/licenses"
 					/>
+					<AppVersionLine />
 				</SettingsSection>
 
 				{IS_WEB && <OnTheWebCard />}

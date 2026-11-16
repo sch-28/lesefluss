@@ -31,7 +31,7 @@ interface Props {
 	onFinish: () => void;
 	skipLabel: string;
 	finishLabel: string;
-	/** Finishing sets the RSVP wpm to the dial; without it only "Use RSVP …" does. */
+	/** Finishing sets the RSVP wpm to the dial; without it only "Use … wpm for RSVP" does. */
 	applyDialOnFinish?: boolean;
 }
 

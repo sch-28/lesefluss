@@ -80,3 +80,7 @@ export function statusChoices(
 		})),
 	];
 }
+
+export function seriesActionLabel(isInSeries: boolean): string {
+	return isInSeries ? "Change series…" : "Add to series…";
+}

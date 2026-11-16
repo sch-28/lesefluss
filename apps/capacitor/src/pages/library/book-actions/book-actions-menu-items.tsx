@@ -1,5 +1,6 @@
 import {
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
@@ -7,7 +8,8 @@ import {
 import { cn } from "@lesefluss/ui/utils";
 import { Check } from "lucide-react";
 import type React from "react";
-import { statusChoices } from "./book-action-items";
+import { Fragment } from "react";
+import { isDangerAction, statusChoices } from "./book-action-items";
 import { RatingInput } from "./rating-input";
 import type { BookActionEntry } from "./use-book-actions";
 
@@ -17,19 +19,25 @@ export const BookActionsMenuItems: React.FC<{
 	itemClassName: string;
 }> = ({ entries, itemClassName }) => (
 	<>
-		{entries.map((entry) => {
+		{entries.map((entry, i) => {
 			const Icon = entry.icon;
 			if (entry.kind === "item") {
+				const startsDanger =
+					i > 0 && isDangerAction(entry.id) && !isDangerAction(entries[i - 1]?.id ?? "");
 				return (
-					<DropdownMenuItem
-						key={entry.id}
-						className={cn(itemClassName, entry.destructive && "text-destructive")}
-						disabled={entry.disabled}
-						onSelect={entry.onSelect}
-					>
-						<Icon />
-						<span>{entry.label}</span>
-					</DropdownMenuItem>
+					<Fragment key={entry.id}>
+						{startsDanger && <DropdownMenuSeparator />}
+						<DropdownMenuItem
+							className={cn(itemClassName, entry.destructive && "text-destructive")}
+							disabled={entry.disabled}
+							// After the menu has closed, so a dialog it opens does not inherit
+							// the menu's pointer-events lock on <body>.
+							onSelect={() => setTimeout(entry.onSelect, 0)}
+						>
+							<Icon />
+							<span>{entry.label}</span>
+						</DropdownMenuItem>
+					</Fragment>
 				);
 			}
 			return (

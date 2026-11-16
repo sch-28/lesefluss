@@ -1,12 +1,20 @@
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+} from "@lesefluss/ui/dropdown-menu";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { AnchorPoint, useOpenAnchor } from "../../../components/action-sheet";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import type { Book } from "../../../services/db/schema";
 import { isDangerAction, statusChoices } from "./book-action-items";
+import { BookActionsMenuItems } from "./book-actions-menu-items";
 import { RatingInput } from "./rating-input";
 import type { BookActionEntry } from "./use-book-actions";
 
@@ -21,8 +29,38 @@ type Page = "main" | "status" | "rate";
 const ROW =
 	"flex h-12 w-full items-center gap-3 rounded-md px-3 text-left text-base transition-colors hover:bg-muted disabled:opacity-50";
 
+/** The book menu: with a mouse a menu at the press or trigger (LESE-211.8), else a sheet. */
+export const BookActionsSheet: React.FC<Props> = (props) => {
+	const { book, entries, onClose } = props;
+	const { anchor, isFinePointer } = useOpenAnchor(book !== null);
+	if (!book || !anchor || !isFinePointer) return <BookActionsDrawer {...props} />;
+	return (
+		<DropdownMenu
+			open
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
+			modal
+		>
+			<AnchorPoint anchor={anchor} />
+			<DropdownMenuContent
+				data-testid="book-actions-menu"
+				align="start"
+				sideOffset={12}
+				collisionPadding={8}
+				className="w-60 p-1.5"
+				onCloseAutoFocus={(e) => e.preventDefault()}
+			>
+				<DropdownMenuLabel className="truncate">{book.title}</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				<BookActionsMenuItems entries={entries} itemClassName="py-2 text-base" />
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+};
+
 /** The book menu as a bottom sheet, with Set status and Rate as pages of it. */
-export const BookActionsSheet: React.FC<Props> = ({ book, entries, onClose }) => {
+const BookActionsDrawer: React.FC<Props> = ({ book, entries, onClose }) => {
 	const [page, setPage] = useState<Page>("main");
 	// The menu's book is a snapshot, so the stars follow the taps here.
 	const [rating, setRating] = useState<number | null>(null);

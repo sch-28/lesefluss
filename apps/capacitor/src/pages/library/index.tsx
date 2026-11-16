@@ -23,7 +23,7 @@ import { importRequest } from "../../commands/global";
 import { withKey } from "../../commands/keys";
 import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
-import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
+import { addButtonShown, tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
 import { CollectionMenuButton } from "../../components/collections/collection-actions";
@@ -74,6 +74,7 @@ import { headerControls, type LibraryViewMode } from "./header-controls";
 import ImportSheet from "./import-sheet";
 import LibraryTable from "./library-table";
 import OrderedCollectionView from "./ordered-collection-view";
+import PasteTextModal from "./paste-text-modal";
 import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
 import { SearchAutocomplete } from "./search-autocomplete";
@@ -500,6 +501,12 @@ const Library: React.FC = () => {
 		tabBarHidden.set(true);
 		return () => tabBarHidden.set(false);
 	}, [isTypingSearch]);
+	const isAddButtonShown = !selection.isSelecting && !isOrderedView;
+	useEffect(() => {
+		if (!isAddButtonShown) return;
+		addButtonShown.set(true);
+		return () => addButtonShown.set(false);
+	}, [isAddButtonShown]);
 	const [isViewOpen, setViewOpen] = useState(false);
 	const [isGroupByKeyed, setGroupByKeyed] = useState(false);
 	const isGridShown =
@@ -1009,7 +1016,7 @@ const Library: React.FC = () => {
 			    suppressing new imports mid-selection is a welcome side effect. */}
 			<button
 				type="button"
-				hidden={selection.isSelecting || isOrderedView}
+				hidden={!isAddButtonShown}
 				onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
 				disabled={imports.isImporting || isTransferring}
 				aria-label={collectionId ? "Add books" : "Add book"}
@@ -1046,8 +1053,17 @@ const Library: React.FC = () => {
 			<PasteUrlModal
 				isOpen={urlModalOpen}
 				isImporting={imports.isUrlImporting}
+				error={imports.urlError}
+				onClearError={imports.clearUrlError}
 				onClose={() => setUrlModalOpen(false)}
 				onSubmit={handleImportUrl}
+			/>
+
+			<PasteTextModal
+				isOpen={imports.pasteTextOpen}
+				isImporting={imports.isImporting}
+				onClose={imports.closePasteText}
+				onSubmit={imports.importFromText}
 			/>
 
 			{bookActions.overlays}
@@ -1069,7 +1085,7 @@ const Library: React.FC = () => {
 					if (!open) imports.resetError();
 				}}
 				variant="info"
-				title="Import Failed"
+				title="Import failed"
 				description={imports.errorMessage ?? undefined}
 			/>
 

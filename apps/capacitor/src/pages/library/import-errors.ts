@@ -39,3 +39,25 @@ export function importErrorMessage(err: unknown): string {
 	if (!(err instanceof Error)) return "Import failed";
 	return ERROR_TOASTS[err.message]?.msg ?? "Couldn't import this file";
 }
+
+const URL_ERRORS: Record<string, string> = {
+	INVALID_URL: "That doesn't look like a link. Paste the full address, starting with https://.",
+	FETCH_FAILED: "Couldn't load this page. Check the link and your connection, then try again.",
+	TOO_LARGE: "This page is too large to import. Try the link to a single chapter or article.",
+	CLOUDFLARE_CHALLENGE:
+		"This site blocked the download. Open the page in your browser, copy its text and use Paste text.",
+	NO_CHAPTERS: "No chapters found at this link. Paste the link to the story's main page.",
+};
+
+/**
+ * What the URL dialog says under its field when an import from a link failed,
+ * with what to try next; null for a cancel, which says nothing.
+ */
+export function urlImportErrorText(err: unknown): string | null {
+	const code = err instanceof Error ? err.message : "";
+	if (code === "CANCELLED") return null;
+	return (
+		URL_ERRORS[code] ??
+		"Couldn't import this page. Try another link, or copy the text and use Paste text."
+	);
+}

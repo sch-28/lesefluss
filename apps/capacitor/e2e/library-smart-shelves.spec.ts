@@ -57,7 +57,7 @@ test("a shelf's count follows the library live", async ({ page }) => {
 	await expect(shelves.getByRole("link", { name: /^Bo .*1$/ })).toBeVisible();
 
 	await page.locator('[data-book-title="Riverkeep"]').click({ button: "right" });
-	await page.getByRole("button", { name: "Delete", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 	await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
 	await expect(shelves.getByRole("link", { name: /^Bo( Pinned)?$/ })).toBeVisible();
 });

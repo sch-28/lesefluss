@@ -55,10 +55,19 @@ export function SpeedTestResult({
 	return (
 		<div data-testid="speed-test-result">
 			<SpeedGauge reading={readingWpm} dial={dial} value={String(readingWpm)} label="wpm read" />
-			<dl className="mt-4 grid grid-cols-2 gap-2 text-center">
-				<Stat label="RSVP wpm" value={rsvpWpm === null ? "–" : String(rsvpWpm)} />
-				<Stat label="Faster" value={faster > 0 ? `${faster}%` : "–"} />
-			</dl>
+			{rsvpWpm === null ? (
+				<p
+					className="m-0 mt-4 text-center text-muted-foreground text-sm"
+					data-testid="speed-test-no-rsvp"
+				>
+					You skipped the RSVP round, so the dial below starts from your reading speed.
+				</p>
+			) : (
+				<dl className="mt-4 grid grid-cols-2 gap-2 text-center">
+					<Stat label="RSVP wpm" value={String(rsvpWpm)} />
+					<Stat label="Faster" value={faster > 0 ? `${faster}%` : "–"} />
+				</dl>
+			)}
 
 			<div className="mt-4 rounded-lg border border-border p-3" data-testid="speed-test-book">
 				<div className="truncate text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
@@ -69,16 +78,20 @@ export function SpeedTestResult({
 						<dt className="text-muted-foreground text-xs">Reading</dt>
 						<dd className="font-semibold tabular-nums">{minutesLabel(readingMinutes)}</dd>
 					</div>
-					<div>
-						<dt className="text-muted-foreground text-xs">RSVP</dt>
-						<dd className="font-semibold tabular-nums">
-							{rsvpMinutes === null ? "–" : minutesLabel(rsvpMinutes)}
-						</dd>
-					</div>
-					<div>
-						<dt className="text-muted-foreground text-xs">Saved</dt>
-						<dd className="font-semibold tabular-nums">{saved >= 1 ? minutesLabel(saved) : "–"}</dd>
-					</div>
+					{rsvpMinutes !== null && (
+						<>
+							<div>
+								<dt className="text-muted-foreground text-xs">RSVP</dt>
+								<dd className="font-semibold tabular-nums">{minutesLabel(rsvpMinutes)}</dd>
+							</div>
+							<div>
+								<dt className="text-muted-foreground text-xs">Saved</dt>
+								<dd className="font-semibold tabular-nums">
+									{saved >= 1 ? minutesLabel(saved) : "–"}
+								</dd>
+							</div>
+						</>
+					)}
 				</dl>
 			</div>
 
@@ -100,10 +113,10 @@ export function SpeedTestResult({
 				>
 					{applied ? (
 						<>
-							<Check className="size-4" /> RSVP {dial} set
+							<Check className="size-4" /> RSVP set to {dial} wpm
 						</>
 					) : (
-						`Use RSVP ${dial}`
+						`Use ${dial} wpm for RSVP`
 					)}
 				</Button>
 				<Button

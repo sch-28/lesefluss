@@ -28,7 +28,7 @@ async function seedBooks(page: Page) {
 	await page.goto("/tabs/library");
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Import folder" }).click();
+	await page.getByRole("menuitem", { name: /^Import folder/ }).click();
 	await (await chooserPromise).setFiles(dir);
 	await page.getByRole("button", { name: `Import ${TITLES.length} books` }).click({
 		timeout: 20_000,
@@ -44,7 +44,7 @@ function card(page: Page, title: string) {
 
 async function enterSelectionMode(page: Page, title: string) {
 	await card(page, title).click({ button: "right" });
-	await page.getByRole("button", { name: "Select", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Select", exact: true }).click();
 	await expect(page.getByText("1 selected")).toBeVisible();
 }
 
@@ -178,5 +178,5 @@ test("Select all takes only the books the filter shows", async ({ page }) => {
 test("the … button and right-click open the per-book menu", async ({ page }) => {
 	await card(page, "Tidewater").hover();
 	await page.getByRole("button", { name: "More for Tidewater" }).click();
-	await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
+	await expect(page.getByRole("menuitem", { name: "Select", exact: true })).toBeVisible();
 });

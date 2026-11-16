@@ -113,9 +113,9 @@ describe("onboarding speed step", () => {
 			passageId: passage?.id,
 		});
 		const dial = Math.min(700, Math.max(300, Math.round((words * 1.5) / 25) * 25));
-		await click(v.getButton(`Use RSVP ${dial}`));
+		await click(v.getButton(`Use ${dial} wpm for RSVP`));
 		expect(updateSetting).toHaveBeenCalledWith("wpm", dial);
-		expect(v.getButton(/RSVP \d+ set/).disabled).toBe(true);
+		expect(v.getButton(/RSVP set to \d+ wpm/).disabled).toBe(true);
 		await click(v.getButton("Continue"));
 		expect(next).toHaveBeenCalledTimes(1);
 	});
@@ -179,7 +179,7 @@ describe("onboarding speed step", () => {
 		expect(v.text(), "a fresh passage").not.toContain(first?.read[0]);
 	});
 
-	it("applies the suggested dial on Continue, without Use RSVP", async () => {
+	it("applies the suggested dial on Continue, without Use wpm for RSVP", async () => {
 		const v = await mount();
 		await click(v.getButton("Start"));
 		await click(v.getButton(/Tap to begin/));
@@ -202,10 +202,11 @@ describe("onboarding speed step", () => {
 		await click(v.getButton("Done"));
 		await click(v.getButton("Skip round"));
 		const result = v.container.querySelector("[data-testid=speed-test-result]");
-		expect(result?.querySelector("dl")?.textContent).toMatch(/^RSVP wpm–Faster–$/);
-		expect(v.container.querySelector("[data-testid=speed-test-book]")?.textContent).toMatch(
-			/RSVP–Saved–$/,
-		);
+		expect(result?.querySelector("[data-testid=speed-test-no-rsvp]")).not.toBeNull();
+		expect(result?.textContent).not.toContain("–");
+		const book = v.container.querySelector("[data-testid=speed-test-book]")?.textContent;
+		expect(book).toContain("Reading");
+		expect(book).not.toContain("Saved");
 	});
 
 	it("shows no negative speed-up for a reader faster than RSVP", async () => {

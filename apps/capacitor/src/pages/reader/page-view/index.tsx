@@ -88,6 +88,11 @@ const TAP_THRESHOLD_PX = 8; // movement under this is a tap, not a swipe
 const SWIPE_COMMIT_FRACTION = 0.22; // swipe must cross this fraction of a page's width to commit
 const RUBBER_BAND_FACTOR = 0.4; // resistance at the absolute first/last page
 const PAGE_TRANSITION_MS = 220;
+/**
+ * Room for the opened progress bar under every page, so opening it never covers a
+ * line. Reserved for good, not on open: a re-flow on each tap would move the text.
+ */
+const PROGRESS_BAR_RESERVE = "4.75rem";
 const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
 const DRAG_HOLD_MAX_MS = 2000; // a font-load re-anchor waits at most this long for a drag
 // Without finger-follow there is no page to drag against, so a short flick must do.
@@ -299,13 +304,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// ── Derived ────────────────────────────────────────────────────────────
 	const {
 		width: viewWidth,
+		margin: pageMargin,
 		columnsPerPage,
 		columnWidth,
 		columnGap,
 		columnStride,
 		pageStride,
 	} = pageGeometry(viewport?.available ?? 0, margin);
-	const spreadWidth = Math.max(0, viewWidth - 2 * margin);
+	const spreadWidth = Math.max(0, viewWidth - 2 * pageMargin);
 	useEffect(() => {
 		onColumns?.({ stride: columnStride, width: columnWidth });
 	}, [onColumns, columnStride, columnWidth]);
@@ -827,7 +833,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const routeTap = (clientX: number): "prev" | "next" | "center" => {
 		const r = containerRef.current?.getBoundingClientRect();
 		if (!r || !isLayoutReady) return "center";
-		const xWithinSpread = clientX - r.left - margin;
+		const xWithinSpread = clientX - r.left - pageMargin;
 		if (xWithinSpread < spreadWidth * TAP_ZONE_FRACTION) return "prev";
 		if (xWithinSpread > spreadWidth * (1 - TAP_ZONE_FRACTION)) return "next";
 		return "center";
@@ -992,12 +998,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			onPointerCancel={handlePointerCancel}
 			style={{
 				position: "relative",
-				// Clear of the always-on progress line (3px over the safe area), so no
-				// line of a page sits under it. Pages re-flow on this size like on rotation.
-				height: "calc(100% - 3px - var(--safe-bottom))",
+				height: `calc(100% - ${PROGRESS_BAR_RESERVE} - var(--safe-bottom))`,
 				width: viewport ? `${viewWidth}px` : "100%",
 				margin: "0 auto",
-				padding: `0 ${margin}px`,
+				padding: `0 ${pageMargin}px`,
 				boxSizing: "border-box",
 				touchAction: "pan-y",
 				userSelect: "none",

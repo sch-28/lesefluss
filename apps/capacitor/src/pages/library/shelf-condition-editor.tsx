@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { SMART_SHELF_CONDITIONS_MAX, SMART_SHELF_NAME_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
@@ -19,7 +18,7 @@ import type React from "react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { formatKey } from "../../commands/keys";
 import { useLocalDayNow } from "../../hooks/use-local-day";
-import { useMediaQuery } from "../../hooks/use-media-query";
+import { useDesktopOverlay } from "../../hooks/use-media-query";
 import { queryHooks } from "../../services/db/hooks";
 import { ConditionRow } from "./condition-row";
 import {
@@ -536,15 +535,15 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 
 /**
  * The smart shelf condition editor: rows of field, operator and value in
- * groups that match all or any and nest. A dialog on wide web; a full-height
- * sheet in the app and on narrow web, where rows move by menu instead of drag.
+ * groups that match all or any and nest. A dialog on a wide screen with a mouse;
+ * a full-height sheet on touch, where rows move by menu instead of drag.
  * Nothing is written until Save.
  */
 export const ShelfConditionEditor: React.FC<Props> = ({ open, onOpenChange, ...props }) => {
-	const isWideWeb = useMediaQuery("(min-width: 768px)") && !Capacitor.isNativePlatform();
+	const isDesktop = useDesktopOverlay();
 	const close = () => onOpenChange(false);
 
-	if (isWideWeb) {
+	if (isDesktop) {
 		return (
 			<Dialog open={open} onOpenChange={onOpenChange}>
 				<DialogContent className="max-h-[90vh] grid-rows-[minmax(0,1fr)] sm:max-w-[780px]">

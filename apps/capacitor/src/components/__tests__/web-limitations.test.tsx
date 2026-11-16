@@ -10,7 +10,7 @@ vi.mock("@/services/tts", () => ({ IS_READ_ALOUD_SUPPORTED: true }));
 const openLink = vi.hoisted(() => vi.fn());
 vi.mock("@/utils/open-link", () => ({ openLink }));
 
-const { OnTheWebCard, WebLimitsLine } = await import("../web-limitations");
+const { OnTheWebCard, WebLimitsLine, keepInView } = await import("../web-limitations");
 
 let rendered: Rendered | undefined;
 afterEach(() => {
@@ -67,5 +67,75 @@ describe("library web limits line", () => {
 		rendered.unmount();
 		rendered = await render(<WebLimitsLine />);
 		expect(rendered.text()).toBe("");
+	});
+});
+
+describe("keepInView", () => {
+	let resized: (() => void) | undefined;
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		resized = undefined;
+	});
+
+	function setup() {
+		vi.useFakeTimers();
+		vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => setTimeout(cb, 0));
+		vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				constructor(cb: () => void) {
+					resized = cb;
+				}
+				observe() {}
+				disconnect() {
+					resized = undefined;
+				}
+			},
+		);
+		const el = document.createElement("div");
+		document.body.append(el);
+		const scrollIntoView = vi.fn();
+		el.scrollIntoView = scrollIntoView;
+		return { el, scrollIntoView };
+	}
+
+	it("scrolls the card in, again while the page above it grows, until the reader scrolls", () => {
+		const { el, scrollIntoView } = setup();
+		const stop = keepInView(el, 1500);
+		vi.advanceTimersByTime(1);
+		expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+		resized?.();
+		vi.advanceTimersByTime(1);
+		expect(scrollIntoView).toHaveBeenCalledTimes(2);
+
+		window.dispatchEvent(new Event("wheel"));
+		resized?.();
+		vi.advanceTimersByTime(1);
+		expect(scrollIntoView).toHaveBeenCalledTimes(2);
+		stop();
+		el.remove();
+	});
+
+	it("lets go once the page has settled", () => {
+		const { el, scrollIntoView } = setup();
+		keepInView(el, 1500);
+		vi.advanceTimersByTime(1500);
+		const calls = scrollIntoView.mock.calls.length;
+		resized?.();
+		vi.advanceTimersByTime(1);
+		expect(scrollIntoView).toHaveBeenCalledTimes(calls);
+		el.remove();
+	});
+});
+
+describe("On the web card from See what's different", () => {
+	it("drops the hash so a later return keeps its own scroll position", async () => {
+		history.replaceState(null, "", "/tabs/settings#on-the-web");
+		rendered = await render(<OnTheWebCard />);
+		expect(window.location.hash).toBe("");
+		expect(window.location.pathname).toBe("/tabs/settings");
 	});
 });

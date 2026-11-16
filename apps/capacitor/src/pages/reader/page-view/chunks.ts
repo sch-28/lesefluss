@@ -18,13 +18,18 @@ export const CHUNK_TARGET_WORDS = 2_000;
 export const SPREAD_MIN_WIDTH = 900;
 const SINGLE_PAGE_MAX_WIDTH = 700;
 const SPREAD_MAX_WIDTH = 1400;
+/** A spread is a book laid open: a narrow reader margin would squeeze its edges and spine. */
+export const SPREAD_MIN_MARGIN = 48;
+export const SPREAD_MIN_GUTTER = 64;
 
 export interface PageGeometry {
 	/** The page view's own width, its margins included. */
 	width: number;
+	/** The page view's horizontal padding: the reader margin, widened on a spread. */
+	margin: number;
 	columnsPerPage: 1 | 2;
 	columnWidth: number;
-	/** Each page of a spread keeps the reader margin on both sides. */
+	/** The spine of a spread: at least each page's margin on both sides. */
 	columnGap: number;
 	/** Distance between two column starts. */
 	columnStride: number;
@@ -38,11 +43,13 @@ export function pageGeometry(available: number, margin: number): PageGeometry {
 	const isSpread = available >= SPREAD_MIN_WIDTH;
 	const columnsPerPage = isSpread ? 2 : 1;
 	const width = Math.min(available, isSpread ? SPREAD_MAX_WIDTH : SINGLE_PAGE_MAX_WIDTH);
-	const columnGap = isSpread ? 2 * margin : 0;
-	const columnWidth = Math.max(0, (width - 2 * margin - columnGap) / columnsPerPage);
+	const outerMargin = isSpread ? Math.max(margin, SPREAD_MIN_MARGIN) : margin;
+	const columnGap = isSpread ? Math.max(2 * margin, SPREAD_MIN_GUTTER) : 0;
+	const columnWidth = Math.max(0, (width - 2 * outerMargin - columnGap) / columnsPerPage);
 	const columnStride = columnWidth + columnGap;
 	return {
 		width,
+		margin: outerMargin,
 		columnsPerPage,
 		columnWidth,
 		columnGap,

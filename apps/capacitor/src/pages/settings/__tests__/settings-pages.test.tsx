@@ -199,6 +199,17 @@ describe("Settings root", () => {
 		const card = view.container.querySelector("#on-the-web");
 		expect(card?.textContent).toContain("These need the Android app");
 	});
+
+	it("on the web, shows which build it is in About and promises no reminders", async () => {
+		platform.web = true;
+		view = await renderPage(settingsRoot);
+		expect(view.container.querySelector("[data-testid=app-version]")?.textContent).toMatch(
+			/^Web app, updated \d{4}-\d{2}-\d{2}$/,
+		);
+		const goals = link("/tabs/settings/goals");
+		expect(goals?.textContent).toContain("Daily goals");
+		expect(goals?.textContent).not.toContain("Reminders");
+	});
 });
 
 describe("Diagnostics page", () => {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bookActionIds, omitsDestructive, opensReader, statusChoices } from "../book-action-items";
+import {
+	bookActionIds,
+	omitsDestructive,
+	opensReader,
+	seriesActionLabel,
+	statusChoices,
+} from "../book-action-items";
 
 describe("bookActionIds", () => {
 	it("lists every action in the one order, Reset progress and Delete last", () => {
@@ -72,5 +78,12 @@ describe("statusChoices", () => {
 	it("marks the status the reader set", () => {
 		const current = statusChoices("dropped", "reading").filter((c) => c.isCurrent);
 		expect(current.map((c) => c.status)).toEqual(["dropped"]);
+	});
+});
+
+describe("seriesActionLabel", () => {
+	it("offers to change the series of a book already in one", () => {
+		expect(seriesActionLabel(true)).toBe("Change series…");
+		expect(seriesActionLabel(false)).toBe("Add to series…");
 	});
 });

@@ -72,7 +72,12 @@ export async function a11yProblems(page: Page, allowClickable: string[] = []): P
 		const problems: string[] = [];
 		const textlessMenuButtons = await page.evaluate(() =>
 			[...document.querySelectorAll('[aria-haspopup="menu"], [aria-haspopup="true"]')]
-				.filter((el) => el.getClientRects().length > 0 && !el.textContent?.trim())
+				.filter(
+					(el) =>
+						el.getClientRects().length > 0 &&
+						!el.closest('[aria-hidden="true"]') &&
+						!el.textContent?.trim(),
+				)
 				.map((el) => el.getAttribute("aria-label") ?? el.outerHTML.slice(0, 60)),
 		);
 		for (const label of textlessMenuButtons) {

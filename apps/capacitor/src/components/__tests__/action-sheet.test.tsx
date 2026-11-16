@@ -19,6 +19,17 @@ function press(x = 120, y = 300) {
 	window.dispatchEvent(new PointerEvent("pointerdown", { clientX: x, clientY: y, bubbles: true }));
 }
 
+function pointer(kind: "fine" | "coarse") {
+	return vi.spyOn(window, "matchMedia").mockImplementation(
+		(query) =>
+			({
+				matches: query === `(pointer: ${kind})`,
+				addEventListener() {},
+				removeEventListener() {},
+			}) as unknown as MediaQueryList,
+	);
+}
+
 const menu = () => document.querySelector('[data-testid="action-menu"]');
 const drawer = () => document.querySelector('[data-slot="drawer-content"]');
 
@@ -33,7 +44,8 @@ describe("ActionSheet placement", () => {
 		expect(menu()?.querySelectorAll('[role="menuitem"]')).toHaveLength(5);
 	});
 
-	it("keeps a long list in a bottom sheet", async () => {
+	it("keeps a long list in a bottom sheet on touch", async () => {
+		pointer("coarse");
 		press();
 		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(7)} />);
 		await flush();
@@ -41,7 +53,8 @@ describe("ActionSheet placement", () => {
 		expect(drawer()).not.toBeNull();
 	});
 
-	it("falls back to the sheet when no recent press opened it", async () => {
+	it("falls back to the sheet on touch when no recent press opened it", async () => {
+		pointer("coarse");
 		vi.useFakeTimers({ toFake: ["Date"] });
 		press();
 		vi.setSystemTime(Date.now() + 5000);
@@ -49,6 +62,46 @@ describe("ActionSheet placement", () => {
 		await flush();
 		expect(menu()).toBeNull();
 		expect(drawer()).not.toBeNull();
+	});
+
+	it("opens a long list as a menu at the press with a mouse", async () => {
+		pointer("fine");
+		press();
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(9)} />);
+		await flush();
+		expect(drawer()).toBeNull();
+		expect(menu()?.querySelectorAll('[role="menuitem"]')).toHaveLength(9);
+	});
+
+	it("anchors a keyboard open at the focused trigger with a mouse", async () => {
+		pointer("fine");
+		vi.useFakeTimers({ toFake: ["Date"] });
+		press();
+		vi.setSystemTime(Date.now() + 5000);
+		const trigger = document.createElement("button");
+		document.body.append(trigger);
+		vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({ x: 40, y: 100, width: 32, height: 32 }),
+		);
+		trigger.focus();
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(3)} />);
+		await flush();
+		expect(drawer()).toBeNull();
+		expect(menu()).not.toBeNull();
+	});
+
+	it("shows an item's hint under its label", async () => {
+		pointer("fine");
+		press();
+		view = await render(
+			<ActionSheet
+				open
+				onOpenChange={() => {}}
+				items={[{ label: "Import file", hint: "TXT, EPUB", onSelect: () => {} }]}
+			/>,
+		);
+		await flush();
+		expect(menu()?.querySelector('[role="menuitem"]')?.textContent).toBe("Import fileTXT, EPUB");
 	});
 
 	it("runs the chosen action once and closes", async () => {
@@ -87,6 +140,7 @@ describe("ActionSheet danger group", () => {
 	});
 
 	it("does the same in the sheet, and draws no rule when every item is destructive", async () => {
+		pointer("coarse");
 		const long = [...items(5), ...mixed.slice(2)];
 		view = await render(<ActionSheet open onOpenChange={() => {}} items={long} />);
 		await flush();

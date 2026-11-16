@@ -112,12 +112,12 @@ const ImportForm: React.FC<{
 					<p className="m-0 text-muted-foreground text-sm">Checking your library…</p>
 				)}
 				{queue.attachHint && (
-					<div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4">
-						<div className="min-w-0 flex-1">
-							<p className="m-0 font-medium text-sm">Already in your library?</p>
-							<p className="m-0 text-muted-foreground text-sm">{queue.attachHint}</p>
-						</div>
-						<Button variant="secondary" disabled={queue.isBusy} onClick={queue.attach}>
+					<div
+						className="flex items-center gap-3 rounded-xl border border-border p-4"
+						data-testid="import-attach-notice"
+					>
+						<p className="m-0 min-w-0 flex-1 text-sm">{queue.attachHint}</p>
+						<Button disabled={queue.isBusy} onClick={queue.attach}>
 							{queue.isAttaching && <Loader2 className="size-4 animate-spin" />}
 							Attach
 						</Button>

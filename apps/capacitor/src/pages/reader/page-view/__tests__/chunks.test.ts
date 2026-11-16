@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { pageCountOf, pageGeometry, relativeOffsets, SPREAD_MIN_WIDTH } from "../chunks";
+import {
+	pageCountOf,
+	pageGeometry,
+	relativeOffsets,
+	SPREAD_MIN_GUTTER,
+	SPREAD_MIN_MARGIN,
+	SPREAD_MIN_WIDTH,
+} from "../chunks";
 
 describe("pageGeometry", () => {
 	it("lays out one page, capped at 700px, below the breakpoint", () => {
 		expect(pageGeometry(400, 20)).toEqual({
 			width: 400,
+			margin: 20,
 			columnsPerPage: 1,
 			columnWidth: 360,
 			columnGap: 0,
@@ -17,13 +25,21 @@ describe("pageGeometry", () => {
 	it("lays out a two-page spread, capped at 1400px, from the breakpoint", () => {
 		expect(pageGeometry(SPREAD_MIN_WIDTH, 20)).toEqual({
 			width: 900,
+			margin: SPREAD_MIN_MARGIN,
 			columnsPerPage: 2,
-			columnWidth: 410,
-			columnGap: 40,
-			columnStride: 450,
-			pageStride: 900,
+			columnWidth: 370,
+			columnGap: SPREAD_MIN_GUTTER,
+			columnStride: 434,
+			pageStride: 868,
 		});
 		expect(pageGeometry(2000, 20).width).toBe(1400);
+	});
+
+	it("keeps a reader margin wider than the spread minimums", () => {
+		const g = pageGeometry(1280, 60);
+		expect(g.margin).toBe(60);
+		expect(g.columnGap).toBe(120);
+		expect(g.columnWidth).toBe((1280 - 120 - 120) / 2);
 	});
 
 	it("keeps a fractional width unrounded", () => {

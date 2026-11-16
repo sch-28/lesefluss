@@ -42,15 +42,20 @@ export default function ReaderPreview() {
 		<div
 			// A fixed window onto the text: cutting it off is the point (e2e layout check).
 			data-clips-text
-			className={`reader-theme-${theme} h-52 overflow-hidden rounded-[10px] border border-border bg-(--reader-bg)`}
+			className={`reader-theme-${theme} flex h-52 flex-col overflow-hidden rounded-[10px] border border-border bg-(--reader-bg)`}
 			data-testid="reader-preview"
 		>
-			<span className="block px-2.5 pt-1.5 font-semibold text-[0.68rem] text-muted-foreground uppercase tracking-[0.08em]">
+			<span
+				className="block pt-1.5 font-semibold text-[0.68rem] text-muted-foreground uppercase tracking-[0.08em]"
+				style={{ paddingInline: `${margin}px` }}
+			>
 				Preview
 			</span>
 			<div
 				ref={textRef}
 				lang="en"
+				// Fades out above the border instead of cutting a line on it.
+				className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]"
 				style={
 					{
 						padding: `8px ${margin}px 0`,

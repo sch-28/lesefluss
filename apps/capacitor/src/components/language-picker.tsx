@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import {
 	Drawer,
 	DrawerContent,
@@ -11,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useMediaQuery } from "../hooks/use-media-query";
+import { useDesktopOverlay } from "../hooks/use-media-query";
 import { type LanguageOption, languageOption, searchLanguages } from "../utils/language-label";
 import { PickerTrigger } from "./picker-trigger";
 
@@ -29,9 +28,9 @@ function baseCode(tag: string | null | undefined): string | null {
 	return tag ? (tag.split(/[-_]/)[0]?.toLowerCase() ?? null) : null;
 }
 
-/** A sheet on phones and in the app, a popover on wide web, like EntryDialog. */
+/** A sheet on touch, a popover on a wide screen with a mouse, like EntryDialog. */
 export const LanguagePicker: React.FC<Props> = ({ id, value, onChange, fileLanguage }) => {
-	const isWideWeb = useMediaQuery("(min-width: 768px)") && !Capacitor.isNativePlatform();
+	const isDesktop = useDesktopOverlay();
 	const [open, setOpen] = useState(false);
 
 	const select = (code: string | null) => {
@@ -42,7 +41,7 @@ export const LanguagePicker: React.FC<Props> = ({ id, value, onChange, fileLangu
 	const trigger = (
 		<PickerTrigger
 			id={id}
-			onClick={isWideWeb ? undefined : () => setOpen(true)}
+			onClick={isDesktop ? undefined : () => setOpen(true)}
 			value={value ? languageOption(value).name : null}
 			placeholder="Not set"
 			trailing={value && <span className="text-muted-foreground text-xs">{value}</span>}
@@ -51,7 +50,7 @@ export const LanguagePicker: React.FC<Props> = ({ id, value, onChange, fileLangu
 
 	const list = <LanguageList value={value} fileLanguage={fileLanguage ?? null} onSelect={select} />;
 
-	if (isWideWeb) {
+	if (isDesktop) {
 		return (
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger asChild>{trigger}</PopoverTrigger>

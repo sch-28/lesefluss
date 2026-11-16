@@ -76,13 +76,13 @@ function confirmButton(label: string): HTMLElement {
 }
 
 describe("BookDangerZone", () => {
-	it("holds Reset progress, Delete all sessions and Delete book", async () => {
+	it("holds Reset progress, Delete reading history and Delete book", async () => {
 		state.rows = [session("a", at(7, 9))];
 		state.all = state.rows;
 		const v = await show(makeBook({ id: "mm", title: "Middlemarch", wordPosition: wordPos(500) }));
 		expect([...v.container.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
 			"Reset progress",
-			"Delete the session",
+			"Delete reading history",
 			"Delete book",
 		]);
 		await click(v.getButton("Reset progress"));
@@ -104,7 +104,7 @@ describe("BookDangerZone", () => {
 		state.all = [...state.rows, session("x", at(7, 12), "em")];
 		const v = await show();
 
-		await click(v.getButton("Delete all 2 sessions"));
+		await click(v.getButton("Delete reading history"));
 		await flush();
 		expect(state.toast).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain("Delete 2 sessions of Middlemarch?");
@@ -116,7 +116,7 @@ describe("BookDangerZone", () => {
 		view?.unmount();
 		state.rows = [session("a", at(7, 9))];
 		state.all = [...state.rows, session("x", at(7, 12), "em")];
-		await click((await show()).getButton("Delete the session"));
+		await click((await show()).getButton("Delete reading history"));
 		await flush();
 		expect(document.body.textContent).toContain("Delete 1 session of Middlemarch?");
 		expect(document.body.textContent).not.toContain("Streak may change.");
@@ -126,7 +126,7 @@ describe("BookDangerZone", () => {
 		state.rows = [session("a", at(7, 9))];
 		state.all = state.rows;
 		const v = await show();
-		const button = v.getButton("Delete the session");
+		const button = v.getButton("Delete reading history");
 		act(() => {
 			button.click();
 			button.click();
@@ -139,7 +139,7 @@ describe("BookDangerZone", () => {
 	it("asks before deleting five or more, and deletes on confirm", async () => {
 		state.rows = Array.from({ length: 6 }, (_, i) => session(`s${i}`, at(7, 8 + i)));
 		state.all = state.rows;
-		await click((await show()).getButton("Delete all 6 sessions"));
+		await click((await show()).getButton("Delete reading history"));
 		await flush();
 		expect(state.toast).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain("Delete 6 sessions of Middlemarch?");

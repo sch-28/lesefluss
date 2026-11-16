@@ -39,7 +39,7 @@ export async function seedLibrary(page: Page, books: readonly LibraryBook[]): Pr
 			await page.goto("/tabs/library");
 			await page.getByRole("button", { name: "Add book" }).click();
 			const chooserPromise = page.waitForEvent("filechooser");
-			await page.getByRole("button", { name: "Import folder" }).click();
+			await page.getByRole("menuitem", { name: /^Import folder/ }).click();
 			await (await chooserPromise).setFiles(dir);
 			await page.getByRole("button", { name: `Import ${books.length} books` }).click({
 				timeout: 20_000,

@@ -37,10 +37,10 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await expectAccessible(page, "library");
 
 	await page.getByRole("button", { name: "Add book" }).click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await expectAccessible(page, "import sheet");
+	await expect(page.getByRole("menu")).toBeVisible();
+	await expectAccessible(page, "import menu");
 	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(page.getByRole("menu")).toHaveCount(0);
 
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);

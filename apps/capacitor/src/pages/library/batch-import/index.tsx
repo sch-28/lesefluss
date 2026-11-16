@@ -72,12 +72,14 @@ const BatchImportSheet: React.FC<Props> = ({
 			    which tailwind-merge would let supersede the built-in bottom inset.
 			    The handle and the built-in close button are dropped: nothing here is
 			    draggable, and an absolutely-positioned close would sit under the
-			    status bar. The header carries its own. */}
+			    status bar. The header carries its own. On desktop the sheet floats
+			    above the screen's bottom edge, so it sizes to its content and stops a
+			    margin short of the top; only the book grid scrolls. */}
 			<SheetContent
 				side="bottom"
 				showHandle={false}
 				showCloseButton={false}
-				className="flex h-[100dvh] flex-col gap-0 rounded-none pt-[var(--safe-top)]"
+				className="flex h-[100dvh] flex-col gap-0 rounded-none pt-[var(--safe-top)] md:h-auto md:max-h-[calc(100dvh-3rem)] md:pt-0"
 			>
 				<SheetHeader className="border-border border-b">
 					<div className="flex items-center justify-between">
@@ -118,7 +120,7 @@ const BatchImportSheet: React.FC<Props> = ({
 				</SheetHeader>
 
 				{phase === "scanning" && (
-					<div className="flex flex-1 items-center justify-center text-muted-foreground">
+					<div className="flex flex-1 items-center justify-center py-12 text-muted-foreground">
 						<Loader2 className="mr-2 size-5 animate-spin" />
 						Looking for books…
 					</div>
@@ -164,7 +166,7 @@ const BatchImportSheet: React.FC<Props> = ({
 						{/* `content-start` because `flex-1` makes this taller than its rows
 						    until the grid fills up, and a grid's default `align-content`
 						    stretches rows to fill that slack. */}
-						<div className="grid flex-1 auto-rows-min grid-cols-3 content-start gap-3 overflow-y-auto p-4">
+						<div className="grid min-h-0 flex-1 auto-rows-min grid-cols-3 content-start gap-3 overflow-y-auto p-4">
 							{folder.candidates.map((candidate) => {
 								const key = candidateKey(candidate);
 								return (
@@ -195,7 +197,7 @@ const BatchImportSheet: React.FC<Props> = ({
 				)}
 
 				{phase === "importing" && (
-					<div className="flex flex-1 flex-col items-center justify-center gap-4 px-8">
+					<div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-12">
 						<Progress
 							value={
 								folder.progress.total > 0 ? (folder.progress.done / folder.progress.total) * 100 : 0
@@ -218,7 +220,7 @@ const BatchImportSheet: React.FC<Props> = ({
 
 				{phase === "done" && folder.result && (
 					<>
-						<div className="flex flex-1 flex-col overflow-y-auto">
+						<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 							<div className="flex flex-col items-center gap-3 px-6 pt-10 pb-6 text-center">
 								<span
 									className={`flex size-14 items-center justify-center rounded-full ${

@@ -47,7 +47,7 @@ export function BookDangerZone({
 						})
 					}
 				>
-					{rows.length === 1 ? "Delete the session" : `Delete all ${rows.length} sessions`}
+					Delete reading history
 				</DangerButton>
 			)}
 			<DangerButton icon={Trash2} onClick={onDeleteBook}>

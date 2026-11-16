@@ -38,6 +38,7 @@ vi.mock("../../../services/db/hooks", () => ({
 }));
 const toastSuccess = vi.fn();
 vi.mock("../../toast", () => ({ toast: { success: toastSuccess, error: () => {} } }));
+vi.mock("../../../hooks/use-media-query", () => ({ useDesktopOverlay: () => false }));
 vi.mock(
 	"@lesefluss/ui/drawer",
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,

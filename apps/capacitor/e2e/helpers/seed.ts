@@ -44,7 +44,11 @@ export async function stageEpubViaFilePicker(
 	await page.goto("/tabs/library");
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Import file" }).click();
+	// A fine pointer gets an anchored menu, a phone the bottom sheet.
+	await page
+		.getByRole("menuitem", { name: /^Import file/ })
+		.or(page.getByRole("button", { name: /^Import file/ }))
+		.click();
 	const chooser = await chooserPromise;
 	await chooser.setFiles({
 		name: opts.fileName,

@@ -1,6 +1,5 @@
 import { COLLECTION_NAME_MAX, normalizeSeriesKey, seriesCollectionId } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Check, Minus, Plus } from "lucide-react";
 import type React from "react";
@@ -10,6 +9,7 @@ import { queryHooks } from "../../services/db/hooks";
 import type { NumberedTarget } from "../../services/db/hooks/use-collections";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { Book } from "../../services/db/schema";
+import { SheetOrDialog } from "../sheet-or-dialog";
 import { toast } from "../toast";
 import { SeriesNumberStep } from "./series-number-step";
 import { type SeriesPick, SeriesPickList, type SeriesPickSelection } from "./series-pick-list";
@@ -209,127 +209,122 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 	const stepHasMembers = ids.some((id) => memberNumbers.has(id));
 
 	const noun = kind === "series" ? "Series" : "Collections";
-	const title =
-		placed.length === 1 ? `${noun} · ${placed[0]?.title}` : `Add ${books(placed.length)}`;
 	const offersCollection = kind !== "series";
 	const offersSeries = kind !== "collection";
 	const draftNoun =
 		kind === "series" ? "series" : kind === "collection" ? "collection" : "collection or series";
+	const title =
+		placed.length === 1
+			? `${noun} · ${placed[0]?.title}`
+			: `Add ${books(placed.length)} to a ${draftNoun}`;
 
 	return (
-		<Drawer
+		<SheetOrDialog
 			open={open}
 			onOpenChange={(next) => {
 				if (!next) onClose();
 			}}
+			title={step ? `Set #N · ${step.name}` : removing ? `Remove from ${removing.name}?` : title}
 		>
-			<DrawerContent>
-				<DrawerHeader>
-					<DrawerTitle className="truncate">
-						{step ? `Set #N · ${step.name}` : removing ? `Remove from ${removing.name}?` : title}
-					</DrawerTitle>
-				</DrawerHeader>
+			{removing ? (
+				<div data-testid="collection-remove-confirm" className="flex flex-col">
+					<p className="m-0 px-4 pb-2 text-muted-foreground text-sm">
+						{placed.length === 1
+							? `"${placed[0]?.title}" leaves ${removing.name}.`
+							: `All ${books(ids.length)} leave ${removing.name}.`}{" "}
+						{placed.length === 1 ? "It stays" : "They stay"} in your library.
+					</p>
+					<div className="flex justify-end gap-2 border-border border-t p-4">
+						<Button variant="outline" onClick={() => setRemoving(null)}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={() => confirmRemove(removing)}>
+							Remove {books(ids.length)}
+						</Button>
+					</div>
+				</div>
+			) : step ? (
+				<SeriesNumberStep
+					name={step.name}
+					books={placed}
+					members={memberNumbers}
+					isApplying={addNumbered.isPending || (stepCollectionId !== null && members.isPending)}
+					onBack={() => setStep(null)}
+					onRemove={stepHasMembers ? removeFromStep : undefined}
+					onApply={(numbers) => apply(step, numbers)}
+				/>
+			) : kind === "series" ? (
+				<SeriesPickList
+					className="px-4 pb-4"
+					series={collections}
+					selected={seriesSelection(collections, ids, memberships)}
+					onPick={pickSeries}
+					hintOf={(c) => {
+						const { mark, count } = markOf(c.id, ids, memberships);
+						return mark === "some" ? `On ${count} of ${ids.length}` : books(c.bookCount);
+					}}
+				/>
+			) : (
+				<>
+					<div className="max-h-[50vh] overflow-y-auto px-2 pb-2">
+						{collections.length === 0 && (
+							<p className="m-0 px-2 py-6 text-center text-muted-foreground text-sm">
+								No collections yet. Name one below to start it with{" "}
+								{placed.length === 1 ? "this book" : "these books"}.
+							</p>
+						)}
+						{collections.map((c) => (
+							<CollectionRow
+								key={c.id}
+								collection={c}
+								{...markOf(c.id, ids, memberships)}
+								total={ids.length}
+								onPick={() => pick(c)}
+							/>
+						))}
+					</div>
 
-				{removing ? (
-					<div data-testid="collection-remove-confirm" className="flex flex-col">
-						<p className="m-0 px-4 pb-2 text-muted-foreground text-sm">
-							{placed.length === 1
-								? `"${placed[0]?.title}" leaves ${removing.name}.`
-								: `All ${books(ids.length)} leave ${removing.name}.`}{" "}
-							{placed.length === 1 ? "It stays" : "They stay"} in your library.
-						</p>
-						<div className="flex justify-end gap-2 border-border border-t p-4">
-							<Button variant="outline" onClick={() => setRemoving(null)}>
-								Cancel
-							</Button>
-							<Button variant="destructive" onClick={() => confirmRemove(removing)}>
-								Remove {books(ids.length)}
-							</Button>
+					<div className="flex flex-col gap-2 border-border border-t p-4">
+						<InputHitArea>
+							<Input
+								value={draft}
+								placeholder={`Name a new ${draftNoun}`}
+								aria-label={`New ${draftNoun} name`}
+								maxLength={COLLECTION_NAME_MAX}
+								onChange={(e) => setDraft(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key !== "Enter") return;
+									if (offersCollection) createCollection();
+									else createSeries();
+								}}
+							/>
+						</InputHitArea>
+						<div className="flex gap-2 md:pointer-fine:justify-end">
+							{offersCollection && (
+								<Button
+									variant="outline"
+									className="flex-1 md:pointer-fine:flex-none"
+									disabled={!draft.trim()}
+									onClick={createCollection}
+								>
+									<Plus /> New collection
+								</Button>
+							)}
+							{offersSeries && (
+								<Button
+									variant="outline"
+									className="flex-1 md:pointer-fine:flex-none"
+									disabled={!normalizeSeriesKey(draft)}
+									onClick={createSeries}
+								>
+									<Plus /> New series
+								</Button>
+							)}
 						</div>
 					</div>
-				) : step ? (
-					<SeriesNumberStep
-						name={step.name}
-						books={placed}
-						members={memberNumbers}
-						isApplying={addNumbered.isPending || (stepCollectionId !== null && members.isPending)}
-						onBack={() => setStep(null)}
-						onRemove={stepHasMembers ? removeFromStep : undefined}
-						onApply={(numbers) => apply(step, numbers)}
-					/>
-				) : kind === "series" ? (
-					<SeriesPickList
-						className="px-4 pb-4"
-						series={collections}
-						selected={seriesSelection(collections, ids, memberships)}
-						onPick={pickSeries}
-						hintOf={(c) => {
-							const { mark, count } = markOf(c.id, ids, memberships);
-							return mark === "some" ? `On ${count} of ${ids.length}` : books(c.bookCount);
-						}}
-					/>
-				) : (
-					<>
-						<div className="max-h-[50vh] overflow-y-auto px-2 pb-2">
-							{collections.length === 0 && (
-								<p className="m-0 px-2 py-6 text-center text-muted-foreground text-sm">
-									No collections yet. Name one below to start it with{" "}
-									{placed.length === 1 ? "this book" : "these books"}.
-								</p>
-							)}
-							{collections.map((c) => (
-								<CollectionRow
-									key={c.id}
-									collection={c}
-									{...markOf(c.id, ids, memberships)}
-									total={ids.length}
-									onPick={() => pick(c)}
-								/>
-							))}
-						</div>
-
-						<div className="flex flex-col gap-2 border-border border-t p-4">
-							<InputHitArea>
-								<Input
-									value={draft}
-									placeholder={`Name a new ${draftNoun}`}
-									aria-label={`New ${draftNoun} name`}
-									maxLength={COLLECTION_NAME_MAX}
-									onChange={(e) => setDraft(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key !== "Enter") return;
-										if (offersCollection) createCollection();
-										else createSeries();
-									}}
-								/>
-							</InputHitArea>
-							<div className="flex gap-2">
-								{offersCollection && (
-									<Button
-										variant="outline"
-										className="flex-1"
-										disabled={!draft.trim()}
-										onClick={createCollection}
-									>
-										<Plus /> New collection
-									</Button>
-								)}
-								{offersSeries && (
-									<Button
-										variant="outline"
-										className="flex-1"
-										disabled={!normalizeSeriesKey(draft)}
-										onClick={createSeries}
-									>
-										<Plus /> New series
-									</Button>
-								)}
-							</div>
-						</div>
-					</>
-				)}
-			</DrawerContent>
-		</Drawer>
+				</>
+			)}
+		</SheetOrDialog>
 	);
 };
 

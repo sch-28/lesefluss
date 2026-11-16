@@ -46,7 +46,7 @@ test("a chapter jump from book detail opens on the heading's first word, a reope
 		.locator(`[data-book-title="${CHAPTER_NOVEL_TITLE}"]`)
 		.first()
 		.click({ button: "right" });
-	await page.getByRole("button", { name: "Details" }).click();
+	await page.getByRole("menuitem", { name: "Details" }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 	// Scoped by heading: the "About this file" card also carries a Chapters row.
 	const chapters = page

@@ -1,18 +1,14 @@
 import { inclusiveDays, modeSpeed } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-	drawerSnapPoints,
-} from "@lesefluss/ui/drawer";
+import { drawerSnapPoints } from "@lesefluss/ui/drawer";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { SheetOrDialog } from "../../../components/sheet-or-dialog";
 import { toast } from "../../../components/toast";
+import { useDesktopOverlay } from "../../../hooks/use-media-query";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingGoal } from "../../../services/db/schema";
 import { areRemindersSupported } from "../../../services/goal-reminders";
@@ -63,6 +59,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 	const seedReminder = existing?.goal.reminderTime ?? null;
 	const [reminderTime, setReminderTime] = useState<string | null>(seedReminder);
 	const [wasOpen, setWasOpen] = useState(isOpen);
+	const isDesktop = useDesktopOverlay();
 	// Reseeded during render when the sheet opens, the same way the annotations sheet resets.
 	if (isOpen !== wasOpen) {
 		setWasOpen(isOpen);
@@ -146,185 +143,180 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		onClose();
 	};
 
+	const readLabel = `${percentLabel((book.wordPosition / Math.max(1, book.wordCount)) * 100)}% read`;
 	return (
-		<Drawer
+		<SheetOrDialog
 			open={isOpen}
 			dismissible={!isBusy}
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
 			snapPoints={SNAP_POINTS}
+			drawerClassName="sm:mx-auto sm:max-w-lg"
+			title={isDesktop ? `Reading goal for ${book.title}` : "Reading goal"}
+			aside={isDesktop ? readLabel : `${book.title} · ${readLabel}`}
 		>
-			<DrawerContent className="sm:mx-auto sm:max-w-lg">
-				<DrawerHeader className="flex-row items-baseline justify-between gap-3 text-left">
-					<DrawerTitle>Reading goal</DrawerTitle>
-					<span className="truncate text-muted-foreground text-xs">
-						{book.title} · {percentLabel((book.wordPosition / Math.max(1, book.wordCount)) * 100)}%
-						read
-					</span>
-				</DrawerHeader>
+			<div className="flex flex-col gap-4 overflow-y-auto px-4 pb-4">
+				<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+					<ValueCard
+						isLocked={!dateLocked}
+						onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
+						value={
+							isMinutes ? `${values.dailyMinutes} min` : `${percentLabel(values.dailyPercent)}%`
+						}
+						label={
+							isMinutes
+								? `a day · ${percentLabel(values.dailyPercent)}%`
+								: `a day · ${minutesLabel(values.minutes)}`
+						}
+						lockLabel="Keep daily amount"
+					/>
+					<ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
+					<ValueCard
+						isLocked={dateLocked}
+						onLock={() => setSetup({ lock: "date", days: values.days })}
+						value={formatDayKey(values.finishDate)}
+						label={`finish · ${values.days} d`}
+						lockLabel="Keep finish date"
+					/>
+				</div>
 
-				<div className="flex flex-col gap-4 overflow-y-auto px-4 pb-4">
-					<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
-						<ValueCard
-							isLocked={!dateLocked}
-							onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
-							value={
-								isMinutes ? `${values.dailyMinutes} min` : `${percentLabel(values.dailyPercent)}%`
-							}
-							label={
-								isMinutes
-									? `a day · ${percentLabel(values.dailyPercent)}%`
-									: `a day · ${minutesLabel(values.minutes)}`
-							}
-							lockLabel="Keep daily amount"
-						/>
-						<ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
-						<ValueCard
-							isLocked={dateLocked}
-							onLock={() => setSetup({ lock: "date", days: values.days })}
-							value={formatDayKey(values.finishDate)}
-							label={`finish · ${values.days} d`}
-							lockLabel="Keep finish date"
-						/>
-					</div>
-
-					<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
-						<FilterChip selected={!isMinutes} onClick={() => setUnit("percent")}>
-							% a day
-						</FilterChip>
-						<FilterChip selected={isMinutes} onClick={() => setUnit("minutes")}>
-							Min a day
-						</FilterChip>
-						{isMinutes &&
-							MINUTE_PRESETS.map((minutes) => {
-								const isOn = values.dailyMinutes === minutes;
-								return (
-									<FilterChip
-										key={minutes}
-										selected={isOn}
-										onClick={() =>
-											setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
-										}
-									>
-										{minutes} min
-									</FilterChip>
-								);
-							})}
-					</div>
-
-					<div className="flex flex-col gap-3">
-						<span
-							id="goal-duration-label"
-							className="font-semibold text-muted-foreground text-xs uppercase tracking-wider"
-						>
-							Duration
-						</span>
-						<Slider
-							min={0}
-							max={100}
-							step={1}
-							value={[daysToSlider(values.days)]}
-							onValueChange={(v) => {
-								setDays(sliderToDays(v[0] ?? 0));
-								setCustomOpen(false);
-							}}
-							className="py-3"
-							thumbProps={{
-								"aria-labelledby": "goal-duration-label",
-								"aria-valuetext": `${values.days} days, finish ${formatDayKey(values.finishDate)}`,
-							}}
-						/>
-						<div className="flex justify-between text-[0.6875rem] text-muted-foreground">
-							<span>1 week</span>
-							<span>1 month</span>
-							<span>3 months</span>
-							<span>1 year</span>
-						</div>
-					</div>
-
-					<div className="flex flex-wrap gap-2">
-						{GOAL_PRESETS.map((p) => {
-							const isOn = !isCustom && presetMatch === p;
+				<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
+					<FilterChip selected={!isMinutes} onClick={() => setUnit("percent")}>
+						% a day
+					</FilterChip>
+					<FilterChip selected={isMinutes} onClick={() => setUnit("minutes")}>
+						Min a day
+					</FilterChip>
+					{isMinutes &&
+						MINUTE_PRESETS.map((minutes) => {
+							const isOn = values.dailyMinutes === minutes;
 							return (
 								<FilterChip
-									key={p.label}
+									key={minutes}
 									selected={isOn}
-									onClick={() => {
-										setDays(presetDays(today, p.months));
-										setCustomOpen(false);
-									}}
+									onClick={() =>
+										setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
+									}
 								>
-									{p.label}
+									{minutes} min
 								</FilterChip>
 							);
 						})}
-						<FilterChip
-							selected={isCustom}
-							aria-expanded={isCustomOpen}
-							onClick={() => setCustomOpen((open) => !open)}
-						>
-							<CalendarDays className="size-3.5" aria-hidden />
-							{isCustom ? formatDayKey(values.finishDate) : "Custom date"}
-						</FilterChip>
-					</div>
-
-					{isCustomOpen && (
-						<label className="flex flex-col gap-1 text-muted-foreground text-xs">
-							Finish on
-							<input
-								type="date"
-								min={today}
-								value={values.finishDate}
-								onChange={(e) => {
-									if (!e.target.value) return;
-									const next = inclusiveDays(today, e.target.value);
-									if (next >= 1) setDays(next);
-								}}
-								className="min-h-11 rounded-md border border-input bg-background px-3 text-base text-foreground"
-							/>
-						</label>
-					)}
-
-					{rsvp && (
-						<div
-							className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
-							data-testid="goal-rsvp"
-						>
-							<span className="text-muted-foreground">RSVP at {rsvp.wpm} wpm</span>
-							<span className="font-semibold tabular-nums">{rsvp.value}</span>
-						</div>
-					)}
-
-					<div className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm">
-						<span className="text-muted-foreground">Missed day</span>
-						<span className="font-semibold">{MISSED_DAY_LABEL[lockToMode(setup.lock)]}</span>
-					</div>
-
-					{areRemindersSupported() && (
-						<GoalReminderRow value={reminderTime} onChange={setReminderTime} />
-					)}
-
-					<Button
-						size="lg"
-						onClick={() => save().catch((err) => log.warn("goals", "saving the goal failed:", err))}
-						disabled={isBusy || book.wordCount <= 0}
-					>
-						{existing ? "Save goal" : "Start goal"}
-					</Button>
-					{existing && (
-						<Button
-							variant="ghost"
-							className="text-destructive"
-							disabled={isBusy}
-							onClick={() => removeGoal(existing.goal)}
-						>
-							Remove goal
-						</Button>
-					)}
 				</div>
-			</DrawerContent>
-		</Drawer>
+
+				<div className="flex flex-col gap-3">
+					<span
+						id="goal-duration-label"
+						className="font-semibold text-muted-foreground text-xs uppercase tracking-wider"
+					>
+						Duration
+					</span>
+					<Slider
+						min={0}
+						max={100}
+						step={1}
+						value={[daysToSlider(values.days)]}
+						onValueChange={(v) => {
+							setDays(sliderToDays(v[0] ?? 0));
+							setCustomOpen(false);
+						}}
+						className="py-3"
+						thumbProps={{
+							"aria-labelledby": "goal-duration-label",
+							"aria-valuetext": `${values.days} days, finish ${formatDayKey(values.finishDate)}`,
+						}}
+					/>
+					<div className="flex justify-between text-[0.6875rem] text-muted-foreground">
+						<span>1 week</span>
+						<span>1 month</span>
+						<span>3 months</span>
+						<span>1 year</span>
+					</div>
+				</div>
+
+				<div className="flex flex-wrap gap-2">
+					{GOAL_PRESETS.map((p) => {
+						const isOn = !isCustom && presetMatch === p;
+						return (
+							<FilterChip
+								key={p.label}
+								selected={isOn}
+								onClick={() => {
+									setDays(presetDays(today, p.months));
+									setCustomOpen(false);
+								}}
+							>
+								{p.label}
+							</FilterChip>
+						);
+					})}
+					<FilterChip
+						selected={isCustom}
+						aria-expanded={isCustomOpen}
+						onClick={() => setCustomOpen((open) => !open)}
+					>
+						<CalendarDays className="size-3.5" aria-hidden />
+						{isCustom ? formatDayKey(values.finishDate) : "Custom date"}
+					</FilterChip>
+				</div>
+
+				{isCustomOpen && (
+					<label className="flex flex-col gap-1 text-muted-foreground text-xs">
+						Finish on
+						<input
+							type="date"
+							min={today}
+							value={values.finishDate}
+							onChange={(e) => {
+								if (!e.target.value) return;
+								const next = inclusiveDays(today, e.target.value);
+								if (next >= 1) setDays(next);
+							}}
+							className="min-h-11 rounded-md border border-input bg-background px-3 text-base text-foreground"
+						/>
+					</label>
+				)}
+
+				{rsvp && (
+					<div
+						className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
+						data-testid="goal-rsvp"
+					>
+						<span className="text-muted-foreground">RSVP at {rsvp.wpm} wpm</span>
+						<span className="font-semibold tabular-nums">{rsvp.value}</span>
+					</div>
+				)}
+
+				<div className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm">
+					<span className="text-muted-foreground">Missed day</span>
+					<span className="font-semibold">{MISSED_DAY_LABEL[lockToMode(setup.lock)]}</span>
+				</div>
+
+				{areRemindersSupported() && (
+					<GoalReminderRow value={reminderTime} onChange={setReminderTime} />
+				)}
+
+				<Button
+					size="lg"
+					className="md:pointer-fine:self-end"
+					onClick={() => save().catch((err) => log.warn("goals", "saving the goal failed:", err))}
+					disabled={isBusy || book.wordCount <= 0}
+				>
+					{existing ? "Save goal" : "Start goal"}
+				</Button>
+				{existing && (
+					<Button
+						variant="ghost"
+						className="text-destructive md:pointer-fine:self-end"
+						disabled={isBusy}
+						onClick={() => removeGoal(existing.goal)}
+					>
+						Remove goal
+					</Button>
+				)}
+			</div>
+		</SheetOrDialog>
 	);
 }
 

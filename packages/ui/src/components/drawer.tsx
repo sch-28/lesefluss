@@ -108,6 +108,9 @@ function DrawerContent({
 					"group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-popover-foreground outline-none",
 					"data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[85vh] data-[vaul-drawer-direction=bottom]:rounded-t-2xl data-[vaul-drawer-direction=bottom]:pb-[var(--safe-bottom)]",
 					// Desktop: a centered panel, never a full-width bottom drawer (LESE-185.14).
+					// vaul's ::after overscroll fill (unlayered, so only `!` beats it) would paint a
+					// strip below the floating panel.
+					"md:data-[vaul-drawer-direction=bottom]:after:hidden!",
 					"md:data-[vaul-drawer-direction=bottom]:bottom-6 md:data-[vaul-drawer-direction=bottom]:mx-auto md:data-[vaul-drawer-direction=bottom]:w-full md:data-[vaul-drawer-direction=bottom]:max-w-xl md:data-[vaul-drawer-direction=bottom]:rounded-2xl md:data-[vaul-drawer-direction=bottom]:shadow-2xl md:data-[vaul-drawer-direction=bottom]:ring-1 md:data-[vaul-drawer-direction=bottom]:ring-foreground/10",
 					"data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[85vh] data-[vaul-drawer-direction=top]:rounded-b-2xl data-[vaul-drawer-direction=top]:pt-[var(--safe-top)]",
 					"data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:border-border data-[vaul-drawer-direction=right]:border-l sm:data-[vaul-drawer-direction=right]:max-w-sm",

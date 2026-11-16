@@ -1,11 +1,11 @@
 import { Button } from "@lesefluss/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SheetOrDialog } from "@/components/sheet-or-dialog";
 import { goalAmountLabel, goalCandidates } from "@/pages/library/reading-goal/goal-model";
 import { GoalEditSheet, GoalSheetFor } from "@/pages/library/reading-goal/goal-sheet-for";
 import { queryHooks } from "@/services/db/hooks";
@@ -74,32 +74,32 @@ function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisable
 					No unfinished book is left without a goal. Add a book to your library to set one more.
 				</p>
 			)}
-			<Drawer open={isPickerOpen} onOpenChange={setPickerOpen}>
-				<DrawerContent className="sm:mx-auto sm:max-w-lg">
-					<DrawerHeader>
-						<DrawerTitle>Set a goal for</DrawerTitle>
-					</DrawerHeader>
-					<div className="flex flex-col divide-y divide-border overflow-y-auto px-4 pb-4">
-						{candidates.map((book) => (
-							<button
-								key={book.id}
-								type="button"
-								data-testid="goal-candidate"
-								className="flex min-h-14 cursor-pointer flex-col justify-center py-2 text-left"
-								onClick={() => {
-									setPickerOpen(false);
-									setPicked(book);
-								}}
-							>
-								<span className="truncate text-foreground text-sm">{book.title}</span>
-								{book.author && (
-									<span className="truncate text-muted-foreground text-xs">{book.author}</span>
-								)}
-							</button>
-						))}
-					</div>
-				</DrawerContent>
-			</Drawer>
+			<SheetOrDialog
+				open={isPickerOpen}
+				onOpenChange={setPickerOpen}
+				title="Set a goal for"
+				drawerClassName="sm:mx-auto sm:max-w-lg"
+			>
+				<div className="flex flex-col divide-y divide-border overflow-y-auto px-4 pb-4">
+					{candidates.map((book) => (
+						<button
+							key={book.id}
+							type="button"
+							data-testid="goal-candidate"
+							className="flex min-h-14 cursor-pointer flex-col justify-center py-2 text-left"
+							onClick={() => {
+								setPickerOpen(false);
+								setPicked(book);
+							}}
+						>
+							<span className="truncate text-foreground text-sm">{book.title}</span>
+							{book.author && (
+								<span className="truncate text-muted-foreground text-xs">{book.author}</span>
+							)}
+						</button>
+					))}
+				</div>
+			</SheetOrDialog>
 			{picked && (
 				<GoalSheetFor book={picked} existing={null} isOpen onClose={() => setPicked(null)} />
 			)}

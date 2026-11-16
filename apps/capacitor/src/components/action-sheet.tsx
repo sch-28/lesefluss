@@ -11,9 +11,12 @@ import { cn } from "@lesefluss/ui/utils";
 import type { LucideIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { FINE_POINTER_QUERY, useMediaQuery } from "../hooks/use-media-query";
 
 export interface ActionSheetItem {
 	label: string;
+	/** A second line under the label. */
+	hint?: string;
 	icon?: LucideIcon;
 	onSelect: () => void;
 	destructive?: boolean;
@@ -27,7 +30,8 @@ export interface ActionSheetProps {
 	items: ActionSheetItem[];
 }
 
-/** A list this short is a menu at the finger, not a sheet (LESE-185.14 overlay rule). */
+/** On touch, a list this short is a menu at the finger, not a sheet (LESE-185.14 overlay rule).
+ *  A mouse always gets the menu, whatever the count (LESE-211.8). */
 export const ANCHORED_MAX_ITEMS = 6;
 /** A press older than this did not open the sheet (a keyboard or programmatic open did). */
 const ANCHOR_MAX_AGE_MS = 1500;
@@ -55,16 +59,45 @@ function recentPress(): Point | null {
 	return lastPress;
 }
 
-export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
-	const { open, items } = props;
+/** A keyboard open: just under the focused trigger, offset for the menu's finger gap. */
+function focusedTrigger(): Point | null {
+	const el = document.activeElement;
+	if (!(el instanceof HTMLElement) || el === document.body) return null;
+	const rect = el.getBoundingClientRect();
+	if (rect.width === 0 && rect.height === 0) return null;
+	return { x: rect.left, y: rect.bottom - 8, at: Date.now() };
+}
+
+/** Where a menu opened by `open` should sit: the press that opened it, or on a fine
+ *  pointer the focused trigger. Null means no anchor (show a sheet). */
+export function useOpenAnchor(open: boolean): { anchor: Point | null; isFinePointer: boolean } {
+	const isFinePointer = useMediaQuery(FINE_POINTER_QUERY);
 	// Captured once per opening so the menu does not jump when a later tap lands.
 	const [anchor, setAnchor] = useState<Point | null>(null);
 	const [openedFor, setOpenedFor] = useState(false);
 	if (open !== openedFor) {
 		setOpenedFor(open);
-		if (open) setAnchor(recentPress());
+		if (open) setAnchor(recentPress() ?? (isFinePointer ? focusedTrigger() : null));
 	}
-	if (anchor && items.length <= ANCHORED_MAX_ITEMS) {
+	return { anchor, isFinePointer };
+}
+
+/** An invisible trigger at a point, for a DropdownMenu opened from elsewhere. */
+export const AnchorPoint: React.FC<{ anchor: Point }> = ({ anchor }) => (
+	<DropdownMenuTrigger asChild>
+		<span
+			aria-hidden
+			tabIndex={-1}
+			className="pointer-events-none fixed size-0"
+			style={{ left: anchor.x, top: anchor.y }}
+		/>
+	</DropdownMenuTrigger>
+);
+
+export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
+	const { open, items } = props;
+	const { anchor, isFinePointer } = useOpenAnchor(open);
+	if (anchor && (isFinePointer || items.length <= ANCHORED_MAX_ITEMS)) {
 		return <AnchoredActionMenu {...props} anchor={anchor} />;
 	}
 	return <ActionDrawer {...props} />;
@@ -78,14 +111,7 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 	anchor,
 }) => (
 	<DropdownMenu open={open} onOpenChange={onOpenChange} modal>
-		<DropdownMenuTrigger asChild>
-			<span
-				aria-hidden
-				tabIndex={-1}
-				className="pointer-events-none fixed size-0"
-				style={{ left: anchor.x, top: anchor.y }}
-			/>
-		</DropdownMenuTrigger>
+		<AnchorPoint anchor={anchor} />
 		<DropdownMenuContent
 			data-testid="action-menu"
 			align="start"
@@ -115,7 +141,7 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 						className="py-2 text-base"
 					>
 						{Icon && <Icon className="size-4" />}
-						<span className="flex-1 truncate">{item.label}</span>
+						<ItemText item={item} />
 					</DropdownMenuItem>,
 				];
 			})}
@@ -150,12 +176,12 @@ const ActionDrawer: React.FC<ActionSheetProps> = ({ open, onOpenChange, title, i
 								disabled={item.disabled}
 								onClick={() => handleSelect(item)}
 								className={cn(
-									"flex h-12 items-center gap-3 rounded-md px-3 text-left text-base transition-colors hover:bg-muted disabled:opacity-50",
+									"flex min-h-12 items-center gap-3 rounded-md px-3 py-2 text-left text-base transition-colors hover:bg-muted disabled:opacity-50",
 									item.destructive ? "text-destructive" : "text-foreground",
 								)}
 							>
 								{Icon && <Icon className="size-5 shrink-0" />}
-								<span className="flex-1 truncate">{item.label}</span>
+								<ItemText item={item} />
 							</button>,
 						];
 					})}
@@ -164,3 +190,13 @@ const ActionDrawer: React.FC<ActionSheetProps> = ({ open, onOpenChange, title, i
 		</Drawer>
 	);
 };
+
+const ItemText: React.FC<{ item: ActionSheetItem }> = ({ item }) =>
+	item.hint ? (
+		<span className="flex min-w-0 flex-1 flex-col">
+			<span className="truncate">{item.label}</span>
+			<span className="truncate text-muted-foreground text-sm">{item.hint}</span>
+		</span>
+	) : (
+		<span className="flex-1 truncate">{item.label}</span>
+	);

@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import {
 	Drawer,
 	DrawerContent,
@@ -7,7 +6,7 @@ import {
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
 import type React from "react";
-import { useMediaQuery } from "../hooks/use-media-query";
+import { useDesktopOverlay } from "../hooks/use-media-query";
 import { Modal } from "./modal";
 
 type Props = {
@@ -23,10 +22,10 @@ type Props = {
 };
 
 /**
- * A short text-entry dialog: a bottom sheet in the native app at any width and
- * on narrow web, a centred dialog on wide web. The native shell resizes the
- * WebView for the keyboard, which re-centres a dialog mid-animation and makes
- * it and the page behind jump; a sheet stays docked to the bottom.
+ * A short text-entry dialog: a bottom sheet on touch, a centred dialog on a wide
+ * screen with a mouse, web or native. On touch the native shell resizes the
+ * WebView for the on-screen keyboard, which re-centres a dialog mid-animation
+ * and makes it and the page behind jump; a sheet stays docked to the bottom.
  */
 export const EntryDialog: React.FC<Props> = ({
 	open,
@@ -37,9 +36,9 @@ export const EntryDialog: React.FC<Props> = ({
 	contentClassName,
 	children,
 }) => {
-	const isWideWeb = useMediaQuery("(min-width: 768px)") && !Capacitor.isNativePlatform();
+	const isDesktop = useDesktopOverlay();
 
-	if (isWideWeb) {
+	if (isDesktop) {
 		return (
 			<Modal
 				open={open}

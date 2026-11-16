@@ -17,7 +17,8 @@ import SyncStep from "./steps/sync";
 import ThemeStep from "./steps/theme";
 import WelcomeStep from "./steps/welcome";
 
-const SPEED_STEP = 2;
+/** The height of a size="lg" button. */
+const SECONDARY_SLOT = "h-9";
 
 const Onboarding: React.FC = () => {
 	const router = useRouter();
@@ -94,28 +95,37 @@ const Onboarding: React.FC = () => {
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">
-					{/* The speed test changes height between its rounds; centred, it would jump. */}
-					<div className={cn("mx-auto w-full max-w-md", step === SPEED_STEP ? "pt-2" : "my-auto")}>
+					{/* Top-anchored, not centred: every step's heading starts at the same height,
+					    and the speed test can change height between its rounds without a jump. */}
+					<div
+						className="mx-auto w-full max-w-md pt-[min(8dvh,4rem)]"
+						data-testid="onboarding-step"
+					>
 						{stepNodes[step]}
 					</div>
 				</main>
 
 				<div className="border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
 					<div className="mx-auto flex w-full max-w-md flex-col gap-2">
-						{step > 0 && (
-							<div className="mb-1 flex items-center justify-center gap-1.5" aria-hidden>
-								{Array.from({ length: dotCount }).map((_, i) => (
-									<span
-										// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
-										key={i}
-										className={cn(
-											"size-1.5 rounded-full transition-colors",
-											i === step - 1 ? "bg-primary" : "bg-muted-foreground/30",
-										)}
-									/>
-								))}
-							</div>
-						)}
+						{/* Kept on the first step too, hidden, so the primary button never moves. */}
+						<div
+							className={cn(
+								"mb-1 flex h-1.5 items-center justify-center gap-1.5",
+								step === 0 && "invisible",
+							)}
+							aria-hidden
+						>
+							{Array.from({ length: dotCount }).map((_, i) => (
+								<span
+									// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
+									key={i}
+									className={cn(
+										"size-1.5 rounded-full transition-colors",
+										i === step - 1 ? "bg-primary" : "bg-muted-foreground/30",
+									)}
+								/>
+							))}
+						</div>
 						<Button
 							size="lg"
 							variant={primary?.outline ? "outline" : "default"}
@@ -125,7 +135,8 @@ const Onboarding: React.FC = () => {
 						>
 							{primary?.label ?? "Continue"}
 						</Button>
-						{secondary && (
+						{/* An empty slot where a step has no second action keeps the footer one height. */}
+						{secondary ? (
 							<Button
 								size="lg"
 								variant="outline"
@@ -135,6 +146,8 @@ const Onboarding: React.FC = () => {
 							>
 								{secondary.label}
 							</Button>
+						) : (
+							<div className={SECONDARY_SLOT} aria-hidden data-testid="onboarding-secondary-slot" />
 						)}
 					</div>
 				</div>

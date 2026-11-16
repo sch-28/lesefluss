@@ -18,7 +18,10 @@ vi.mock("../../../services/db/hooks", () => ({
 		useCreateSmartShelf: () => ({ mutate: create, isPending: false }),
 	},
 }));
-vi.mock("../../../hooks/use-media-query", () => ({ useMediaQuery: () => isWide }));
+vi.mock("../../../hooks/use-media-query", () => ({
+	useMediaQuery: () => isWide,
+	useDesktopOverlay: () => isWide,
+}));
 vi.mock(
 	"@lesefluss/ui/drawer",
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,

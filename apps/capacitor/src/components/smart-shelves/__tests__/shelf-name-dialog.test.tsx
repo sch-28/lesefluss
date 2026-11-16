@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { click, type Rendered, render } from "../../../test/render";
 
 let isDesktop = false;
-vi.mock("../../../hooks/use-media-query", () => ({ useMediaQuery: () => isDesktop }));
+vi.mock("../../../hooks/use-media-query", () => ({
+	useMediaQuery: () => isDesktop,
+	useDesktopOverlay: () => isDesktop,
+}));
 vi.mock(
 	"@lesefluss/ui/drawer",
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,

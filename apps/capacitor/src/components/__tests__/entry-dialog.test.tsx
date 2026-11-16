@@ -4,7 +4,7 @@ import { type Rendered, render } from "../../test/render";
 
 let isWide = false;
 let isNative = false;
-vi.mock("../../hooks/use-media-query", () => ({ useMediaQuery: () => isWide }));
+vi.mock("../../hooks/use-media-query", () => ({ useDesktopOverlay: () => isWide }));
 vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => isNative } }));
 vi.mock("@lesefluss/ui/drawer", () => {
 	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
@@ -48,14 +48,14 @@ async function shape() {
 }
 
 describe("EntryDialog", () => {
-	it("is a bottom sheet in the native app whatever the width", async () => {
+	it("picks the same shape in the native app as on the web", async () => {
 		isNative = true;
 		expect(await shape()).toBe("sheet");
 		isWide = true;
-		expect(await shape()).toBe("sheet");
+		expect(await shape()).toBe("dialog");
 	});
 
-	it("is a centred dialog on wide web and a sheet on narrow web", async () => {
+	it("is a centred dialog on a wide screen with a mouse, else a sheet", async () => {
 		isWide = true;
 		expect(await shape()).toBe("dialog");
 		isWide = false;

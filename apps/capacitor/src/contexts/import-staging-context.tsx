@@ -275,7 +275,7 @@ function attachHint(title: string, payload: StagedImport["payload"]): string {
 	const gain = payload.images?.length
 		? "add its images and keep your progress"
 		: "keep your progress instead of adding a copy";
-	return `Already in your library as "${title}". Attach this file to ${gain}.`;
+	return `Already in your library as "${title}"; attach this file to ${gain}.`;
 }
 
 export function useImportStaging(): ImportStaging {

@@ -1,8 +1,10 @@
+import { cn } from "@lesefluss/ui/utils";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { createFlag } from "@/commands/signal";
 import { applyUpdate, appUpdateReady } from "@/services/app-update";
-import { tabBarHidden } from "./app-shell/tab-bar-visibility";
+import { queryHooks } from "@/services/db/hooks";
+import { addButtonShown, tabBarHidden } from "./app-shell/tab-bar-visibility";
 
 const dismissed = createFlag();
 
@@ -15,13 +17,21 @@ export function AppUpdateBar() {
 	const isDismissed = dismissed.useValue();
 	// A screen's own bottom bar (library selection) has the place; the bar returns after.
 	const bottomTaken = tabBarHidden.useValue();
+	const clearsAddButton = addButtonShown.useValue();
+	// Nothing to keep a place in until a book has been read.
+	const { data: lastReadBookId } = queryHooks.useLastReadBookId();
 	const [reloading, setReloading] = useState(false);
 	if (!ready || isDismissed || bottomTaken) return null;
 	return (
 		<div
 			role="status"
-			// 5rem clears the library's add button (size-14 at the tab bar + 1rem) on phones.
-			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+5rem)] z-40 flex justify-center px-3 md:bottom-4 md:pl-[calc(var(--side-nav-w)+0.75rem)]"
+			className={cn(
+				"pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3 md:bottom-4 md:pl-[calc(var(--side-nav-w)+0.75rem)]",
+				// 5rem clears the library's add button (size-14 at the tab bar + 1rem) on phones.
+				clearsAddButton
+					? "bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+5rem)]"
+					: "bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+0.75rem)]",
+			)}
 		>
 			<div
 				data-toast-clear
@@ -29,7 +39,7 @@ export function AppUpdateBar() {
 			>
 				<div className="min-w-0 flex-1">
 					<p className="font-semibold text-sm">A new version is ready</p>
-					<p className="text-xs opacity-75">Your place is saved.</p>
+					{lastReadBookId != null && <p className="text-xs opacity-75">Your place is saved.</p>}
 				</div>
 				<button
 					type="button"

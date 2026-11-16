@@ -38,15 +38,15 @@ export function GoalCard({ book }: { book: Book }) {
 		if (!canStartGoal(book)) return null;
 		return (
 			<>
-				<section
-					className="book-detail-card mt-4 flex items-center justify-between gap-3"
-					data-testid="goal-entry"
-				>
-					<h2 className="book-detail-section-title">Goal</h2>
-					<Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
-						<Target aria-hidden />
-						Set goal
-					</Button>
+				<section className="book-detail-card mt-4" data-testid="goal-entry">
+					{/* .book-detail-card is an unlayered column, which a row utility on it can't override. */}
+					<div className="flex items-center justify-between gap-3">
+						<h2 className="book-detail-section-title">Goal</h2>
+						<Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
+							<Target aria-hidden />
+							Set goal
+						</Button>
+					</div>
 				</section>
 				<GoalSetupSheet
 					isOpen={isSheetOpen}
