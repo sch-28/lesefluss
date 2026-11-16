@@ -12,10 +12,8 @@
 			"backgroundColor": "#fef6e4",
 			"androidScaleType": "CENTER_CROP"
 		},
-		"StatusBar": {
-			"overlaysWebView": true,
-			"style": "DARK",
-			"backgroundColor": "#00000000"
+		"SystemBars": {
+			"style": "DARK"
 		},
 		"LocalNotifications": {
 			"smallIcon": "ic_stat_lesefluss",

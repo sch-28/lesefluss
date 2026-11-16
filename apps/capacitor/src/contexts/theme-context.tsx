@@ -1,5 +1,4 @@
-import { Capacitor } from "@capacitor/core";
-import { StatusBar, Style } from "@capacitor/status-bar";
+import { Capacitor, SystemBars, SystemBarsStyle } from "@capacitor/core";
 import { DEFAULT_SETTINGS, READER_THEMES, type ReaderTheme } from "@lesefluss/core";
 import { EINK_CLASS } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { MotionConfig } from "framer-motion";
@@ -101,6 +100,11 @@ export function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode
 	} catch {}
 }
 
+/** `Dark` means light icons, for a dark page under the edge-to-edge bars. */
+export function systemBarsStyleFor(theme: AppTheme): SystemBarsStyle {
+	return isDarkTheme(theme) ? SystemBarsStyle.Dark : SystemBarsStyle.Light;
+}
+
 interface ThemeContextValue {
 	/** The theme in effect: `light` while e-ink mode overrides the stored one. */
 	theme: AppTheme;
@@ -140,9 +144,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 	useEffect(() => {
 		if (!isLoaded || !Capacitor.isNativePlatform()) return;
-		// Style.Dark is light icons, for a dark page under the overlaid status bar.
-		StatusBar.setStyle({ style: isDarkTheme(theme) ? Style.Dark : Style.Light }).catch((err) =>
-			log.warn("theme", "status bar style failed:", err),
+		SystemBars.setStyle({ style: systemBarsStyleFor(theme) }).catch((err) =>
+			log.warn("theme", "system bars style failed:", err),
 		);
 	}, [isLoaded, theme]);
 

@@ -5,6 +5,7 @@ import {
 	focalLetterColorFor,
 	isDarkTheme,
 	storedThemeFor,
+	systemBarsStyleFor,
 	themeClasses,
 	themeColorFor,
 } from "../theme-context";
@@ -39,6 +40,15 @@ describe("high contrast counts as dark", () => {
 		expect(isDarkTheme("high-contrast")).toBe(true);
 		expect(isDarkTheme("dark")).toBe(true);
 		expect(isDarkTheme("light")).toBe(false);
+	});
+});
+
+describe("systemBarsStyleFor", () => {
+	it("gives light bar icons on the dark themes and dark icons on light and sepia", () => {
+		expect(systemBarsStyleFor("dark")).toBe("DARK");
+		expect(systemBarsStyleFor("high-contrast")).toBe("DARK");
+		expect(systemBarsStyleFor("light")).toBe("LIGHT");
+		expect(systemBarsStyleFor("sepia")).toBe("LIGHT");
 	});
 });
 

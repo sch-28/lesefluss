@@ -4,15 +4,11 @@ const platform = vi.hoisted(() => ({ name: "android" }));
 const setResizeMode = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock("@capacitor/core", () => ({
-	Capacitor: { isNativePlatform: () => platform.name !== "web", getPlatform: () => platform.name },
+	Capacitor: { getPlatform: () => platform.name },
 }));
 vi.mock("@capacitor/keyboard", () => ({
 	Keyboard: { setResizeMode },
 	KeyboardResize: { Native: "native" },
-}));
-vi.mock("@capacitor/status-bar", () => ({
-	StatusBar: { setStyle: vi.fn(async () => {}), setOverlaysWebView: vi.fn(async () => {}) },
-	Style: { Default: "DEFAULT" },
 }));
 
 const { bootstrapCapacitor } = await import("../bootstrap-capacitor");
@@ -30,5 +26,11 @@ describe("bootstrapCapacitor", () => {
 		platform.name = "ios";
 		await bootstrapCapacitor();
 		expect(setResizeMode).toHaveBeenCalledWith({ mode: "native" });
+	});
+
+	it("does nothing on the web", async () => {
+		platform.name = "web";
+		await bootstrapCapacitor();
+		expect(setResizeMode).not.toHaveBeenCalled();
 	});
 });

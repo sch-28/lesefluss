@@ -10,6 +10,7 @@ import android.view.KeyEvent;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 
+import androidx.core.view.WindowCompat;
 import androidx.lifecycle.Lifecycle;
 
 import com.getcapacitor.BridgeActivity;
@@ -30,6 +31,10 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TtsPlugin.class);
         registerPlugin(VolumeKeysPlugin.class);
         super.onCreate(savedInstanceState);
+        // Edge-to-edge on Android 14 and below too (15+ enforces it). Not
+        // EdgeToEdge.enable or the status-bar plugin: both call the bar colour
+        // setters Play flags as deprecated; the bars stay transparent via styles.xml.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getBridge().getWebView().setWebViewClient(new ImageProxyWebViewClient(getBridge()));
         // Low-RAM devices lose the WebView renderer under memory pressure, and
         // unhandled that crashes the app. Recreating the activity leaked the dead
