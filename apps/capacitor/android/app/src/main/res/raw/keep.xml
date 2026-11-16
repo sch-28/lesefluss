@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocalNotifications looks smallIcon up by name from capacitor.config.json, which the resource shrinker cannot see. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_lesefluss" />
