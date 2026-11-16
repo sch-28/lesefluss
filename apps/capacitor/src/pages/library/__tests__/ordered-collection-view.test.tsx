@@ -123,6 +123,13 @@ describe("OrderedCollectionView", () => {
 		);
 	});
 
+	it("keeps the next-book button full width on phone only, label-wide from the md breakpoint", async () => {
+		await mount();
+		const next = rendered.container.querySelector('[data-testid="ordered-next"]');
+		expect(next?.classList.contains("w-full")).toBe(true);
+		expect(next?.classList.contains("md:w-auto")).toBe(true);
+	});
+
 	it("drops a dragged row after another and writes 1..N for the rows that moved", async () => {
 		await mount();
 		const [first, , last] = rows();

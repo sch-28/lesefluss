@@ -6,7 +6,10 @@
 type Chord = { mod: boolean; alt: boolean; shift: boolean; key: string; isLetter: boolean };
 
 function parseKey(spec: string): Chord {
-	const parts = spec.split("+");
+	// "+" is the separator, so a bare "+" (or "Shift++") ends in an empty part.
+	const parts = spec.endsWith("+")
+		? [...spec.slice(0, -1).split("+").slice(0, -1), "+"]
+		: spec.split("+");
 	const last = parts.pop() ?? "";
 	const mods = new Set(parts);
 	const key = last === "Space" ? " " : last;

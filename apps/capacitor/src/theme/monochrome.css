@@ -176,9 +176,9 @@ body.theme-sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	--reader-bg: var(--background);
 	--reader-text: #3a2e1e;
 	--reader-heading: #2d2112;
-	--reader-progress-bg: #d2c3a4;
+	--reader-progress-bg: #a38e5f;
 	--reader-progress-fill: #7a5f3d;
-	--reader-progress-label: #8a7a63;
+	--reader-progress-label: #4f3f28;
 }
 
 /* Apply theme background to IonContent on the reader page */
@@ -422,6 +422,8 @@ body.theme-sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	bottom: 0;
 	left: 0;
 	right: 0;
+	max-width: var(--reader-column, none);
+	margin-inline: auto;
 	padding: 10px 16px;
 	padding-bottom: calc(var(--safe-bottom) + 10px);
 	display: flex;

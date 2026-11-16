@@ -58,4 +58,14 @@ describe("shortcutGroups", () => {
 			"global.palette:Mod+K",
 		]);
 	});
+
+	it("lists a command under its sheet name when it has one", () => {
+		const groups = shortcutGroups([
+			cmd("reader.bookmark", "reader", ["b"], {
+				title: "Remove bookmark here",
+				sheetTitle: "Add or remove bookmark",
+			}),
+		]);
+		expect(groups[0].rows[0].title).toBe("Add or remove bookmark");
+	});
 });

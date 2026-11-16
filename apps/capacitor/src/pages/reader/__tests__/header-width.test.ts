@@ -1,22 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { isReaderHeaderNarrow, isReaderTitleHidden } from "../header-width";
+import { readerColumnWidthPx } from "../column-width";
+import { headerRowWidthPx, isReaderHeaderNarrow, isReaderTitleHidden } from "../header-width";
 
 const at = (widthPx: number, hasSeriesNav: boolean, remPx = 16) =>
 	isReaderHeaderNarrow({ widthPx, remPx, hasSeriesNav });
 
 describe("isReaderHeaderNarrow", () => {
-	it("keeps Listen and Bookmark in the header of a 390px phone", () => {
-		expect(at(390, false)).toBe(false);
+	it("folds Listen and Bookmark on every phone, up to 430px", () => {
+		expect(at(360, false)).toBe(true);
+		expect(at(412, false)).toBe(true);
+		expect(at(430, false)).toBe(true);
 	});
 
-	it("folds them on a 390-412px phone when series chapter buttons share the row", () => {
-		expect(at(390, true)).toBe(true);
-		expect(at(412, true)).toBe(true);
-		expect(at(440, true)).toBe(false);
+	it("keeps them on a tablet and in the default desktop column", () => {
+		const row = headerRowWidthPx(1920, readerColumnWidthPx(16, 20));
+		expect(at(row, false)).toBe(false);
+		expect(at(row, true)).toBe(false);
+		expect(at(820, true)).toBe(false);
+	});
+
+	it("folds a wide desktop header whose column is narrow at the smallest text", () => {
+		expect(at(headerRowWidthPx(1920, readerColumnWidthPx(12, 8)), false)).toBe(true);
+	});
+
+	it("measures the full header where the bars are not tied to the column", () => {
+		expect(headerRowWidthPx(1920, null)).toBe(1920);
+	});
+
+	it("folds a wider header when series chapter buttons share the row", () => {
+		expect(at(480, false)).toBe(false);
+		expect(at(480, true)).toBe(true);
 	});
 
 	it("folds sooner under a large app font", () => {
-		expect(at(390, false, 20)).toBe(true);
+		expect(at(480, false, 20)).toBe(true);
 	});
 
 	it("waits for a measured width", () => {

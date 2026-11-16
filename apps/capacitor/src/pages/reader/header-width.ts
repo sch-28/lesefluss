@@ -1,4 +1,5 @@
-const NARROW_HEADER_REM = 22;
+/** Wider than any phone (430px at most): a phone header with six icons leaves the title a word or two. */
+const NARROW_HEADER_REM = 28;
 /** Back, Aa, RSVP and ⋮ plus a title of a few words; below it the title has no readable room. */
 const TITLE_HEADER_REM = 18;
 /** Room the series Previous and Next chapter buttons take from the title. */
@@ -19,4 +20,9 @@ export function isReaderHeaderNarrow(size: HeaderSize): boolean {
 /** Below this width, even with Listen and Bookmark folded, the title shows to screen readers only. */
 export function isReaderTitleHidden(size: HeaderSize): boolean {
 	return isBelow(TITLE_HEADER_REM, size);
+}
+
+/** The icon row is capped to the text column, so the fold measures the row, not the full-width bar. */
+export function headerRowWidthPx(headerPx: number, columnPx: number | null): number {
+	return columnPx === null ? headerPx : Math.min(headerPx, columnPx);
 }

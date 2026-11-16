@@ -141,7 +141,7 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 			id: "scroll.down",
 			title: "Scroll down",
 			scope: "scroll",
-			keys: ["Space", "ArrowDown", "PageDown"],
+			keys: ["Space", "ArrowDown", "PageDown", "ArrowRight"],
 			when: inScroll,
 			run: () => scrollBy(1),
 		},
@@ -149,7 +149,7 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 			id: "scroll.up",
 			title: "Scroll up",
 			scope: "scroll",
-			keys: ["ArrowUp", "PageUp"],
+			keys: ["ArrowUp", "PageUp", "ArrowLeft"],
 			when: inScroll,
 			run: () => scrollBy(-1),
 		},
@@ -166,6 +166,7 @@ export type ReaderActionInput = {
 	openSearch: () => void;
 	openAppearance: () => void;
 	openAnnotations: () => void;
+	stepFontSize: (direction: 1 | -1) => void;
 	/** Null where the platform can't read aloud. */
 	readAloud: {
 		title: string;
@@ -200,6 +201,7 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 			title: "Search in book",
 			keywords: ["find"],
 			scope: "reader",
+			keys: ["/"],
 			when: hasContent,
 			run: input.openSearch,
 		},
@@ -208,19 +210,38 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 			title: "Appearance",
 			keywords: ["font", "theme", "size", "margins"],
 			scope: "reader",
+			keys: ["a"],
 			run: input.openAppearance,
+		},
+		{
+			id: "reader.font-bigger",
+			title: "Larger text",
+			keywords: ["font size", "zoom"],
+			scope: "reader",
+			keys: ["+", "="],
+			run: () => input.stepFontSize(1),
+		},
+		{
+			id: "reader.font-smaller",
+			title: "Smaller text",
+			keywords: ["font size", "zoom"],
+			scope: "reader",
+			keys: ["-"],
+			run: () => input.stepFontSize(-1),
 		},
 		{
 			id: "reader.annotations",
 			title: "Contents and annotations",
 			keywords: ["annotations", "toc", "chapters", "bookmarks", "glossary", "notes"],
 			scope: "reader",
+			keys: ["c"],
 			when: hasContent,
 			run: input.openAnnotations,
 		},
 		{
 			id: "reader.bookmark",
 			title: input.bookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here",
+			sheetTitle: "Add or remove bookmark",
 			keywords: ["ribbon", "mark"],
 			scope: "reader",
 			keys: ["b"],

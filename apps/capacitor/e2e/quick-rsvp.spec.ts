@@ -27,7 +27,7 @@ async function openReaderAtLaterWord(page: Page): Promise<{ bookId: string; star
 	await reader.waitPositionQuiet(page);
 	const bookId = reader.bookIdFromUrl(page);
 	const settles = await reader.settleCount(page);
-	await reader.wheelTargetTo(page, reader.wordSpan(page, "w3x0"), "top");
+	await reader.wheelTargetTo(page, reader.wordSpan(page, "w2x40"), "top");
 	await reader.waitForSettleAbove(page, settles);
 	await reader.waitPositionQuiet(page);
 	const start = await savedWord(page, bookId);

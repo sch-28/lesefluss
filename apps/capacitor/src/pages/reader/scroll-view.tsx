@@ -21,6 +21,7 @@ import {
 	textSpacingVars,
 } from "../../hooks/use-appearance-settings";
 import { useElementWidth } from "../../hooks/use-element-width";
+import { readerColumnWidthPx } from "./column-width";
 import type { ReaderGoalDivider } from "./goal-divider";
 import Paragraph, {
 	type GlossaryRangeProp,
@@ -875,7 +876,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				style={
 					{
 						height: "100%",
-						maxWidth: "700px",
+						maxWidth: `${readerColumnWidthPx(fontSize, margin)}px`,
 						margin: "0 auto",
 						opacity: isInitialScrollReady ? 1 : 0,
 						transition: "opacity 0.12s ease-out",

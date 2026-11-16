@@ -38,10 +38,10 @@ afterEach(() => vi.restoreAllMocks());
 describe("reader keys", () => {
 	it("scrolls a quarter screen in scroll mode", () => {
 		const { view, press } = setup();
-		for (const key of [" ", "ArrowDown", "PageDown"]) press(key);
-		for (const key of ["ArrowUp", "PageUp"]) press(key);
+		for (const key of [" ", "ArrowDown", "PageDown", "ArrowRight"]) press(key);
+		for (const key of ["ArrowUp", "PageUp", "ArrowLeft"]) press(key);
 		const steps = view.scrollBy.mock.calls.map(([px]) => Math.sign(px));
-		expect(steps).toEqual([1, 1, 1, -1, -1]);
+		expect(steps).toEqual([1, 1, 1, 1, -1, -1, -1]);
 		expect(Math.abs(view.scrollBy.mock.calls[0]?.[0])).toBe(window.innerHeight * 0.25);
 		expect(view.goNext).not.toHaveBeenCalled();
 	});

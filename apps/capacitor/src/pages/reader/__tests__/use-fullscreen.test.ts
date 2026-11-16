@@ -22,6 +22,7 @@ function commandIds() {
 		openSearch: vi.fn(),
 		openAppearance: vi.fn(),
 		openAnnotations: vi.fn(),
+		stepFontSize: vi.fn(),
 		readAloud: null,
 		chapters: [],
 		goToWord: vi.fn(),

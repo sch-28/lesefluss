@@ -5,6 +5,8 @@ export type Command = {
 	/** Unique across the app; a second registration of an id replaces the first. */
 	id: string;
 	title: string;
+	/** The shortcut sheet's name where `title` names the current state ("Remove bookmark here"). */
+	sheetTitle?: string;
 	keywords?: readonly string[];
 	scope: CommandScope;
 	/** See `matchesKey` for the syntax. The first key is the one the palette shows. */

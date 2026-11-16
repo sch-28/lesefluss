@@ -13,6 +13,7 @@ function setup(list: ReaderActionInput["bookmarks"]["list"] = []) {
 		openSearch: vi.fn(),
 		openAppearance: vi.fn(),
 		openAnnotations: vi.fn(),
+		stepFontSize: vi.fn(),
 		readAloud: null,
 		chapters: [],
 		goToWord: vi.fn(),
@@ -93,5 +94,31 @@ describe("reader mini window command", () => {
 	it("is absent where it cannot open", () => {
 		const { commands } = setup();
 		expect(commands.find((c) => c.id === "reader.mini")).toBeUndefined();
+	});
+});
+
+describe("reader keys for the sheets", () => {
+	it("opens search, contents and appearance, and steps the font size", () => {
+		const { input, press } = setup();
+		press("/");
+		press("c");
+		press("a");
+		press("+", { shiftKey: true });
+		press("=");
+		press("-");
+		expect(input.openSearch).toHaveBeenCalledOnce();
+		expect(input.openAnnotations).toHaveBeenCalledOnce();
+		expect(input.openAppearance).toHaveBeenCalledOnce();
+		expect(vi.mocked(input.stepFontSize).mock.calls).toEqual([[1], [1], [-1]]);
+	});
+
+	it("names the bookmark key for what it does, not for its current state", () => {
+		const { input } = setup();
+		const bookmark = readerActionCommands({
+			...input,
+			bookmarks: { ...input.bookmarks, isOnScreen: true },
+		}).find((c) => c.id === "reader.bookmark");
+		expect(bookmark?.title).toBe("Remove bookmark here");
+		expect(bookmark?.sheetTitle).toBe("Add or remove bookmark");
 	});
 });

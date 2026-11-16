@@ -15,6 +15,7 @@ import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
 	DEFAULT_SETTINGS,
 	paragraphIndexForWord,
+	SETTING_CONSTRAINTS,
 	timeLeftWpm,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
@@ -140,6 +141,7 @@ import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
+import { readerColumnWidthPx } from "./column-width";
 import { readerActionCommands } from "./commands";
 import DictionaryModal from "./dictionary-modal";
 import { clampWord, decideExternalPosition, followLoweredRevision } from "./external-position";
@@ -147,7 +149,7 @@ import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
-import { isReaderHeaderNarrow, isReaderTitleHidden } from "./header-width";
+import { headerRowWidthPx, isReaderHeaderNarrow, isReaderTitleHidden } from "./header-width";
 import { hyphenationLang } from "./hyphenation-lang";
 import { refreshAfterLeaving } from "./leave-invalidation";
 import { useLiveReading } from "./live-board";
@@ -229,6 +231,9 @@ const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
 const DETACH_DRAG_PX = 8;
 const JUMP_MARK_DELAY_MS = 300;
 const BOOKMARK_LINE_WORDS = 12;
+const READER_FONT_SIZE = SETTING_CONSTRAINTS.READER_FONT_SIZE;
+/** `.rsvp-display-inner`'s max-width. */
+const RSVP_COLUMN_PX = 700;
 
 type ReadAloudHandle = Pick<
 	ReturnType<typeof useReadAloud>,
@@ -2098,7 +2103,9 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 			}
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isShortcutAllowed(e)) return;
+			const isScrollKey =
+				NATIVE_SCROLL_KEYS.has(e.key) || e.key === "ArrowLeft" || e.key === "ArrowRight";
+			if (!isScrollKey || !isShortcutAllowed(e)) return;
 			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -2303,9 +2310,16 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
 	const headerRef = useRef<HTMLElement>(null);
 	const headerWidth = useElementWidth(headerRef);
+	// Page mode lays out its own spreads, so its bars stay full width.
+	const readerColumnPx =
+		readerMode === "rsvp"
+			? RSVP_COLUMN_PX
+			: paginationStyle === "page"
+				? null
+				: readerColumnWidthPx(readerFontSize, readerMargin);
 	// In rem, so large system text on a phone moves Listen and Bookmark into the menu and the title stays readable.
 	const headerSize = {
-		widthPx: headerWidth,
+		widthPx: headerRowWidthPx(headerWidth, readerColumnPx),
 		remPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
 		hasSeriesNav: book?.seriesId != null,
 	};
@@ -2361,6 +2375,14 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 			openSearch: () => setSearchOpen(true),
 			openAppearance: () => setAppearanceOpen(true),
 			openAnnotations: () => openAnnotations(),
+			stepFontSize: (direction) =>
+				updateSetting(
+					"readerFontSize",
+					Math.min(
+						READER_FONT_SIZE.max,
+						Math.max(READER_FONT_SIZE.min, readerFontSize + direction * READER_FONT_SIZE.step),
+					),
+				),
 			readAloud: IS_READ_ALOUD_SUPPORTED
 				? readerMode === "rsvp"
 					? {
@@ -2733,6 +2755,11 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 		/>
 	);
 
+	const readerColumnStyle =
+		readerColumnPx === null
+			? undefined
+			: ({ "--reader-column": `${readerColumnPx}px` } as React.CSSProperties);
+
 	const overflowSourceUrl =
 		book.chapterSourceUrl ??
 		book.sourceUrl ??
@@ -2740,7 +2767,10 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 
 	return (
 		<ReaderApiContext.Provider value={readerApi}>
-			<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
+			<div
+				className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}
+				style={readerColumnStyle}
+			>
 				{fullscreen.isFullscreen && (
 					<div
 						className="fixed inset-x-0 top-0 z-40 h-2"
@@ -2763,7 +2793,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 					data-testid="reader-bar"
 					ref={headerRef}
 				>
-					<div className="flex h-12 items-center gap-0.5 px-1">
+					<div className="mx-auto flex h-12 w-full max-w-[var(--reader-column,none)] items-center gap-0.5 px-1">
 						<IconButton
 							aria-label="Back"
 							title="Back"
@@ -2802,7 +2832,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 						)}
 						<h1
 							className={cn(
-								"m-0 flex-1 truncate px-1 font-semibold text-base leading-none",
+								"m-0 flex-1 truncate px-1 font-semibold text-base leading-normal",
 								isTitleHidden && "sr-only",
 							)}
 						>
@@ -2979,6 +3009,27 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 					</div>
 				</header>
 
+				{/* In flow, not over the text: it would cover the chapter heading and the ruler. */}
+				{mini.isAttached && (
+					<div
+						className="flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap border-border border-b bg-card px-3 py-1.5 text-sm"
+						data-testid="mini-banner"
+					>
+						{mini.isPlaying ? (
+							<span className="size-2 rounded-full bg-[var(--goal-met)]" />
+						) : (
+							<span className="size-2 rounded-[2px] bg-muted-foreground" />
+						)}
+						<span>
+							{mini.isPlaying
+								? `Playing in Quick RSVP · ${rsvpSettings.wpm} wpm`
+								: "Paused in Quick RSVP"}
+						</span>
+						<Button variant="outline" size="sm" onClick={closeMini}>
+							Bring back here
+						</Button>
+					</div>
+				)}
 				<div
 					ref={setViewContainerEl}
 					// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
@@ -2988,26 +3039,6 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 					data-testid="reader-view"
 				>
 					<ReaderAnnouncer />
-					{mini.isAttached && (
-						<div
-							className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-lg"
-							data-testid="mini-banner"
-						>
-							{mini.isPlaying ? (
-								<span className="size-2 rounded-full bg-[var(--goal-met)]" />
-							) : (
-								<span className="size-2 rounded-[2px] bg-muted-foreground" />
-							)}
-							<span>
-								{mini.isPlaying
-									? `Playing in Quick RSVP · ${rsvpSettings.wpm} wpm`
-									: "Paused in Quick RSVP"}
-							</span>
-							<Button variant="outline" size="sm" onClick={closeMini}>
-								Bring back here
-							</Button>
-						</div>
-					)}
 					{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
 					{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
 					{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (

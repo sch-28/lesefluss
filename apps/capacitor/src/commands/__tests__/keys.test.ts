@@ -26,6 +26,12 @@ describe("matchesKey", () => {
 		expect(matchesKey(key("r", { metaKey: true }), "r")).toBe(false);
 	});
 
+	it("takes a bare + as the key, not as a separator", () => {
+		expect(matchesKey(key("+", { shiftKey: true }), "+")).toBe(true);
+		expect(matchesKey(key("-"), "+")).toBe(false);
+		expect(formatKey("+")).toEqual(["+"]);
+	});
+
 	it("does not need Shift spelled out for a shifted symbol", () => {
 		expect(matchesKey(key("?", { shiftKey: true }), "?")).toBe(true);
 		expect(matchesKey(key(" "), "Space")).toBe(true);

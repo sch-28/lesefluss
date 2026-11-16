@@ -19,6 +19,10 @@ solutions:
       10. Get back with Android back: close the overlay, then leave the collapse or mode, then the
           sub-page to its parent, then a root tab to the Library, then exit; never into old
           cross-tab history.
+      11. Create a collection from the Library (desktop sidebar and phone).
+      12. Create a series from the Library (desktop sidebar and phone).
+
+      For every main task the check asks whether a new user would find its entry point.
 
       **Placement**
       - Every setting lives on a Settings sub-page with an icon, never loose in the Settings root.
@@ -29,6 +33,29 @@ solutions:
       - The default Library card shows title and author only; series, rating and other fields are
         opt-in in the View sheet (LESE-190.6).
       - A sheet has a left-aligned title, keeps the page gutter and clears the gesture bar.
+
+      **Layout** (the user's numbers, LESE-211)
+      - Text pages (settings, social, stats, book page, edit pages) are at most 768 px wide; book
+        grids (library, collections, series, smart shelves, Explore) at most 1280 px, with more
+        columns on wide screens; the reader's text column is at most 700 px and a line of about
+        65-70 characters (narrower at small text sizes), with its header row and footer on the
+        same column.
+      - Every page is centred in the space beside the sidebar, and its header aligns with the same
+        column.
+      - Library, collection, smart shelf and series pages share one book view.
+      - The check compares page widths across pages at 1280, 1920 and 2560 px, side by side; a
+        page that is wider, narrower or off-centre against its kind is a finding, not taste.
+
+      **Desktop buttons:** a button is as wide as its label on desktop; full width is for phones
+      only (sheets, forms and a page's primary action).
+
+      **Menus**
+      - No menu with a single item: show that action directly.
+      - A menu trigger is always visible, never hover-only.
+      - On a fine pointer a menu opens anchored at its trigger, never as a bottom sheet.
+
+      **Discoverability:** every create or manage action for a kind of thing is reachable from
+      where that thing is listed.
 
       **Loading** (the user's rule, 2026-11-09): a data card reserves its loaded height. A skeleton
       only when its height matches the loaded height exactly, else a spinner in a box of that

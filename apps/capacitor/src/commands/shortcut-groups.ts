@@ -32,7 +32,7 @@ export function shortcutGroups(active: readonly Command[]): ShortcutGroup[] {
 		if (keys.length === 0) continue;
 		for (const key of keys) taken.add(key);
 		const rows = rowsByScope.get(command.scope) ?? [];
-		rows.push({ id: command.id, title: command.title, keys });
+		rows.push({ id: command.id, title: command.sheetTitle ?? command.title, keys });
 		rowsByScope.set(command.scope, rows);
 	}
 
