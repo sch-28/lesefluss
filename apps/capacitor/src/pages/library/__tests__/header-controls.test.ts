@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { headerControls } from "../header-controls";
 
 describe("library header controls", () => {
-	it("hides search, filter, sort and view on the series page", () => {
+	it("keeps only the layout control on the series page", () => {
 		for (const isDesktop of [true, false]) {
 			expect(headerControls({ isOrderedView: true, isDesktop })).toEqual({
 				search: false,
 				filter: false,
 				sort: false,
-				view: false,
+				view: true,
 			});
 		}
 	});

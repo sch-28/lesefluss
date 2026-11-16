@@ -6,11 +6,11 @@ import { PageHeader } from "@/components/app-shell/page-header";
 import { PageContainer } from "@/components/page-container";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { SheetOrDialog } from "@/components/sheet-or-dialog";
+import { GoalBookPicker } from "@/pages/library/reading-goal/goal-book-picker";
 import { goalAmountLabel, goalCandidates } from "@/pages/library/reading-goal/goal-model";
-import { GoalEditSheet, GoalSheetFor } from "@/pages/library/reading-goal/goal-sheet-for";
+import { GoalEditSheet } from "@/pages/library/reading-goal/goal-sheet-for";
 import { queryHooks } from "@/services/db/hooks";
-import type { Book, ReadingGoal } from "@/services/db/schema";
+import type { ReadingGoal } from "@/services/db/schema";
 import { areRemindersSupported } from "@/services/goal-reminders";
 import type { ReadingGoalPlan } from "@/services/stats/reading-goal";
 import { editableGoals, formatGoalProgress } from "@/services/stats/today-goal-summary";
@@ -51,7 +51,6 @@ function Goals() {
 function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisabled: boolean }) {
 	const { data: library } = queryHooks.useBooks();
 	const [isPickerOpen, setPickerOpen] = useState(false);
-	const [picked, setPicked] = useState<Book | null>(null);
 	const candidates = goalCandidates(library?.books ?? [], goalBookIds);
 	const isNoneLeft = !isDisabled && library !== undefined && candidates.length === 0;
 
@@ -75,35 +74,11 @@ function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisable
 					No unfinished book is left without a goal. Add a book to your library to set one more.
 				</p>
 			)}
-			<SheetOrDialog
-				open={isPickerOpen}
-				onOpenChange={setPickerOpen}
-				title="Set a goal for"
-				drawerClassName="sm:mx-auto sm:max-w-lg"
-			>
-				<div className="flex flex-col divide-y divide-border overflow-y-auto px-4 pb-4">
-					{candidates.map((book) => (
-						<button
-							key={book.id}
-							type="button"
-							data-testid="goal-candidate"
-							className="flex min-h-14 cursor-pointer flex-col justify-center py-2 text-left"
-							onClick={() => {
-								setPickerOpen(false);
-								setPicked(book);
-							}}
-						>
-							<span className="truncate text-foreground text-sm">{book.title}</span>
-							{book.author && (
-								<span className="truncate text-muted-foreground text-xs">{book.author}</span>
-							)}
-						</button>
-					))}
-				</div>
-			</SheetOrDialog>
-			{picked && (
-				<GoalSheetFor book={picked} existing={null} isOpen onClose={() => setPicked(null)} />
-			)}
+			<GoalBookPicker
+				isOpen={isPickerOpen}
+				onClose={() => setPickerOpen(false)}
+				goalBookIds={goalBookIds}
+			/>
 		</div>
 	);
 }

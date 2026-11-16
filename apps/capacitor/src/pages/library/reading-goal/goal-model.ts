@@ -255,6 +255,24 @@ export function newGoalSetup(today: string): GoalSetup {
 	return { lock: "date", days: presetDays(today, 1) };
 }
 
+/**
+ * Where a new deadline goal's plan will start today: the plan counts reading
+ * done earlier today toward the first day, so the sheet measures from there too.
+ */
+export function todayStartWord(
+	sessions: readonly { startedAt: number; startWord: number }[],
+	wordPosition: number,
+	now: number,
+): number {
+	const midnight = new Date(now).setHours(0, 0, 0, 0);
+	let first: { startedAt: number; startWord: number } | null = null;
+	for (const s of sessions) {
+		if (s.startedAt < midnight || s.startedAt >= now) continue;
+		if (!first || s.startedAt < first.startedAt) first = s;
+	}
+	return first ? Math.min(wordPosition, first.startWord) : wordPosition;
+}
+
 /** The sheet's starting state when editing: the goal's own date or daily percent. */
 export function seedFromGoal(goal: ReadingGoal, plan: ReadingGoalPlan): GoalSetup {
 	if (goal.mode === "deadline") {

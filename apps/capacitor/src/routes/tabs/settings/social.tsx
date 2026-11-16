@@ -270,12 +270,6 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					disabled={!profile.showStats}
 					onCheckedChange={(v) => save({ showMilestones: v })}
 				/>
-				<ToggleRow
-					title="Shared highlights"
-					subtitle="Highlights you choose to share"
-					checked={profile.showHighlights}
-					onCheckedChange={(v) => save({ showHighlights: v })}
-				/>
 			</SettingsSection>
 
 			<SettingsSection title="Activity feed">

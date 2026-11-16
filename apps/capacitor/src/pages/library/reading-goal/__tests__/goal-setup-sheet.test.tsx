@@ -1,3 +1,4 @@
+import { wordPos } from "@lesefluss/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../../test/book-fixture";
 import { click, type Rendered, render } from "../../../../test/render";
@@ -9,13 +10,23 @@ const remove = {
 	mutate: vi.fn((_vars: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()),
 };
 const restore = { isPending: false, mutate: vi.fn() };
+const hookState = vi.hoisted(() => ({
+	rsvpWpm: null as number | null,
+	settingWpm: null as number | null,
+	sessions: undefined as { startedAt: number; startWord: number }[] | undefined,
+}));
 const toastSuccess = vi.hoisted(() => vi.fn());
 vi.mock("../../../../components/toast", () => ({ toast: { success: toastSuccess } }));
 
 vi.mock("../../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsSpeedModel: () => ({ data: undefined }),
-		useSettings: () => ({ data: undefined }),
+		useStatsSpeedModel: () => ({
+			data: hookState.rsvpWpm === null ? undefined : { rsvp: { wpm: hookState.rsvpWpm } },
+		}),
+		useSettings: () => ({
+			data: hookState.settingWpm === null ? undefined : { wpm: hookState.settingWpm },
+		}),
+		useBookReadingSessions: () => ({ data: hookState.sessions }),
 		useCreateReadingGoal: () => mutation,
 		useReplanReadingGoal: () => mutation,
 		useSetGoalReminder: () => mutation,
@@ -37,7 +48,13 @@ let view: Rendered | undefined;
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
+	hookState.rsvpWpm = null;
+	hookState.settingWpm = null;
+	hookState.sessions = undefined;
+	vi.useRealTimers();
 });
+
+const sheetText = () => document.body.textContent ?? "";
 
 describe("GoalSetupSheet", () => {
 	it("starts a new goal with the % unit selected", async () => {
@@ -75,5 +92,35 @@ describe("GoalSetupSheet", () => {
 		expect(options.action.label).toBe("Undo");
 		options.action.onClick();
 		expect(restore.mutate).toHaveBeenCalledWith({ goal });
+	});
+
+	it("measures a new goal from where today's reading began, as the plan on the card will", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(at(1, 12));
+		const book = makeBook({ wordCount: 100_000, wordPosition: wordPos(50_000) });
+		view = await render(
+			<GoalSetupSheet isOpen onClose={() => {}} book={book} wpm={250} existing={null} />,
+		);
+		const withoutToday = sheetText();
+		view.unmount();
+
+		hookState.sessions = [{ startedAt: at(1, 8), startWord: 10_000 }];
+		view = await render(
+			<GoalSetupSheet isOpen onClose={() => {}} book={book} wpm={250} existing={null} />,
+		);
+		// 90% left instead of 50% over the same days: the shown daily share grows.
+		expect(sheetText()).not.toBe(withoutToday);
+	});
+
+	it("shows the measured RSVP speed, the one the book page shows, over the dial setting", async () => {
+		hookState.rsvpWpm = 333;
+		hookState.settingWpm = 500;
+		const book = makeBook({ wordCount: 100_000, wordPosition: wordPos(0) });
+		view = await render(
+			<GoalSetupSheet isOpen onClose={() => {}} book={book} wpm={250} existing={null} />,
+		);
+		expect(document.querySelector('[data-testid="goal-rsvp"]')?.textContent).toContain(
+			"RSVP at 333 wpm",
+		);
 	});
 });

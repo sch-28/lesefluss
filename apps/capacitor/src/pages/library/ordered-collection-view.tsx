@@ -1,20 +1,14 @@
-import { bookPace } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
-import { ArrowDown, ArrowUp, BookOpen, GripVertical, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Play, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
-import BookCover from "../../components/book-cover";
-import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { EmptyState } from "../../components/empty-state";
 import { PageContainer } from "../../components/page-container";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { Book } from "../../services/db/schema";
-import { estimateMinutesLeft } from "../../utils/reading-time";
-import { cardStatus, StatusField } from "./card-fields";
-import CardMoreButton from "./card-more-button";
 import {
 	dropIndex,
 	moveItem,
@@ -26,11 +20,22 @@ import {
 	seriesAuthor,
 	summaryLabel,
 } from "./ordered-collection";
+import type { LibraryItem } from "./sort-filter";
+import VirtualBookGrid from "./virtual-book-grid";
+
+export type OrderedCardOptions = {
+	/** The #N the card shows in place of the book's own series badge. */
+	seriesNumber: number | null;
+	onMenu: () => void;
+};
 
 type Props = {
 	collection: CollectionWithCount;
-	books: readonly Book[];
-	covers: ReadonlyMap<string, string>;
+	/** The library's items; the view picks its members' book items in #N order. */
+	items: readonly LibraryItem[];
+	viewMode: "grid" | "list";
+	/** The library's own card, so this view looks like every other book view. */
+	renderCard: (item: LibraryItem, options: OrderedCardOptions) => React.ReactNode;
 	onOpenBook: (book: Book) => void;
 	onAddBooks: () => void;
 	/** Native drag needs a mouse; touch reorders through Move up / down. */
@@ -38,15 +43,18 @@ type Props = {
 };
 
 type DropTarget = { index: number; after: boolean };
+type BookItem = Extract<LibraryItem, { kind: "book" }>;
 
 /**
- * An ordered collection, a series among them: its books in #N order, reordered
- * by drag or the row menu, every reorder numbering the rows 1..N.
+ * An ordered collection, a series among them: its books in #N order through the
+ * library's shared grid and list, reordered by drag or the card menu, every
+ * reorder numbering the books 1..N.
  */
 const OrderedCollectionView: React.FC<Props> = ({
 	collection,
-	books,
-	covers,
+	items,
+	viewMode,
+	renderCard,
 	onOpenBook,
 	onAddBooks,
 	canDrag,
@@ -57,7 +65,15 @@ const OrderedCollectionView: React.FC<Props> = ({
 	const isSeries = collection.seriesKey !== null;
 	const noun = isSeries ? "series" : "collection";
 
-	const booksById = useMemo(() => new Map(books.map((b) => [b.id, b])), [books]);
+	const itemsById = useMemo(() => {
+		const byId = new Map<string, BookItem>();
+		for (const item of items) if (item.kind === "book") byId.set(item.book.id, item);
+		return byId;
+	}, [items]);
+	const booksById = useMemo(
+		() => new Map([...itemsById].map(([id, item]) => [id, item.book])),
+		[itemsById],
+	);
 	const stored = useMemo(
 		() => orderedRows(members.data ?? [], booksById, isSeries),
 		[members.data, booksById, isSeries],
@@ -67,6 +83,11 @@ const OrderedCollectionView: React.FC<Props> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new stored order is the reset trigger
 	useEffect(() => setOptimistic(null), [stored]);
 	const rows = optimistic ?? stored;
+	const rowItems = useMemo(
+		() => rows.flatMap((row) => itemsById.get(row.book.id) ?? []),
+		[rows, itemsById],
+	);
+	const indexOf = useMemo(() => new Map(rows.map((row, i) => [row.book.id, i])), [rows]);
 
 	const [dragFrom, setDragFrom] = useState<number | null>(null);
 	const [dropAt, setDropAt] = useState<DropTarget | null>(null);
@@ -91,13 +112,69 @@ const OrderedCollectionView: React.FC<Props> = ({
 
 	const menuRow = menuFor !== null ? rows[menuFor] : undefined;
 	const next = isSeries ? nextInSeries(rows) : null;
-	const speedModel = queryHooks.useStatsSpeedModel().data;
-	const minutesToRead = (book: Book) =>
-		speedModel ? estimateMinutesLeft(book, bookPace(speedModel, book.id).wpm) : null;
+	// A grid reads left to right, so a drop lands beside a card; the list stacks.
+	const isAfter = (e: React.DragEvent<HTMLElement>) => {
+		const box = e.currentTarget.getBoundingClientRect();
+		return viewMode === "grid"
+			? e.clientX > box.left + box.width / 2
+			: e.clientY > box.top + box.height / 2;
+	};
+
+	const renderItem = (item: LibraryItem) => {
+		if (item.kind !== "book") return null;
+		const index = indexOf.get(item.book.id) ?? 0;
+		const row = rows[index];
+		const edge = dropAt?.index === index ? (dropAt.after ? "after" : "before") : null;
+		return (
+			<div
+				data-testid="ordered-row"
+				data-ordered-book={item.book.id}
+				onDragStart={canDrag ? () => setDragFrom(index) : undefined}
+				onDragOver={
+					canDrag
+						? (e) => {
+								if (dragFrom === null) return;
+								e.preventDefault();
+								const after = isAfter(e);
+								if (dropAt?.index !== index || dropAt.after !== after) setDropAt({ index, after });
+							}
+						: undefined
+				}
+				onDrop={
+					canDrag
+						? (e) => {
+								e.preventDefault();
+								if (dragFrom !== null && dropAt) {
+									move(dragFrom, dropIndex(dragFrom, dropAt.index, dropAt.after));
+								}
+								endDrag();
+							}
+						: undefined
+				}
+				onDragEnd={canDrag ? endDrag : undefined}
+				className={cn(
+					"rounded-sm",
+					dragFrom === index && "opacity-40",
+					edge && viewMode === "grid" && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+					edge === "before" &&
+						viewMode === "list" &&
+						"shadow-[inset_0_2px_0_0_var(--color-primary)]",
+					edge === "after" &&
+						viewMode === "list" &&
+						"shadow-[inset_0_-2px_0_0_var(--color-primary)]",
+				)}
+			>
+				{renderCard(item, {
+					seriesNumber: row?.shownIndex ?? (isSeries ? null : index + 1),
+					onMenu: () => setMenuFor(index),
+				})}
+			</div>
+		);
+	};
 
 	return (
-		<PageContainer width="grid" data-testid="ordered-collection">
-			<div className="px-4 pt-3 pb-4">
+		<div data-testid="ordered-collection">
+			<PageContainer width="grid" className="px-4 pt-3">
 				<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
 					{[seriesAuthor(rows), summaryLabel(orderedSummary(rows))].filter(Boolean).join(" · ")}
 				</p>
@@ -111,7 +188,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 						{next.label}
 					</Button>
 				)}
-			</div>
+			</PageContainer>
 
 			{members.isSuccess && rows.length === 0 ? (
 				<EmptyState
@@ -126,43 +203,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 					}
 				/>
 			) : (
-				<ol className="m-0 list-none p-4 pb-24" aria-label={`${collection.name} books`}>
-					{rows.map((row, index) => (
-						<OrderedBookRow
-							key={row.book.id}
-							row={row}
-							cover={covers.get(row.book.id)}
-							showNumber={isSeries}
-							minutesToRead={minutesToRead(row.book)}
-							canDrag={canDrag}
-							isDragging={dragFrom === index}
-							dropEdge={dropAt?.index === index ? (dropAt.after ? "after" : "before") : null}
-							onOpen={() => onOpenBook(row.book)}
-							onMenu={() => setMenuFor(index)}
-							onDragStart={(e) => {
-								e.stopPropagation();
-								e.dataTransfer.effectAllowed = "move";
-								e.dataTransfer.setData("text/plain", row.book.title);
-								setDragFrom(index);
-							}}
-							onDragOver={(e) => {
-								if (dragFrom === null) return;
-								e.preventDefault();
-								const box = e.currentTarget.getBoundingClientRect();
-								const after = e.clientY > box.top + box.height / 2;
-								if (dropAt?.index !== index || dropAt.after !== after) setDropAt({ index, after });
-							}}
-							onDrop={(e) => {
-								e.preventDefault();
-								if (dragFrom !== null && dropAt) {
-									move(dragFrom, dropIndex(dragFrom, dropAt.index, dropAt.after));
-								}
-								endDrag();
-							}}
-							onDragEnd={endDrag}
-						/>
-					))}
-				</ol>
+				<VirtualBookGrid items={rowItems} viewMode={viewMode} renderItem={renderItem} />
 			)}
 
 			<ActionSheet
@@ -206,95 +247,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 					},
 				]}
 			/>
-		</PageContainer>
-	);
-};
-
-type RowProps = {
-	row: OrderedRow;
-	cover: string | undefined;
-	showNumber: boolean;
-	/** The whole book at the reader's pace; null before the pace is known. */
-	minutesToRead: number | null;
-	canDrag: boolean;
-	isDragging: boolean;
-	dropEdge: "before" | "after" | null;
-	onOpen: () => void;
-	onMenu: () => void;
-	onDragStart: (e: React.DragEvent<HTMLLIElement>) => void;
-	onDragOver: (e: React.DragEvent<HTMLLIElement>) => void;
-	onDrop: (e: React.DragEvent<HTMLLIElement>) => void;
-	onDragEnd: () => void;
-};
-
-const OrderedBookRow: React.FC<RowProps> = ({
-	row,
-	cover,
-	showNumber,
-	minutesToRead,
-	canDrag,
-	isDragging,
-	dropEdge,
-	onOpen,
-	onMenu,
-	onDragStart,
-	onDragOver,
-	onDrop,
-	onDragEnd,
-}) => {
-	const { book } = row;
-	return (
-		<li
-			data-testid="ordered-row"
-			data-ordered-book={book.id}
-			draggable={canDrag}
-			onDragStart={canDrag ? onDragStart : undefined}
-			onDragOver={canDrag ? onDragOver : undefined}
-			onDrop={canDrag ? onDrop : undefined}
-			onDragEnd={canDrag ? onDragEnd : undefined}
-			className={cn(
-				"group relative flex min-h-16 items-center gap-3 border-border border-b py-1",
-				isDragging && "opacity-40",
-				dropEdge === "before" && "shadow-[inset_0_2px_0_0_var(--color-primary)]",
-				dropEdge === "after" && "shadow-[inset_0_-2px_0_0_var(--color-primary)]",
-			)}
-		>
-			{canDrag && (
-				<GripVertical aria-hidden className="size-4 shrink-0 cursor-grab text-muted-foreground" />
-			)}
-			<button
-				type="button"
-				onClick={onOpen}
-				aria-label={book.title}
-				className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-			>
-				<div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm">
-					<BookCover book={book} cover={cover} size="full" />
-				</div>
-				<div className="min-w-0 flex-1">
-					<div className="truncate font-medium text-[0.875rem] leading-5">
-						{showNumber && row.shownIndex !== null && (
-							<span
-								data-testid="ordered-number"
-								className="font-normal text-muted-foreground tabular-nums"
-							>
-								{formatSeriesNumber(row.shownIndex)}{" "}
-							</span>
-						)}
-						{book.title}
-					</div>
-					{book.author && !showNumber && (
-						<div className="truncate text-[0.75rem] text-muted-foreground leading-4">
-							{book.author}
-						</div>
-					)}
-					<div className="mt-1 flex h-4 items-center text-[0.75rem] leading-4">
-						<StatusField status={cardStatus(book, minutesToRead)} />
-					</div>
-				</div>
-			</button>
-			<CardMoreButton title={book.title} onMenu={onMenu} className="shrink-0" />
-		</li>
+		</div>
 	);
 };
 

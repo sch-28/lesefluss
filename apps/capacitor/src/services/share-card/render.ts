@@ -154,13 +154,17 @@ function fitSize(ctx: Ctx, text: string, weight: string, max: number, maxWidth: 
 	return size;
 }
 
-function drawGeneratedCover(ctx: Ctx, title: string, x: number, y: number, w: number, h: number) {
-	const hue = hashHue(title);
+function drawCoverGradient(ctx: Ctx, seed: string, x: number, y: number, w: number, h: number) {
+	const hue = hashHue(seed);
 	const gradient = ctx.createLinearGradient(x, y, x + w, y + h);
 	gradient.addColorStop(0, `hsl(${hue} 42% 46%)`);
 	gradient.addColorStop(1, `hsl(${(hue + 35) % 360} 48% 16%)`);
 	ctx.fillStyle = gradient;
 	ctx.fillRect(x, y, w, h);
+}
+
+function drawGeneratedCover(ctx: Ctx, title: string, x: number, y: number, w: number, h: number) {
+	drawCoverGradient(ctx, title, x, y, w, h);
 	const size = Math.max(24, Math.round(w / 8));
 	setFont(ctx, `700 ${size}px ${SERIF}`);
 	ctx.fillStyle = "rgba(255,255,255,0.92)";
@@ -285,7 +289,8 @@ function drawCoverWall(
 			roundRectPath(ctx, x, y, w, h, 12);
 			ctx.clip();
 			if (img) drawCovering(ctx, img, x, y, w, h);
-			else drawGeneratedCover(ctx, `${seed}${n}`, x, y, w, h);
+			// No text: a wall tile stands for no book, so a title would only repeat the seed.
+			else drawCoverGradient(ctx, `${seed}${n}`, x, y, w, h);
 			ctx.restore();
 			n++;
 		}
@@ -619,8 +624,8 @@ function drawSpeed(
 	height: number,
 ) {
 	const isStory = format === "story";
-	const cols = isStory ? 3 : 4;
 	const tiles = isStory ? data.tiles : data.tiles.map((t) => ({ ...t, wide: false }));
+	const cols = Math.max(1, Math.min(isStory ? 3 : 4, tiles.length));
 	const rows = tileRows(tiles, cols);
 	const gridTop = height - (isStory ? 140 : 132) - gridHeight(rows, TILE_H);
 	if (isStory) drawKicker(ctx, data.kicker, width / 2, 80, "center");

@@ -55,7 +55,7 @@ vi.mock("../../../services/sync", () => ({
 
 const { default: InvitePage } = await import("../invite");
 
-const OWNER = { handle: "jan", name: "Jan", avatarUrl: null };
+const OWNER = { handle: "jan", name: "Jan", avatarUrl: "/avatars/jan.png" };
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -64,7 +64,7 @@ afterEach(() => {
 });
 
 describe("invite page, signed out", () => {
-	it("names the inviter and shows none of the device's books", async () => {
+	it("shows the inviter's name, avatar and handle and none of the device's books", async () => {
 		state.preview = {
 			isPending: false,
 			fetchStatus: "idle",
@@ -73,6 +73,8 @@ describe("invite page, signed out", () => {
 		view = await render(<InvitePage token="tok" />);
 
 		expect(view.text()).toContain("Jan invited you.");
+		expect(view.text()).toContain("@jan");
+		expect(view.container.querySelector('img[src="/avatars/jan.png"]')).not.toBeNull();
 		expect(view.text()).not.toContain("My Secret Diary");
 		expect(view.container.querySelector('img[src*="cover.jpg"]')).toBeNull();
 	});

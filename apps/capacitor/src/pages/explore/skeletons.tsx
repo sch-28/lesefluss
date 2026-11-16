@@ -24,7 +24,7 @@ export const CardSkeleton: React.FC<{ extraLines?: number }> = ({ extraLines = 0
 			{skeletonKeys(extraLines).map((key) => (
 				<div key={key} className="mt-0.5 h-[1lh] text-[0.7rem]" />
 			))}
-			<div className="mt-1 h-[1lh] text-[0.7rem]" />
+			<div className="mt-1 h-8" />
 		</div>
 	</div>
 );

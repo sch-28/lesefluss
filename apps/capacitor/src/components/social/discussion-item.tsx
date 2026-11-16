@@ -33,14 +33,16 @@ type Props = {
 	onReport: (target: ReportTarget) => void;
 };
 
+const RemovedLine = () => (
+	<p className="m-0 text-muted-foreground text-sm italic">This comment was removed.</p>
+);
+
 function Author({
 	author,
-	removed,
 	createdAt,
 	edited,
 }: {
 	author: DiscussionItem["author"];
-	removed: boolean;
 	createdAt: number;
 	edited: boolean;
 }) {
@@ -53,7 +55,7 @@ function Author({
 			)}
 			<div className="min-w-0 text-xs">
 				<div className="truncate font-medium text-foreground text-sm">
-					{removed ? "Removed" : (author?.name ?? "Former member")}
+					{author?.name ?? "Former member"}
 				</div>
 				<div className="truncate text-muted-foreground">
 					{author ? `@${author.handle} · ` : ""}
@@ -210,12 +212,18 @@ function ReplyRow({
 	isOffline: boolean;
 	onMenu: () => void;
 }) {
+	if (reply.removed) {
+		return (
+			<div className="mt-3 border-border border-l-2 pl-3">
+				<RemovedLine />
+			</div>
+		);
+	}
 	return (
 		<div className="mt-3 border-border border-l-2 pl-3">
 			<div className="flex items-start justify-between gap-2">
 				<Author
 					author={reply.author}
-					removed={reply.removed}
 					createdAt={reply.createdAt}
 					edited={reply.editedAt !== null}
 				/>
@@ -289,14 +297,15 @@ export function DiscussionItemCard({ item, buddyReadId, isOffline, onReport }: P
 	const removed = item.kind === "comment" && item.removed;
 	return (
 		<article className="px-4 py-3">
-			<div className="flex items-start justify-between gap-2">
-				<Author
-					author={item.author}
-					removed={removed}
-					createdAt={item.createdAt}
-					edited={item.kind === "comment" && item.editedAt !== null}
-				/>
-				{!removed && (
+			{removed ? (
+				<RemovedLine />
+			) : (
+				<div className="flex items-start justify-between gap-2">
+					<Author
+						author={item.author}
+						createdAt={item.createdAt}
+						edited={item.kind === "comment" && item.editedAt !== null}
+					/>
 					<Button
 						variant="ghost"
 						size="icon"
@@ -306,9 +315,9 @@ export function DiscussionItemCard({ item, buddyReadId, isOffline, onReport }: P
 					>
 						<MoreHorizontal className="size-4" />
 					</Button>
-				)}
-			</div>
-			{item.kind === "highlight" ? (
+				</div>
+			)}
+			{removed ? null : item.kind === "highlight" ? (
 				<div className="mt-2">
 					<blockquote className="m-0 border-primary/60 border-l-2 pl-3 text-foreground text-sm italic">
 						"{item.text}"
@@ -332,13 +341,7 @@ export function DiscussionItemCard({ item, buddyReadId, isOffline, onReport }: P
 					}
 				/>
 			) : (
-				<p className="mt-2 mb-0 whitespace-pre-wrap text-foreground text-sm">
-					{removed ? (
-						<span className="text-muted-foreground italic">This comment was removed.</span>
-					) : (
-						item.body
-					)}
-				</p>
+				<p className="mt-2 mb-0 whitespace-pre-wrap text-foreground text-sm">{item.body}</p>
 			)}
 			{!removed && (
 				<Reactions

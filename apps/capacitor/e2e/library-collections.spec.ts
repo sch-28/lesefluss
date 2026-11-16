@@ -81,6 +81,30 @@ test.describe("on desktop", () => {
 				secondHandle,
 			),
 		).toBe(true);
+
+		// The library's own cards carry the #N and the reorder menu.
+		const badges = page.getByTestId("series-number-badge");
+		await expect(badges).toHaveText(["#1", "#2"]);
+		await page.getByRole("button", { name: "More for Tidewater" }).click();
+		await page.getByRole("menuitem", { name: "Move up" }).click();
+		await expect
+			.poll(() =>
+				page
+					.locator("[data-book-title]")
+					.evaluateAll((els) => els.map((e) => e.getAttribute("data-book-title"))),
+			)
+			.toEqual(["Tidewater", "Northlight"]);
+
+		await page
+			.getByRole("button", { name: "Northlight", exact: true })
+			.dragTo(page.getByRole("button", { name: "Tidewater", exact: true }));
+		await expect
+			.poll(() =>
+				page
+					.locator("[data-book-title]")
+					.evaluateAll((els) => els.map((e) => e.getAttribute("data-book-title"))),
+			)
+			.toEqual(["Northlight", "Tidewater"]);
 	});
 });
 

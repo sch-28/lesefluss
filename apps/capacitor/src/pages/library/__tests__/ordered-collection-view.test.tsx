@@ -2,12 +2,23 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { click, flush, type Rendered, render } from "../../../test/render";
+import type { OrderedCardOptions } from "../ordered-collection-view";
+import { buildLibraryItems, type LibraryItem } from "../sort-filter";
 
 const reorder = vi.fn();
 const remove = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
-vi.mock("../../../components/book-cover", () => ({ default: () => null }));
+// The shared grid virtualises; here it lays every item out, in the order it is given.
+vi.mock("../virtual-book-grid", () => ({
+	default: ({
+		items,
+		renderItem,
+	}: {
+		items: readonly LibraryItem[];
+		renderItem: (item: LibraryItem) => React.ReactNode;
+	}) => <div data-testid="library-items">{items.map((item) => renderItem(item))}</div>,
+}));
 vi.mock("../../../components/collections/collection-actions", () => ({
 	CollectionActions: () => null,
 }));
@@ -61,6 +72,19 @@ const books = [
 	makeBook({ id: "b", title: "Messiah" }),
 	makeBook({ id: "c", title: "Children" }),
 ];
+const items = buildLibraryItems(books, [], new Map(), Date.now());
+
+/** Stands in for the library's card: what the view hands it is what the test reads. */
+const renderCard = (item: LibraryItem, { seriesNumber, onMenu }: OrderedCardOptions) =>
+	item.kind === "book" ? (
+		<div data-testid="card" data-number={seriesNumber ?? ""}>
+			<button type="button" draggable data-book-id={item.book.id}>
+				{seriesNumber !== null && `#${seriesNumber} `}
+				{item.book.title}
+			</button>
+			<button type="button" aria-label={`More for ${item.book.title}`} onClick={onMenu} />
+		</div>
+	) : null;
 const series = {
 	id: "s",
 	name: "Dune",
@@ -76,8 +100,9 @@ async function mount(canDrag = true) {
 	rendered = await render(
 		<OrderedCollectionView
 			collection={series}
-			books={books}
-			covers={new Map()}
+			items={items}
+			viewMode="grid"
+			renderCard={renderCard}
 			onOpenBook={() => {}}
 			onAddBooks={() => {}}
 			canDrag={canDrag}
@@ -89,8 +114,8 @@ async function mount(canDrag = true) {
 const rows = () => [...rendered.container.querySelectorAll<HTMLElement>("[data-ordered-book]")];
 const order = () => rows().map((r) => r.dataset.orderedBook);
 
-function drag(type: string, target: HTMLElement, clientY = 0) {
-	const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientY });
+function drag(type: string, target: HTMLElement, clientX = 0) {
+	const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX });
 	Object.defineProperty(event, "dataTransfer", {
 		value: { setData: () => {}, effectAllowed: "" },
 	});
@@ -106,12 +131,12 @@ describe("OrderedCollectionView", () => {
 	});
 	afterEach(() => rendered.unmount());
 
-	it("lists the books in #N order, the number inline with the title, no name of its own", async () => {
+	it("hands the shared grid its books in #N order, each card with its #N", async () => {
 		await mount();
+		expect(rendered.container.querySelector('[data-testid="library-items"]')).not.toBeNull();
 		expect(order()).toEqual(["a", "b", "c"]);
-		const numbers = [...rendered.container.querySelectorAll('[data-testid="ordered-number"]')];
-		expect(numbers.map((n) => n.textContent?.trim())).toEqual(["#1", "#2", "#3"]);
-		expect(numbers.every((n) => !/\bw-\d/.test(n.className))).toBe(true);
+		const cards = [...rendered.container.querySelectorAll<HTMLElement>('[data-testid="card"]')];
+		expect(cards.map((c) => c.dataset.number)).toEqual(["1", "2", "3"]);
 		expect(rows()[0]?.querySelector("button")?.textContent).toContain("#1 Dune");
 		expect(rendered.container.querySelector("nav[aria-label=Breadcrumb]")).toBeNull();
 		// The page header carries the name, back and actions.
@@ -150,9 +175,18 @@ describe("OrderedCollectionView", () => {
 		expect(order()).toEqual(["b", "c", "a"]);
 	});
 
+	it("drops nothing without a mouse drag", async () => {
+		await mount(false);
+		const [first, , last] = rows();
+		drag("dragstart", first);
+		drag("dragover", last, 10);
+		drag("drop", last, 10);
+		expect(reorder).not.toHaveBeenCalled();
+		expect(order()).toEqual(["a", "b", "c"]);
+	});
+
 	it("moves a row up from its menu, and the first row cannot move up", async () => {
 		await mount(false);
-		expect(rows()[0].getAttribute("draggable")).toBe("false");
 		await click(rendered.getButton("More for Children"));
 		await click(rendered.getButton("Move up"));
 		expect(reorder.mock.calls[0][0].order).toEqual([

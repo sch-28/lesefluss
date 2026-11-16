@@ -10,7 +10,7 @@ import { chapterFallback, webNovelLength } from "./web-novel-facts";
 
 /**
  * Vertical card mirroring `pages/explore/result-card.tsx` rhythm: aspect-2/3
- * cover with the reading time top-right, 2-line title and author below.
+ * cover, 2-line title, then only the author, provider and chapter lines that have content.
  */
 export const WebNovelCard: React.FC<{
 	result: SearchResult;
@@ -49,19 +49,18 @@ export const WebNovelCard: React.FC<{
 					>
 						{result.title}
 					</div>
-					{/* Every line holds its height when empty, so cards in a row and their
-					    skeleton (`webNovelCardExtraLines`) keep one height. */}
-					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-						{result.author}
-					</div>
+					{result.author && (
+						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+							{result.author}
+						</div>
+					)}
 					{showProvider && (
-						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">
+						<div className="mt-0.5 text-[0.7rem] text-muted-foreground">
 							{providerLabel(result.provider)}
 						</div>
 					)}
-					{/* The quick-add button spans only the two bottom lines, so the author keeps the full width. */}
+					{chapters && <div className="mt-0.5 text-[0.7rem] text-muted-foreground">{chapters}</div>}
 					<div className={canQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
-						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">{chapters}</div>
 						<CardMeta labels={lengthLabels} isInLibrary={quickAdd.isInLibrary} />
 					</div>
 				</div>

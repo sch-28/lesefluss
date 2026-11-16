@@ -153,6 +153,17 @@ describe("catalog card membership and quick add", () => {
 		expect(addButton()).not.toBeNull();
 	});
 
+	it("keeps the author line full width, clearing only the length line for quick add", async () => {
+		view = await renderCard();
+		await flush();
+		const author = [...(card()?.querySelectorAll("div") ?? [])].find(
+			(el) => el.textContent === "Mary Shelley",
+		);
+		expect(addButton()).not.toBeNull();
+		expect(author?.closest(".pr-9")).toBeNull();
+		expect(card()?.querySelector(".pr-9")).not.toBeNull();
+	});
+
 	it("offers no quick add when there is no EPUB", async () => {
 		view = await renderCard({ hasEpub: false });
 		await flush();

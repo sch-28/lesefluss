@@ -46,6 +46,44 @@ describe("DetailShell tags", () => {
 	});
 });
 
+describe("DetailShell subjects", () => {
+	it("shows raw subjects as the same chips, without a tap action", async () => {
+		view = await render(
+			<DetailShell
+				cover={null}
+				title="Book"
+				subjects={["Fiction -- Sea stories", "Whaling"]}
+				primaryAction={{ label: "Read now", onClick: vi.fn() }}
+			/>,
+		);
+		const chips = [
+			...(view.container.querySelector('[data-testid="detail-tags"]')?.children ?? []),
+		];
+		expect(chips.map((c) => c.textContent)).toEqual(["Fiction", "Sea stories", "Whaling"]);
+		expect(chips.every((c) => c.tagName === "SPAN" && c.className.includes("rounded-full"))).toBe(
+			true,
+		);
+	});
+});
+
+describe("DetailShell actions", () => {
+	it("groups the primary and secondary actions beside the cover, secondary as wide as its label", async () => {
+		view = await render(
+			<DetailShell
+				cover={null}
+				title="Book"
+				primaryAction={{ label: "Read now", onClick: vi.fn() }}
+				secondaryActions={[{ label: "Add to wishlist", onClick: vi.fn() }]}
+			/>,
+		);
+		const group = view.container.querySelector('[data-testid="detail-actions"]');
+		expect(group?.contains(view.getButton("Read now"))).toBe(true);
+		expect(group?.contains(view.getButton("Add to wishlist"))).toBe(true);
+		expect(group?.closest("section")).not.toBeNull();
+		expect(view.getButton("Add to wishlist").className).not.toMatch(/(^|\s)w-full(\s|$)/);
+	});
+});
+
 describe("DetailShell primary action", () => {
 	it("keeps the detail apart from the label, hidden until the button has room", async () => {
 		view = await render(

@@ -1,6 +1,6 @@
 import { inclusiveDays } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { newGoalPlanFields } from "../../../../services/stats/reading-goal";
+import { newGoalPlanFields, planReadingGoal } from "../../../../services/stats/reading-goal";
 import {
 	canStartGoal,
 	daysMetWithToday,
@@ -22,6 +22,7 @@ import {
 	sliderToDays,
 	switchGoalUnit,
 	todayFigure,
+	todayStartWord,
 } from "../goal-model";
 import { at, makeGoal, makePlan, session, WORDS } from "./goal-fixtures";
 
@@ -288,5 +289,44 @@ describe("goalAmountLabel", () => {
 		const percentPlan = { ...makePlan({ position: 0 }), dailyMinutes: null };
 		expect(goalAmountLabel(percentGoal, percentPlan)).toMatch(/^5(\.0)?% a day · /);
 		expect(goalAmountLabel(makeGoal(), makePlan({ position: 0 }))).toMatch(/^By .+ a day$/);
+	});
+});
+
+describe("todayStartWord", () => {
+	const morning = {
+		startedAt: at(1, 8),
+		endedAt: at(1, 9),
+		startWord: 0,
+		endWord: 200,
+		wordsRead: 200,
+	};
+
+	it("matches the daily percent the new deadline plan asks for after reading earlier today", () => {
+		const created = at(1, 10);
+		const start = todayStartWord([morning], 200, created);
+		expect(start).toBe(0);
+		const sheet = setupValues({ lock: "date", days: 10 }, { ...book(start), today: "2026-03-01" });
+		const goal = makeGoal({
+			startedAt: created,
+			...newGoalPlanFields({ mode: "deadline", targetDate: "2026-03-10" }, 200, WORDS, created),
+		});
+		const plan = planReadingGoal({
+			goal,
+			book: { wordCount: WORDS, wordPosition: 200 },
+			sessions: [morning],
+			pace: { wpm: 200, source: "book" },
+			now: created,
+		});
+		if (plan.kind !== "plan") throw new Error("expected a plan");
+		expect(sheet.dailyPercent).toBeCloseTo(plan.dailyTarget.percent, 5);
+	});
+
+	it("starts from the day's first sitting like the plan, not from a later jump back", () => {
+		const jumpBack = { ...morning, startedAt: at(1, 9), startWord: 50, endWord: 60 };
+		expect(todayStartWord([jumpBack, { ...morning, startWord: 100 }], 300, at(1, 10))).toBe(100);
+	});
+
+	it("ignores reading before today", () => {
+		expect(todayStartWord([{ ...morning, startedAt: at(1, 8) }], 200, at(2, 10))).toBe(200);
 	});
 });

@@ -1,8 +1,14 @@
 import { Button } from "@lesefluss/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type React from "react";
 import { useId, useRef } from "react";
-import { useHasFinePointer, useStripScroll } from "./strip-scroll";
+import { StripArrows } from "./strip-arrows";
+import {
+	HIDDEN_SCROLLBAR_X,
+	useHasFinePointer,
+	useStripEdges,
+	useStripScroll,
+} from "./strip-scroll";
 
 type Props = {
 	title: string;
@@ -18,7 +24,7 @@ type Props = {
 	testId?: string;
 };
 
-/** Titled horizontal strip with See all; arrows appear for pointer devices. */
+/** Titled horizontal strip with See all; a mouse gets arrows while the strip overflows. */
 const ShelfFrame: React.FC<Props> = ({
 	title,
 	onSeeAll,
@@ -32,6 +38,8 @@ const ShelfFrame: React.FC<Props> = ({
 	const titleId = useId();
 	const hasFinePointer = useHasFinePointer();
 	const scroll = useStripScroll(stripRef);
+	const isStrip = !body && !isExpanded;
+	const edges = useStripEdges(stripRef, hasFinePointer && isStrip);
 
 	return (
 		<section className="mb-6" data-testid={testId}>
@@ -43,26 +51,7 @@ const ShelfFrame: React.FC<Props> = ({
 				</h2>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					{actions}
-					{hasFinePointer && !body && !isExpanded && (
-						<>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								onClick={() => scroll(-1)}
-								aria-label={`Scroll ${title} left`}
-							>
-								<ChevronLeft />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								onClick={() => scroll(1)}
-								aria-label={`Scroll ${title} right`}
-							>
-								<ChevronRight />
-							</Button>
-						</>
-					)}
+					{edges.overflows && <StripArrows label={title} edges={edges} onScroll={scroll} />}
 					{onSeeAll && (
 						<Button
 							variant="ghost"
@@ -86,7 +75,8 @@ const ShelfFrame: React.FC<Props> = ({
 					className={
 						isExpanded
 							? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-3 p-0 pb-2"
-							: `m-0 flex list-none gap-3 p-0 pb-2 ${HIDDEN_SCROLLBAR_X}`
+							: // On a phone the strip runs to the screen edges, its first item still lined up with the title.
+								`m-0 flex list-none gap-3 p-0 pb-2 max-md:-mx-4 max-md:scroll-px-4 max-md:px-4 ${HIDDEN_SCROLLBAR_X}`
 					}
 					style={isExpanded ? undefined : { scrollSnapType: "x mandatory" }}
 				>
@@ -97,12 +87,7 @@ const ShelfFrame: React.FC<Props> = ({
 	);
 };
 
-/**
- * A horizontal scroller without a scrollbar. The app-wide 8px scrollbar appears
- * only once content overflows, so a strip grew by 8px when its items loaded.
- */
-export const HIDDEN_SCROLLBAR_X =
-	"overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+export { HIDDEN_SCROLLBAR_X };
 
 export const SHELF_ITEM_STYLE = { width: "7.5rem", scrollSnapAlign: "start" } as const;
 

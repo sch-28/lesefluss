@@ -50,10 +50,11 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 );
 
 /**
- * QuickAddButton in the card's bottom corner, beside the author and length lines:
- * on the cover it hid titles printed into the art, beside the title it cut the
- * title short. Those lines keep `QUICK_ADD_CLEARANCE` free for it, so the card
- * must always render them.
+ * QuickAddButton in the card's bottom corner, beside the length line: on the cover
+ * it hid titles printed into the art, beside the title it cut the title short,
+ * beside the author it cut a phone grid's authors to a few letters. `CardMeta`
+ * is the button's height and keeps `QUICK_ADD_CLEARANCE` free for it, so the
+ * card must always render it.
  */
 export const QuickAddBesideMeta: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
 	<QuickAddButton {...props} className="absolute right-0 bottom-0" />
@@ -63,13 +64,13 @@ export const QUICK_ADD_CLEARANCE = "pr-9";
 
 /**
  * Under a card's title, off the cover, where corner badges hid titles printed into the art.
- * Holds its line when empty, so every card in a row, and the skeleton, keeps one height.
+ * As tall as the quick-add button, empty or not, so every card in a row, and the skeleton, keeps one height.
  */
 export const CardMeta: React.FC<{ labels?: LengthLabels | null; isInLibrary?: boolean }> = ({
 	labels,
 	isInLibrary,
 }) => (
-	<div className="mt-1 flex min-h-[1lh] flex-wrap items-center gap-1 text-[0.7rem]">
+	<div className="mt-1 flex min-h-8 flex-wrap items-center gap-1 text-[0.7rem]">
 		{isInLibrary && <InLibraryBadge />}
 		{labels && (
 			<span data-testid="card-length" className="text-muted-foreground tabular-nums">

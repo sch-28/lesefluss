@@ -126,3 +126,15 @@ describe("web-novel grid card provider name", () => {
 		expect(view.text()).not.toContain("Provider royalroad");
 	});
 });
+
+describe("web-novel grid card lines", () => {
+	it("leaves out the author and chapter lines a series has nothing for", async () => {
+		const { WebNovelCard } = await import("../web-novel-card");
+		view = await render(<WebNovelCard result={fresh} onPick={vi.fn()} showProvider={false} />);
+		const lines = view.container.querySelectorAll("button > div:last-child > div");
+		expect([...lines].map((l) => l.textContent)).toEqual([
+			"Fresh Series",
+			expect.stringContaining("2h 12m"),
+		]);
+	});
+});

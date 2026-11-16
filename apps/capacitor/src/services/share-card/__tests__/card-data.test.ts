@@ -1,6 +1,6 @@
 import { computeSpeedModel } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { finishedCardData } from "../card-data";
+import { finishedCardData, speedCardData } from "../card-data";
 
 const MIN = 60_000;
 const DAY = 86_400_000;
@@ -60,5 +60,23 @@ describe("finishedCardData", () => {
 			["Saved by RSVP", "1h"],
 		]);
 		expect(card.tiles.at(-1)).toMatchObject({ hot: true, wide: true });
+	});
+});
+
+describe("speedCardData", () => {
+	const model = computeSpeedModel([sitting(-5, "scroll", 120, 200)], { now: T0 });
+
+	it("leaves out a tile that would read 0", () => {
+		const card = speedCardData({
+			model,
+			trend: [],
+			trendDeltaWpm: null,
+			year: { minutes: 120, words: 24_000, booksFinished: 0 },
+			covers: [],
+			now: T0,
+		});
+		if (card.kind !== "speed") throw new Error("speed card expected");
+		expect(card.tiles.map((t) => t.label)).toEqual(["Read", "Words"]);
+		expect(card.tiles.some((t) => t.value === "0")).toBe(false);
 	});
 });

@@ -1,4 +1,4 @@
-import type { SpeedModel, SpeedWindow } from "@lesefluss/core";
+import type { SpeedModel } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
@@ -10,7 +10,7 @@ import { queryHooks } from "../../../../services/db/hooks";
 import {
 	deltaLabel,
 	type SpeedView,
-	speedDelta,
+	speedBasis,
 	speedViews,
 	viewWpm,
 } from "../../../../services/stats/speed-tab";
@@ -20,28 +20,19 @@ import { MilestonesSection } from "./milestones-section";
 import { RsvpDial } from "./rsvp-dial";
 import { ShareSpeedButton } from "./share-speed-button";
 import { hasReadAny, PersonalBests, SpeedInsights } from "./speed-insights";
+import { useTrendDelta } from "./use-trend-delta";
 
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
-
-const WINDOW_PHRASES: Record<SpeedWindow, string> = {
-	recent: "your last 10 hours",
-	"30d": "the last 30 days",
-	all: "all your reading",
-};
 
 /** Whether the view has a speed of its own yet; the reading default is the average reader's. */
 export function hasOwnSpeed(model: SpeedModel, view: SpeedView): boolean {
 	return view === "rsvp" ? model.rsvp !== null : model.reading.source !== "default";
 }
 
-function Headline({ model, view }: { model: SpeedModel; view: SpeedView }) {
+function Headline({ model, view, now }: { model: SpeedModel; view: SpeedView; now: number }) {
 	const wpm = viewWpm(model, view);
-	const earlier = queryHooks.useStatsSpeedModelEarlier();
-	const delta = speedDelta(model, earlier.data, view);
-	const basis =
-		view === "reading" && model.reading.source === "test"
-			? "From your speed test"
-			: `Based on ${WINDOW_PHRASES[model.window]}`;
+	const { delta, since } = useTrendDelta(model, view, now);
+	const basis = speedBasis(model, view);
 	return (
 		<div data-testid="speed-hero">
 			<div className="flex items-baseline gap-2">
@@ -53,7 +44,7 @@ function Headline({ model, view }: { model: SpeedModel; view: SpeedView }) {
 					<span className="ml-auto text-[0.8125rem] tabular-nums">
 						{/* A rise is good news; a drop stays neutral, slower isn't a failure. */}
 						<span className={cn(delta > 0 ? "text-[var(--goal-met)]" : "text-muted-foreground")}>
-							{deltaLabel(delta)}
+							{deltaLabel(delta, since ?? undefined)}
 						</span>
 					</span>
 				)}
@@ -154,7 +145,7 @@ export function SpeedTab({ now }: { now: number }) {
 			<section className="mt-4 px-4">
 				{hasSpeed && (
 					<>
-						<Headline model={model} view={view} />
+						<Headline model={model} view={view} now={now} />
 						<div className="mt-4">
 							<WpmTrend
 								window={model.window}

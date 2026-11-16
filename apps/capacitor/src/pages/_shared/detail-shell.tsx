@@ -8,7 +8,7 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
-import { FilterChip } from "@lesefluss/ui/filter-chip";
+import { CHIP_BASE, FilterChip } from "@lesefluss/ui/filter-chip";
 import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucide-react";
@@ -254,30 +254,23 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 							)}
 							{/* Pinned to the bottom of the column so the hero is one filled
 							    block rather than text floating above dead space. */}
-							<div className="mt-auto pt-3">
+							<div className="mt-auto flex flex-wrap gap-2 pt-3" data-testid="detail-actions">
 								<ActionButton action={primaryAction} primary />
+								{secondaryActions?.map((a, i) => (
+									// Index key safe: array reconstructed each render, never reordered.
+									// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+									<ActionButton key={i} action={a} primary={false} />
+								))}
 							</div>
 						</div>
 					</section>
-
-					{secondaryActions && secondaryActions.length > 0 && (
-						<div className="mt-3 flex flex-col gap-2">
-							{secondaryActions.map((a, i) => (
-								// Index key safe: array reconstructed each render, never reordered.
-								// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-								<ActionButton key={i} action={a} primary={false} />
-							))}
-						</div>
-					)}
 
 					{tagLinks && tagLinks.tags.length > 0 ? (
 						<TagList tags={tagLinks.tags} onTagTap={tagLinks.onTap} />
 					) : (
 						subjects &&
 						subjects.length > 0 && (
-							<p className="m-0 mt-4 text-muted-foreground text-xs">
-								{readableSubjects(subjects).slice(0, COLLAPSED_TAG_COUNT).join(" · ")}
-							</p>
+							<TagList tags={readableSubjects(subjects).map((label) => ({ id: label, label }))} />
 						)
 					)}
 
@@ -317,26 +310,33 @@ const DetailFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 	</PageContainer>
 );
 
+/** Without `onTagTap` the tags are plain labels in the same chip shape. */
 const TagList: React.FC<{
 	tags: readonly { id: string; label: string }[];
-	onTagTap: (tagId: string) => void;
+	onTagTap?: (tagId: string) => void;
 }> = ({ tags, onTagTap }) => {
 	const [isExpanded, setExpanded] = useState(false);
 	const visible = isExpanded ? tags : tags.slice(0, COLLAPSED_TAG_COUNT);
 	const hiddenCount = tags.length - visible.length;
 	return (
 		<div className="mt-4 flex flex-wrap gap-2" data-testid="detail-tags">
-			{visible.map((t) => (
-				<FilterChip
-					key={t.id}
-					selected={false}
-					action
-					onClick={() => onTagTap(t.id)}
-					className={SMALL_CHIP}
-				>
-					{t.label}
-				</FilterChip>
-			))}
+			{visible.map((t) =>
+				onTagTap ? (
+					<FilterChip
+						key={t.id}
+						selected={false}
+						action
+						onClick={() => onTagTap(t.id)}
+						className={SMALL_CHIP}
+					>
+						{t.label}
+					</FilterChip>
+				) : (
+					<span key={t.id} className={cn(CHIP_BASE, SMALL_CHIP, "hover:bg-muted")}>
+						{t.label}
+					</span>
+				),
+			)}
 			{hiddenCount > 0 && (
 				<FilterChip
 					selected={false}
@@ -361,8 +361,14 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			variant={action.destructive ? "destructive" : primary ? "default" : "outline"}
 			disabled={action.disabled || action.loading}
 			onClick={action.onClick}
-			// Desktop drops the container: inline-size containment would collapse a label-width button.
-			className="@container w-full md:w-auto md:max-w-full md:self-start md:[container-type:normal]"
+			// The primary fills the phone column, where its container query hides the detail when
+			// narrow; desktop drops the container, as inline-size containment would collapse a
+			// label-width button. Secondary actions are label-width everywhere.
+			className={
+				primary
+					? "@container w-full md:w-auto md:max-w-full md:[container-type:normal]"
+					: "max-w-full"
+			}
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
 			<span className="min-w-0 truncate">

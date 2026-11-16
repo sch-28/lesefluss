@@ -13,11 +13,31 @@ function mockPointer(fine: boolean) {
 	);
 }
 
+/** happy-dom lays nothing out: give every element a strip `scrollWidth` wide in a 500px box. */
+function mockStripWidth(scrollWidth: number) {
+	const proto = HTMLElement.prototype;
+	const original = {
+		scrollWidth: Object.getOwnPropertyDescriptor(proto, "scrollWidth"),
+		clientWidth: Object.getOwnPropertyDescriptor(proto, "clientWidth"),
+	};
+	Object.defineProperty(proto, "scrollWidth", { configurable: true, get: () => scrollWidth });
+	Object.defineProperty(proto, "clientWidth", { configurable: true, get: () => 500 });
+	restoreWidth = () => {
+		for (const [key, descriptor] of Object.entries(original)) {
+			if (descriptor) Object.defineProperty(proto, key, descriptor);
+			else Reflect.deleteProperty(proto, key);
+		}
+	};
+}
+let restoreWidth = () => {};
+
 let view: Rendered | undefined;
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	vi.unstubAllGlobals();
+	restoreWidth();
+	restoreWidth = () => {};
 });
 
 const renderRow = async () => {
@@ -30,10 +50,13 @@ const renderRow = async () => {
 describe("BrowseRow", () => {
 	it("gives a mouse the shelves' arrows, which page the genre row", async () => {
 		mockPointer(true);
+		mockStripWidth(1200);
 		const row = await renderRow();
 		const nav = row.container.querySelector<HTMLElement>('nav[aria-label="Browse"]');
 		if (!nav) throw new Error("no browse row");
-		Object.defineProperty(nav, "clientWidth", { value: 500 });
+		nav.scrollLeft = 100;
+		nav.dispatchEvent(new Event("scroll"));
+		await flush();
 		const scrollBy = vi.fn();
 		nav.scrollBy = scrollBy;
 		await click(row.getButton("Scroll genres right"));
@@ -44,12 +67,20 @@ describe("BrowseRow", () => {
 
 	it("puts both arrows together after the row, like a shelf's", async () => {
 		mockPointer(true);
+		mockStripWidth(1200);
 		const row = await renderRow();
 		const nav = row.container.querySelector('nav[aria-label="Browse"]');
 		const arrows = nav?.nextElementSibling;
 		expect(nav?.previousElementSibling).toBeNull();
 		expect(arrows?.contains(row.getButton("Scroll genres left"))).toBe(true);
 		expect(arrows?.contains(row.getButton("Scroll genres right"))).toBe(true);
+	});
+
+	it("leaves the arrows out for a mouse when every genre fits", async () => {
+		mockPointer(true);
+		mockStripWidth(500);
+		const row = await renderRow();
+		expect(row.queryButton("Scroll genres right")).toBeNull();
 	});
 
 	it("leaves the arrows out on touch, where the row bleeds to the edges to swipe", async () => {

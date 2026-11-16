@@ -1,13 +1,18 @@
 import { Button } from "@lesefluss/ui/button";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
 import { getGenres } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
-import { HIDDEN_SCROLLBAR_X } from "./shelf-frame";
-import { useHasFinePointer, useStripScroll } from "./strip-scroll";
+import { StripArrows } from "./strip-arrows";
+import {
+	HIDDEN_SCROLLBAR_X,
+	useHasFinePointer,
+	useStripEdges,
+	useStripScroll,
+} from "./strip-scroll";
 
 const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
@@ -28,6 +33,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 	const stripRef = useRef<HTMLElement>(null);
 	const hasFinePointer = useHasFinePointer();
 	const scroll = useStripScroll(stripRef);
+	const edges = useStripEdges(stripRef, hasFinePointer);
 
 	const row = (
 		<nav
@@ -56,24 +62,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 	return (
 		<div className="mb-6 flex items-start gap-2">
 			{row}
-			<div className="flex shrink-0 items-center gap-1">
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					onClick={() => scroll(-1)}
-					aria-label="Scroll genres left"
-				>
-					<ChevronLeft />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					onClick={() => scroll(1)}
-					aria-label="Scroll genres right"
-				>
-					<ChevronRight />
-				</Button>
-			</div>
+			{edges.overflows && <StripArrows label="genres" edges={edges} onScroll={scroll} />}
 		</div>
 	);
 };

@@ -9,6 +9,7 @@ import {
 	SPEED_DELTA_SPAN_MS,
 	type SpeedTabSession,
 	sortBookRows,
+	speedBasis,
 	speedDelta,
 	speedViews,
 	timeSavedMs,
@@ -112,6 +113,25 @@ describe("speedDelta", () => {
 		expect(deltaLabel(12)).toBe("+12 in 4 weeks");
 		expect(deltaLabel(-5)).toBe("−5 in 4 weeks");
 		expect(deltaLabel(0)).toBe("±0 in 4 weeks");
+		const since = new Date(new Date().getFullYear(), 2, 5).getTime();
+		expect(deltaLabel(12, since)).toBe("+12 since Mar 5");
+	});
+});
+
+describe("speedBasis", () => {
+	const model = computeSpeedModel([], { now: NOW, window: "recent" });
+	it("names the reading time the recent window really holds", () => {
+		const reading = { ...model.reading, activeMs: 25 * 60_000 };
+		expect(speedBasis({ ...model, reading }, "reading")).toBe(
+			"Based on your last 25 min of reading",
+		);
+	});
+
+	it("names the fixed windows and a speed test", () => {
+		expect(speedBasis({ ...model, window: "30d" }, "reading")).toBe("Based on the last 30 days");
+		expect(speedBasis({ ...model, window: "all" }, "reading")).toBe("Based on all your reading");
+		const reading = { ...model.reading, source: "test" as const };
+		expect(speedBasis({ ...model, reading }, "reading")).toBe("From your speed test");
 	});
 });
 

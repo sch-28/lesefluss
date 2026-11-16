@@ -198,6 +198,9 @@ describe("SocialPage", () => {
 		// One way to invite, and progress as a bar rather than a ring that reads as a spinner.
 		expect(view.container.querySelectorAll('a[href="/tabs/social/invite-link"]')).toHaveLength(1);
 		expect(view.text()).toContain("Invite a friend");
+		expect(view.container.querySelector('a[href="/tabs/social/friends"]')?.textContent).toBe(
+			"See all",
+		);
 		expect(view.container.querySelector('[style*="conic-gradient"]')).toBeNull();
 	});
 

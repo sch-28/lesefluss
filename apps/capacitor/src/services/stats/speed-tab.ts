@@ -8,6 +8,7 @@ import {
 	speedSittings,
 	wpmFrom,
 } from "@lesefluss/core";
+import { formatDate, formatDuration } from "../../utils/date-utils";
 import { fastestBook } from "./records";
 
 export type SpeedView = "reading" | "rsvp";
@@ -69,6 +70,15 @@ export function timeSavedMs(model: SpeedModel): number {
 	return rsvpTimeSavedMs(model.rsvp.words, model.reading.wpm, model.rsvp.wpm);
 }
 
+/** What the headline speed rests on; the recent window names the reading time it really holds. */
+export function speedBasis(model: SpeedModel, view: SpeedView): string {
+	if (view === "reading" && model.reading.source === "test") return "From your speed test";
+	if (model.window === "30d") return "Based on the last 30 days";
+	if (model.window === "all") return "Based on all your reading";
+	const activeMs = view === "rsvp" ? (model.rsvp?.activeMs ?? 0) : model.reading.activeMs;
+	return `Based on your last ${formatDuration(activeMs)} of reading`;
+}
+
 export const SPEED_DELTA_SPAN_MS = 28 * 24 * 60 * 60_000;
 
 /**
@@ -93,9 +103,10 @@ export function viewWpm(model: SpeedModel, view: SpeedView): number {
 	return view === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
 }
 
-export function deltaLabel(wpm: number): string {
+/** `since` names where the comparison starts when it is not the default four weeks back. */
+export function deltaLabel(wpm: number, since?: number): string {
 	const signed = wpm > 0 ? `+${wpm}` : wpm < 0 ? `−${Math.abs(wpm)}` : "±0";
-	return `${signed} in 4 weeks`;
+	return since === undefined ? `${signed} in 4 weeks` : `${signed} since ${formatDate(since)}`;
 }
 
 /** The mode average a book is compared with, so an RSVP book isn't measured against scrolling. */

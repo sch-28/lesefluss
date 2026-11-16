@@ -18,19 +18,30 @@ type Props = {
 	onChange: (value: string) => void;
 	/** Commit a query right away (Enter or a recent pick), skipping the debounce. */
 	onSubmit: (value: string) => void;
+	label?: string;
+	placeholder?: string;
+	/** Off where the queries are not catalog searches, so they stay out of Explore's list. */
+	hasRecents?: boolean;
 };
 
-const SearchField: React.FC<Props> = ({ value, onChange, onSubmit }) => {
+const SearchField: React.FC<Props> = ({
+	value,
+	onChange,
+	onSubmit,
+	label = "Search books and web novels",
+	placeholder = label,
+	hasRecents = true,
+}) => {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [isFocused, setFocused] = useState(false);
 	const [recent, setRecent] = useState<string[]>(readRecentSearches);
 	const blurTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	useEffect(() => () => clearTimeout(blurTimerRef.current), []);
 
-	const showRecent = isFocused && !value && recent.length > 0;
+	const showRecent = hasRecents && isFocused && !value && recent.length > 0;
 
 	const submit = (query: string) => {
-		setRecent(recordRecentSearch(query));
+		if (hasRecents) setRecent(recordRecentSearch(query));
 		onSubmit(query);
 		inputRef.current?.blur();
 	};
@@ -45,8 +56,8 @@ const SearchField: React.FC<Props> = ({ value, onChange, onSubmit }) => {
 					inputMode="search"
 					maxLength={MAX_QUERY_LENGTH}
 					enterKeyHint="search"
-					aria-label="Search books and web novels"
-					placeholder="Search books and web novels"
+					aria-label={label}
+					placeholder={placeholder}
 					value={value}
 					onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
 					onFocus={() => {

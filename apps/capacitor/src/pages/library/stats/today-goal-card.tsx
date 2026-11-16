@@ -13,18 +13,19 @@ import {
 	formatGoalProgress,
 	summarizeTodayGoals,
 } from "../../../services/stats/today-goal-summary";
+import { GoalBookPicker } from "../reading-goal/goal-book-picker";
 import { canStartGoal } from "../reading-goal/goal-model";
 import { GoalEditSheet, GoalSheetFor } from "../reading-goal/goal-sheet-for";
 import { MonthPager, StreakCalendar, StreakWeekStrip } from "./streak-calendar";
 
 const RING_SIZE = 56;
 
-type GoalTarget = "edit" | "goals" | "start";
+type GoalTarget = "edit" | "goals" | "start" | "pick";
 
 /**
  * Today's goal and the streak in one card at the top of Stats.
  * One goal opens its editor, several open the goals page, none offers a goal
- * for the book read last, or the goals page when there is no such book.
+ * for the book read last, or a book picker when there is no such book.
  */
 export function TodayGoalCard() {
 	const navigate = useNavigate();
@@ -40,15 +41,17 @@ export function TodayGoalCard() {
 	const only = editable.length === 1 ? editable[0] : null;
 
 	const target: GoalTarget =
-		summary?.kind === "goals" ? (only ? "edit" : "goals") : startable ? "start" : "goals";
+		summary?.kind === "goals" ? (only ? "edit" : "goals") : startable ? "start" : "pick";
 	const label =
 		target === "edit"
 			? "Edit today's goal"
 			: target === "start" && startable
 				? `Set a reading goal for ${startable.title}`
-				: "Reading goals";
+				: target === "pick"
+					? "Set a reading goal"
+					: "Reading goals";
 	const primary =
-		summary?.kind === "goals" ? `Today ${formatGoalProgress(summary)}` : "Set a daily goal";
+		summary?.kind === "goals" ? `Today ${formatGoalProgress(summary)}` : "Set a reading goal";
 
 	const isPending = !plans.data || streak.isPending;
 
@@ -92,6 +95,13 @@ export function TodayGoalCard() {
 			</div>
 			{target === "edit" && only && (
 				<GoalEditSheet existing={only} isOpen={isSheetOpen} onClose={() => setSheetOpen(false)} />
+			)}
+			{target === "pick" && (
+				<GoalBookPicker
+					isOpen={isSheetOpen}
+					onClose={() => setSheetOpen(false)}
+					goalBookIds={plans.data?.map((p) => p.goal.bookId) ?? []}
+				/>
 			)}
 			{target === "start" && startable && (
 				<GoalSheetFor

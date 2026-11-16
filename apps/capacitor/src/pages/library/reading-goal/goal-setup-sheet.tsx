@@ -1,4 +1,4 @@
-import { inclusiveDays, modeSpeed } from "@lesefluss/core";
+import { inclusiveDays } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { drawerSnapPoints } from "@lesefluss/ui/drawer";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
@@ -18,6 +18,7 @@ import { formatPercent } from "../../../utils/format-percent";
 import { log } from "../../../utils/log";
 import { formatReadingTime } from "../../../utils/reading-time";
 import { UNDO_WINDOW_MS } from "../stats/use-undoable-delete";
+import { rsvpEstimateSpeed } from "../what-if-speed";
 import {
 	daysToSlider,
 	GOAL_PRESETS,
@@ -36,6 +37,7 @@ import {
 	setupValues,
 	sliderToDays,
 	switchGoalUnit,
+	todayStartWord,
 	type UnitSwitch,
 } from "./goal-model";
 import { GoalReminderRow } from "./goal-reminder-row";
@@ -74,6 +76,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 
 	const { data: speedModel } = queryHooks.useStatsSpeedModel();
 	const { data: settings } = queryHooks.useSettings();
+	const { data: sessions } = queryHooks.useBookReadingSessions(existing ? "" : book.id);
 	const create = queryHooks.useCreateReadingGoal();
 	const replan = queryHooks.useReplanReadingGoal();
 	const setReminder = queryHooks.useSetGoalReminder();
@@ -100,14 +103,18 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		today,
 		wordCount: book.wordCount,
 		// A replan restarts from the start of today, so an edit measures from there too.
-		wordPosition: existing ? existing.plan.dayStartWord : book.wordPosition,
+		wordPosition: existing
+			? existing.plan.dayStartWord
+			: setup.lock === "date"
+				? todayStartWord(sessions ?? [], book.wordPosition, Date.now())
+				: book.wordPosition,
 		wpm,
 	};
 	const values = setupValues(setup, setupBook);
 	const isMinutes = isMinuteSetup(setup);
-	const rsvp = settings
-		? rsvpComparison(values, setupBook, modeSpeed(speedModel, "rsvp", settings.wpm))
-		: null;
+	// The same RSVP speed as the book page's RSVP hint, so one book shows one RSVP wpm.
+	const rsvpSpeed = rsvpEstimateSpeed(speedModel?.rsvp?.wpm ?? null, settings?.wpm ?? null);
+	const rsvp = rsvpSpeed ? rsvpComparison(values, setupBook, rsvpSpeed.wpm) : null;
 	const presetMatch = GOAL_PRESETS.find((p) => presetDays(today, p.months) === values.days);
 	const isCustom = isCustomOpen || !presetMatch;
 	const dateLocked = setup.lock === "date";

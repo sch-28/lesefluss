@@ -48,10 +48,10 @@ const ResultCard: React.FC<Props> = ({
 					>
 						{result.title}
 					</div>
+					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+						{result.author}
+					</div>
 					<div className={onQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
-						<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-							{result.author}
-						</div>
 						<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
 					</div>
 				</div>

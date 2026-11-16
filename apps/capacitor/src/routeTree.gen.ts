@@ -19,6 +19,7 @@ import { Route as TabsLibraryIndexRouteImport } from './routes/tabs/library/inde
 import { Route as TabsExploreIndexRouteImport } from './routes/tabs/explore/index'
 import { Route as TabsSocialInviteLinkRouteImport } from './routes/tabs/social/invite-link'
 import { Route as TabsSocialInboxRouteImport } from './routes/tabs/social/inbox'
+import { Route as TabsSocialFriendsRouteImport } from './routes/tabs/social/friends'
 import { Route as TabsSocialBuddyReadsRouteImport } from './routes/tabs/social/buddy-reads'
 import { Route as TabsSocialBlockedRouteImport } from './routes/tabs/social/blocked'
 import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/sync'
@@ -102,6 +103,11 @@ const TabsSocialInviteLinkRoute = TabsSocialInviteLinkRouteImport.update({
 const TabsSocialInboxRoute = TabsSocialInboxRouteImport.update({
   id: '/tabs/social/inbox',
   path: '/tabs/social/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSocialFriendsRoute = TabsSocialFriendsRouteImport.update({
+  id: '/tabs/social/friends',
+  path: '/tabs/social/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSocialBuddyReadsRoute = TabsSocialBuddyReadsRouteImport.update({
@@ -310,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
+  '/tabs/social/friends': typeof TabsSocialFriendsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore/': typeof TabsExploreIndexRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
+  '/tabs/social/friends': typeof TabsSocialFriendsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore': typeof TabsExploreIndexRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
+  '/tabs/social/friends': typeof TabsSocialFriendsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore/': typeof TabsExploreIndexRoute
@@ -451,6 +460,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
+    | '/tabs/social/friends'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore/'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
+    | '/tabs/social/friends'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
+    | '/tabs/social/friends'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore/'
@@ -590,6 +602,7 @@ export interface RootRouteChildren {
   TabsSettingsSyncRoute: typeof TabsSettingsSyncRoute
   TabsSocialBlockedRoute: typeof TabsSocialBlockedRoute
   TabsSocialBuddyReadsRoute: typeof TabsSocialBuddyReadsRoute
+  TabsSocialFriendsRoute: typeof TabsSocialFriendsRoute
   TabsSocialInboxRoute: typeof TabsSocialInboxRoute
   TabsSocialInviteLinkRoute: typeof TabsSocialInviteLinkRoute
   TabsExploreIndexRoute: typeof TabsExploreIndexRoute
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/social/inbox'
       fullPath: '/tabs/social/inbox'
       preLoaderRoute: typeof TabsSocialInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/social/friends': {
+      id: '/tabs/social/friends'
+      path: '/tabs/social/friends'
+      fullPath: '/tabs/social/friends'
+      preLoaderRoute: typeof TabsSocialFriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/social/buddy-reads': {
@@ -950,6 +970,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsSyncRoute: TabsSettingsSyncRoute,
   TabsSocialBlockedRoute: TabsSocialBlockedRoute,
   TabsSocialBuddyReadsRoute: TabsSocialBuddyReadsRoute,
+  TabsSocialFriendsRoute: TabsSocialFriendsRoute,
   TabsSocialInboxRoute: TabsSocialInboxRoute,
   TabsSocialInviteLinkRoute: TabsSocialInviteLinkRoute,
   TabsExploreIndexRoute: TabsExploreIndexRoute,

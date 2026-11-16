@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
+import type React from "react";
 import { useState } from "react";
 import { IS_WEB_BUILD, openBrowserSignIn, SYNC_ENABLED, webSignInHref } from "@/services/sync";
 import { TrailerCard } from "./first-run-hero";
@@ -14,11 +15,14 @@ export function SignedOutSocial({
 	title = "Reading is better with company.",
 	message = "Read the same book with friends, see where everyone is and talk about each chapter as you go.",
 	isDemoBook = false,
+	person,
 }: {
 	returnTo: string;
 	title?: string;
 	message?: string;
 	isDemoBook?: boolean;
+	/** Who waits behind the sign-in, shown above the title. */
+	person?: React.ReactNode;
 }) {
 	const [isStarting, setIsStarting] = useState(false);
 
@@ -37,6 +41,7 @@ export function SignedOutSocial({
 
 	return (
 		<TrailerCard isDemoBook={isDemoBook}>
+			{person && <div className="mt-6">{person}</div>}
 			<h2 className="m-0 mt-6 font-bold text-[30px] text-foreground leading-[1.08] tracking-tight">
 				{title}
 			</h2>

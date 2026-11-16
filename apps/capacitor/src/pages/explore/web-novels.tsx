@@ -1,9 +1,8 @@
 import { FilterChip } from "@lesefluss/ui/filter-chip";
-import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import type React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { PageContainer } from "@/components/page-container";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
@@ -16,6 +15,7 @@ import {
 	type SeriesStatus,
 } from "../../services/serial-scrapers";
 import { previewCache } from "./preview-cache";
+import SearchField from "./search-field";
 import { useQueryText } from "./use-query-text";
 import { WebNovelSearchPanel } from "./web-novel-search-panel";
 import { isVisibleProvider, VISIBLE_PROVIDERS } from "./web-novels-providers";
@@ -65,12 +65,11 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 			resetScroll: false,
 		});
 	};
-	const { text: query, setText: setQuery } = useQueryText(
-		search.q,
-		(q) => navigateSearch({ q: q || undefined }),
-		400,
-	);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const {
+		text: query,
+		setText: setQuery,
+		submit: submitQuery,
+	} = useQueryText(search.q, (q) => navigateSearch({ q: q || undefined }), 400);
 	const [viewMode, setViewMode] = useState<ViewMode>(provider === "ao3" ? "list" : "grid");
 	const [prevProvider, setPrevProvider] = useState(provider);
 	if (prevProvider !== provider) {
@@ -85,7 +84,7 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 	const windows = caps.popularWindows ?? [];
 
 	const dismissKeyboard = () => {
-		inputRef.current?.blur();
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 	};
 
 	const handlePick = (result: SearchResult) => {
@@ -111,26 +110,14 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 				}
 			/>
 			<PageContainer width="grid" className="px-4 pt-4 pb-20">
-				<InputHitArea>
-					<Input
-						ref={inputRef}
-						type="search"
-						inputMode="search"
-						enterKeyHint="search"
-						autoCapitalize="off"
-						autoCorrect="off"
-						spellCheck={false}
-						placeholder="e.g. The Wandering Inn, Cradle"
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								dismissKeyboard();
-							}
-						}}
-					/>
-				</InputHitArea>
+				<SearchField
+					value={query}
+					onChange={setQuery}
+					onSubmit={submitQuery}
+					label="Search web novels"
+					placeholder="e.g. The Wandering Inn, Cradle"
+					hasRecents={false}
+				/>
 
 				<div className="mt-3 flex flex-wrap gap-2">
 					<FilterChip selected={!provider} onClick={() => setProvider(undefined)}>

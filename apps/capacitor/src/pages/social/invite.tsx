@@ -143,11 +143,20 @@ function SignedOutInvite({ token }: { token: string }) {
 			</div>
 		);
 	}
-	const inviter = preview.data?.owner?.name;
+	const inviter = preview.data?.owner;
 	return (
 		<SignedOutSocial
 			returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`}
-			title={inviter ? `${inviter} invited you.` : "A friend invited you."}
+			person={
+				inviter && (
+					<IdentityCardBox
+						name={inviter.name}
+						handle={inviter.handle}
+						avatarUrl={inviter.avatarUrl}
+					/>
+				)
+			}
+			title={inviter ? `${inviter.name} invited you.` : "A friend invited you."}
 			message="Sign in and the invitation is waiting for you: add them as a friend and read together."
 			isDemoBook
 		/>

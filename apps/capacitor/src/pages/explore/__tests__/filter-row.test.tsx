@@ -92,3 +92,38 @@ describe("chip look and labels", () => {
 		expect(view.text()).toContain("Genre");
 	});
 });
+
+describe("scroll arrows", () => {
+	const stubPointer = (fine: boolean) =>
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn(() => ({ matches: fine, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+		);
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it("gives a mouse arrows only while the filter row overflows", async () => {
+		stubPointer(true);
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(900);
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(500);
+		await renderRow({});
+		expect((view?.getButton("Scroll filters left") as HTMLButtonElement).disabled).toBe(true);
+		expect((view?.getButton("Scroll filters right") as HTMLButtonElement).disabled).toBe(false);
+	});
+
+	it("leaves them out when the chips fit, and on touch", async () => {
+		stubPointer(true);
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(500);
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(500);
+		await renderRow({});
+		expect(view?.queryButton("Scroll filters right")).toBeNull();
+		view?.unmount();
+		stubPointer(false);
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(900);
+		await renderRow({});
+		expect(view?.queryButton("Scroll filters right")).toBeNull();
+	});
+});

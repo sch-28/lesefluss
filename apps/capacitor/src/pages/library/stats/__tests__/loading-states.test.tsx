@@ -105,7 +105,7 @@ describe("Stats cards while their query loads", () => {
 
 	it("keeps the goal card and its week row while goal and streak load, the text hidden", async () => {
 		view = await render(<TodayGoalCard />);
-		const card = view.getButton("Reading goals");
+		const card = view.getButton("Set a reading goal");
 		expect(card.disabled).toBe(true);
 		expect(card.querySelector(".invisible")).not.toBeNull();
 		expect(view.container.querySelector('[data-testid="streak-week"]')).not.toBeNull();

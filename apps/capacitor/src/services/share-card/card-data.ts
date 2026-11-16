@@ -148,10 +148,16 @@ export function speedCardData(input: {
 }): ShareCardData {
 	const { model, year } = input;
 	const yearLabel = new Date(input.now).getFullYear();
+	const savedMs = model.rsvp && model.modesUsed.reading ? timeSavedMs(model) : 0;
+	// A tile that would read 0 says nothing worth sharing, so it is left out.
 	const tiles: ShareCardTile[] = [
-		{ label: "Read", value: formatDuration(year.minutes * 60_000) },
-		{ label: "Books", value: String(year.booksFinished) },
-		{ label: "Words", value: compactNumber(year.words) },
+		...(year.minutes > 0 ? [{ label: "Read", value: formatDuration(year.minutes * 60_000) }] : []),
+		...(year.booksFinished > 0 ? [{ label: "Books", value: String(year.booksFinished) }] : []),
+		...(savedMs >= 60_000
+			? [{ label: "Saved", value: formatDuration(savedMs), hot: true }]
+			: year.words > 0
+				? [{ label: "Words", value: compactNumber(year.words) }]
+				: []),
 	];
 	let heroes: ShareCardTile[];
 	if (model.rsvp && model.modesUsed.reading) {
@@ -159,8 +165,6 @@ export function speedCardData(input: {
 			{ label: "Reading wpm", value: String(model.reading.wpm) },
 			{ label: "RSVP wpm", value: String(model.rsvp.wpm), hot: true, rsvp: true },
 		];
-		const savedMs = timeSavedMs(model);
-		if (savedMs >= 60_000) tiles[2] = { label: "Saved", value: formatDuration(savedMs), hot: true };
 	} else {
 		const isRsvp = model.rsvp !== null && !model.modesUsed.reading;
 		heroes = [

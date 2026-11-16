@@ -4,14 +4,22 @@ import type { SpeedInsights } from "../../../../../services/db/queries/stats";
 import type { ShareCardData } from "../../../../../services/share-card/render";
 import type { SpeedTabData } from "../../../../../services/stats/speed-tab";
 import { click, type Rendered, render } from "../../../../../test/render";
+import { formatDate } from "../../../../../utils/date-utils";
 
 const mutate = vi.fn();
 const navigate = vi.fn();
 const refetch = vi.fn();
 let modelError = false;
+const THREE_DAYS = [
+	{ bucketStart: 0, avgWpm: 0 },
+	{ bucketStart: 24 * 3_600_000, avgWpm: 240 },
+	{ bucketStart: 2 * 24 * 3_600_000, avgWpm: 260 },
+];
+let trendMeasured = THREE_DAYS;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
+const earlierAsOf = vi.fn();
 const state: {
 	model: SpeedModel | undefined;
 	earlier: SpeedModel | undefined;
@@ -43,7 +51,10 @@ vi.mock("../../../../../services/db/hooks", () => ({
 			isFetching: false,
 			refetch,
 		}),
-		useStatsSpeedModelEarlier: () => ({ data: state.earlier }),
+		useStatsSpeedModelEarlier: (asOf?: number | null) => {
+			earlierAsOf(asOf);
+			return { data: asOf == null ? undefined : state.earlier };
+		},
 		useStatsSpeedTab: () => ({ data: state.tab }),
 		useStatsSpeedInsights: () => ({ data: state.insights }),
 		useSettings: () => ({ data: state.settings }),
@@ -54,17 +65,18 @@ vi.mock("../../../../../services/db/hooks", () => ({
 		useStatsWpmTrend: () => ({
 			data: {
 				granularity: "day",
-				measured: [
-					{ bucketStart: 0, avgWpm: 240 },
-					{ bucketStart: DAY, avgWpm: 260 },
-				],
+				measured: trendMeasured,
 				rsvpTarget: [],
+				tests: [],
 				averages: { measured: 250, rsvpTarget: 0 },
 			},
 		}),
 	},
 }));
-vi.mock("../../wpm-trend", () => ({ WpmTrend: () => null }));
+vi.mock("../../wpm-trend", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../wpm-trend")>()),
+	WpmTrend: () => null,
+}));
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => navigate,
 	Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (
@@ -122,9 +134,11 @@ const bookRow = (i: number) => ({
 let view: Rendered | undefined;
 beforeEach(() => {
 	mutate.mockClear();
+	earlierAsOf.mockClear();
 	navigate.mockClear();
 	refetch.mockClear();
 	modelError = false;
+	trendMeasured = THREE_DAYS;
 	state.earlier = { ...model(), reading: { ...model().reading, wpm: 240 } };
 	state.speedTests = [];
 	state.tab = { books: [], records: emptyRecords() };
@@ -142,6 +156,18 @@ const text = () => view?.container.textContent ?? "";
 const q = (id: string) => view?.container.querySelector(`[data-testid=${id}]`) ?? null;
 
 describe("SpeedTab", () => {
+	it("shows no trend badge when the chart holds a single point, so there is no range to compare", async () => {
+		state.model = model();
+		trendMeasured = [
+			{ bucketStart: 0, avgWpm: 0 },
+			{ bucketStart: DAY, avgWpm: 260 },
+		];
+		view = await render(<SpeedTab now={DAY} />);
+		expect(q("speed-hero")?.textContent).toContain("260");
+		expect(q("speed-hero")?.textContent).not.toContain("since");
+		expect(earlierAsOf).toHaveBeenLastCalledWith(null);
+	});
+
 	it("shows a never-RSVP reader their speed, trend, books and window, and nothing of RSVP", async () => {
 		state.model = model();
 		state.tab = {
@@ -150,7 +176,11 @@ describe("SpeedTab", () => {
 		};
 		view = await render(<SpeedTab now={2 * DAY} />);
 		expect(q("speed-hero")?.textContent).toContain("260");
-		expect(q("speed-hero")?.textContent).toContain("+20 in 4 weeks");
+		// The badge starts where the chart's first point does, not four weeks back.
+		expect(q("speed-hero")?.textContent).toContain(`+20 since ${formatDate(DAY)}`);
+		// Measured as it stood after the first point, so a chart of the whole history still gets a badge.
+		expect(earlierAsOf).toHaveBeenLastCalledWith(2 * DAY);
+		expect(q("speed-hero")?.textContent).toContain("Based on your last 5h of reading");
 		expect(q("speed-hero")?.innerHTML).not.toMatch(/emerald|red-/);
 		expect(q("speed-window")?.getAttribute("aria-label")).toContain("Last 10h");
 		expect(q("book-speed-list")).not.toBeNull();

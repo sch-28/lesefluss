@@ -71,6 +71,33 @@ function relativeTo(delta: number): string {
 	return delta > 0 ? "ahead of you" : "behind you";
 }
 
+/**
+ * The line under a reader's name. Without known progress their word position is a
+ * placeholder, so no chapter or place relative to you is drawn from it.
+ */
+export function participantFacts(
+	p: BuddyReadParticipant,
+	{
+		chapterTitle,
+		myPosition,
+		approximate,
+	}: { chapterTitle: string | null; myPosition: number | null; approximate: boolean },
+): string[] {
+	const isProgressUnknown = p.finishedAt === null && p.percent === null;
+	return [
+		p.finishedAt !== null
+			? null
+			: p.percent !== null
+				? formatPercent(p.percent)
+				: "Progress unknown",
+		isProgressUnknown ? null : chapterTitle,
+		!p.isSelf && !isProgressUnknown && !approximate && myPosition !== null
+			? relativeTo(p.wordPosition - myPosition)
+			: null,
+		!p.isSelf && p.lastActiveAt !== null ? `active ${formatAgo(p.lastActiveAt)}` : null,
+	].filter((fact): fact is string => fact !== null);
+}
+
 /** Finished readers first, then by progress. */
 function progressRank(p: BuddyReadParticipant): number {
 	return p.finishedAt !== null ? 101 : (p.percent ?? -1);
@@ -92,18 +119,7 @@ function ParticipantRow({
 	isOffline: boolean;
 }) {
 	const p = participant;
-	const facts = [
-		p.finishedAt !== null
-			? null
-			: p.percent !== null
-				? formatPercent(p.percent)
-				: "Progress unknown",
-		chapterTitle,
-		!p.isSelf && !detail.approximate && myPosition !== null
-			? relativeTo(p.wordPosition - myPosition)
-			: null,
-		!p.isSelf && p.lastActiveAt !== null ? `active ${formatAgo(p.lastActiveAt)}` : null,
-	].filter(Boolean);
+	const facts = participantFacts(p, { chapterTitle, myPosition, approximate: detail.approximate });
 	const identity = (
 		<>
 			<SocialAvatar name={p.identity.name} avatarUrl={p.identity.avatarUrl} size="md" />

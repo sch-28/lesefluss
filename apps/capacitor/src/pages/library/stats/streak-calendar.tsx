@@ -1,3 +1,4 @@
+import { cn } from "@lesefluss/ui/utils";
 import { ChevronLeft, ChevronRight, Snowflake } from "lucide-react";
 import { useMemo } from "react";
 import { queryHooks } from "../../../services/db/hooks";
@@ -169,8 +170,8 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 	const isLinked = day.linksBefore || day.linksAfter;
 
 	return (
-		<div className="relative flex h-7 items-center justify-center">
-			{/* A run of days is drawn as one capsule behind the dots rather than a
+		<div className="relative flex h-8 items-center justify-center">
+			{/* A run of days is drawn as one capsule behind the days rather than a
 			    wire through them, so a streak reads as a single object. It runs to
 			    the cell edge where the streak continues, which carries it across a
 			    week boundary onto the next row; the rounded end is what marks where
@@ -183,18 +184,28 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 					} ${day.linksAfter ? "right-0" : "right-1 rounded-r-full"}`}
 				/>
 			)}
-			{day.isFrozen ? (
-				<Snowflake
-					aria-hidden="true"
-					className={`relative size-3 text-sky-500 ${day.isInMonth ? "" : "opacity-30"}`}
-				/>
-			) : (
-				<span
-					className={`relative size-2.5 rounded-full ${INTENSITY_CLASS[day.intensity]} ${
-						day.isInMonth ? "" : "opacity-30"
-					} ${isToday ? "ring-2 ring-current/40 ring-offset-1 ring-offset-card" : ""}`}
-				/>
-			)}
+			<span
+				data-testid="calendar-day"
+				className={cn(
+					"relative flex size-6 items-center justify-center rounded-full text-[0.625rem] tabular-nums",
+					day.isFrozen
+						? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
+						: [
+								INTENSITY_CLASS[day.intensity],
+								day.intensity >= 2 ? "font-semibold text-white" : "text-muted-foreground",
+							],
+					!day.isInMonth && "opacity-30",
+					isToday && "ring-2 ring-current/40 ring-offset-1 ring-offset-card",
+				)}
+			>
+				{new Date(day.dayStart).getDate()}
+				{day.isFrozen && (
+					<Snowflake
+						aria-hidden="true"
+						className="absolute -top-0.5 -right-0.5 size-2.5 text-sky-500"
+					/>
+				)}
+			</span>
 		</div>
 	);
 }

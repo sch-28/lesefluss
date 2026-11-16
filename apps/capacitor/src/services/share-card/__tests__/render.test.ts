@@ -113,6 +113,30 @@ describe("drawShareCard", () => {
 		);
 		expect(r.calls.filter((c) => c.name === "drawImage").length).toBeGreaterThan(10);
 	});
+
+	it("draws a coverless wall without the kicker or any seed text on its tiles", () => {
+		const r = recordingCtx({ hasFilter: true });
+		const speed: ShareCardData = {
+			kind: "speed",
+			kicker: "Reading speed · 2026",
+			covers: [],
+			heroes: [{ label: "wpm", value: "262" }],
+			trend: [],
+			tiles: [{ label: "Read", value: "21h" }],
+			handle: null,
+		};
+		drawShareCard(
+			r.ctx,
+			speed,
+			{ format: "square", showHandle: false },
+			{ cover: null, covers: [] },
+		);
+		const texts = r.texts();
+		expect(texts.filter((t) => t.toUpperCase().includes("READING SPEED"))).toEqual([
+			"READING SPEED · 2026",
+		]);
+		expect(texts.some((t) => /2026\d/.test(t))).toBe(false);
+	});
 });
 
 describe("isLocalImage", () => {

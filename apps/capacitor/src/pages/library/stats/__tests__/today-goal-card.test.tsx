@@ -13,6 +13,7 @@ let streak: { current: number; longest: number; freezesBanked: number; frozenDay
 	frozenDays: [],
 };
 const editSheet = vi.fn();
+const picker = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../../../hooks/use-continue-reading", () => ({
@@ -32,6 +33,12 @@ vi.mock("../../reading-goal/goal-sheet-for", () => ({
 	},
 	GoalSheetFor: () => null,
 }));
+vi.mock("../../reading-goal/goal-book-picker", () => ({
+	GoalBookPicker: (props: { isOpen: boolean }) => {
+		picker(props.isOpen);
+		return null;
+	},
+}));
 
 const { TodayGoalCard, streakLine } = await import("../today-goal-card");
 
@@ -41,6 +48,7 @@ let rendered: Rendered;
 beforeEach(() => {
 	navigate.mockClear();
 	editSheet.mockClear();
+	picker.mockClear();
 	continueReading = null;
 	plans = [];
 	streak = { current: 4, longest: 9, freezesBanked: 0, frozenDays: [] };
@@ -74,16 +82,17 @@ describe("TodayGoalCard", () => {
 		streak = { current: 0, longest: 9, freezesBanked: 0, frozenDays: [] };
 		rendered = await render(<TodayGoalCard />);
 		expect(rendered.getButton("Set a reading goal for Dune").textContent).toBe(
-			"Set a daily goalNo streak yet · best 9",
+			"Set a reading goalNo streak yet · best 9",
 		);
 	});
 
-	it("keeps the streak and opens the goals page without a goal or a book to set one for", async () => {
+	it("keeps the streak and picks a book in place without a goal or a book to set one for", async () => {
 		rendered = await render(<TodayGoalCard />);
-		const card = rendered.getButton("Reading goals");
-		expect(card.textContent).toBe("Set a daily goal4-day streak · best 9");
+		const card = rendered.getButton("Set a reading goal");
+		expect(card.textContent).toBe("Set a reading goal4-day streak · best 9");
 		await click(card);
-		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/settings/goals" });
+		expect(picker).toHaveBeenLastCalledWith(true);
+		expect(navigate).not.toHaveBeenCalled();
 	});
 
 	it("opens the month calendar from its own button and back to the week", async () => {
@@ -91,6 +100,9 @@ describe("TodayGoalCard", () => {
 		expect(rendered.container.querySelector('[data-testid="streak-week"]')).not.toBeNull();
 		await click(rendered.getButton("Streak calendar"));
 		expect(rendered.container.querySelector('[data-testid="streak-week"]')).toBeNull();
+		const days = [...rendered.container.querySelectorAll('[data-testid="calendar-day"]')];
+		expect(days.map((d) => d.textContent)).toContain("15");
+		expect(days.length).toBeGreaterThanOrEqual(28);
 		expect(rendered.getButton("Previous month")).toBeTruthy();
 		await click(rendered.getButton("Show current week"));
 		expect(rendered.container.querySelector('[data-testid="streak-week"]')).not.toBeNull();

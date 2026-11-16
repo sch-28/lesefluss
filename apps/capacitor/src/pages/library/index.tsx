@@ -76,7 +76,7 @@ import { displayOrder, groupLibrary, type SeriesMemberships, seriesBadge } from 
 import { headerControls, type LibraryViewMode } from "./header-controls";
 import ImportSheet from "./import-sheet";
 import LibraryTable from "./library-table";
-import OrderedCollectionView from "./ordered-collection-view";
+import OrderedCollectionView, { type OrderedCardOptions } from "./ordered-collection-view";
 import PasteTextModal from "./paste-text-modal";
 import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
@@ -196,7 +196,9 @@ const Library: React.FC = () => {
 	const [isSearchFocused, setSearchFocused] = useState(false);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 	// The table needs the width; a narrow window shows a stored table as the list.
-	const shownView: LibraryViewMode = viewMode === "table" && !isDesktop ? "list" : viewMode;
+	// A series' #N order and its drag-reorder live on the cards, so it shows the table as the list.
+	const shownView: LibraryViewMode =
+		viewMode === "table" && (!isDesktop || isOrderedView) ? "list" : viewMode;
 	const isEmptyLibrary = !isPending && books.length === 0 && series.length === 0;
 	const controls = headerControls({ isOrderedView, isDesktop, isEmptyLibrary });
 	const cardFields = useCardFields();
@@ -529,7 +531,7 @@ const Library: React.FC = () => {
 			},
 			clear: closeSearch,
 		},
-		canGroup: controls.view,
+		canGroup: controls.view && !isOrderedView,
 		openGroupBy: () => {
 			setGroupByKeyed(true);
 			setViewOpen(true);
@@ -559,7 +561,12 @@ const Library: React.FC = () => {
 		navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
 	};
 
-	const renderCard = (item: LibraryItem, surface: CardSurface, fields: readonly CardFieldId[]) => {
+	const renderCard = (
+		item: LibraryItem,
+		surface: CardSurface,
+		fields: readonly CardFieldId[],
+		ordered?: OrderedCardOptions,
+	) => {
 		if (item.kind === "series") {
 			const s = item.series;
 			const Item = surface === "grid" ? SeriesCard : SeriesListItem;
@@ -591,14 +598,17 @@ const Library: React.FC = () => {
 				selectable={selection.isSelecting}
 				selected={selection.isSelected(book.id)}
 				onToggle={() => selection.toggle(book.id)}
-				onModifiedClick={(e) =>
-					e.shiftKey ? selection.selectRange(book.id) : selection.toggle(book.id)
+				// A series has no selection: a long press opens its Move up / down menu.
+				onModifiedClick={
+					ordered
+						? undefined
+						: (e) => (e.shiftKey ? selection.selectRange(book.id) : selection.toggle(book.id))
 				}
-				onLongPress={() => selection.drag.start(book.id)}
+				onLongPress={ordered ? undefined : () => selection.drag.start(book.id)}
 				onOpen={() => openBook(book)}
-				onMenu={() => openBookMenu(book)}
+				onMenu={ordered ? ordered.onMenu : () => openBookMenu(book)}
 				draggable={canDragBooks}
-				seriesNumber={seriesBadge(book.id, seriesMemberships)}
+				seriesNumber={ordered ? ordered.seriesNumber : seriesBadge(book.id, seriesMemberships)}
 				fields={fields}
 				values={cardFieldValues(item, cellContext, fields)}
 			/>
@@ -677,7 +687,8 @@ const Library: React.FC = () => {
 					isDesktop={isDesktop}
 					view={shownView}
 					onView={setViewMode}
-					canTable={isDesktop}
+					canTable={isDesktop && !isOrderedView}
+					canGroup={!isOrderedView}
 					cardFields={{
 						settings: cardFields.settings,
 						onToggle: cardFields.toggle,
@@ -732,9 +743,12 @@ const Library: React.FC = () => {
 					right={
 						<div className="flex shrink-0 items-center gap-3">
 							{activeCollection.ordered ? (
-								<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
-									<Plus />
-								</Button>
+								<>
+									{viewControls}
+									<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
+										<Plus />
+									</Button>
+								</>
 							) : (
 								<>
 									<SubPageCount count={activeCollection.bookCount} />
@@ -944,8 +958,11 @@ const Library: React.FC = () => {
 			{activeCollection?.ordered ? (
 				<OrderedCollectionView
 					collection={activeCollection}
-					books={books}
-					covers={covers}
+					items={allItems}
+					viewMode={shownView === "list" ? "list" : "grid"}
+					renderCard={(item, ordered) =>
+						renderCard(item, cardSurface, cardFields.settings[cardSurface], ordered)
+					}
 					onOpenBook={openBook}
 					onAddBooks={openAddBooks}
 					canDrag={canDragBooks}

@@ -35,6 +35,8 @@ export type ViewPanelProps = {
 	};
 	groupBy: GroupBy;
 	onGroupBy: (groupBy: GroupBy) => void;
+	/** Off where the order is the user's own (a series), which grouping would break up. */
+	canGroup?: boolean;
 };
 
 type Props = ViewPanelProps & {
@@ -134,6 +136,7 @@ export const ViewPanel: React.FC<ViewPanelProps> = ({
 	columns,
 	groupBy,
 	onGroupBy,
+	canGroup = true,
 }) => {
 	const layouts = canTable ? LAYOUTS : LAYOUTS.filter((l) => l.id !== "table");
 	return (
@@ -163,7 +166,7 @@ export const ViewPanel: React.FC<ViewPanelProps> = ({
 					<CardFieldsPanel surface={view} {...cardFields} />
 				)}
 			</section>
-			<GroupByList groupBy={groupBy} onGroupBy={onGroupBy} />
+			{canGroup && <GroupByList groupBy={groupBy} onGroupBy={onGroupBy} />}
 		</div>
 	);
 };

@@ -1,6 +1,7 @@
 import { FilterChip as ToggleChip } from "@lesefluss/ui/filter-chip";
 import { Moon, Plus, Tag, X } from "lucide-react";
 import type React from "react";
+import { useRef } from "react";
 import { FilterChip } from "../../components/filter-chip";
 import {
 	CATALOG_SOURCE_LABELS,
@@ -12,6 +13,13 @@ import {
 import { languageLabel } from "../../utils/language-label";
 import { canAddTag, type ExploreSearch, effectiveSort, parseTags } from "./explore-search";
 import { LENGTH_BUCKETS, type LengthBucket, lengthLabel } from "./length";
+import { StripArrows } from "./strip-arrows";
+import {
+	HIDDEN_SCROLLBAR_X,
+	useHasFinePointer,
+	useStripEdges,
+	useStripScroll,
+} from "./strip-scroll";
 
 const SORT_LABELS: Record<CatalogSort, string> = {
 	relevance: "Relevance",
@@ -91,7 +99,7 @@ const FilterRow: React.FC<Props> = ({
 
 	return (
 		<div className="flex flex-col gap-2 px-4 pt-2">
-			<div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid="filter-row">
+			<ChipRow label="filters" testId="filter-row">
 				<FilterChip
 					label={SORT_LABELS[sort]}
 					isActive={search.sort !== undefined}
@@ -154,9 +162,9 @@ const FilterRow: React.FC<Props> = ({
 					<Tag className="size-3.5" />
 					Tags
 				</ToggleChip>
-			</div>
+			</ChipRow>
 			{(activeTags.length > 0 || (visibleFacets && visibleFacets.length > 0)) && (
-				<div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid="tag-row">
+				<ChipRow label="tags" testId="tag-row">
 					{activeTags.map((id) => (
 						<ToggleChip
 							key={id}
@@ -182,8 +190,39 @@ const FilterRow: React.FC<Props> = ({
 							{f.label}
 						</ToggleChip>
 					))}
-				</div>
+				</ChipRow>
 			)}
+		</div>
+	);
+};
+
+/** A chip row a finger swipes edge to edge; a mouse pages it with arrows while it overflows. */
+const ChipRow: React.FC<{ label: string; testId: string; children: React.ReactNode }> = ({
+	label,
+	testId,
+	children,
+}) => {
+	const rowRef = useRef<HTMLDivElement>(null);
+	const hasFinePointer = useHasFinePointer();
+	const edges = useStripEdges(rowRef, hasFinePointer);
+	const scroll = useStripScroll(rowRef);
+	if (!hasFinePointer) {
+		return (
+			<div ref={rowRef} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid={testId}>
+				{children}
+			</div>
+		);
+	}
+	return (
+		<div className="flex items-center gap-2">
+			<div
+				ref={rowRef}
+				className={`flex min-w-0 flex-1 gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`}
+				data-testid={testId}
+			>
+				{children}
+			</div>
+			{edges.overflows && <StripArrows label={label} edges={edges} onScroll={scroll} />}
 		</div>
 	);
 };

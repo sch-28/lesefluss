@@ -69,15 +69,18 @@ function useSpeedModelWithout(sessionIds: readonly string[]) {
 	});
 }
 
-/** The speed model as it stood `SPEED_DELTA_SPAN_MS` ago, so the delta compares one measure with itself. */
-function useSpeedModelEarlier() {
+/**
+ * The speed model as it stood at `asOf` (default `SPEED_DELTA_SPAN_MS` ago), so the
+ * delta compares one measure with itself. Null waits for the time to be known.
+ */
+function useSpeedModelEarlier(asOf?: number | null) {
 	const settings = settingsHooks.useSettings();
 	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
-	const asOf = startOfLocalDay(Date.now()) - SPEED_DELTA_SPAN_MS;
+	const at = asOf === undefined ? startOfLocalDay(Date.now()) - SPEED_DELTA_SPAN_MS : asOf;
 	return useQuery({
-		queryKey: statsKeys.speedModelAsOf(window, asOf),
-		queryFn: () => queries.getSpeedModel({ window, now: asOf, asOf }),
-		enabled: settings.data !== undefined,
+		queryKey: statsKeys.speedModelAsOf(window, at ?? 0),
+		queryFn: () => queries.getSpeedModel({ window, now: at ?? 0, asOf: at ?? 0 }),
+		enabled: settings.data !== undefined && at !== null,
 	});
 }
 
