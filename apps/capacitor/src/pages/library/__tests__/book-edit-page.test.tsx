@@ -22,6 +22,8 @@ const book = makeBook({
 const updateBook = vi.fn(async (_vars: unknown) => {});
 const saveSeries = vi.fn(async (_vars: unknown) => {});
 
+const sync = vi.hoisted(() => ({ isLoggedIn: true }));
+vi.mock("../../../contexts/sync-context", () => ({ useSyncContext: () => sync }));
 vi.mock("../../../services/catalog/client", () => ({
 	getCoverUrl: () => null,
 	proxyImageUrl: (url: string) => url,
@@ -123,6 +125,7 @@ async function type(id: string, text: string) {
 }
 
 beforeEach(async () => {
+	sync.isLoggedIn = true;
 	updateBook.mockClear();
 	saveSeries.mockClear();
 	router = makeRouter();
@@ -254,5 +257,15 @@ describe("BookEditPage", () => {
 			id: "b1",
 			values: expect.objectContaining({ status: "want" }),
 		});
+	});
+
+	it("shows Hide from profile only with an account, since friends see profiles only then", async () => {
+		expect(document.getElementById("book-hide-from-profile")).not.toBeNull();
+		rendered.unmount();
+		sync.isLoggedIn = false;
+		router = makeRouter();
+		rendered = await render(<RouterProvider router={router} />);
+		await flush();
+		expect(document.getElementById("book-hide-from-profile")).toBeNull();
 	});
 });

@@ -29,7 +29,7 @@ function BlockedContent() {
 	const blocked = relationships.data.blocked;
 	return (
 		<>
-			<Section title="Blocked users">
+			<Section>
 				{blocked.length === 0 ? (
 					<EmptyRow>You haven't blocked anyone.</EmptyRow>
 				) : (

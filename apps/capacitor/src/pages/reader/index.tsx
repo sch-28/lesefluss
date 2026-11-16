@@ -2911,7 +2911,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 									<span className="sr-only">More actions</span>
 								</IconButton>
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-64 p-1.5">
+							<DropdownMenuContent align="end" className="w-80 p-1.5">
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
 									onSelect={() => openAnnotations(chapters.length > 0)}
@@ -2919,6 +2919,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 								>
 									<ListTree />
 									<span>Contents and annotations</span>
+									<MenuKey commandId="reader.annotations" />
 								</DropdownMenuItem>
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
@@ -2927,6 +2928,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 								>
 									<Search />
 									<span>Search in book</span>
+									<MenuKey commandId="reader.search" />
 								</DropdownMenuItem>
 								{isHeaderNarrow && (
 									<DropdownMenuItem

@@ -169,7 +169,20 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 									</>
 								),
 							},
-							{ value: "highlights", label: "Highlights" },
+							{
+								value: "highlights",
+								ariaLabel: "Highlights",
+								label: (
+									<>
+										Highlights
+										{hasHighlights && (
+											<span className="text-muted-foreground tabular-nums">
+												{highlights.length}
+											</span>
+										)}
+									</>
+								),
+							},
 							{ value: "glossary", label: "Glossary" },
 						]}
 						// Tight items fit four tabs beside the browse toggle at 390px; a fifth tab or a
@@ -258,7 +271,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 													}}
 												/>
 												<div className="min-w-0 flex-1">
-													<p className="m-0 text-foreground text-sm leading-snug">"{snippet}"</p>
+													<p className="m-0 text-foreground text-sm leading-snug">“{snippet}”</p>
 													{h.note && (
 														<p className="m-0 mt-1 text-muted-foreground text-xs italic">
 															{h.note}

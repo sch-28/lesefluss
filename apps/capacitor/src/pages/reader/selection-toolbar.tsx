@@ -15,6 +15,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import React from "react";
+import { toast } from "../../components/toast";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
@@ -54,10 +55,12 @@ interface ActionProps {
 	label: string;
 	onClick: () => void;
 	disabled?: boolean;
+	/** Why it is disabled. A disabled button takes no tap, so with a hint it stays tappable and says why. */
+	disabledHint?: string;
 	destructive?: boolean;
 }
 
-function Action({ icon: Icon, label, onClick, disabled, destructive }: ActionProps) {
+function Action({ icon: Icon, label, onClick, disabled, disabledHint, destructive }: ActionProps) {
 	return (
 		<button
 			type="button"
@@ -66,8 +69,10 @@ function Action({ icon: Icon, label, onClick, disabled, destructive }: ActionPro
 					? "selection-toolbar-action selection-toolbar-action--destructive"
 					: "selection-toolbar-action"
 			}
-			onClick={onClick}
-			disabled={disabled}
+			onClick={disabled && disabledHint ? () => toast.info(disabledHint) : onClick}
+			disabled={disabled && !disabledHint}
+			aria-disabled={disabled || undefined}
+			title={disabled ? disabledHint : undefined}
 		>
 			<Icon className="size-5" aria-hidden="true" />
 			<span>{label}</span>
@@ -97,7 +102,13 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 				<div ref={ref} className="selection-toolbar" role="toolbar" aria-label="Selection">
 					<Action icon={Highlighter} label="Highlight" onClick={onHighlight} />
 					<Action icon={StickyNote} label="Note" onClick={onNote} />
-					<Action icon={Search} label="Look up" onClick={onLookup} disabled={!isSingleWord} />
+					<Action
+						icon={Search}
+						label="Look up"
+						onClick={onLookup}
+						disabled={!isSingleWord}
+						disabledHint="Look up works on one word"
+					/>
 					<Action icon={BookMarked} label="Glossary" onClick={onAddToGlossary} />
 					{onComment && <Action icon={MessageSquarePlus} label="Comment" onClick={onComment} />}
 				</div>

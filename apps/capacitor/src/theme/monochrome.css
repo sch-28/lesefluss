@@ -1226,7 +1226,8 @@ html.eink .reading-ruler-band {
 	background: var(--muted);
 }
 
-.selection-toolbar-action:disabled {
+.selection-toolbar-action:disabled,
+.selection-toolbar-action[aria-disabled="true"] {
 	opacity: 0.35;
 	cursor: default;
 }

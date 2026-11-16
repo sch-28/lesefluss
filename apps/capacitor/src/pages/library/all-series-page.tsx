@@ -47,6 +47,7 @@ const AllSeriesPage: React.FC = () => {
 					<EmptyState
 						icon={Layers}
 						title="No series yet"
+						className="min-h-[60vh]"
 						action={
 							<Button variant="outline" onClick={newSeries}>
 								<Plus className="size-4" />

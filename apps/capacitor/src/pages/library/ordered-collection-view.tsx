@@ -11,6 +11,8 @@ import type { CollectionWithCount } from "../../services/db/queries/collections"
 import type { Book } from "../../services/db/schema";
 import {
 	dropIndex,
+	missingLabel,
+	missingRuns,
 	moveItem,
 	nextInSeries,
 	type OrderedRow,
@@ -176,16 +178,24 @@ const OrderedCollectionView: React.FC<Props> = ({
 		<div data-testid="ordered-collection">
 			<PageContainer width="grid" className="px-4 pt-3">
 				<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
-					{[seriesAuthor(rows), summaryLabel(orderedSummary(rows))].filter(Boolean).join(" · ")}
+					{[
+						seriesAuthor(rows),
+						summaryLabel(orderedSummary(rows)),
+						isSeries ? missingLabel(missingRuns(rows), rows.length) : null,
+					]
+						.filter(Boolean)
+						.join(" · ")}
 				</p>
 				{next && (
 					<Button
-						className="mt-3 w-full md:w-auto"
+						className="mt-3 w-full max-w-full md:w-auto"
 						data-testid="ordered-next"
 						onClick={() => onOpenBook(next.row.book)}
 					>
 						<Play className="size-4" />
-						{next.label}
+						<span className="min-w-0 truncate">
+							{next.label} · {next.row.book.title}
+						</span>
 					</Button>
 				)}
 			</PageContainer>
@@ -194,7 +204,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 				<EmptyState
 					icon={BookOpen}
 					title={`No books in this ${noun} yet`}
-					className="min-h-[50vh]"
+					className="min-h-[60vh]"
 					action={
 						<Button onClick={onAddBooks}>
 							<Plus className="size-4" />

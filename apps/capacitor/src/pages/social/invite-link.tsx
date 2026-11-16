@@ -83,6 +83,7 @@ function InviteLinkContent() {
 										readOnly
 										value={current.url}
 										aria-label="Your invite link"
+										className="text-ellipsis"
 										onFocus={(e) => e.currentTarget.select()}
 									/>
 								</InputHitArea>

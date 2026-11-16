@@ -30,6 +30,7 @@ vi.mock("../../../services/book-import", () => ({
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: () => {} }));
 vi.mock("../../../components/toast", () => ({ toast: { success: () => {}, error: () => {} } }));
+vi.mock("../../../contexts/sync-context", () => ({ useSyncContext: () => ({ isLoggedIn: true }) }));
 vi.mock("../../../services/catalog/client", () => ({ proxyImageUrl: (url: string) => url }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {

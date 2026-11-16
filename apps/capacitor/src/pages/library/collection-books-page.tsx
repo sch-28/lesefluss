@@ -72,6 +72,7 @@ const CollectionBooksPage: React.FC<{ mode: CollectionPageMode }> = ({ mode }) =
 			books={library.data?.books ?? []}
 			covers={library.data?.covers}
 			memberships={memberships.data}
+			allCollections={collections.data ?? []}
 		/>
 	);
 };
@@ -122,6 +123,7 @@ type FormProps = {
 	books: readonly Book[];
 	covers?: ReadonlyMap<string, string>;
 	memberships?: ReadonlyMap<string, readonly string[]>;
+	allCollections?: readonly CollectionWithCount[];
 };
 
 export const CollectionBooksForm: React.FC<FormProps> = ({
@@ -131,6 +133,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 	books: library,
 	covers,
 	memberships,
+	allCollections = [],
 }) => {
 	const router = useRouter();
 	const isWide = useIsWideLayout();
@@ -157,6 +160,11 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 		[mode.kind, selected, memberIds],
 	);
 	const trimmed = name.trim();
+	// Creating a series under a live series' name joins that series; say so before the save.
+	const seriesKey = mode.kind === "create" && asSeries ? normalizeSeriesKey(trimmed) : "";
+	const existingSeries = seriesKey
+		? allCollections.find((c) => c.seriesKey === seriesKey)
+		: undefined;
 	const nameChanged = mode.kind === "edit" && trimmed !== collection?.name;
 	const orderChanged = mode.kind === "edit" && ordered !== collection?.ordered;
 	const pickCount = added.length + removed.length;
@@ -269,9 +277,11 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 					: "Edit collection";
 	const saveLabel =
 		mode.kind === "create"
-			? selected.size > 0
-				? `Create with ${books(selected.size)}`
-				: `Create ${noun}`
+			? existingSeries
+				? `Add to ${existingSeries.name}`
+				: selected.size > 0
+					? `Create with ${books(selected.size)}`
+					: `Create ${noun}`
 			: mode.kind === "add"
 				? selected.size > 0
 					? `Add ${books(selected.size)}`
@@ -315,8 +325,14 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 									placeholder={asSeries ? "Series name" : "Collection name"}
 									enterKeyHint="done"
 									onChange={(e) => setName(e.target.value)}
+									aria-describedby={existingSeries ? "collection-name-exists" : undefined}
 								/>
 							</InputHitArea>
+							{existingSeries && (
+								<p id="collection-name-exists" className="m-0 text-muted-foreground text-xs">
+									{existingSeries.name} is already a series. Your picks are added to it.
+								</p>
+							)}
 						</div>
 						<div className="flex items-center justify-between gap-3">
 							<div className="min-w-0">
@@ -375,6 +391,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 					layout={isWide ? "grid" : "rows"}
 					quickFilters={quickFilters}
 					showOrder={mode.kind === "create" && ordered}
+					firstIds={mode.kind === "edit" ? memberIds : undefined}
 					covers={covers}
 				/>
 			</div>

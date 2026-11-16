@@ -261,7 +261,7 @@ const WhatsNewModal: React.FC = () => {
 				onClick={handleDismiss}
 				disabled={saveSettings.isPending}
 			>
-				Got it
+				{manualOpen ? "Close" : "Got it"}
 			</Button>
 			{!manualOpen && (
 				<Button

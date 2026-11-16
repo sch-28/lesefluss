@@ -106,10 +106,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					onChange={(v) => updateSetting("xOffset", v)}
 				/>
 				<SettingsRow>
-					<RowLabel
-						title="Focal letter color"
-						hint={<span className="tabular-nums">{settings.focalLetterColor}</span>}
-					/>
+					<RowLabel title="Focal letter color" hint={focalColorName(settings.focalLetterColor)} />
 					<div className="ml-auto flex gap-1.5">
 						{FOCAL_LETTER_COLOR_PRESETS.map((color) => {
 							const isActive = settings.focalLetterColor.toLowerCase() === color;
@@ -125,7 +122,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 									// What the reader shows: high contrast lightens some presets.
 									style={{ background: focalLetterColorFor(color, theme) }}
 									onClick={() => updateSetting("focalLetterColor", color as HexColor)}
-									aria-label={`Set focal letter color to ${color}`}
+									aria-label={`Set focal letter color to ${focalColorName(color)}`}
 								/>
 							);
 						})}
@@ -203,5 +200,22 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 		</>
 	);
 };
+
+const FOCAL_COLOR_NAMES: Record<(typeof FOCAL_LETTER_COLOR_PRESETS)[number], string> = {
+	"#ff0000": "Red",
+	"#ff8a00": "Orange",
+	"#ffcc00": "Yellow",
+	"#00c853": "Green",
+	"#448aff": "Blue",
+	"#b388ff": "Violet",
+};
+
+/** A custom color synced from the device has no name; it shows as its hex. */
+function focalColorName(color: string): string {
+	const key = color.toLowerCase();
+	return key in FOCAL_COLOR_NAMES
+		? FOCAL_COLOR_NAMES[key as keyof typeof FOCAL_COLOR_NAMES]
+		: color;
+}
 
 export default RsvpSettingsForm;

@@ -1,3 +1,4 @@
+import { normalizeSeriesKey } from "@lesefluss/core";
 import {
 	createBrowserHistory,
 	createRootRoute,
@@ -38,6 +39,14 @@ vi.mock("../../../services/db/hooks", () => ({
 			data: [
 				{ id: "c1", name: "Classics", ordered: false, seriesKey: null, sortOrder: 1, bookCount: 1 },
 				{ id: "c2", name: "Empty", ordered: false, seriesKey: null, sortOrder: 2, bookCount: 0 },
+				{
+					id: "s1",
+					name: "The Expanse",
+					ordered: true,
+					seriesKey: normalizeSeriesKey("The Expanse"),
+					sortOrder: 3,
+					bookCount: 2,
+				},
 			],
 			isPending: false,
 		}),
@@ -188,6 +197,16 @@ describe("CollectionBooksPage", () => {
 		});
 	});
 
+	it("tells the user a new series under an existing series' name joins that series", async () => {
+		await open("/tabs/library/collections/new?series=true");
+		await type("collection-name", "the expanse ");
+		expect(body()).toContain("The Expanse is already a series. Your picks are added to it.");
+		await click(row("b1"));
+		expect(() => button("Add to The Expanse")).not.toThrow();
+		await type("collection-name", "Leviathan");
+		expect(body()).not.toContain("already a series");
+	});
+
 	it("As series turns a new collection into a series", async () => {
 		await open("/tabs/library/collections/new");
 		await click(document.getElementById("collection-series") as HTMLElement);
@@ -268,6 +287,14 @@ describe("CollectionBooksPage", () => {
 		await click(button("Keep editing"));
 		expect(location().pathname).toBe("/tabs/library/collections/c2/add");
 		expect(editCollection).not.toHaveBeenCalled();
+	});
+
+	it("lists the collection's own books first while editing it", async () => {
+		await open("/tabs/library/collections/c1/edit");
+		const ids = [...document.body.querySelectorAll<HTMLElement>("[data-book-id]")].map(
+			(el) => el.dataset.bookId,
+		);
+		expect(ids).toEqual(["b2", "b1", "b3"]);
 	});
 
 	it("edits name, order and members in one save", async () => {

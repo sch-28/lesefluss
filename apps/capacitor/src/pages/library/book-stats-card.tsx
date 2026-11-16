@@ -12,7 +12,7 @@ import { summariseBookReading } from "../../services/stats/book-summary";
 import { minuteGoalOf } from "../../services/stats/reading-goal";
 import { summariseSpeedBuckets } from "../../services/stats/summaries";
 import { averageDailyMinutes } from "../../services/stats/what-if";
-import { formatDuration, formatRelative, localDateKey } from "../../utils/date-utils";
+import { formatDate, formatDuration, formatRelative, localDateKey } from "../../utils/date-utils";
 import { formatPercent } from "../../utils/format-percent";
 import { formatReadingTime } from "../../utils/reading-time";
 import { canHaveGoal } from "./reading-goal/goal-model";
@@ -51,8 +51,8 @@ function SpeedTooltip({ bucket }: { bucket: SpeedBucket }) {
 			<div style={{ opacity: 0.6, fontSize: "0.6875rem", marginTop: 2 }}>
 				{bucket.sessions === 1 ? "1 sitting" : `${bucket.sessions} sittings`} ·{" "}
 				{bucket.startedAt === bucket.endedAt
-					? formatDayTick(bucket.startedAt)
-					: `${formatDayTick(bucket.startedAt)} to ${formatDayTick(bucket.endedAt)}`}
+					? formatDate(bucket.startedAt)
+					: `${formatDate(bucket.startedAt)} to ${formatDate(bucket.endedAt)}`}
 			</div>
 		</ChartTooltip>
 	);

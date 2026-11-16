@@ -1,7 +1,8 @@
 import { Button } from "@lesefluss/ui/button";
 import { useNavigate } from "@tanstack/react-router";
-import { Info, Smartphone, X } from "lucide-react";
+import { Info, Smartphone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { NoticeBar } from "@/components/notice-bar";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { PLAY_STORE_URL } from "@/services/store-links";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
@@ -47,28 +48,19 @@ export function WebLimitsLine() {
 	};
 
 	return (
-		<div className="flex items-start gap-3 border-border border-b bg-muted/60 px-4 py-3 text-sm">
-			<Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-			<span className="flex-1 text-muted-foreground">
-				You are using the web app. A few things, like the rsvpnano device and reminders, need the
-				Android app.{" "}
-				<button
-					type="button"
-					onClick={seeWhatsDifferent}
-					className="cursor-pointer font-medium text-primary underline-offset-4 hover:underline"
-				>
-					See what's different
-				</button>
-			</span>
+		<NoticeBar
+			icon={<Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />}
+			onDismiss={dismiss}
+		>
+			Some features need the Android app.{" "}
 			<button
 				type="button"
-				onClick={dismiss}
-				aria-label="Dismiss"
-				className="-my-2 -mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+				onClick={seeWhatsDifferent}
+				className="cursor-pointer font-medium text-primary underline-offset-4 hover:underline"
 			>
-				<X className="size-4" />
+				See what's different
 			</button>
-		</div>
+		</NoticeBar>
 	);
 }
 
@@ -114,7 +106,7 @@ export function OnTheWebCard() {
 	}, []);
 
 	return (
-		<div id={ON_THE_WEB_HASH} ref={ref} className="scroll-mt-4">
+		<div id={ON_THE_WEB_HASH} ref={ref} className="scroll-mt-4 pt-6">
 			<SettingsSection title="On the web">
 				<div className="px-4 py-3 text-sm">
 					<p className="m-0 mb-2 text-muted-foreground">

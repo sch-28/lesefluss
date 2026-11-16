@@ -104,7 +104,8 @@ const BookCard: React.FC<BookCardProps> = ({
 						<span
 							id={seriesId}
 							data-testid="series-number-badge"
-							className="absolute bottom-1.5 left-1.5 rounded-sm bg-background/85 px-1 font-semibold text-[0.7rem] text-foreground tabular-nums"
+							// Top, where a text cover has no print; beside the selection check while selecting.
+							className={`absolute top-1.5 rounded-sm bg-background/85 px-1 font-semibold text-[0.7rem] text-foreground tabular-nums ${selectable ? "left-8" : "left-1.5"}`}
 						>
 							{formatSeriesNumber(seriesNumber)}
 						</span>
@@ -126,7 +127,8 @@ const BookCard: React.FC<BookCardProps> = ({
 				</div>
 
 				<div className="px-0.5 pt-2">
-					<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
+					{/* Two lines held for every title, so a grid row's height does not depend on its titles. */}
+					<div className="line-clamp-2 min-h-[2.5em] overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 						{book.title}
 					</div>
 					<div id={detailsId}>

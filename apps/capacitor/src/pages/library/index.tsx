@@ -6,6 +6,7 @@ import {
 	ArrowUpDown,
 	BookOpen,
 	BookText,
+	Compass,
 	Cpu,
 	Filter as FilterIcon,
 	FolderMinus,
@@ -16,7 +17,6 @@ import {
 	RefreshCcw,
 	SearchX,
 	SquareCheck,
-	X,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { EmptyState } from "../../components/empty-state";
 import { HeaderGoalRing } from "../../components/header-goal-ring";
+import { NoticeBar } from "../../components/notice-bar";
 import { PageContainer } from "../../components/page-container";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
@@ -76,6 +77,7 @@ import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import { displayOrder, groupLibrary, type SeriesMemberships, seriesBadge } from "./group-by";
 import { headerControls, type LibraryViewMode } from "./header-controls";
 import ImportSheet from "./import-sheet";
+import { libraryNotice } from "./library-notice";
 import LibraryTable from "./library-table";
 import OrderedCollectionView, { type OrderedCardOptions } from "./ordered-collection-view";
 import PasteTextModal from "./paste-text-modal";
@@ -89,6 +91,7 @@ import { applyLibraryView, buildLibraryItems, type LibraryItem, tagsInUse } from
 import SortPopover from "./sort-popover";
 import { type CellContext, headerSort } from "./table-columns";
 import TransferModal from "./transfer-modal";
+import { UpdateShelfAction } from "./update-shelf-action";
 import { useCollapsedGroups } from "./use-collapsed-groups";
 import { useDragSelect } from "./use-drag-select";
 import { useLeaveMissingShelf, useLibraryFilter } from "./use-library-filter";
@@ -644,7 +647,13 @@ const Library: React.FC = () => {
 	};
 
 	const isSubPage = !!activeCollection || !!activeShelf;
-	const leaveSubPage = () => navigate({ to: "/tabs/library", search: {} });
+	const notice = libraryNotice({
+		isSubPage,
+		isWebBuild: IS_WEB_BUILD,
+		isWeb: IS_WEB,
+		isLoggedIn,
+		isLocalNoticeDismissed: noticeDismissed,
+	});
 	const filterLabel = filterCount > 0 ? `Filter, ${filterCount} active` : "Filter";
 	const filterButton = (
 		<Button
@@ -668,7 +677,7 @@ const Library: React.FC = () => {
 		</Button>
 	);
 	const hasToolbar = controls.search || controls.filter || controls.sort || controls.view;
-	const toolbar = hasToolbar && (
+	const toolbar = hasToolbar && !isCollectionEmpty && (
 		<PageContainer
 			width="grid"
 			role="toolbar"
@@ -803,20 +812,17 @@ const Library: React.FC = () => {
 	// Beside the title on wider screens; on a phone the header row has no room, so it drops below.
 	const updateShelfButton = (className?: string) =>
 		activeShelf && (
-			<Button
-				size="sm"
-				variant="outline"
+			<UpdateShelfAction
 				className={className}
-				disabled={!canSaveFilter || updateShelf.isPending}
-				onClick={() =>
+				canSave={canSaveFilter}
+				isPending={updateShelf.isPending}
+				onUpdate={() =>
 					updateShelf.mutate({
 						id: activeShelf.id,
 						conditions: serializeTree(filterToTree(activeFilter)),
 					})
 				}
-			>
-				Update shelf
-			</Button>
+			/>
 		);
 
 	return (
@@ -827,7 +833,7 @@ const Library: React.FC = () => {
 				<PageHeader
 					title={activeCollection.name}
 					width="grid"
-					onBack={leaveSubPage}
+					backTo="/tabs/library"
 					right={
 						<div className="flex shrink-0 items-center gap-3">
 							{!activeCollection.ordered && <SubPageCount count={activeCollection.bookCount} />}
@@ -849,7 +855,7 @@ const Library: React.FC = () => {
 					<PageHeader
 						title={activeShelf.name}
 						width="grid"
-						onBack={leaveSubPage}
+						backTo="/tabs/library"
 						right={
 							<div className="flex shrink-0 items-center gap-3" data-testid="smart-shelf-header">
 								<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
@@ -922,7 +928,7 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{!isOrderedView && (books.length > 0 || series.length > 0) && (
+			{!isOrderedView && !isCollectionEmpty && (books.length > 0 || series.length > 0) && (
 				<FilterBar
 					filter={activeFilter}
 					onChange={setFilter}
@@ -982,31 +988,20 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && !isSubPage && (
-				<div className="flex items-start gap-3 border-border border-b bg-muted/60 px-4 py-3 text-sm">
-					<span className="flex-1 text-muted-foreground">
-						Your books are stored locally in this browser only and will be lost if you clear browser
-						data.{" "}
-						<Link
-							to="/tabs/settings/sync"
-							className="relative font-medium text-primary underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline"
-						>
-							Sign in
-						</Link>{" "}
-						to keep them safe across devices.
-					</span>
-					<button
-						type="button"
-						onClick={dismissNotice}
-						aria-label="Dismiss"
-						className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground before:absolute before:-inset-2 before:content-[''] hover:bg-muted hover:text-foreground"
+			{notice === "local-storage" && (
+				<NoticeBar onDismiss={dismissNotice}>
+					Your books are stored locally in this browser only and will be lost if you clear browser
+					data.{" "}
+					<Link
+						to="/tabs/settings/sync"
+						className="relative font-medium text-primary underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline"
 					>
-						<X className="size-4" />
-					</button>
-				</div>
+						Sign in
+					</Link>{" "}
+					to keep them safe across devices.
+				</NoticeBar>
 			)}
-
-			{IS_WEB && !isSubPage && <WebLimitsLine />}
+			{notice === "web-limits" && <WebLimitsLine />}
 
 			{activeCollection?.ordered ? (
 				<OrderedCollectionView
@@ -1050,12 +1045,18 @@ const Library: React.FC = () => {
 					className="min-h-[60vh]"
 					action={
 						<>
+							{/* Outline: the header's Add book (the FAB on a phone) is the page's one primary action. */}
 							<Button
+								variant="outline"
 								onClick={() => setImportSheetOpen(true)}
 								disabled={imports.isImporting || isTransferring}
 							>
 								<Plus className="size-4" />
 								Import books
+							</Button>
+							<Button variant="ghost" onClick={() => navigate({ to: "/tabs/explore" })}>
+								<Compass className="size-4" />
+								Find free books in Explore
 							</Button>
 							{isGlobalImporting && (
 								<p className="m-0 text-muted-foreground text-sm">Importing...</p>
@@ -1063,7 +1064,7 @@ const Library: React.FC = () => {
 						</>
 					}
 				>
-					Import a file or paste text to start reading.
+					Import a file, a web link or pasted text, or pick a free book in Explore.
 				</EmptyState>
 			) : visibleItems.length === 0 ? (
 				collectionId && !membersQuery.isSuccess ? null : (

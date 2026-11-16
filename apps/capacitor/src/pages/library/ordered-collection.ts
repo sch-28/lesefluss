@@ -88,6 +88,40 @@ export function summaryLabel({ total, finished, reading }: OrderedSummary): stri
 	return parts.join(" · ");
 }
 
+/** Runs of whole #N between 1 and the highest one that no book holds, as [first, last]. */
+export function missingRuns(rows: readonly Pick<OrderedRow, "shownIndex">[]): [number, number][] {
+	const held = [
+		...new Set(
+			rows.flatMap(({ shownIndex }) =>
+				shownIndex !== null && Number.isInteger(shownIndex) && shownIndex > 0 ? [shownIndex] : [],
+			),
+		),
+	].sort((a, b) => a - b);
+	const runs: [number, number][] = [];
+	let next = 1;
+	for (const n of held) {
+		if (n > next) runs.push([next, n - 1]);
+		next = n + 1;
+	}
+	return runs;
+}
+
+/**
+ * More gaps than books held means the numbers aren't one run (year-numbered anthologies,
+ * a few picks from a long series), so naming them would mislead.
+ */
+export function missingLabel(runs: readonly [number, number][], heldCount: number): string | null {
+	const count = runs.reduce((sum, [first, last]) => sum + last - first + 1, 0);
+	if (count === 0 || count > heldCount) return null;
+	if (runs.length > 3) return `missing ${count} books`;
+	const parts = runs.map(([first, last]) =>
+		first === last
+			? formatSeriesNumber(first)
+			: `${formatSeriesNumber(first)}${last === first + 1 ? ", " : "–"}${formatSeriesNumber(last)}`,
+	);
+	return `missing ${parts.join(", ")}`;
+}
+
 /** The series' author when every book that names one names the same. */
 export function seriesAuthor(rows: readonly OrderedRow[]): string | null {
 	const authors = new Set(

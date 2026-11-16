@@ -28,6 +28,8 @@ type Props = {
 	/** Shows each pick's place in `selected` as #N. */
 	showOrder?: boolean;
 	covers?: ReadonlyMap<string, string>;
+	/** Listed before the rest, e.g. a collection's members while editing it. */
+	firstIds?: ReadonlySet<string>;
 };
 
 const ALL = "all";
@@ -52,6 +54,7 @@ export const BookSelection: React.FC<Props> = ({
 	quickFilters = NO_FILTERS,
 	showOrder = false,
 	covers,
+	firstIds = NONE,
 }) => {
 	const [search, setSearch] = useState("");
 	const [chip, setChip] = useState(ALL);
@@ -62,13 +65,16 @@ export const BookSelection: React.FC<Props> = ({
 	const cols = layout === "grid" ? gridCols : 1;
 
 	const items = useMemo(() => buildLibraryItems([...books], [], new Map()), [books]);
-	const matching = useMemo(
-		() =>
-			applyLibraryView(items, { filter: {}, sortBy: "recent", search }).flatMap((it) =>
-				it.kind === "book" ? [it.book] : [],
-			),
-		[items, search],
-	);
+	const matching = useMemo(() => {
+		const found = applyLibraryView(items, { filter: {}, sortBy: "recent", search }).flatMap((it) =>
+			it.kind === "book" ? [it.book] : [],
+		);
+		if (firstIds.size === 0) return found;
+		return [
+			...found.filter((b) => firstIds.has(b.id)),
+			...found.filter((b) => !firstIds.has(b.id)),
+		];
+	}, [items, search, firstIds]);
 	const activeFilter = quickFilters.find((f) => f.id === chip);
 	const visible = useMemo(() => {
 		if (chip === PICKED) return matching.filter((b) => selected.has(b.id));

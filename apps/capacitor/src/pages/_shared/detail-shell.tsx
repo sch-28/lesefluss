@@ -127,6 +127,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 								variant="ghost"
 								size="icon"
 								aria-label={externalLink.label ?? "View original source"}
+								title={externalLink.label ?? "View original source"}
 							>
 								<a href={externalLink.href} target="_blank" rel="noopener noreferrer">
 									<ExternalLink />
@@ -143,6 +144,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									onClick={action.onClick}
 									disabled={action.disabled}
 									aria-label={action.label}
+									title={action.label}
 									className={
 										action.destructive ? "text-destructive hover:text-destructive" : undefined
 									}
@@ -280,7 +282,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 							<CollapsibleProse>
 								{description.html ? (
 									<SanitizedDescription
-										className="prose prose-sm max-w-none text-foreground/80 [&_a:hover]:underline [&_a]:text-primary [&_a]:underline-offset-4"
+										className="text-foreground/80 text-sm leading-relaxed [&_a:hover]:underline [&_a]:text-primary [&_a]:underline-offset-4 [&_p+p]:mt-3"
 										html={description.html}
 									/>
 								) : (

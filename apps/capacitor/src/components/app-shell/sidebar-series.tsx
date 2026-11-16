@@ -21,8 +21,9 @@ import { BOOKS_DRAG_TYPE, carries, readBooksDragData } from "../collections/drag
 import { planSeriesNumbers } from "../collections/series-numbering";
 import { toast } from "../toast";
 
+// pr-9 puts the count in the column of the collection rows, whose count sits before a 24 px menu button.
 const ROW =
-	"relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary";
+	"relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-9 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary";
 
 const SERIES_ICON = "size-3.5 shrink-0 text-sidebar-foreground/50";
 

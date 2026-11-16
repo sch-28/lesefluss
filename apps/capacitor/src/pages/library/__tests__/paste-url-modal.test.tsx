@@ -8,7 +8,7 @@ vi.mock("../../../components/entry-dialog", () => ({
 		p.open ? <div>{p.children}</div> : null,
 }));
 
-const { default: PasteUrlModal } = await import("../paste-url-modal");
+const { default: PasteUrlModal, isImportableUrl } = await import("../paste-url-modal");
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -42,5 +42,41 @@ describe("PasteUrlModal", () => {
 			input.dispatchEvent(new Event("input", { bubbles: true }));
 		});
 		expect(onClearError).toHaveBeenCalled();
+	});
+
+	it("keeps Import disabled for a word that is no web address", async () => {
+		view = await render(
+			<PasteUrlModal
+				isOpen
+				isImporting={false}
+				error={null}
+				onClearError={() => {}}
+				onClose={() => {}}
+				onSubmit={() => {}}
+			/>,
+		);
+		const input = view.container.querySelector("input") as HTMLInputElement;
+		const importButton = () =>
+			[...(view?.container.querySelectorAll("button") ?? [])].find(
+				(b) => b.textContent === "Import",
+			) as HTMLButtonElement;
+		const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+		act(() => {
+			setValue?.call(input, "hello");
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+		expect(importButton().disabled).toBe(true);
+		act(() => {
+			setValue?.call(input, "example.com/story");
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+		expect(importButton().disabled).toBe(false);
+	});
+
+	it("enables Import only for a web address with a dotted host", () => {
+		expect(isImportableUrl("hello")).toBe(false);
+		expect(isImportableUrl("not a url")).toBe(false);
+		expect(isImportableUrl("example.com/story")).toBe(true);
+		expect(isImportableUrl("https://archiveofourown.org/works/1")).toBe(true);
 	});
 });

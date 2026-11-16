@@ -5,10 +5,11 @@ import { type AppTheme, useTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";
 
+/** Light to dark, the order a reader scans for "lighter" or "darker". */
 export const THEMES: { value: AppTheme; label: string }[] = [
-	{ value: "dark", label: "Dark" },
-	{ value: "sepia", label: "Sepia" },
 	{ value: "light", label: "Light" },
+	{ value: "sepia", label: "Sepia" },
+	{ value: "dark", label: "Dark" },
 	{ value: "high-contrast", label: "High contrast" },
 ];
 

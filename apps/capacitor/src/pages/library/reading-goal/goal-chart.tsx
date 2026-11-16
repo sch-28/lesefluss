@@ -71,13 +71,13 @@ function GoalLines({ series, lineGenerator, innerHeight }: LineCustomSvgLayerPro
 					<circle cx={last.x} cy={last.y} r={3.5} style={{ fill: ACTUAL_COLOR }} />
 					<text
 						x={last.x + 4}
-						y={innerHeight - 4}
+						y={10}
 						textAnchor="start"
 						fontSize="0.625rem"
 						fill="currentColor"
 						fillOpacity={0.6}
 					>
-						today
+						Today
 					</text>
 				</>
 			)}

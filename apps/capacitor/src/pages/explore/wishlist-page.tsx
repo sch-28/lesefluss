@@ -22,6 +22,7 @@ const ExploreWishlist: React.FC = () => {
 					<EmptyState
 						icon={Heart}
 						title="Nothing on your wishlist yet"
+						className="min-h-[60vh]"
 						action={
 							<Button variant="outline" onClick={() => router.navigate({ to: "/tabs/explore" })}>
 								<Compass />

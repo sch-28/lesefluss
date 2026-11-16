@@ -30,7 +30,7 @@ function Goals() {
 		<div className="bg-background">
 			<PageHeader width="text" title="Goals" icon={Target} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
-				<SettingsSection title="Goals">
+				<SettingsSection>
 					{!plans.data && <ReservedCard isPending height={NO_GOALS_ROW_HEIGHT} />}
 					{plans.data && goals.length === 0 && (
 						<p className="m-0 px-4 py-3 text-muted-foreground text-sm">No active goals.</p>
@@ -71,7 +71,9 @@ function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisable
 					className="m-0 mt-2 text-center text-muted-foreground text-xs"
 					data-testid="add-goal-none-left"
 				>
-					No unfinished book is left without a goal. Add a book to your library to set one more.
+					{library?.books.length === 0
+						? "Goals are set per book. Add a book to your library to set one."
+						: "No unfinished book is left without a goal. Add a book to your library to set one more."}
 				</p>
 			)}
 			<GoalBookPicker

@@ -7,6 +7,10 @@ import { currentChapterIndex, hasWordAlignedChapters } from "../../utils/chapter
  *  page's own scroll, since a list scrolling inside the page traps the thumb. */
 export const COLLAPSED_CHAPTERS = 6;
 
+/** "3. The Fall", "Chapter 3", "CHAPTER IV.", "Part One": the title already carries the number. */
+const SELF_NUMBERED_TITLE =
+	/^(\d+\b|(chapter|part|book)\s+(\d+|[ivxlc]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[a-z]+teen|[a-z]+ty)\b)/i;
+
 /** The window of rows shown collapsed: one before the current chapter, the rest after. */
 export function collapsedRange(count: number, currentIndex: number): [number, number] {
 	if (count <= COLLAPSED_CHAPTERS) return [0, count];
@@ -43,7 +47,10 @@ export function BookChapters({
 	// "here" marker would point at the wrong chapter.
 	const isWordAligned = hasWordAlignedChapters(chapters, wordCount);
 	const canJump = isWordAligned && isResolved;
+	const hasStarted = wordPosition > 0;
 	const currentIndex = isWordAligned ? currentChapterIndex(chapters, wordPosition) : -1;
+	const isSelfNumbered =
+		chapters.filter((c) => SELF_NUMBERED_TITLE.test(c.title.trim())).length * 2 >= chapters.length;
 
 	if (chapters.length === 0) return null;
 	const [from, to] = isExpanded
@@ -58,7 +65,7 @@ export function BookChapters({
 			<ol className="mt-3 space-y-0.5">
 				{chapters.slice(from, to).map((chapter, offset) => {
 					const index = from + offset;
-					const isCurrent = index === currentIndex;
+					const isCurrent = hasStarted && index === currentIndex;
 					return (
 						<li key={`${chapter.startWord}-${chapter.title}`}>
 							<button
@@ -69,9 +76,11 @@ export function BookChapters({
 									canJump ? "active:bg-current/5" : "cursor-default"
 								} ${isCurrent ? "font-medium" : "opacity-70"}`}
 							>
-								<span className="w-6 shrink-0 text-right text-[11px] tabular-nums opacity-50">
-									{index + 1}
-								</span>
+								{!isSelfNumbered && (
+									<span className="w-6 shrink-0 text-right text-[11px] tabular-nums opacity-50">
+										{index + 1}
+									</span>
+								)}
 								<span className="min-w-0 flex-1 truncate">{chapter.title}</span>
 								{isCurrent && (
 									<span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary uppercase tracking-wide">

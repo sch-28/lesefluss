@@ -308,6 +308,15 @@ describe("Goals page", () => {
 		);
 	});
 
+	it("with an empty library, says a goal needs a book first", async () => {
+		state.books = [];
+		state.plans = [];
+		view = await renderPage(goalsPage);
+		expect(view.container.querySelector("[data-testid=add-goal-none-left]")?.textContent).toBe(
+			"Goals are set per book. Add a book to your library to set one.",
+		);
+	});
+
 	it("shows each goal's progress today", async () => {
 		const plan = (over: Record<string, unknown>) => ({
 			kind: "plan",
@@ -368,6 +377,17 @@ describe("Export page", () => {
 		state.highlightCounts = new Map([["a", 2]]);
 		view = await renderPage(exportPage);
 		expect(exportButton()?.disabled).toBe(false);
+	});
+});
+
+describe("Focal letter color", () => {
+	it("names the picked color in words, not as a hex code", async () => {
+		view = await render(<RsvpSettingsForm />);
+		expect(view.container.textContent).toContain("Red");
+		expect(view.container.textContent).not.toContain("#FF0000");
+		expect(
+			view.container.querySelector('[aria-label="Set focal letter color to Blue"]'),
+		).not.toBeNull();
 	});
 });
 

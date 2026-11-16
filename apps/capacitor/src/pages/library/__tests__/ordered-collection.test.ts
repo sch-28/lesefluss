@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import {
 	dropIndex,
+	missingLabel,
+	missingRuns,
 	moveItem,
 	nextInSeries,
 	type OrderedRow,
@@ -133,5 +135,31 @@ describe("ordered collection", () => {
 		});
 		expect(seriesAuthor([by("a", "Brandon Sanderson"), by("b", null)])).toBe("Brandon Sanderson");
 		expect(seriesAuthor([by("a", "Ann"), by("b", "Bob")])).toBeNull();
+	});
+});
+
+describe("missingRuns and missingLabel", () => {
+	const at = (shownIndex: number | null) => ({ shownIndex });
+	const label = (...indexes: (number | null)[]) => {
+		const rows = indexes.map(at);
+		return missingLabel(missingRuns(rows), rows.length);
+	};
+
+	it("names the gaps below the highest #N, so a series with #1, #2 and #4 says #3 is missing", () => {
+		expect(missingRuns([at(1), at(2), at(4)])).toEqual([[3, 3]]);
+		expect(label(1, 2, 4)).toBe("missing #3");
+		expect(missingRuns([at(1), at(1.5), at(2), at(null)])).toEqual([]);
+		expect(label(1, 1.5, 2, null)).toBeNull();
+	});
+
+	it("folds a run of gaps into a range and counts them once there are many runs", () => {
+		expect(label(1, 5, 6, 7, 8)).toBe("missing #2–#4");
+		expect(label(2, 4, 5)).toBe("missing #1, #3");
+		expect(label(1, 3, 5, 7, 9, 10)).toBe("missing 4 books");
+	});
+
+	it("says nothing when the gaps outnumber the books, as with year-numbered anthologies", () => {
+		expect(label(2019, 2020)).toBeNull();
+		expect(label(1, 5, 41)).toBeNull();
 	});
 });

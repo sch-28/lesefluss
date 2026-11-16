@@ -126,7 +126,7 @@ function ParticipantRow({
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-2 truncate font-medium text-foreground text-sm">
 					<span className="truncate">{p.isSelf ? "You" : p.identity.name}</span>
-					{p.isHost && <Crown className="size-3.5 shrink-0 text-amber-500" aria-label="Host" />}
+					{p.isHost && <Crown className="size-3.5 shrink-0 text-primary" aria-label="Host" />}
 				</div>
 				<div className="truncate text-muted-foreground text-xs">
 					{p.finishedAt !== null && <FinishedLabel className="mr-1 align-middle" />}
@@ -343,9 +343,11 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 						<p className="mt-2 mb-0 text-muted-foreground text-xs">
 							{detail.status === "finished"
 								? "Everyone reached the end."
-								: detail.host
-									? `Hosted by ${detail.host.name}`
-									: "In progress"}
+								: detail.isHost
+									? "Hosted by you"
+									: detail.host
+										? `Hosted by ${detail.host.name}`
+										: "In progress"}
 							{" · "}
 							{detail.memberCount === 1 ? "1 reader" : `${detail.memberCount} readers`}
 						</p>

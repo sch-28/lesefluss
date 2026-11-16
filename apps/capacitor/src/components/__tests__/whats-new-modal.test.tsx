@@ -154,6 +154,7 @@ describe("WhatsNewModal", () => {
 		expect(text).toContain("Older release");
 		expect(popup()?.querySelectorAll("ul li").length).toBe(appChanges.length);
 		expect(errors.mock.calls.flat().join(" ")).not.toContain("same key");
+		expect(button("Close")).toBeTruthy();
 	});
 
 	it("Full changelog switches the popup to the full list", async () => {

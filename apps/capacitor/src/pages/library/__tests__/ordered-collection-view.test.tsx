@@ -144,8 +144,21 @@ describe("OrderedCollectionView", () => {
 		expect(rendered.queryButton("Back to Library")).toBeNull();
 		expect(rendered.text()).toContain("3 books");
 		expect(rendered.container.querySelector('[data-testid="ordered-next"]')?.textContent).toBe(
-			"Start #1",
+			"Start #1 · Dune",
 		);
+	});
+
+	it("names the numbers a series lacks in its summary", async () => {
+		const third = members[2] as (typeof members)[number];
+		third.seriesIndex = 4;
+		try {
+			await mount();
+			expect(
+				rendered.container.querySelector('[data-testid="ordered-summary"]')?.textContent,
+			).toContain("missing #3");
+		} finally {
+			third.seriesIndex = 3;
+		}
 	});
 
 	it("keeps the next-book button full width on phone only, label-wide from the md breakpoint", async () => {

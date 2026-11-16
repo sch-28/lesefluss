@@ -6,6 +6,12 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { EntryDialog } from "../../components/entry-dialog";
 
+/** A web address with a dotted host, so a stray word like "hello" can't start an import. */
+export function isImportableUrl(raw: string): boolean {
+	const url = normalizeUrl(raw);
+	return isLikelyUrl(url) && new URL(url).hostname.includes(".");
+}
+
 interface PasteUrlModalProps {
 	isOpen: boolean;
 	isImporting: boolean;
@@ -30,7 +36,7 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 		if (isOpen) setValue("");
 	}, [isOpen]);
 
-	const canSubmit = !isImporting && isLikelyUrl(normalizeUrl(value));
+	const canSubmit = !isImporting && isImportableUrl(value);
 
 	const handleSubmit = () => {
 		if (!canSubmit) return;

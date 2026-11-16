@@ -322,7 +322,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			</button>
 		) : null,
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
-		pages !== null ? `${pages.toLocaleString()} pages` : null,
+		pages !== null ? `${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"}` : null,
 		deviceState.isReachable && deviceState.isOnDevice ? (
 			<DeviceBadge key="device" bookId={book.id} style="text" />
 		) : null,

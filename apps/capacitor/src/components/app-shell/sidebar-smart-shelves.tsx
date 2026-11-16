@@ -88,7 +88,7 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 								title={s.pinned ? "Unpin" : "Pin"}
 								className={cn(ROW_BUTTON, s.pinned && "text-primary")}
 							>
-								<Pin className={cn("size-4", s.pinned && "fill-current")} />
+								<Pin className="size-4" />
 							</button>
 						) : (
 							<button

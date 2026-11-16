@@ -3,6 +3,7 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { SquareCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { FilterChip } from "../../../components/filter-chip";
 import { ReservedCard } from "../../../components/reserved-card";
@@ -140,6 +141,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 							disabled={rows.length === 0}
 							onClick={() => selection.setSelected(new Set())}
 						>
+							<SquareCheck />
 							Select
 						</Button>
 					</div>

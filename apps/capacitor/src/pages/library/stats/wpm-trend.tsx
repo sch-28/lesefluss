@@ -6,7 +6,7 @@ import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { formatDate } from "../../../utils/date-utils";
-import { evenTickIndices } from "./chart-axis";
+import { evenTickIndices, formatDayTick } from "./chart-axis";
 
 /** Until the card is measured; the chart then draws at its real width so text never scales. */
 const DEFAULT_WIDTH = 358;
@@ -66,7 +66,7 @@ function formatBucketTick(start: number, granularity: TrendGranularity): string 
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:
-			return formatDate(start);
+			return formatDayTick(start);
 	}
 }
 

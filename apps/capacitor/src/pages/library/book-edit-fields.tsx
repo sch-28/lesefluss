@@ -19,6 +19,7 @@ import { useState } from "react";
 import CoverImage from "../../components/cover-image";
 import { LanguagePicker } from "../../components/language-picker";
 import { PickerTrigger } from "../../components/picker-trigger";
+import { useSyncContext } from "../../contexts/sync-context";
 import type { BookEditValues } from "./book-edit-form";
 import { FIELD_LIMITS } from "./book-fields";
 
@@ -88,6 +89,8 @@ export const BookEditFields: React.FC<Props> = ({
 	catalogDescription,
 }) => {
 	const { values, set } = form;
+	// Friends see a profile only with an account; signed out the switch has no effect to show.
+	const { isLoggedIn } = useSyncContext();
 	return (
 		<div className="flex flex-col gap-4">
 			<Card title="Basics">
@@ -167,19 +170,21 @@ export const BookEditFields: React.FC<Props> = ({
 				</Field>
 			</Card>
 
-			<Card title="Privacy">
-				<div className="flex items-center justify-between gap-3">
-					<div className="min-w-0">
-						<Label htmlFor="book-hide-from-profile">Hide from profile</Label>
-						<p className="m-0 text-muted-foreground text-xs">Friends won't see this book</p>
+			{isLoggedIn && (
+				<Card title="Privacy">
+					<div className="flex items-center justify-between gap-3">
+						<div className="min-w-0">
+							<Label htmlFor="book-hide-from-profile">Hide from profile</Label>
+							<p className="m-0 text-muted-foreground text-xs">Friends won't see this book</p>
+						</div>
+						<Switch
+							id="book-hide-from-profile"
+							checked={values.hideFromProfile}
+							onCheckedChange={(v) => set("hideFromProfile", v)}
+						/>
 					</div>
-					<Switch
-						id="book-hide-from-profile"
-						checked={values.hideFromProfile}
-						onCheckedChange={(v) => set("hideFromProfile", v)}
-					/>
-				</div>
-			</Card>
+				</Card>
+			)}
 		</div>
 	);
 };
