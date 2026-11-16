@@ -5,6 +5,7 @@ import { log } from "../../utils/log";
 import type { ListenInterval } from "./listen-sessions";
 import { loadBaseline, rateFor } from "./pace";
 import { buildSegments, type SpeechSegment, wordAtChar } from "./segments";
+import { createWebSpeechTts, isWebSpeechAvailable } from "./web-speech";
 
 export type PauseReason = "user" | "focus" | "noisy" | "sleep" | "end" | "stopped" | "error";
 
@@ -46,7 +47,7 @@ type NativeInterval = {
 	endChar: number;
 };
 
-type TtsEvents = {
+export type TtsEvents = {
 	progress: { segmentId: number; charStart: number };
 	state: { isPlaying: boolean; reason: PauseReason };
 	needMore: Record<string, never>;
@@ -88,9 +89,17 @@ export interface TtsPlugin {
 type NativeSpeechOptions = { rate: number; pitch: number; voice?: string; rewindWords: number };
 
 const isFakeTts = import.meta.env.DEV && isFakeTtsRequested();
-const TtsNative = isFakeTts ? createFakeTts() : registerPlugin<TtsPlugin>("Tts");
+const isAndroid = Capacitor.getPlatform() === "android";
+const isWebSpeech = !isFakeTts && !isAndroid && isWebSpeechAvailable();
+const TtsNative = isFakeTts
+	? createFakeTts()
+	: isWebSpeech
+		? createWebSpeechTts()
+		: registerPlugin<TtsPlugin>("Tts");
 
-export const IS_READ_ALOUD_SUPPORTED = Capacitor.getPlatform() === "android" || isFakeTts;
+export const IS_READ_ALOUD_SUPPORTED = isAndroid || isWebSpeech || isFakeTts;
+/** The browser's voices come with the system; there is nothing to download or open. */
+export const HAS_SYSTEM_VOICE_SETTINGS = !isWebSpeech;
 
 // Enough text to keep talking for about half an hour if the WebView stops
 // running JS in the background and cannot answer `needMore`.

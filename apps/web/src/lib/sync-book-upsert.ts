@@ -1,4 +1,9 @@
-import type { SyncBook } from "@lesefluss/core";
+import {
+	REAL_SITTING_MS,
+	type SyncBook,
+	type SyncPushStamps,
+	type SyncReadingSession,
+} from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import type { Tx } from "~/db";
@@ -34,6 +39,7 @@ export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOr
 		catalogId: book.catalogId ?? null,
 		sourceUrl: book.sourceUrl ?? null,
 		finishedAt: book.finishedAt != null ? new Date(book.finishedAt) : null,
+		firstSittingAt: book.firstSittingAt != null ? new Date(book.firstSittingAt) : null,
 		addedAt: book.addedAt != null ? new Date(book.addedAt) : null,
 		seriesId: book.seriesId ?? null,
 		chapterIndex: book.chapterIndex ?? null,
@@ -47,12 +53,16 @@ export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOr
 		review: book.deleted ? null : (book.review ?? null),
 		tags: book.deleted ? null : (book.tags ?? null),
 		hideFromProfile: book.deleted ? false : (book.hideFromProfile ?? false),
+		seriesName: book.deleted ? null : (book.seriesName ?? null),
+		seriesIndex: book.deleted ? null : (book.seriesIndex ?? null),
 		deleted: book.deleted,
 		// A client clock running ahead would otherwise win every later merge.
 		updatedAt: new Date(Math.min(book.updatedAt, now)),
 		// A client that pre-dates the column sends nothing; falling back to the row
 		// revision keeps the merge below a plain comparison.
 		metadataUpdatedAt: new Date(Math.min(book.metadataUpdatedAt ?? book.updatedAt, now)),
+		seriesUpdatedAt:
+			book.seriesUpdatedAt != null ? new Date(Math.min(book.seriesUpdatedAt, now)) : null,
 	};
 }
 
@@ -90,6 +100,41 @@ export function claimsHideFlag(book: SyncBook): boolean {
 	return book.hideFromProfile !== undefined;
 }
 
+/** Whether the payload says anything about the book-level series. Separate from
+ *  `claimsMetadata` because the series merges on its own revision: a client that
+ *  pre-dates the fields must leave a stored series untouched. */
+export function claimsSeries(book: SyncBook): boolean {
+	return (
+		book.seriesName !== undefined ||
+		book.seriesIndex !== undefined ||
+		book.seriesUpdatedAt !== undefined
+	);
+}
+
+const SERIES_REVISION_NEWER =
+	"COALESCE(excluded.series_updated_at, 'epoch'::timestamp) > COALESCE(sync_books.series_updated_at, 'epoch'::timestamp)";
+
+/** The series columns' merge: cleared with the tombstone, otherwise revision-gated
+ *  (strict `>`, like metadata) when claimed, kept when not. */
+function seriesSet(claimed: boolean): PgUpdateSetSource<typeof syncBooks> {
+	const column = (name: "series_name" | "series_index") =>
+		sql.raw(
+			claimed
+				? `CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL WHEN ${SERIES_REVISION_NEWER} THEN excluded.${name} ELSE sync_books.${name} END`
+				: `CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE sync_books.${name} END`,
+		);
+	return {
+		seriesName: column("series_name"),
+		seriesIndex: column("series_index"),
+		// GREATEST skips NULLs, so a row without a revision takes the pushed one.
+		seriesUpdatedAt: sql.raw(
+			claimed
+				? "GREATEST(excluded.series_updated_at, sync_books.series_updated_at)"
+				: "sync_books.series_updated_at",
+		),
+	};
+}
+
 const METADATA_REVISION_NEWER =
 	"COALESCE(excluded.metadata_updated_at, excluded.updated_at) > COALESCE(sync_books.metadata_updated_at, sync_books.updated_at)";
 
@@ -107,6 +152,7 @@ export function bookUpsertSetFor(book: SyncBook): PgUpdateSetSource<typeof syncB
 	return {
 		...(claimsMetadata(book) ? bookUpsertSet : bookUpsertSetPreservingMetadata),
 		hideFromProfile: hideFlagSet(claimsHideFlag(book)),
+		...seriesSet(claimsSeries(book)),
 	};
 }
 
@@ -114,7 +160,7 @@ export function bookUpsertSetFor(book: SyncBook): PgUpdateSetSource<typeof syncB
 export function groupBooksByMergeRules(books: SyncBook[]): SyncBook[][] {
 	const groups = new Map<string, SyncBook[]>();
 	for (const book of books) {
-		const key = `${claimsMetadata(book)}:${claimsHideFlag(book)}`;
+		const key = `${claimsMetadata(book)}:${claimsHideFlag(book)}:${claimsSeries(book)}`;
 		const group = groups.get(key) ?? [];
 		group.push(book);
 		groups.set(key, group);
@@ -197,6 +243,7 @@ export const bookUpsertSetPreservingMetadata: PgUpdateSetSource<typeof syncBooks
 	// Sticky: a finish already recorded is never unset by a client that
 	// does not know the field, or by one that has not backfilled yet.
 	finishedAt: sql`COALESCE(sync_books.finished_at, excluded.finished_at)`,
+	firstSittingAt: sql`LEAST(sync_books.first_sitting_at, excluded.first_sitting_at)`,
 	// Earliest wins rather than last-write-wins: an add date is a fact about the
 	// book, not a revision of it, so a device that restored the library (and
 	// stamped itself into the date) must not overwrite the original.
@@ -246,8 +293,34 @@ export const bookUpsertSet: PgUpdateSetSource<typeof syncBooks> = {
 };
 
 /**
+ * The pushed books with each one's first real sitting taken from the sessions
+ * in the same push, when that is earlier than what the book carries. Clients
+ * from before the marker send sessions but never the marker itself.
+ */
+export function withFirstSittings(
+	books: SyncBook[],
+	sessions: readonly Pick<SyncReadingSession, "bookId" | "startedAt" | "durationMs">[],
+): SyncBook[] {
+	const earliest = new Map<string, number>();
+	for (const s of sessions) {
+		if (s.durationMs < REAL_SITTING_MS) continue;
+		const known = earliest.get(s.bookId);
+		if (known === undefined || s.startedAt < known) earliest.set(s.bookId, s.startedAt);
+	}
+	if (earliest.size === 0) return books;
+	return books.map((book) => {
+		const sat = earliest.get(book.bookId);
+		if (sat === undefined || (book.firstSittingAt != null && book.firstSittingAt <= sat)) {
+			return book;
+		}
+		return { ...book, firstSittingAt: sat };
+	});
+}
+
+/**
  * Writes the pushed books under the merge rules and records the feed events
  * they cause. Shared by the sync route and its tests so both run the same SQL.
+ * Returns the stamps it clamped, for the pushing device to adopt.
  */
 export async function upsertSyncBooks(
 	tx: Tx,
@@ -255,22 +328,52 @@ export async function upsertSyncBooks(
 	books: SyncBook[],
 	origins: ReadonlyMap<string, BookOrigin>,
 	now = new Date(),
-): Promise<void> {
+): Promise<SyncPushStamps["books"]> {
 	const before = await loadFeedBookStates(
 		tx,
 		userId,
 		books.map((b) => b.bookId),
 	);
 	const after: FeedBookState[] = [];
+	const clamped: SyncPushStamps["books"] = [];
 	for (const group of groupBooksByMergeRules(books)) {
 		const [first] = group;
 		if (!first) continue;
+		const rows = group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId)));
+		group.forEach((book, i) => {
+			const stamps = rows[i] && clampedStamps(book, rows[i]);
+			if (stamps) clamped.push(stamps);
+		});
 		const merged = await tx
 			.insert(syncBooks)
-			.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
+			.values(rows)
 			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) })
 			.returning(feedBookColumns);
 		after.push(...merged);
 	}
 	await recordFeedEvents(tx, userId, before, after, now);
+	return clamped;
+}
+
+function clampedStamps(
+	book: SyncBook,
+	row: { updatedAt: Date; metadataUpdatedAt: Date; seriesUpdatedAt: Date | null },
+): SyncPushStamps["books"][number] | null {
+	const updatedAt = row.updatedAt.getTime();
+	const metadataUpdatedAt = row.metadataUpdatedAt.getTime();
+	const seriesUpdatedAt = row.seriesUpdatedAt?.getTime();
+	const isClamped =
+		updatedAt < book.updatedAt ||
+		metadataUpdatedAt < (book.metadataUpdatedAt ?? book.updatedAt) ||
+		(seriesUpdatedAt !== undefined &&
+			book.seriesUpdatedAt != null &&
+			seriesUpdatedAt < book.seriesUpdatedAt);
+	return isClamped
+		? {
+				bookId: book.bookId,
+				updatedAt,
+				metadataUpdatedAt,
+				...(seriesUpdatedAt !== undefined && { seriesUpdatedAt }),
+			}
+		: null;
 }

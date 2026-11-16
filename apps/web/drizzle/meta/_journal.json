@@ -316,6 +316,111 @@
       "when": 1783728000000,
       "tag": "0044_reader_ruler",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1783814400000,
+      "tag": "0045_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1783900800000,
+      "tag": "0046_book_series",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1783987200000,
+      "tag": "0047_smart_shelves",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1784073600000,
+      "tag": "0048_series_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1784160000000,
+      "tag": "0049_goal_daily_minutes",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1784246400000,
+      "tag": "0050_show_live_wpm",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1784332800000,
+      "tag": "0051_bookmarks",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1784419200000,
+      "tag": "0052_speed_window",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1784505600000,
+      "tag": "0053_wishlist",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1784592000000,
+      "tag": "0054_session_font_segments",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1784678400000,
+      "tag": "0055_show_milestones",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1784764800000,
+      "tag": "0056_speed_tests",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1784851200000,
+      "tag": "0057_shelf_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1784937600000,
+      "tag": "0058_first_sitting_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1785024000000,
+      "tag": "0059_clear_session_tombstones",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
+import { pushBackHandler } from "@lesefluss/ui/overlay-back";
 import { useEffect, useRef } from "react";
-import { pushBackHandler } from "../services/overlay-back";
 
 /**
  * Consume the Android back press while `active`, running `handler` instead of

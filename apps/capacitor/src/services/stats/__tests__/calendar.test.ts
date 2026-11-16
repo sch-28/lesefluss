@@ -5,6 +5,7 @@ import {
 	type DailyReading,
 	NO_READING,
 	shiftMonth,
+	weeklyHours,
 } from "../calendar";
 
 const ORIGINAL_TZ = process.env.TZ;
@@ -247,5 +248,27 @@ describe("shiftMonth", () => {
 	it("normalises to the first of the month", () => {
 		const midMonth = new Date(2026, 4, 17, 13, 45).getTime();
 		expect(shiftMonth(midMonth, 0)).toBe(monthOf(2026, 5));
+	});
+});
+
+describe("weeklyHours", () => {
+	it("sums each Monday-first week, oldest first, ending with the current week", () => {
+		// Wednesday 2026-11-11: the current week starts Monday 2026-11-09.
+		const today = new Date(2026, 10, 11, 15).getTime();
+		const weeks = weeklyHours(
+			readDays({ "2026-11-09": 60, "2026-11-11": 30, "2026-11-08": 120, "2026-10-26": 90 }),
+			today,
+			3,
+		);
+		expect(weeks.map((w) => w.hours)).toEqual([1.5, 2, 1.5]);
+		expect(weeks.map((w) => w.isCurrent)).toEqual([false, false, true]);
+		expect(weeks[2].weekStart).toBe(new Date(2026, 10, 9).getTime());
+		expect(weeks[0].weekStart).toBe(new Date(2026, 9, 26).getTime());
+	});
+
+	it("gives empty weeks zero hours", () => {
+		const weeks = weeklyHours(NO_READING, new Date(2026, 0, 1).getTime(), 12);
+		expect(weeks).toHaveLength(12);
+		expect(weeks.every((w) => w.hours === 0)).toBe(true);
 	});
 });

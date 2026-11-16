@@ -26,7 +26,7 @@ const BLEIndicator: React.FC = () => {
 				<button
 					type="button"
 					aria-label="Bluetooth device status"
-					className={`mr-3 inline-flex size-7 items-center justify-center text-foreground transition-opacity ${isTransitioning ? "opacity-40" : "opacity-60"}`}
+					className={`relative mr-3 inline-flex size-7 items-center justify-center text-foreground transition-opacity before:absolute before:-inset-2 before:content-[''] ${isTransitioning ? "opacity-40" : "opacity-60"}`}
 				>
 					<Bluetooth className="size-[18px]" />
 				</button>

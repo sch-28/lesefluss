@@ -53,8 +53,7 @@ export function makePlan(input: {
 		goal: input.goal ?? makeGoal(),
 		book: { wordCount: WORDS, wordPosition: input.position },
 		sessions: input.sessions ?? [],
-		bookWpm: 200,
-		globalWpm: null,
+		pace: { wpm: 200, source: "book" },
 		now: input.now ?? at(1),
 	});
 	if (result.kind !== "plan") throw new Error("expected a plan");

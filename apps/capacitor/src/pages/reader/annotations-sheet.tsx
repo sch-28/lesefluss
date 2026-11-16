@@ -1,26 +1,34 @@
 /**
- * AnnotationsSheet: single bottom drawer that merges three reader navigations:
- * Contents (chapter list), Highlights, and Glossary. Empty segments hide
- * automatically, so a TXT book without chapters opens straight on Highlights
- * or Glossary.
+ * AnnotationsSheet: single bottom drawer that merges the reader navigations:
+ * Contents (chapter list), Bookmarks, Highlights, and Glossary. Empty segments
+ * hide automatically, so a TXT book without chapters opens straight on
+ * Bookmarks, Highlights or Glossary.
  *
  * Snap points keep the iOS-like half-then-full sheet behavior.
  */
 
 import { Button } from "@lesefluss/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, drawerSnapPoints } from "@lesefluss/ui/drawer";
-import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+	drawerSnapPoints,
+} from "@lesefluss/ui/drawer";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { Compass, Plus } from "lucide-react";
 import type React from "react";
 import { memo, useCallback, useMemo, useState } from "react";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { SeriesChapterList } from "../library/series-chapter-list";
+import BookmarkList, { type BookmarkRow } from "./bookmark-list";
 import ContentsList from "./contents-list";
 import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 import { HIGHLIGHT_COLOR_STYLE } from "./selection-toolbar";
 
-type Tab = "contents" | "chapters" | "highlights" | "glossary";
+type Tab = "contents" | "chapters" | "bookmarks" | "highlights" | "glossary";
 
 function snippetFromText(text: string | null): string {
 	if (!text) return "(no preview)";
@@ -30,12 +38,19 @@ function snippetFromText(text: string | null): string {
 
 interface AnnotationsSheetProps {
 	isOpen: boolean;
+	/** Opens on Contents (the ⋮ entry) instead of the default tab, when the book has one. */
+	opensOnContents?: boolean;
 	onClose: () => void;
 	theme?: string;
 	chapters: Chapter[];
 	currentChapterIndex: number;
 	onJumpChapter: (startWord: number) => void;
 	seriesId?: string | null;
+	bookmarks: BookmarkRow[];
+	currentBookmarkId: string | null;
+	onJumpBookmark: (word: number) => void;
+	onRenameBookmark: (id: string, label: string) => void;
+	onDeleteBookmark: (id: string) => void;
 	highlights: Highlight[];
 	onJumpHighlight: (highlight: Highlight) => void;
 	glossary: GlossaryEntry[];
@@ -50,12 +65,18 @@ const SNAP_POINTS = drawerSnapPoints([0.5, 1]);
 
 const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	isOpen,
+	opensOnContents = false,
 	onClose,
 	theme,
 	chapters,
 	currentChapterIndex,
 	onJumpChapter,
 	seriesId,
+	bookmarks,
+	currentBookmarkId,
+	onJumpBookmark,
+	onRenameBookmark,
+	onDeleteBookmark,
 	highlights,
 	onJumpHighlight,
 	glossary,
@@ -66,6 +87,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 }) => {
 	const hasContents = chapters.length > 0;
 	const hasChapters = seriesId != null;
+	const hasBookmarks = bookmarks.length > 0;
 	const hasHighlights = highlights.length > 0;
 
 	// Chapters wins over Contents when both apply (web-novel imports have both;
@@ -74,9 +96,11 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 		? "chapters"
 		: hasContents
 			? "contents"
-			: hasHighlights
-				? "highlights"
-				: "glossary";
+			: hasBookmarks
+				? "bookmarks"
+				: hasHighlights
+					? "highlights"
+					: "glossary";
 	const [tab, setTab] = useState<Tab>(initialTab);
 	const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 
@@ -89,12 +113,13 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	if (isOpen !== wasOpen) {
 		setWasOpen(isOpen);
 		if (isOpen) {
-			setTab(initialTab);
+			setTab(opensOnContents && hasContents ? "contents" : initialTab);
 			setSnap(SNAP_POINTS[0]);
 		}
 	}
 
 	const expandSheet = useCallback(() => setSnap(SNAP_POINTS[1]), []);
+	const isSidePanel = useMediaQuery("(min-width: 768px)");
 
 	const { bookEntries, globalEntries } = useMemo(() => {
 		const book: GlossaryEntry[] = [];
@@ -112,30 +137,46 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
-			snapPoints={SNAP_POINTS}
-			activeSnapPoint={snap}
-			setActiveSnapPoint={setSnap}
+			{...(isSidePanel
+				? { direction: "right" as const }
+				: { snapPoints: SNAP_POINTS, activeSnapPoint: snap, setActiveSnapPoint: setSnap })}
 		>
 			<DrawerContent
-				aria-label="Annotations"
-				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
+				aria-describedby={undefined}
+				className={cn(
+					"h-full md:data-[vaul-drawer-direction=right]:max-w-md",
+					theme ? `reader-theme-${theme}` : undefined,
+				)}
 			>
+				<DrawerTitle className="sr-only">Annotations</DrawerTitle>
 				<DrawerHeader className="flex-row items-center gap-2 px-3">
-					<ToggleGroup
-						type="single"
-						variant="outline"
+					<SegmentedControl
+						aria-label="Annotations"
 						value={tab}
-						onValueChange={(v) => {
-							if (v) setTab(v as Tab);
-						}}
-						// Labels wrap rather than run into each other at a large font scale.
-						className="[&>*]:wrap-anywhere min-w-0 flex-1 [&>*]:h-auto [&>*]:min-h-9 [&>*]:whitespace-normal"
-					>
-						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
-						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
-						<ToggleGroupItem value="highlights">Highlights</ToggleGroupItem>
-						<ToggleGroupItem value="glossary">Glossary</ToggleGroupItem>
-					</ToggleGroup>
+						onValueChange={setTab}
+						options={[
+							...(hasContents ? [{ value: "contents" as const, label: "Contents" }] : []),
+							...(hasChapters ? [{ value: "chapters" as const, label: "Chapters" }] : []),
+							{
+								value: "bookmarks",
+								ariaLabel: "Bookmarks",
+								label: (
+									<>
+										Bookmarks
+										{hasBookmarks && (
+											<span className="text-muted-foreground tabular-nums">{bookmarks.length}</span>
+										)}
+									</>
+								),
+							},
+							{ value: "highlights", label: "Highlights" },
+							{ value: "glossary", label: "Glossary" },
+						]}
+						// Tight items fit four tabs beside the browse toggle at 390px; a fifth tab or a
+						// large font scale scrolls sideways rather than breaking a label mid-word.
+						className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]"
+						itemClassName="flex-[1_0_auto] gap-1 whitespace-nowrap px-1 text-[0.8125rem]"
+					/>
 					{browse && (
 						<Button
 							variant="outline"
@@ -144,12 +185,13 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								browse.onToggle();
 								onClose();
 							}}
-							aria-label="Browse mode"
+							title="Browse mode"
 							aria-pressed={browse.isBrowsing}
 							data-testid="browse-toggle"
 							className={cn("shrink-0", browse.isBrowsing && "text-primary")}
 						>
 							<Compass />
+							<span className="sr-only">Browse mode</span>
 						</Button>
 					)}
 				</DrawerHeader>
@@ -164,13 +206,26 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								onJumpChapter(startWord);
 								onClose();
 							}}
-							obscuredHeight={window.innerHeight * (1 - SNAP_POINTS[0])}
+							obscuredHeight={isSidePanel ? 0 : window.innerHeight * (1 - SNAP_POINTS[0])}
 							onNeedsFullHeight={expandSheet}
 						/>
 					)}
 
 					{tab === "chapters" && seriesId && (
 						<SeriesChapterList seriesId={seriesId} currentBookId={currentBookId} />
+					)}
+
+					{tab === "bookmarks" && (
+						<BookmarkList
+							rows={bookmarks}
+							currentId={currentBookmarkId}
+							onJump={(word) => {
+								onJumpBookmark(word);
+								onClose();
+							}}
+							onRename={onRenameBookmark}
+							onDelete={onDeleteBookmark}
+						/>
 					)}
 
 					{tab === "highlights" &&
@@ -251,6 +306,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								type="button"
 								onClick={onAddEntry}
 								aria-label="Add glossary entry"
+								data-toast-clear
 								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
 								style={{ marginBottom: "var(--safe-bottom)" }}
 							>

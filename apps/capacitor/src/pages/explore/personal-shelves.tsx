@@ -4,6 +4,7 @@ import { useSyncContext } from "../../contexts/sync-context";
 import { type CatalogSearchResult, getSimilarBooks } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
+import { isFirstLoad } from "../../services/query-client";
 import { useFeed } from "../../services/social/feed";
 import { editionKey } from "./editions";
 import type { ExploreSearch } from "./explore-search";
@@ -19,9 +20,18 @@ type Props = {
 };
 
 /**
+ * True until the library and wishlist are first read. A failed read ends it too:
+ * the landing then shows its shelves without the personal ones, never a blank area.
+ */
+export function usePersonalShelvesPending(): boolean {
+	const books = queryHooks.useBooks();
+	const wishlist = queryHooks.useWishlist();
+	return isFirstLoad(books) || isFirstLoad(wishlist);
+}
+
+/**
  * Shelves built from the reader's own library (works without an account) and,
- * when signed in, from friends' activity. Each hides itself when it has
- * nothing to show.
+ * when signed in, from friends' activity.
  */
 const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const { data: library } = queryHooks.useBooks();
@@ -56,20 +66,43 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 		? friendsReading(feed.data?.pages.flatMap((p) => p.items) ?? [], ownedIds, ownedEditions)
 		: [];
 
+	// isLoading, not isPending: a disabled query (no second author) stays pending forever.
+	const isSimilarLoading = similar.isLoading;
+	const isAuthorsLoading = byAuthors.some((q) => q.isLoading);
+	const isFeedLoading = isLoggedIn && !!feed.isLoading;
+
+	// A shelf's slot follows local facts only (the library, being signed in), never
+	// what the catalog sends back: a shelf that loads empty keeps its height.
 	return (
 		<>
-			{seed && becauseYouRead.length > 0 && (
-				<Shelf title={`Because you read ${seed.title}`} books={becauseYouRead} onOpen={onOpen} />
+			{seed && (
+				<Shelf
+					title={`Because you read ${seed.title}`}
+					books={becauseYouRead}
+					onOpen={onOpen}
+					isLoading={isSimilarLoading}
+					emptyLabel="No close matches in the catalog yet."
+				/>
 			)}
-			{authorBooks.length > 0 && (
+			{authors.length > 0 && (
 				<Shelf
 					title="More by authors you read"
 					books={authorBooks}
 					onOpen={onOpen}
-					onSeeAll={authors[0] ? () => onBrowse({ author: authors[0], lang: "all" }) : undefined}
+					onSeeAll={() => onBrowse({ author: authors[0], lang: "all" })}
+					isLoading={isAuthorsLoading}
+					emptyLabel="Nothing else by your authors in the catalog yet."
 				/>
 			)}
-			{friends.length > 0 && <Shelf title="Friends are reading" books={friends} onOpen={onOpen} />}
+			{isLoggedIn && (
+				<Shelf
+					title="Friends are reading"
+					books={friends}
+					onOpen={onOpen}
+					isLoading={isFeedLoading}
+					emptyLabel="Books your friends read show up here."
+				/>
+			)}
 		</>
 	);
 };

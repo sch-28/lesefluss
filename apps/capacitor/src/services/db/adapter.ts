@@ -1,6 +1,6 @@
-import type { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { errorMessage, reportEvent } from "../telemetry";
+import type { DbDriver } from "./driver";
 import * as schema from "./schema";
 
 /** First SQL keyword (UPDATE/INSERT/DELETE), for telemetry without leaking params. */
@@ -9,9 +9,9 @@ function sqlOp(sql: string): string {
 }
 
 /**
- * Sanitize query parameters before passing to the Capacitor SQLite native layer.
+ * Sanitize query parameters before they reach a driver.
  *
- * The Android SQLite plugin passes params to SQLiteStatement.bindArgs() which only
+ * The Android SQLite plugin, the strictest of them, passes params to SQLiteStatement.bindArgs() which only
  * accepts String, Long, Double, byte[], or null. JavaScript booleans and other types
  * must be converted first, otherwise the native layer throws "Failed query".
  *
@@ -24,14 +24,13 @@ function sanitizeParams(params: unknown[]): unknown[] {
 }
 
 /**
- * Create the Drizzle ORM instance backed by @capacitor-community/sqlite
- * via the sqlite-proxy adapter.
+ * Create the Drizzle ORM instance over the active `DbDriver` via the
+ * sqlite-proxy adapter.
  *
- * The `getConn` callback defers connection access so the Drizzle instance can be
- * created at module load time while the actual SQLite connection is established later
- * during `initDb()`.
+ * The `getDriver` callback defers access so the Drizzle instance can be
+ * created at module load time while the driver is opened later in `initDb()`.
  */
-export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
+export function createDrizzleAdapter(getDriver: () => DbDriver | null) {
 	// Serialize writes only. The capacitor-community/sqlite plugin wraps each
 	// `run` in an implicit transaction; overlapping awaits race and throw
 	// "cannot start a transaction within a transaction". Reads (`query`) don't
@@ -48,15 +47,15 @@ export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
 
 	return drizzle<typeof schema>(
 		async (sql, params, method) => {
-			const conn = getConn();
-			if (!conn) throw new Error("Database not initialised - call initDb() first");
+			const driver = getDriver();
+			if (!driver) throw new Error("Database not initialised - call initDb() first");
 
 			const safeParams = sanitizeParams(params as unknown[]);
 
 			if (method === "run") {
 				return enqueueWrite(async () => {
 					try {
-						await conn.run(sql, safeParams);
+						await driver.run(sql, safeParams);
 					} catch (err) {
 						// Previously swallowed by the queue's `.catch`, leaving write
 						// failures completely invisible. Surface them so a device that
@@ -75,8 +74,7 @@ export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
 			// Reads wait on pending writes so they see the latest committed state,
 			// but don't block each other.
 			await writeQueue.catch(() => {});
-			const result = await conn.query(sql, safeParams);
-			const rows = result.values ?? [];
+			const rows = await driver.query(sql, safeParams);
 
 			if (method === "get") {
 				return { rows: rows.length > 0 ? Object.values(rows[0]) : [] };

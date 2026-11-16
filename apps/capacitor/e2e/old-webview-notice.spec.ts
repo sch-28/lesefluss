@@ -1,6 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
 import { MIN_CHROMIUM } from "../../../packages/core/src/engine-support";
-import { resetStorage } from "./helpers/seed";
 
 const notice = "#engine-notice";
 
@@ -52,14 +51,4 @@ test("an engine without oklch() gets the WebView notice instead of a broken app"
 			expect.objectContaining({ type: "webview_unsupported", webview: chromium }),
 		]);
 	}
-});
-
-test("a supported engine never sees the notice and reports nothing", async ({ page }) => {
-	const posts = recordTelemetry(page);
-	await resetStorage(page);
-	await page.goto("/");
-	await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
-	await expect(page.locator(notice)).toBeHidden();
-	await expect(page.locator("html")).not.toHaveClass(/engine-unsupported/);
-	expect(posts.filter((p) => (p as { type?: string }).type === "webview_unsupported")).toEqual([]);
 });

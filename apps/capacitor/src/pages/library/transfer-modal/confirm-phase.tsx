@@ -44,7 +44,7 @@ const ConfirmPhase: React.FC<Props> = ({
 					</div>
 					<div className="text-sm">
 						<span className="text-muted-foreground">Est. time: </span>
-						<span className="font-medium">~{formatSeconds(book.size / ESTIMATED_BPS)}</span>
+						<span className="font-medium">{formatSeconds(book.size / ESTIMATED_BPS)}</span>
 					</div>
 				</div>
 			</div>
@@ -55,7 +55,7 @@ const ConfirmPhase: React.FC<Props> = ({
 					<div
 						className={cn("mt-1 font-semibold", willFit ? "text-foreground" : "text-destructive")}
 					>
-						~{formatBytes(estimatedFree)}
+						{formatBytes(estimatedFree)}
 						<span className="ml-1 font-normal text-muted-foreground text-xs">
 							/ {formatBytes(DEVICE_TOTAL_BYTES)} total
 						</span>

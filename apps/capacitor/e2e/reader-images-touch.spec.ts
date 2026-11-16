@@ -8,7 +8,8 @@ test.use({ viewport: { width: 420, height: 800 } });
 /**
  * The touch path: a long press arms selection, the finger then crosses a
  * figure (no word under it) on its way to the next paragraph. A press that
- * starts on the figure itself must do nothing.
+ * starts on the figure itself starts no selection (word-gestures.test.ts)
+ * and, in page mode, turns no page.
  */
 
 test("a touch long-press dragged across a figure selects both ends and the highlight persists", async ({
@@ -35,27 +36,20 @@ test("a touch long-press dragged across a figure selects both ends and the highl
 	await reader.expectHighlight(page, end, "yellow");
 });
 
-test("a touch long-press on a figure opens no selection", async ({ page }) => {
-	const title = await seedStrayAnchorBook(page);
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-
-	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
-	// A selection, had the press started one, would be showing by now.
-	await page.waitForTimeout(500);
-	await expect(reader.selectionToolbar(page)).toHaveCount(0);
-	await expect(page.locator(".word-selecting")).toHaveCount(0);
-});
-
 test("a touch long-press on a figure in page mode turns no page", async ({ page }) => {
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
 	await reader.setPaginationStyle(page, "page");
 	const before = await reader.pageModeFirstVisibleWord(page);
 
-	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
-	// A selection, had the press started one, would be showing by now.
-	await page.waitForTimeout(500);
+	// Pressed inside the next-page third, where a tap would turn the page.
+	const box = await page.locator('.reader-figure img[alt="Plate 1"]').boundingBox();
+	if (!box) throw new Error("Plate 1 is not on the page");
+	const point = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+	const width = page.viewportSize()?.width ?? 0;
+	expect(point.x).toBeGreaterThan(width * 0.67);
+	expect(point.x).toBeLessThan(width);
+	await reader.expectNoSaveDuring(page, () => reader.touchLongPressBetween(page, point, point));
 	await expect(reader.selectionToolbar(page)).toHaveCount(0);
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(before);
 });

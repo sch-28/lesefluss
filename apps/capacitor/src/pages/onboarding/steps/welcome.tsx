@@ -18,10 +18,12 @@ const WelcomeStep: React.FC = () => {
 				height={72}
 				className="mb-6 size-18"
 			/>
-			<h1 className="font-semibold text-4xl tracking-tight">Lesefluss</h1>
-			<p className="mt-2 text-lg text-muted-foreground">Read faster, one word at a time.</p>
-			<p className="mt-8 max-w-sm text-foreground/80 leading-relaxed">
-				Welcome. Let's set up a few things so your first read feels right. It only takes a moment.
+			<h1 className="m-0 font-semibold text-4xl tracking-tight">Lesefluss</h1>
+			<p className="m-0 mt-2 text-lg text-muted-foreground">
+				Your books, read your way: pages, scrolling or one word at a time.
+			</p>
+			<p className="m-0 mt-6 max-w-sm text-foreground/80 leading-relaxed">
+				Let's set up a few things so your first read feels right. It takes a minute.
 			</p>
 		</div>
 	);

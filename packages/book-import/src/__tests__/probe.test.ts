@@ -75,9 +75,9 @@ describe("probeBookMetadata", () => {
 		});
 	});
 
-	// A truncated file keeps a valid zip header, so epubjs accepts it and then
-	// never settles; the probe waits out the 15s ready timeout before falling
-	// back, which is what the budget below covers.
+	// A truncated file keeps a valid zip header, so the zip magic check lets it
+	// through. The default test timeout is well under the 15s ready timeout, so
+	// this only passes when epubjs's open failure ends the wait.
 	it("returns a name-only probe for a truncated EPUB", async () => {
 		const full = await buildEpub({ title: "Whole", chapters });
 		const probed = await probeBookMetadata({
@@ -87,7 +87,7 @@ describe("probeBookMetadata", () => {
 		});
 		expect(probed.title).toBe("cut");
 		expect(probed.coverImage).toBeNull();
-	}, 25_000);
+	});
 
 	for (const [fileName, expectedTitle] of [
 		["notes.txt", "notes"],

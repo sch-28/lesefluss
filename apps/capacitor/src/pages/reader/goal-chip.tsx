@@ -2,18 +2,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
-import { minutesLabel, percentLabel } from "../../utils/reading-time";
+import { minutesLabel } from "../../utils/reading-time";
 import {
 	daysMetWithToday,
 	GOAL_TONE_CLASS,
 	goalTone,
 	type LiveToday,
 	signed,
+	todayFigure,
 } from "../library/reading-goal/goal-model";
 import { DayCount, GoalStat } from "../library/reading-goal/goal-stat";
-
-const RING_RADIUS = 7;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 type Props = {
 	plan: ReadingGoalPlan;
@@ -22,9 +20,10 @@ type Props = {
 };
 
 export function GoalChip({ plan, today, onOpenDetails }: Props) {
+	const figure = todayFigure(today);
 	const label = today.isMet
-		? `Today's target met: ${percentLabel(today.targetPercent)}%`
-		: `Today's target: ${percentLabel(today.progressPercent)} of ${percentLabel(today.targetPercent)}%`;
+		? `Today's target met: ${figure.target}`
+		: `Today's target: ${figure.done} of ${figure.target}`;
 	const daysMet = daysMetWithToday(plan, today);
 	return (
 		<Popover>
@@ -34,42 +33,19 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 					aria-label={label}
 					data-testid="goal-chip"
 					data-met={today.isMet}
+					// The footer bar scrubs on pointerdown; a tap here opens the goal instead.
+					onPointerDown={(e) => e.stopPropagation()}
 					className={cn(
-						// 32px tall on screen, 44px to a finger.
-						"reader-goal-chip relative mr-0.5 inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/40 pr-2.5 pl-1.5 text-xs tabular-nums before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
-						today.isMet && "reader-goal-chip--met",
+						"relative inline-flex shrink-0 items-center tabular-nums underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline",
+						today.isMet && "text-[var(--goal-met)]",
 					)}
 				>
-					<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
-						<circle
-							cx="9"
-							cy="9"
-							r={RING_RADIUS}
-							fill="none"
-							className="reader-goal-ring-track"
-							strokeWidth="2.5"
-						/>
-						<circle
-							cx="9"
-							cy="9"
-							r={RING_RADIUS}
-							fill="none"
-							className="reader-goal-ring"
-							strokeWidth="2.5"
-							strokeLinecap="round"
-							strokeDasharray={`${today.fraction * RING_LENGTH} ${RING_LENGTH}`}
-							transform="rotate(-90 9 9)"
-						/>
-					</svg>
-					<span className="font-semibold">
-						{percentLabel(today.isMet ? today.targetPercent : today.progressPercent)}
-					</span>
-					<span className="text-muted-foreground">/ {percentLabel(today.targetPercent)}%</span>
+					Today {figure.done} of {figure.target}
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">
 				<div className="flex items-center justify-between">
-					<span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+					<span className="font-semibold text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 						Goal · by {formatDayKey(plan.projectedFinishDate)}
 					</span>
 					<button

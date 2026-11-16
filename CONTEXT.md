@@ -14,7 +14,20 @@ A self-contained text the user reads. Has metadata (title, author), a body, and 
 
 ### Library
 
-The set of books on a given surface. The app has a library (in IndexedDB). The rsvpnano device has its own library (on SD card). Each library has its own identity scheme. They are correlated by deterministic filenames (see *book identity mapping*).
+The set of books on a given surface. The app has a library (in its local SQLite database). The rsvpnano device has its own library (on SD card). Each library has its own identity scheme. They are correlated by deterministic filenames (see *book identity mapping*).
+
+- **Local store**: where the app keeps its SQLite database. Android: the native plugin. Web: OPFS, run in a worker. The **legacy store** is the web's older jeep-sqlite copy in IndexedDB: moved to OPFS on the first start (deleted only after the move is verified), and still used where OPFS is missing or the move failed. Where neither works (some private windows), the app shows a full-page screen explaining what to do instead of the library.
+
+- **Library filter**: what narrows the app's library view, together with the search text. Per **facet** (status, tag, author, series, collection, rating, progress, time left, added, last read) it holds the values a book must carry one of (*included*) and the values it must carry none of (*excluded*); tags can instead require *all* included values, which falls back to *any* once no tag is included. A **Length** range in words (inclusive at both ends) sits beside the facets. Ratings file under whole stars (3.5 counts as 4); dates and progress are buckets. Shown as removable chips, also typed as search tokens (`tag:`, `in:`, `words:<50k`). Kept on the device and in the library URL (`f`), not synced. The model lives in `pages/library/filter-model.ts`.
+- **Collection**: a named group of books the reader makes by hand. A book can be in several. An *ordered* collection keeps a number (#N) per book and lists by it. Synced; a removed book or deleted collection is a tombstone.
+- **Series collection**: an ordered collection with a series key. It forms by itself once two books name the same series in their files, or when the reader makes a new series. Later books of that series join it, unless the reader took the book out of it (a dismissal, which no import or sync undoes). Group by Series and the #N cover badge read only series collections.
+- **Smart shelf**: a saved library filter and search shown as a shelf with a live count. Three built-ins (Reading, Finished, Unrated) are not stored; the reader's own shelves sync.
+- **Shelf view**: a collection's or smart shelf's own group-by and table columns, stored on it and synced, so opening it restores how it was arranged.
+- **Selection**: a set of books picked for one bulk action. It survives filter and search changes, so it can be built across several views; *Select all N* adds every book in the current view, rendered or not.
+
+### Wishlist
+
+Titles saved from Explore without importing them (`wishlist`): a catalog book by its catalog id, or a web-novel series by its URL, each with the title, author and cover to show on a card. Saved with *Add to wishlist* on the catalog book page or the web-novel preview, and shown as a shelf on the Explore landing with a See all page. Not a book status: *Want to read* marks a book already in the [library](#library), while a wishlist title is not in it yet. Importing a title on this device, from its card or any other way, takes it off the wishlist; *Remove from wishlist* on its page or the remove button on its card takes any saved title off, also one that reached the library otherwise (by sync from another device). It syncs with sync on, with the [bookmark](#bookmark) rules for deletes: a removal is a sticky tombstone and an older client's push without a wishlist leaves it alone.
 
 ### Position
 
@@ -22,7 +35,7 @@ The reader's location in a book. The canonical app-side unit is **word position*
 
 ### Word position
 
-A zero-based index into the book's tokenized word stream. The canonical position unit across the app: `books.wordPosition`, highlights, reading sessions, chapter starts, and all cross-device sync ship this unit. Convertible to a UTF-8 byte offset only via the book's `WordIndex`.
+A zero-based index into the book's tokenized word stream. The canonical position unit across the app: `books.wordPosition`, highlights, bookmarks, reading sessions, chapter starts, and all cross-device sync ship this unit. Convertible to a UTF-8 byte offset only via the book's `WordIndex`.
 
 ### Position unit
 
@@ -44,9 +57,11 @@ The position pair identifying a highlight in a book. Shape: `{ startWord, startC
 
 A continuous reading session: start, end, words read, target book. Lives in the local database. Syncs to the server.
 
+*Real sitting*: a session of at least one minute (`REAL_SITTING_MS`) with at least 5 words read. A shorter *burst* is not written; it waits in memory as a *carry*, and the next burst on the same book joins it if it starts within a sitting's longest pause (10 minutes) on the same day, in any mode: closing and reopening, switching modes and Quick RSVP windows add up to one sitting, saved once it reaches the minute. A sitting joined across modes is recorded as the mode it spent the most active time in; an RSVP-majority row keeps the RSVP dial. Carries are lost when the app restarts and dropped on sign-out, account change and a stats wipe.
+
 *Words read* (`reading_sessions.wordsRead`) is the total length of the [read spans](#read-span), not the distance between start and end position.
 
-*Furthest word* (`reading_sessions.furthestWord`) is the end of the highest read span: how far reading got in the sitting, where the end position is wherever a jump or moving back left it. Null on rows recorded before it existed. A sitting never spans local midnight: reading straight through midnight closes it and goes on in a new one from the same spot; a sitting paused, idle or suspended over midnight closes at its last activity and the next activity opens a new one. Each day keeps its own reading, at the cost of one more session for a sitting that crosses midnight. Discarding a sitting whose row was already written (undoing an auto-committed browse) deletes that row locally and on the server. A deleted session is tombstoned on the server and dropped by every other device on its next pull; a sitting still open on a device when its row is deleted goes on under a new id.
+*Furthest word* (`reading_sessions.furthestWord`) is the end of the highest read span: how far reading got in the sitting, where the end position is wherever a jump or moving back left it. Null on rows recorded before it existed. A sitting never spans local midnight: reading straight through midnight closes it and goes on in a new one from the same spot; a sitting paused, idle or suspended over midnight closes at its last activity and the next activity opens a new one. Each day keeps its own reading, at the cost of one more session for a sitting that crosses midnight. Discarding a sitting whose row was already written (undoing an auto-committed browse) deletes that row locally and on the server. A deleted session is tombstoned on the server and dropped by every other device on its next pull; the tombstone keeps nothing of the reading but the id, whether one session was deleted or all of them by Delete reading stats; a sitting still open on a device when its row is deleted goes on under a new id.
 
 *Mode* is `rsvp`, `scroll`, `page` or `listen`. A `listen` sitting is [read aloud](#read-aloud) time, recorded from the voice's own playback log rather than by the reading tracker, so screen-off listening counts. It counts toward time, streaks, goals and totals, never toward a speed: average WPM, the WPM trend, records, time left and goal pace all skip it (`isMeasurableSitting` in `@lesefluss/core`). Its `wpmAvg` is null.
 
@@ -66,6 +81,27 @@ A range of the book travelled forward at reading pace within one [session](#sess
 
 Spans are merged, so a passage re-read in the same sitting counts once, while a gap skipped earlier and read later does count. They are a tracker-internal accounting device: never persisted, never synced. Only their total length is stored.
 
+### Speed model
+
+How fast this reader reads, from one function (`computeSpeedModel` in `@lesefluss/core`) that the app and the server both run on [session](#session) rows, so every surface shows the same number. Only measurable sittings count (`isMeasurableSitting`: no listening, no position jumps), and no *skimmed* ones: a scroll or page sitting above 600 wpm or 1.6x the reader's median sitting, or an RSVP sitting above 1.6x the RSVP median (`speedSittings`). A skimmed sitting's time and words still count toward totals, streaks and goals.
+
+- **Reading speed**: words over active time in scroll and page together; the split per mode is kept for the reader.
+- **RSVP speed**: words over active time in RSVP, which is what the engine delivered, shown next to the *dial* (the RSVP wpm setting, stored as `wpmAvg` on RSVP rows). Delivered runs under the dial because of punctuation pauses and the ramp.
+- **Reading pace**: words over active time across both, so it follows the reader's mix of modes. It feeds every time estimate (book, goal, Explore) and is never shown as "your speed". Not the [reading goal](#reading-goal)'s **Pace** mode. In the reader, estimates use the current mode's speed instead.
+- **Window**: which sittings count. *Recent* (the default) is the newest sittings up to 10 hours of reading; *30 days* and *all time* are the others.
+- **Book speed**: a book's own words over active time, across all of its history. Its estimates use it once the book has 30 minutes of reading, the reading pace before that.
+- **Fallback**: under 10 minutes of reading in the window, the speed comes from all measured sittings; under 10 minutes in those too, it is not measured yet: the latest speed test, else 225 wpm.
+
+Estimates render as plain values ("4h 10m", no "~"); that a value is estimated is said only in a popover or details.
+
+### Speed test
+
+A one-minute measurement in two rounds, offered in onboarding and from the Speed tab: the reader reads a short passage normally (reading wpm, from words over the time between tap-to-begin and Done), then sees the passage's next part in RSVP at a suggested dial (RSVP wpm, from the delays the engine would use for the words shown, not the wall clock). A reading result outside 120 to 900 wpm is offered for a retry. Each result is a row in `speed_tests`, synced with the stats setting like [sessions](#session) and wiped with them, its values cleared on the server too; the latest one is the [speed model](#speed-model)'s fallback before 10 minutes of measured reading, and every one shows as a marker on the speed trend. Applying the result sets the RSVP dial; nothing else changes the dial.
+
+### Bookmark
+
+A named [word position](#word-position) in one book (`bookmarks`, label optional). It syncs with sync on, not behind the highlights or stats toggles. A delete is sticky: the server keeps the tombstone (until an admin purges tombstones, once every device has pulled) and no later push revives it, a server tombstone removes the local row whatever its stamp, and a local delete beats a live server row until it is pushed. Deleting a book or a serial takes its bookmarks along, on the server too for clients that send none. Delete reading stats keeps them.
+
 ### Reading goal
 
 A reader's plan to finish one book, stored in `reading_goals` and synced last-write-wins on the raw client stamp: goals are plans, not stats, so they sync with stats sync off too, while [sessions](#session) stay on the device. At most one goal per book is *active*; the others are *completed* (the book crossed the finished threshold, or the reader said so; a goal cannot start on a book already past it) or *abandoned* (replaced by a new goal, or given up). Removing a goal tombstones it. Not available for serial chapters. Progress is measured by [position](#position), not by time read, so skipping ahead counts. All dates are local calendar days. The arithmetic lives in `services/stats/reading-goal.ts`.
@@ -74,11 +110,12 @@ Every goal is in one of two **modes**:
 
 - **Deadline**: the target date is fixed. Each day's target is the remaining part of the book divided by the days left, so a missed day raises the days after it.
 - **Pace**: the daily percent is fixed. A missed day moves the projected finish date instead.
+  - **Minute goal**: a pace goal whose daily amount is minutes (`dailyMinutes`), the one exception to measuring progress by position: a day is met by the active reading time of that day's [sessions](#session) on the book, every mode and listening included (or by finishing the book that day). The projected finish is the words left over the minutes at the [book's reading pace](#speed-model). `dailyPercent` still holds what the minutes read at that pace, so older clients and the server see a valid pace goal; it drifts as the pace changes and is refreshed on a replan. With stats sync off, sessions stay on each device, so each device counts only its own minutes. A switch to deadline drops the minutes.
 
 The mode can be switched at any time. A switch, or a new target date or daily percent, is a *replan*: the plan line restarts from today's start-of-day position, days already met carry over, and today's reading still counts for today. Deadline to pace keeps today's daily target as the pace; pace to deadline keeps the projected finish as the target date.
 
 - **Start-of-day position**: the position at local midnight, taken from the last [session](#session) that ended before it (a session running across midnight gives its start position), else the goal's start. Reading on a [reader device](#reader-device) creates no sessions, only moves the position on BLE sync, so it counts toward the day it is first followed by an in-app session, or toward today while none has followed.
-- **Daily target**: what today asks for, in percent of the book (shown to one decimal) and in minutes at the reader's pace for this book, else their overall measured pace, else 225 wpm. Fixed for the whole local day because it depends only on the start-of-day position. Reading past it is credited. Today's progress counts from the furthest point of the day: the furthest word today's [sessions](#session) read to (the open sitting's included in the reader) or the saved position, whichever is further. Once met the target stays met for the day even if the position moves back (a jump back, or e-ink snapping to a page start). A jump ahead and back does not count; a jump the reader stays at does, as does reading on a paired device today. Past days count the same way, with where the day ended as its position; that end comes from sessions, so a past day read only on a paired device, which records none, does not count. Ahead/behind still uses the current position.
+- **Daily target**: what today asks for, in percent of the book (shown to one decimal) and in minutes at the [book's reading pace](#speed-model). Fixed for the whole local day because it depends only on the start-of-day position. Reading past it is credited. Today's progress counts from the furthest point of the day: the furthest word today's [sessions](#session) read to (the open sitting's included in the reader) or the saved position, whichever is further. Once met the target stays met for the day even if the position moves back (a jump back, or e-ink snapping to a page start). A jump ahead and back does not count; a jump the reader stays at does, as does reading on a paired device today. Past days count the same way, with where the day ended as its position; that end comes from sessions, so a past day read only on a paired device, which records none, does not count. Ahead/behind still uses the current position.
 - **Plan line**: the straight line from the plan's start to 100% on the target date (deadline) or at the daily percent per day (pace).
 - **On track**: not behind the plan line. *Ahead/behind* is how far the position is past the line at the end of today, or short of it at the end of yesterday, in percent and in days of the line's slope. A reader who has not read yet today but met every earlier day is exactly on track.
 - **Reminder**: an optional daily notification at a time stored on the goal (so it syncs), scheduled on the device as a local notification a few days ahead and rebuilt whenever the plan or the day changes. No reminder fires on a day whose target is met. Not available in the web build.
@@ -108,8 +145,8 @@ participants, shares). Not affected by [profile visibility](#profile-visibility)
 A user's server-side setting for everything beyond the [identity card](#identity-card): `private`
 (default: bio and profile sections visible only to the owner) or `friends` (accepted friends see the
 bio and the sections whose per-section toggle is on: currently reading, finished books, reading
-stats, shared highlights). There is no public level. A section is shown only if both the visibility
-and its toggle allow it.
+stats, shared highlights, [milestones](#milestone)). There is no public level. A section is shown only if both the visibility
+and its toggle allow it; milestones also need the reading stats toggle.
 
 ### Friend
 
@@ -170,6 +207,19 @@ to a copy the recipient already holds. The copy is then the recipient's: only a
 shares per sender per day; the first share records a one-time rights confirmation. Refused for
 non-friends, suspended senders, local-only, unsynced, deleted or series books and taken-down
 origins.
+
+### Share card
+
+An image of a sitting, a finished book or the Speed tab's year (cover, title, terse stats, the
+owner's @handle unless toggled off), in Story or Square format, handed to the device's share sheet
+or downloaded on the web. Not a [Share](#share): nothing is offered to a friend.
+
+### Milestone
+
+A tier a reader has reached in words read, hours read, books finished, day streak or best RSVP
+sitting wpm. Derived from sessions and finished books (`deriveMilestones` in core), never stored,
+so the app and the server agree. Shown on the Speed tab, in the session summary and, unless
+`show_milestones` or `show_stats` is off, on the profile, where friends see only the reached tiers by day.
 
 ### Buddy read
 

@@ -6,10 +6,10 @@
  * live. Restarts the ramp on every setting change so changes are visible.
  */
 
-import { calcDelay, calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
+import { calcDelay, type RsvpSettings } from "@lesefluss/core";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
+import { RsvpWordStage } from "../../components/rsvp-word-stage";
 
 const SAMPLE =
 	"The quick brown fox jumps over the lazy dog, and then it pauses. Reading faster is a skill you practice.";
@@ -21,7 +21,6 @@ interface Props {
 }
 
 const RsvpPreview: React.FC<Props> = ({ settings }) => {
-	const { theme } = useTheme();
 	const [index, setIndex] = useState(0);
 	const [playing, setPlaying] = useState(true);
 	const accelRef = useRef(0);
@@ -53,42 +52,14 @@ const RsvpPreview: React.FC<Props> = ({ settings }) => {
 		return () => clearTimeout(timerRef.current);
 	}, [index, playing, settings]);
 
-	const word = SAMPLE_WORDS[index] ?? "";
-	const orpIndex = calcOrpIndex(word.length);
-	const before = word.slice(0, orpIndex);
-	const focal = word[orpIndex] ?? "";
-	const after = word.slice(orpIndex + 1);
-
-	const shiftCh = orpIndex + 0.5;
-	const wordShiftCh = word.length / 2 - shiftCh;
-
 	return (
-		<button
-			type="button"
-			className="rsvp-preview-card"
-			style={
-				{
-					"--rsvp-focal-color": focalLetterColorFor(settings.focalLetterColor, theme),
-				} as React.CSSProperties
-			}
+		<RsvpWordStage
+			word={SAMPLE_WORDS[index] ?? ""}
+			settings={settings}
+			label={`Preview ${playing ? "" : "• paused"}`}
+			ariaLabel={playing ? "Pause preview" : "Play preview"}
 			onClick={() => setPlaying((p) => !p)}
-			aria-label={playing ? "Pause preview" : "Play preview"}
-		>
-			<span className="rsvp-preview-label">Preview {playing ? "" : "• paused"}</span>
-			<span className="rsvp-preview-stage">
-				<span className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
-				<span
-					className="rsvp-preview-word"
-					style={{ left: `${settings.xOffset}%`, transform: "translate(-50%, -50%)" }}
-				>
-					<span className="rsvp-word-line" style={{ transform: `translateX(${wordShiftCh}ch)` }}>
-						<span className="rsvp-before">{before}</span>
-						<span className="rsvp-focal">{focal}</span>
-						<span className="rsvp-after">{after}</span>
-					</span>
-				</span>
-			</span>
-		</button>
+		/>
 	);
 };
 

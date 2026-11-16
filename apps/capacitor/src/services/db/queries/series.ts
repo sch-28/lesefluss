@@ -1,8 +1,10 @@
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
+import type { SeriesChapterLength } from "../../stats/what-if";
 import { db } from "../index";
 import {
 	type Book,
 	bookContent,
+	bookmarks,
 	books,
 	glossaryEntries,
 	highlights,
@@ -11,7 +13,7 @@ import {
 	type Series,
 	series,
 } from "../schema";
-import { isFinishedSql } from "./books";
+import { hasRealProgressSql, isFinishedSql } from "./books";
 
 // Chunk bulk inserts to stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766) and avoid
 // blowing the JS call stack. 200 rows × ~16 cols ≈ 3200 params keeps both limits comfortable.
@@ -91,6 +93,7 @@ async function cascadeDeleteBooks(ids: string[]): Promise<void> {
 	await db.delete(glossaryEntries).where(inArray(glossaryEntries.bookId, ids));
 	await db.delete(highlights).where(inArray(highlights.bookId, ids));
 	await db.delete(bookContent).where(inArray(bookContent.bookId, ids));
+	await db.delete(bookmarks).where(inArray(bookmarks.bookId, ids));
 	await db.delete(books).where(inArray(books.id, ids));
 }
 
@@ -193,6 +196,28 @@ export async function getSeriesChapterCounts(): Promise<Map<string, number>> {
 	return map;
 }
 
+/** Every series' chapter lengths in one query, for the library cards' reading time. */
+export async function getSeriesChapterLengths(): Promise<Map<string, SeriesChapterLength[]>> {
+	const rows = await db
+		.select({
+			seriesId: books.seriesId,
+			wordCount: books.wordCount,
+			wordPosition: books.wordPosition,
+			finishedAt: books.finishedAt,
+		})
+		.from(books)
+		.where(and(isNotNull(books.seriesId), eq(books.deleted, false)));
+
+	const map = new Map<string, SeriesChapterLength[]>();
+	for (const { seriesId, ...length } of rows) {
+		if (!seriesId) continue;
+		const lengths = map.get(seriesId);
+		if (lengths) lengths.push(length);
+		else map.set(seriesId, [length]);
+	}
+	return map;
+}
+
 /**
  * Per-series aggregate signals used by the library's filter + sort. One
  * GROUP BY pass returns total chapters, started/finished counts (matching the
@@ -212,9 +237,7 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 		.select({
 			seriesId: books.seriesId,
 			total: sql<number>`COUNT(*)`.as("total"),
-			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as(
-				"started",
-			),
+			started: sql<number>`SUM(CASE WHEN ${hasRealProgressSql()} THEN 1 ELSE 0 END)`.as("started"),
 			finished: sql<number>`SUM(CASE WHEN ${isFinishedSql()} THEN 1 ELSE 0 END)`.as("finished"),
 			latestRead: sql<number | null>`MAX(${books.lastRead})`.as("latest_read"),
 		})

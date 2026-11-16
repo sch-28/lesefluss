@@ -1,6 +1,7 @@
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
+import { PLAY_STORE_URL } from "../store-links";
 import { SYNC_URL } from "../sync/auth-client";
 import { shouldPromptUpdate } from "./compare-versions";
 import { showUpdateToast } from "./update-toast";
@@ -10,8 +11,6 @@ import { showUpdateToast } from "./update-toast";
  * the no-account cohort that never sees server-side changes. Best-effort: any
  * failure (offline, no SYNC_URL, parse error) silently no-ops.
  */
-
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=app.lesefluss";
 
 // Remembers the version the user chose to hide. They are nudged again only once
 // an even newer version ships, not every launch.

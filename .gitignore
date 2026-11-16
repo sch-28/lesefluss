@@ -79,3 +79,6 @@ resources/store-frames/out/
 store-description.md
 
 *.epub
+
+# Playwright run artifacts
+test-results/

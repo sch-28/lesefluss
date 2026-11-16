@@ -1,4 +1,4 @@
-import { type ChangelogTag, changelog } from "@lesefluss/core";
+import { type ChangelogTag, changelog, changelogEntryKey } from "@lesefluss/core";
 import { Badge } from "@lesefluss/ui/badge";
 import { createFileRoute } from "@tanstack/react-router";
 import { seo } from "~/utils/seo";
@@ -44,7 +44,7 @@ function ChangelogPage() {
 
 				<ol className="flex flex-col gap-12">
 					{changelog.map((entry) => (
-						<li key={entry.date} className="relative pl-8">
+						<li key={changelogEntryKey(entry)} className="relative pl-8">
 							{/* Dot */}
 							<span className="absolute top-[6px] left-0 size-[15px] rounded-full border-2 border-background bg-primary ring-2 ring-primary/20" />
 

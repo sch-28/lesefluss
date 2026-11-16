@@ -35,3 +35,20 @@ export function onMissedPosition(listener: MissedPositionListener): () => void {
 	missedPositionListeners.add(listener);
 	return () => missedPositionListeners.delete(listener);
 }
+
+type LoweredRevisionListener = (bookId: string, from: number, to: number) => void;
+const loweredRevisionListeners = new Set<LoweredRevisionListener>();
+
+/**
+ * A push took the server's clamped stamp for a book's position: the row's
+ * revision `from`, stamped by a clock running ahead, is now `to`. An open reader
+ * still holding `from` has to follow, or it keeps ignoring newer rows below it.
+ */
+export function reportLoweredRevision(bookId: string, from: number, to: number): void {
+	for (const listener of loweredRevisionListeners) listener(bookId, from, to);
+}
+
+export function onLoweredRevision(listener: LoweredRevisionListener): () => void {
+	loweredRevisionListeners.add(listener);
+	return () => loweredRevisionListeners.delete(listener);
+}

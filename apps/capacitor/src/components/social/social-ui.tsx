@@ -1,4 +1,4 @@
-import type { ProfileCover } from "@lesefluss/core";
+import { type ProfileCover, readingProgress } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -6,6 +6,7 @@ import type React from "react";
 import CoverImage from "@/components/cover-image";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
+import { pickNowReading } from "./now-reading";
 
 /** A content section in the style of the stats page: large title, fade-in. */
 export function SocialSection({
@@ -30,7 +31,7 @@ export function SocialSection({
 			className={cn("mt-8 first:mt-4", className)}
 		>
 			{(title || action) && (
-				<header className="mb-3 flex items-end justify-between gap-3 px-1">
+				<header className="mb-3 flex items-end justify-between gap-3">
 					<div className="min-w-0">
 						{title && <h2 className="m-0 font-semibold text-foreground text-lg">{title}</h2>}
 						{subtitle && (
@@ -142,20 +143,14 @@ export function ListCard({ children }: { children: React.ReactNode }) {
 	);
 }
 
-/** A ring around the avatar, filled as far as the reader is in their current book. */
-export function progressRing(percent: number): string {
-	return `conic-gradient(var(--primary) ${percent}%, color-mix(in oklch, currentColor 12%, transparent) 0)`;
-}
-
 type CurrentBook = { id: string; title: string; coverSrc: string | null; percent: number };
 
-/** The book the reader moved in most recently, if any is in progress. */
 export function useCurrentBook(): CurrentBook | null {
-	const reading = queryHooks.useStatsCurrentlyReading();
-	const first = reading.data?.[0];
-	const cover = useLocalCover(first?.id ?? "");
-	if (!first) return null;
-	return { id: first.id, title: first.title, coverSrc: cover, percent: first.percent ?? 0 };
+	const { data: library } = queryHooks.useBooks();
+	const book = pickNowReading(library?.books ?? []);
+	const cover = useLocalCover(book?.id ?? "");
+	if (!book) return null;
+	return { id: book.id, title: book.title, coverSrc: cover, percent: readingProgress(book) };
 }
 
 /** A local book's cover: the stored image, else the catalog cover the book came from. */

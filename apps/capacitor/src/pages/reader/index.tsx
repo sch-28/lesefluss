@@ -11,12 +11,11 @@
  */
 
 import { App as CapacitorApp } from "@capacitor/app";
-import { Browser } from "@capacitor/browser";
 import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
-	DEFAULT_RSVP_DELIVERED_RATIO,
 	DEFAULT_SETTINGS,
 	paragraphIndexForWord,
+	timeLeftWpm,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
 	wordPos,
@@ -27,29 +26,41 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { IconButton } from "@lesefluss/ui/icon-button";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
+import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
 	Bookmark,
+	BookOpenText,
+	BookText,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
 	Headphones,
-	Info,
+	ListTree,
 	Loader2,
+	Maximize,
+	Minimize,
 	MoreVertical,
 	Pause,
+	PictureInPicture,
 	Search,
-	Type,
+	Settings2,
 	Zap,
-	ZapOff,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { hasOpenOverlay, isShortcutAllowed } from "../../commands/guard";
+import { withKey } from "../../commands/keys";
+import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
+import { NotFound } from "../../components/app-shell/not-found";
+import { KeyChips, MenuKey } from "../../components/command-palette";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
 	CommentComposerSheet,
@@ -61,7 +72,7 @@ import { toast } from "../../components/toast";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
-import { useTheme } from "../../contexts/theme-context";
+import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import {
 	readerFontFamilyFor,
 	readerLayoutFor,
@@ -72,25 +83,20 @@ import {
 } from "../../hooks/use-appearance-settings";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useBookChapters } from "../../hooks/use-book-chapters";
+import { useElementWidth } from "../../hooks/use-element-width";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys, serialKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import {
-	devicePositionWrite,
-	nextPositionRevision,
-	type PositionRow,
-} from "../../services/db/queries/books";
-import type { SeriesActivity } from "../../services/db/queries/series";
-import type { Book, GlossaryEntry, Highlight } from "../../services/db/schema";
+import { devicePositionWrite, type PositionRow } from "../../services/db/queries/books";
+import type { GlossaryEntry, Highlight } from "../../services/db/schema";
 import { requestReminderSync } from "../../services/goal-reminders";
 import {
 	isOwnRevision,
+	onLoweredRevision,
 	onMissedPosition,
-	recordOwnRevision,
 } from "../../services/position-revisions";
 import { providerLabel } from "../../services/serial-scrapers";
 import {
@@ -98,27 +104,29 @@ import {
 	useRefetchDiscussionAsYouRead,
 } from "../../services/social/buddy-read-discussion";
 import { useIsOnline } from "../../services/social/cache";
-import { pushSync, scheduleSyncPush } from "../../services/sync";
+import { pushSync } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "../../services/tts";
 import { languageName, parseVoiceChoices, speechFor, withVoice } from "../../services/tts/voices";
 import {
 	exposeDevicePosition,
-	publishJump,
 	publishLinkOpen,
 	publishPositionSave,
-	publishProgressWord,
 	publishSaveFinished,
-	publishSaveRequest,
 	publishSettle,
-	publishSyncPushRequest,
 	type SaveSource,
 } from "../../test-hooks/reader";
-import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
-import { setJustRead } from "../library/just-read-pin";
+import { openLink } from "../../utils/open-link";
+import { formatReadingTime } from "../../utils/reading-time";
+import { useBookActions } from "../library/book-actions/use-book-actions";
 import { liveToday } from "../library/reading-goal/goal-model";
+import { closeMini, isMiniAvailable, openMini } from "../mini/open-mini";
+import { useMiniFollow } from "../mini/use-mini-follow";
+import { useMiniTakeover } from "../mini/use-mini-takeover";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
+import type { BookmarkRow } from "./bookmark-list";
+import BookmarkRibbon from "./bookmark-ribbon";
 import { BrowseBar } from "./browse-bar";
 import type { BrowseSession } from "./browse-controller";
 import {
@@ -132,19 +140,22 @@ import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
+import { readerActionCommands } from "./commands";
 import DictionaryModal from "./dictionary-modal";
-import { clampWord, decideExternalPosition } from "./external-position";
+import { clampWord, decideExternalPosition, followLoweredRevision } from "./external-position";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
+import { isReaderHeaderNarrow, isReaderTitleHidden } from "./header-width";
 import { hyphenationLang } from "./hyphenation-lang";
+import { refreshAfterLeaving } from "./leave-invalidation";
 import { useLiveReading } from "./live-board";
+import { LiveWpm } from "./live-wpm";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
 import {
-	clearOwnPendingPosition,
 	clearPendingPosition,
 	type PendingPosition,
 	readPendingPosition,
@@ -152,13 +163,18 @@ import {
 	writePendingPosition,
 } from "./pending-position";
 import { createPersistedWord } from "./persisted-word";
+import { requestSyncPush, writeBookPosition } from "./position-write";
 import { ReadAloudControls } from "./read-aloud-controls";
 import { ReaderAnnouncer } from "./reader-announcer";
+import { ReaderApiContext } from "./reader-api/context";
+import { createLegacyReaderApi, createNavigateEmitter } from "./reader-api/legacy-adapter";
+import type { ReaderMode } from "./reader-api/types";
 import { buildFigureMap } from "./reader-figures";
 import { ReadingRulerOverlay } from "./reading-ruler-overlay";
 import { stripPunct } from "./rsvp-engine";
-import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
+import RsvpView, { type RsvpAudio, type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
+import { ScrubBubble } from "./scrub-bubble";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
 import { SessionDebugBadge } from "./session-debug-badge";
@@ -167,21 +183,25 @@ import { firstVisibleWordInView, markSpokenWord } from "./spoken-word";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
 import { NATIVE_SCROLL_KEYS } from "./use-anchor-hold";
 import { useBrowseMode } from "./use-browse-mode";
+import { isFullscreenSupported, useFullscreen, useRevealOnHover } from "./use-fullscreen";
 import {
 	findFirstMention,
 	findNextMention,
 	getMentionContext,
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
+import { bookWordTotal, useHealWordCount } from "./use-heal-word-count";
 import { useHighlightSelection } from "./use-highlight-selection";
-import { isReaderKey, useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
 import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
+import { useReaderBack } from "./use-reader-back";
+import { lastAtOrBefore, useReaderBookmarks } from "./use-reader-bookmarks";
 import { useReaderGoal } from "./use-reader-goal";
 import { useReadingRuler } from "./use-reading-ruler";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
-import { useScrubProgress } from "./use-scrub-progress";
+import { chapterIndexAt, useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
 import { wordIndexAt } from "./word-at-point";
 
@@ -191,18 +211,13 @@ const IMAGE_UPGRADE_DELAY_MS = 3000;
 
 const _encoder = new TextEncoder();
 
-function requestSyncPush() {
-	scheduleSyncPush(5000);
-	if (import.meta.env.DEV) publishSyncPushRequest();
-}
-
 // Sentinel value: no word highlighted (while scrolling)
 
 const EXTERNAL_POSITION_TOAST = "external-position";
 const EXTERNAL_POSITION_TOAST_MS = 10_000;
 
 // Resolved at build time, so a production bundle drops the DEV save log; behind
-// an `if (DEV)` inside writePosition its body was kept.
+// an `if (DEV)` inside writePositionRow its body was kept.
 const logPositionSave = import.meta.env.DEV ? publishPositionSave : null;
 
 /** `isInDb`: the row holds `row`; false when a pull's merge skipped it for the reader's newer write. */
@@ -213,6 +228,7 @@ const NO_HIGHLIGHT = -1;
 const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
 const DETACH_DRAG_PX = 8;
 const JUMP_MARK_DELAY_MS = 300;
+const BOOKMARK_LINE_WORDS = 12;
 
 type ReadAloudHandle = Pick<
 	ReturnType<typeof useReadAloud>,
@@ -222,37 +238,21 @@ type ReadAloudHandle = Pick<
 	isPlaying: boolean;
 };
 
-// A position write that hasn't settled in this long is treated as wedged/stalled
-// and reported as diagnostics (see savePosition).
-const POSITION_WRITE_TIMEOUT_MS = 8000;
-
-// Throttle the user-facing "couldn't save" toast so a write that fails on every
-// attempt can't spam a toast on every scroll settle.
-const SAVE_ERROR_TOAST_THROTTLE_MS = 120_000;
 // Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
 const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
-let lastSaveErrorToastAt = 0;
-function notifyLocalSaveFailure() {
-	const now = Date.now();
-	if (now - lastSaveErrorToastAt < SAVE_ERROR_TOAST_THROTTLE_MS) return;
-	lastSaveErrorToastAt = now;
-	toast.error("Couldn't save your reading progress on this device. Try restarting the app.", {
-		duration: 6000,
-	});
-}
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-const BookReader: React.FC<{ id: string }> = ({ id }) => {
+const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsvpStart }) => {
 	const { pushPosition, onDevicePositionUpdate } = useBookSync();
 	const { isConnected: isBleConnected } = useBLE();
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
-	const history = useRouter().history;
+	const router = useRouter();
+	const bookActions = useBookActions({ surface: "reader" });
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
-	const readingRates = queryHooks.useStatsReadingRates();
+	const speedModel = queryHooks.useStatsSpeedModel();
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const { data: bookImages, isPending: imagesPending } = queryHooks.useBookImages(id);
@@ -273,6 +273,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [id, bookFilePath, bookImages, imageAnchors]);
 
 	const content = contentRow?.content ?? null;
+	useHealWordCount(id, book?.wordCount, wordIndex?.wordCount);
 
 	// A book imported before images were captured gets them on its first open.
 	const bookFileFormat = book?.fileFormat ?? null;
@@ -311,9 +312,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const hasPrev = book?.chapterIndex != null && book.chapterIndex > 0;
 	const hasNext =
 		book?.chapterIndex != null && seriesTotal != null && book.chapterIndex < seriesTotal - 1;
+	const { data: seriesChapters } = queryHooks.useSeriesChapters(book?.seriesId ?? undefined);
 
 	const { theme, isEinkMode } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
+	const [annotationsOnContents, setAnnotationsOnContents] = useState(false);
+	const openAnnotations = useCallback((onContents = false) => {
+		setAnnotationsOnContents(onContents);
+		setAnnotationsOpen(true);
+	}, []);
 	const { data: series } = queryHooks.useSeries(book?.seriesId);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
 	// Tracks entry IDs that exist only in component state, not in SQLite yet.
@@ -370,7 +377,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	useEffect(() => {
 		progressWordRef.current = progressWord;
 		shownProgressRef.current = progressWord;
-		if (import.meta.env.DEV) publishProgressWord(progressWord);
 	}, [progressWord]);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
@@ -415,7 +421,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const lastJumpAtRef = useRef(0);
 	const stampJump = useCallback(() => {
 		lastJumpAtRef.current = Date.now();
-		if (import.meta.env.DEV) publishJump(lastJumpAtRef.current);
 	}, []);
 	const JUMP_SETTLE_GUARD_MS = 1500;
 	const persistedWordRef = useRef(createPersistedWord());
@@ -494,6 +499,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const didSeedOffsetsRef = useRef(false);
 
 	const didSeedModeRef = useRef(false);
+	// The route drops `?mode=rsvp` once read, so the request outlives the prop.
+	const isRsvpStartPendingRef = useRef(false);
+	if (isRsvpStart) isRsvpStartPendingRef.current = true;
 
 	// Carries a position recovered from the durable localStorage fallback so a
 	// later effect can persist it to the DB once `savePosition` is in scope.
@@ -566,6 +574,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		persistedWordRef.current.set(seedWord);
 	}, [seedWord, seedLastRead, id, seedRev]);
 
+	// Assigned once the mini window's follow is set up (further down).
+	const miniTakeoverRef = useRef<(word: number) => void>(() => {});
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
 	// so we only see notifies the user should visibly follow. Gated on
@@ -584,6 +594,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			baseRevRef.current = Math.max(baseRevRef.current, updatedAt);
 			decidedRevRef.current = Math.max(decidedRevRef.current, updatedAt);
 			persistedWordRef.current.set(newWordPosition);
+			miniTakeoverRef.current(newWordPosition);
 			if (browse.onDevicePosition(newWordPosition)) return;
 			setActiveWord(newWordPosition);
 			setProgressWord(newWordPosition);
@@ -710,7 +721,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Reading time estimation ───────────────────────────────────────────
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
-	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+	const totalWordCount = bookWordTotal(book?.wordCount, wordIndex?.wordCount);
 	const percentOfBook = (word: number) =>
 		totalWordCount > 0 ? Math.min(100, (word / totalWordCount) * 100) : 0;
 
@@ -733,20 +744,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length) return [];
-		const totalWords = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+		const totalWords = bookWordTotal(book?.wordCount, wordIndex?.wordCount);
 		return chapters.map((ch, i) => {
 			const nextStart = chapters[i + 1]?.startWord ?? totalWords;
 			return Math.max(0, nextStart - ch.startWord);
 		});
 	}, [chapters, book?.wordCount, wordIndex?.wordCount]);
 
-	const currentChapterIndex = useMemo(() => {
-		if (!chapters.length) return -1;
-		for (let i = chapters.length - 1; i >= 0; i--) {
-			if (progressWord >= chapters[i].startWord) return i;
-		}
-		return 0;
-	}, [progressWord, chapters]);
+	const currentChapterIndex = useMemo(
+		() => chapterIndexAt(chapters, progressWord),
+		[progressWord, chapters],
+	);
 
 	// ── Settings (RSVP + reader appearance) ──────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
@@ -800,7 +808,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	useEffect(() => {
 		if (!didSeedModeRef.current && dbSettings && book) {
 			didSeedModeRef.current = true;
-			if (dbSettings.defaultReaderMode === "rsvp") {
+			const isRsvpStartPending = isRsvpStartPendingRef.current;
+			isRsvpStartPendingRef.current = false;
+			if (dbSettings.defaultReaderMode === "rsvp" || isRsvpStartPending) {
 				setReaderMode("rsvp");
 				setProgressBarVisible(true);
 			}
@@ -821,7 +831,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	const writePosition = useCallback(
+	/** The latest DB write, so leaving waits for the commit and not for the BLE push. */
+	const positionCommitRef = useRef<Promise<unknown>>(Promise.resolve());
+	const writePositionRow = useCallback(
 		async (
 			word: number,
 			source: SaveSource,
@@ -838,89 +850,26 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				return;
 			}
 			const writeToken = persistedWordRef.current.begin(word);
-			const now = Date.now();
-			const wordPosition = wordPos(word);
-
-			// Durable fallback: mirror the position to localStorage synchronously
-			// BEFORE the async DB write, stamped with the same `now` that becomes
-			// the row's lastRead. If a teardown abandons the write below, this
-			// survives and the next mount recovers it; if the write commits, we
-			// clear it just after so a stale entry never outlives a real save.
-			writePendingPosition(id, word, now);
-			if (import.meta.env.DEV) publishSaveRequest();
-
-			// Optimistic cache update so the library lands already-sorted when
-			// the user navigates back, instead of shifting under their finger
-			// after the async refetch finishes.
-			const seriesId = book?.seriesId ?? null;
-			qc.setQueryData<{ books: Book[]; covers: Map<string, string> } | undefined>(
-				bookKeys.all,
-				(prev) => {
-					if (!prev) return prev;
-					let changed = false;
-					const next = prev.books.map((b) => {
-						if (b.id !== id) return b;
-						changed = true;
-						return { ...b, wordPosition, lastRead: now };
-					});
-					return changed ? { ...prev, books: next } : prev;
-				},
-			);
-			if (seriesId) {
-				qc.setQueryData<Map<string, SeriesActivity> | undefined>(serialKeys.activity, (prev) => {
-					if (!prev) return prev;
-					const current = prev.get(seriesId);
-					if (!current) return prev;
-					const merged = new Map(prev);
-					merged.set(seriesId, {
-						...current,
-						latestRead: Math.max(current.latestRead ?? 0, now),
-					});
-					return merged;
-				});
-			}
-			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
-
-			// Watchdog: a wedged write queue or a stalled native bridge makes the
-			// write hang without ever rejecting, so the adapter's error path can't
-			// see it. If the write hasn't settled in time, report it as a likely
-			// cause of "progress never saves" and leave the durable fallback intact.
-			let settled = false;
-			const watchdog = setTimeout(() => {
-				if (!settled) {
-					reportEvent("position_write_timeout");
-					notifyLocalSaveFailure();
-				}
-			}, POSITION_WRITE_TIMEOUT_MS);
 			const baseRev = baseRevRef.current;
-			const stamp = nextPositionRevision(now, baseRev);
+			const { stamp, outcome } = writeBookPosition(qc, {
+				bookId: id,
+				seriesId: book?.seriesId ?? null,
+				word,
+				baseRev,
+			});
 			// A write issued after this one builds on it.
 			baseRevRef.current = stamp;
-			recordOwnRevision(id, stamp);
+			positionCommitRef.current = outcome;
 			const movesAtWrite = localMoveCountRef.current;
 			try {
-				let result: Awaited<ReturnType<typeof queries.writeReaderPosition>>;
-				try {
-					result = await queries.writeReaderPosition(id, { wordPosition, lastRead: now, baseRev });
-				} catch {
-					// The adapter already reports the underlying db_write_error. Tell the
-					// user it didn't save so they know it's not intended, keep the
-					// synchronous fallback (do NOT clear it) so the next mount can recover,
-					// and skip the post-commit steps below.
-					notifyLocalSaveFailure();
+				const result = await outcome;
+				if (result.kind === "failed") {
 					persistedWordRef.current.fail(writeToken);
 					return;
-				} finally {
-					settled = true;
-					clearTimeout(watchdog);
 				}
-				// The row is no longer this write's to recover over, either way.
-				clearOwnPendingPosition(id, { word, at: now });
-				if (!result.isWritten) {
-					// A newer position was written meanwhile (a sync pull, a device).
+				if (result.kind === "stale") {
 					persistedWordRef.current.fail(writeToken);
 					baseRevRef.current = Math.max(result.row?.updatedAt ?? 0, lastLandedRevRef.current);
-					void qc.invalidateQueries({ queryKey: bookKeys.all });
 					onExternalPositionRef.current(result.row, baseRev, true);
 					return;
 				}
@@ -938,6 +887,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 		},
 		[id, pushPosition, book?.seriesId, qc],
+	);
+
+	const [navigateEmitter] = useState(createNavigateEmitter);
+	const writePosition = useCallback(
+		(word: number, source: SaveSource, opts?: { scheduleSync?: boolean }) => {
+			const write = writePositionRow(word, source, opts);
+			navigateEmitter.emit(word, source);
+			return write;
+		},
+		[writePositionRow, navigateEmitter],
 	);
 
 	const savePosition = useCallback(
@@ -964,6 +923,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 	const isRsvpPlayingRef = useRef(isRsvpPlaying);
 	isRsvpPlayingRef.current = isRsvpPlaying;
+	// Assigned once the mini window's follow is set up (further down).
+	const isMiniPlayingRef = useRef<() => boolean>(() => false);
 	/** Moves the view to a word the DB already holds, without saving. */
 	const showUnsavedMove = useCallback(
 		(word: number) => {
@@ -1026,6 +987,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			stampJump();
 			savePosition(word, "jump");
 			scrollViewRef.current?.jumpTo(word, { highlight });
+			rsvpViewRef.current?.showWord(word);
 		},
 		[savePosition, browse, stampJump, markLocalMove],
 	);
@@ -1061,7 +1023,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				isOwnRevision: (rev) => isOwnRevision(id, rev),
 				ourWord: ours,
 				hasLocalMove: hasLocalMoveRef.current,
-				isRsvpPlaying: isRsvpPlayingRef.current,
+				isRsvpPlaying: isRsvpPlayingRef.current || isMiniPlayingRef.current(),
 				isReadAloudPlaying: readAloudRef.current?.isPlaying ?? false,
 				isSkippedForPlaybackSave: !isInDb && isPlaybackSaveNewestRef.current,
 			});
@@ -1092,7 +1054,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			hasLocalMoveRef.current = false;
 			isPlaybackSaveNewestRef.current = false;
 			seededWordRef.current = word;
-			if (!isInDb) void writePosition(word, "adopted");
+			// writePosition's navigate emit takes the mini over; a row already in the DB has no write.
+			if (isInDb) miniTakeoverRef.current(word);
+			else void writePosition(word, "adopted");
 			if (!isMountedRef.current) return;
 			const undoWord = undoAdoptRef.current?.word ?? ours;
 			if (undoAdoptRef.current) clearTimeout(undoAdoptRef.current.timer);
@@ -1153,6 +1117,26 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				if (bookId === id) handleExternalPosition(row, 0, false);
 			}),
 		[id, handleExternalPosition],
+	);
+
+	useEffect(
+		() =>
+			onLoweredRevision((bookId, from, to) => {
+				if (bookId !== id) return;
+				const revs = followLoweredRevision(
+					{
+						base: baseRevRef.current,
+						decided: decidedRevRef.current,
+						lastLanded: lastLandedRevRef.current,
+					},
+					from,
+					to,
+				);
+				baseRevRef.current = revs.base;
+				decidedRevRef.current = revs.decided;
+				lastLandedRevRef.current = revs.lastLanded;
+			}),
+		[id],
 	);
 
 	// ── Highlight / selection state ──────────────────────────────────────
@@ -1217,7 +1201,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleLinkTap = useCallback((href: string) => {
 		if (import.meta.env.DEV) publishLinkOpen(href);
-		void Browser.open({ url: href });
+		openLink(href);
 	}, []);
 
 	// ── Progress-bar scrub gestures ───────────────────────────────────────
@@ -1257,7 +1241,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleScrollPositionSettle = useCallback(
 		(word: number, isAtEnd = false, hasMoved = true) => {
-			if (import.meta.env.DEV) publishSettle(word);
+			if (import.meta.env.DEV) publishSettle();
 			const readAloud = readAloudRef.current;
 			if (readAloud?.isActive) {
 				// In scroll mode, a settle while following that no reader input caused is the
@@ -1543,7 +1527,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		}
 	};
 	const [appearanceOpen, setAppearanceOpen] = useState(false);
-	const openAppearanceOnMenuCloseRef = useRef(false);
 
 	const discussionTicks = useMemo((): DiscussionTick[] => {
 		if (!discussionItems?.length || totalWordCount <= 0) return [];
@@ -1815,10 +1798,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  based on paginationStyle. */
 	const exitRsvpToStandard = useCallback(
 		(word?: number) => {
-			// Playback saves are throttled; pausing reports the displayed word while
-			// RSVP reports are still accepted. With the voice speaking the engine never
-			// plays, and that report would read as the reader moving away.
-			if (!readAloudRef.current?.isActive) rsvpViewRef.current?.pause();
+			if (word === undefined && isMiniPlayingRef.current()) {
+				// The mini plays on: only the view changes. The idle RsvpView shows the
+				// mini's last saved word, older than lastWordRef, so its pause report
+				// (and a save) would take the mini over and rewind it.
+				readerModeRef.current = "standard";
+				setProgressWord(lastWordRef.current ?? 0);
+				setReaderMode("standard");
+				return;
+			}
+			// Playback saves are throttled; pausing reports the displayed word while RSVP
+			// reports are still accepted. With a voice session the engine never plays, so
+			// its pause would read as a move away; the voice's pause saves the spoken word.
+			if (readAloudRef.current?.isActive) readAloudRef.current.pause();
+			else rsvpViewRef.current?.pause();
 			// Ahead of the render: from here on this is the standard view, so the save
 			// below (and RsvpView's unmount flush) follow standard-mode browse rules.
 			readerModeRef.current = "standard";
@@ -1858,6 +1851,35 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		},
 		[jumpToWord, browse, exitRsvpToStandard, savePosition, markLocalMove],
 	);
+	/** A chapter picked from Contents becomes the position, so it leaves browse mode instead of entering it. */
+	const jumpToChapter = useCallback(
+		(word: number) => {
+			browse.leave();
+			goToWordAsReader(word);
+		},
+		[browse, goToWordAsReader],
+	);
+	const navigateToWordRef = useRef(navigateToWord);
+	navigateToWordRef.current = navigateToWord;
+	const readerApiMode: ReaderMode = readerMode === "rsvp" ? "rsvp" : paginationStyle;
+	const readerApi = useMemo(
+		() =>
+			createLegacyReaderApi({
+				mode: readerApiMode,
+				emitter: navigateEmitter,
+				getView: () => viewContainerEl,
+				getCurrentWord: () => lastWordRef.current,
+				navigateToWord: (word) => navigateToWordRef.current(word),
+			}),
+		[readerApiMode, navigateEmitter, viewContainerEl],
+	);
+	const readerBookmarks = useReaderBookmarks(
+		id,
+		readerApi,
+		!!content && !!wordIndex && (readerMode === "rsvp" || !!readerFont),
+	);
+	const { mutate: renameBookmark } = queryHooks.useRenameBookmark();
+	const { mutate: deleteBookmark } = queryHooks.useDeleteBookmark();
 
 	// Moving on to the next chapter means the browsed spot was read.
 	const handleNextChapter = useCallback(() => {
@@ -1963,18 +1985,84 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	isFollowingVoiceRef.current =
 		readAloud.isFollowing && (dbSettings?.ttsFollow ?? DEFAULT_SETTINGS.TTS_FOLLOW);
 
+	// While a mini window plays this book, the reader follows it and is still the
+	// only writer: the mini reports its words, the reader saves them.
+	const isMiniSaveRef = useRef(false);
+	const miniFocalColor = focalLetterColorFor(rsvpSettings.focalLetterColor, theme);
+	const mini = useMiniFollow({
+		bookId: id,
+		getStart: (host) =>
+			book && content
+				? {
+						bookId: id,
+						title: book.title,
+						content,
+						wordIndex: host === "pip" ? (wordIndex ?? null) : null,
+						startWord: browse.anchor ?? lastWordRef.current ?? 0,
+						settings: rsvpSettings,
+						focalColor: miniFocalColor,
+						appearance:
+							host === "popup"
+								? {
+										htmlClass: document.documentElement.className,
+										htmlStyle: document.documentElement.getAttribute("style") ?? "",
+										bodyClass: document.body.className,
+									}
+								: null,
+					}
+				: null,
+		getStopWord: () => browse.anchor ?? lastWordRef.current ?? 0,
+		onShown: (word) => {
+			lastWordRef.current = word;
+			settledWordRef.current = word;
+			markPlaybackMove();
+		},
+		onSave: (word, isPlaying) => {
+			isMiniSaveRef.current = true;
+			try {
+				lastWordRef.current = word;
+				settledWordRef.current = word;
+				browse.readFromHere();
+				setActiveWord(word);
+				setProgressWord(word);
+				if (readerModeRef.current === "rsvp") rsvpViewRef.current?.showWord(word);
+				else if (scrollViewRef.current?.followWord?.(word)) stampJump();
+				if (isPlaying) markPlaybackMove();
+				else markLocalMove();
+				void savePosition(word, "rsvp", { scheduleSync: !isPlaying });
+				markActivityRef.current?.();
+			} finally {
+				isMiniSaveRef.current = false;
+			}
+		},
+		onWpm: (wpm) => updateSetting("wpm", wpm),
+		settings: rsvpSettings,
+		focalColor: miniFocalColor,
+	});
+	isMiniPlayingRef.current = mini.isPlayingNow;
+	miniTakeoverRef.current = mini.takeover;
+	const isMiniSave = useCallback(() => isMiniSaveRef.current, []);
+	useMiniTakeover({
+		takeover: mini.takeover,
+		navigateEmitter,
+		browseAnchor,
+		isMiniSave,
+		isReconcilingJump,
+	});
+	const openMiniWindow = useCallback(() => {
+		if (!book) return;
+		if (readerModeRef.current === "rsvp") exitRsvpToStandard();
+		readAloud.stop();
+		browse.readFromHere();
+		void openMini(book.id).then((isOpen) => {
+			if (!isOpen) toast.error("The browser didn't open Quick RSVP. Allow pop-ups for this site.");
+		});
+	}, [book, exitRsvpToStandard, readAloud.stop, browse]);
+
 	useEffect(() => {
 		if (!isReadAloudActive) return;
 		return () => markSpokenWord(null);
 	}, [isReadAloudActive]);
-
-	const rsvpVoice = useMemo(
-		() =>
-			isReadAloudActive
-				? { isPlaying: readAloud.status === "playing", onToggle: readAloud.toggle }
-				: null,
-		[isReadAloudActive, readAloud.status, readAloud.toggle],
-	);
 
 	// A finger on the text, a wheel or a scroll key means the reader is looking elsewhere:
 	// stop following at once, without waiting for the scroll to settle. Paused, it also
@@ -2010,7 +2098,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isReaderKey(e)) return;
+			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isShortcutAllowed(e)) return;
 			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -2081,8 +2169,49 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[updateSetting, ttsVoices, book?.language],
 	);
 
+	const isRsvpAudioOn =
+		IS_READ_ALOUD_SUPPORTED && (dbSettings?.rsvpAudio ?? DEFAULT_SETTINGS.RSVP_AUDIO);
+	const toggleRsvpAudio = useCallback(() => {
+		if (isRsvpAudioOn) readAloud.stop();
+		else rsvpViewRef.current?.pause();
+		updateSetting("rsvpAudio", !isRsvpAudioOn);
+	}, [isRsvpAudioOn, readAloud.stop, updateSetting]);
+	const handleTtsWpmChange = useCallback(
+		(wpm: number) => updateSetting("ttsWpm", wpm),
+		[updateSetting],
+	);
+	const isSleepTimerOn =
+		readAloud.sleepTimer.endsAt !== null || readAloud.sleepTimer.isAtChapterEnd;
+	const rsvpAudio = useMemo<RsvpAudio | null>(
+		() =>
+			IS_READ_ALOUD_SUPPORTED
+				? {
+						isOn: isRsvpAudioOn,
+						isPlaying: readAloud.status === "playing",
+						onToggleAudio: toggleRsvpAudio,
+						onTogglePlay: readAloud.toggle,
+						wpm: ttsSpeech.wpm,
+						onWpmChange: handleTtsWpmChange,
+						isSleepTimerOn,
+						onOpenVoice: () => setIsVoiceSheetOpen(true),
+						onOpenSleepTimer: () => setIsSleepTimerOpen(true),
+					}
+				: null,
+		[
+			isRsvpAudioOn,
+			readAloud.status,
+			readAloud.toggle,
+			toggleRsvpAudio,
+			ttsSpeech.wpm,
+			handleTtsWpmChange,
+			isSleepTimerOn,
+		],
+	);
+
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode !== "rsvp") {
+			// RSVP without audio has no voice to follow, and no bar to stop one from.
+			if (!isRsvpAudioOn) readAloud.stop();
 			// RSVP never browses: switching to it reads from the browsed spot.
 			browse.readFromHere();
 			// Use lastWordRef (word-level accurate from handleScrollEnd)
@@ -2095,7 +2224,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		} else {
 			exitRsvpToStandard();
 		}
-	}, [readerMode, exitRsvpToStandard, browse]);
+	}, [readerMode, exitRsvpToStandard, browse, isRsvpAudioOn, readAloud.stop]);
+
+	// `?mode=rsvp` also switches a reader that is already open.
+	useEffect(() => {
+		if (!isRsvpStart || !didSeedModeRef.current || !isRsvpStartPendingRef.current) return;
+		isRsvpStartPendingRef.current = false;
+		if (readerMode !== "rsvp") handleRsvpToggle();
+	}, [isRsvpStart, readerMode, handleRsvpToggle]);
+
+	useReaderBack({
+		isSelecting,
+		isRsvp: readerMode === "rsvp",
+		isBrowsing: browseAnchor !== null && readerMode !== "rsvp",
+		cancelSelection,
+		leaveRsvp: handleRsvpToggle,
+		browseBack: browse.back,
+	});
 
 	const handleRsvpFinished = useCallback(() => {
 		exitRsvpToStandard();
@@ -2148,11 +2293,29 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[content, navigateToWord, wordIndex],
 	);
 
+	const fullscreen = useFullscreen({
+		onExit: () => {
+			if (readerModeRef.current !== "rsvp") return;
+			if (readAloudRef.current?.isActive) readAloudRef.current.pause();
+			else rsvpViewRef.current?.pause();
+		},
+	});
+	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
+	const headerRef = useRef<HTMLElement>(null);
+	const headerWidth = useElementWidth(headerRef);
+	// In rem, so large system text on a phone moves Listen and Bookmark into the menu and the title stays readable.
+	const headerSize = {
+		widthPx: headerWidth,
+		remPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		hasSeriesNav: book?.seriesId != null,
+	};
+	const isHeaderNarrow = isReaderHeaderNarrow(headerSize);
+	const isTitleHidden = isReaderTitleHidden(headerSize);
+
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
 	useKeyboardShortcuts({
 		readerMode,
 		paginationStyle,
-		currentWpm: rsvpSettings.wpm,
 		isBlocked:
 			selectedWord !== null ||
 			annotationsOpen ||
@@ -2168,8 +2331,78 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		hasSelection: sel.isSelecting && !sel.noteInputOpen,
 		cancelSelection: sel.cancelSelection,
 		volumeKeys: volumeKeysFor(dbSettings, isEinkMode),
-		isReadingAloud: isReadAloudActive,
+		isReadingAloud: isReadAloudActive || (readerMode === "rsvp" && isRsvpAudioOn),
 	});
+
+	const bookmarkRows = useMemo(
+		(): BookmarkRow[] =>
+			readerBookmarks.bookmarks.map((b) => ({
+				id: b.id,
+				word: b.word,
+				label: b.label,
+				createdAt: b.createdAt,
+				chapterTitle: lastAtOrBefore(chapters, b.word, (ch) => ch.startWord)?.title ?? null,
+				percent:
+					totalWordCount > 0 ? Math.min(100, Math.round((b.word / totalWordCount) * 100)) : 0,
+				firstLine: sel.extractRangeText(b.word, b.word + BOOKMARK_LINE_WORDS - 1),
+			})),
+		[readerBookmarks.bookmarks, chapters, totalWordCount, sel.extractRangeText],
+	);
+
+	const listenKey = useCommandKey("listen.toggle");
+	const rsvpKey = useCommandKey("reader.rsvp-toggle");
+	useRegisterCommands(
+		readerActionCommands({
+			hasContent: !!content,
+			readerMode,
+			paginationStyle,
+			canChangeLayout: !isEinkMode,
+			setPaginationStyle: (style) => updateSetting("paginationStyle", style),
+			openSearch: () => setSearchOpen(true),
+			openAppearance: () => setAppearanceOpen(true),
+			openAnnotations: () => openAnnotations(),
+			readAloud: IS_READ_ALOUD_SUPPORTED
+				? readerMode === "rsvp"
+					? {
+							title: isRsvpAudioOn ? "Turn RSVP audio off" : "Turn RSVP audio on",
+							isReady: !!wordIndex,
+							toggle: toggleRsvpAudio,
+							backToVoice: null,
+						}
+					: {
+							title: readAloud.status === "playing" ? "Pause listening" : "Listen",
+							isReady: !!wordIndex,
+							toggle: readAloud.toggle,
+							backToVoice: isReadAloudActive && !readAloud.isFollowing ? handleBackToVoice : null,
+						}
+				: null,
+			chapters,
+			goToWord: navigateToWord,
+			bookmarks: {
+				isOnScreen: readerBookmarks.isOnScreen,
+				toggle: readerBookmarks.toggle,
+				goToNext: readerBookmarks.goToNext,
+				list: bookmarkRows.map((row) => ({
+					id: row.id,
+					word: row.word,
+					name: row.label ?? row.firstLine,
+				})),
+			},
+			openBookDetails: () => {
+				if (!book) return;
+				router.navigate({
+					href:
+						book.seriesId != null
+							? `/tabs/library/series/${book.seriesId}`
+							: `/tabs/library/book/${book.id}`,
+				});
+			},
+			fullscreen: isFullscreenSupported()
+				? { isOn: fullscreen.isFullscreen, toggle: fullscreen.toggle, exit: fullscreen.exit }
+				: null,
+			openMini: isMiniAvailable() ? openMiniWindow : null,
+		}),
+	);
 
 	// ── Reading session tracking ──────────────────────────────────────────
 	// `isReading` is the coarse "reader page is mounted with content". The
@@ -2194,6 +2427,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const {
 		markActivity: markReadingActivity,
 		getDebugSnapshot,
+		getLiveRate,
 		endSession,
 		rewindSession,
 		backfillSession,
@@ -2209,8 +2443,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// The voice owns the position while read aloud is on; listening is recorded from its own log.
 			!isReadAloudActive,
 		rsvpIsPlaying: isRsvpPlaying,
+		isPlayingElsewhere: mini.isPlaying,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
+		fontSize: readerFontSize,
 		onFurthestRead: reportFurthestRead,
 	});
 	useEffect(() => {
@@ -2231,6 +2467,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// A book or mode change tears down the tracker (new sitting); a stale
 	// manual pause must not carry over into it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset trigger
 	useEffect(() => {
 		setIsSessionPaused(false);
 	}, [id, sessionMode]);
@@ -2314,6 +2551,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	savePositionRef.current = savePosition;
 	const qcRef = useRef(qc);
 	qcRef.current = qc;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an id dep would flush on a book switch, not only on unmount
 	useEffect(() => {
 		return () => {
 			// Flush position to DB so the library shows updated progress.
@@ -2322,13 +2560,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// the (possibly-stale) `book.wordPosition` query cache; flushing
 			// that would clobber the real value the prior unmount just wrote.
 			const word = lastWordRef.current;
-			let flushed: Promise<unknown> = Promise.resolve();
+			let isSaving = false;
 			if (browse.isBrowsing) {
 				// The DB already holds the anchor; the browsed spot must not leak into
 				// the durable fallback below either. Still flush earlier saves.
 				if (userMovedRef.current) pushSync().catch(() => {});
 			} else if (word !== null && userMovedRef.current) {
-				flushed = savePositionRef.current(word, "unmount", { scheduleSync: false });
+				savePositionRef.current(word, "unmount", { scheduleSync: false });
+				isSaving = true;
 				pushSync().catch(() => {});
 			} else if (
 				word !== null &&
@@ -2347,13 +2586,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					extra: { origin: "unmount", word, seed: seededWordRef.current },
 				});
 			}
-			// Invalidate the books list so the library grid picks up the new position
-			// when the user navigates back.
-			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
-			// The goal plan also counts the position, and a jump writes no session that would
-			// refresh it. After the flush commits, or the refetch reads the old position.
-			const goalPlans = statsKeys.goalPlansOf(id);
-			flushed.catch(() => {}).then(() => qcRef.current.invalidateQueries({ queryKey: goalPlans }));
+			refreshAfterLeaving(qcRef.current, id, positionCommitRef.current, { isSaving });
 		};
 	}, [browse]);
 
@@ -2365,6 +2598,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// flush on those signals so the latest position isn't stranded in memory.
 	// In RSVP mode the freshest word lives in the engine; `use-rsvp-engine`
 	// flushes its own `pagehide`, which routes through `savePosition` here too.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an id dep would re-register the teardown listeners; adding it is a behaviour change to position saving
 	useEffect(() => {
 		const flush = () => {
 			if (browse.isBrowsing) return;
@@ -2413,31 +2647,36 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	if (!book) {
 		return (
-			<div className="flex h-screen flex-col bg-background">
-				<header className="flex h-12 items-center border-border border-b px-2">
-					<button
-						type="button"
-						onClick={() => history.back()}
-						aria-label="Back"
-						className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-					>
-						<ChevronLeft className="size-5" />
-					</button>
-				</header>
-				<div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
-					<p className="m-0">Book not found.</p>
-				</div>
-			</div>
+			<NotFound
+				title="Book not found"
+				message="This book is no longer in your library."
+				backLabel="Back to library"
+				backTo="/tabs/library"
+			/>
 		);
 	}
 
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
+	const bubbleWord = scrub.previewWord ?? progressWord;
 	const browseAnchorPct = browseAnchor !== null ? percentOfBook(browseAnchor) : 0;
-	const browseAnchorTick = browseAnchor !== null && (
+	// One zero-height row for all ticks: each extra flex row adds a bar gap and
+	// lifts the ticks off the track.
+	const progressTicks = (browseAnchor !== null || bookmarkRows.length > 0) && (
 		<div className="reader-browse-anchor-row" aria-hidden>
-			<div className="reader-browse-anchor" style={{ left: `${browseAnchorPct}%` }} />
+			{browseAnchor !== null && (
+				<div className="reader-browse-anchor" style={{ left: `${browseAnchorPct}%` }} />
+			)}
+			{bookmarkRows.map((row) => (
+				<div
+					key={row.id}
+					className="reader-bookmark-tick"
+					style={{ left: `${percentOfBook(row.word)}%` }}
+				/>
+			))}
 		</div>
 	);
+	const currentBookmarkId =
+		lastAtOrBefore(bookmarkRows, progressWord, (row) => row.word)?.id ?? null;
 	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
 	const isShowingSkeleton =
 		chapterFetch.kind !== "locked" &&
@@ -2451,21 +2690,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			chapterFetch.kind === "loading");
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
-	// The dial is an input, not a rate: the engine spends time on punctuation
-	// pauses and the accel ramp, so estimating from it runs short. Scale it by
-	// what this reader's RSVP sessions actually delivered. Scroll and page have
-	// no dial, so they use their own measured speed.
-	const estimateWpm =
-		readerMode === "rsvp"
-			? Math.max(
-					1,
-					Math.round(
-						rsvpSettings.wpm *
-							(readingRates.data?.rsvpDeliveredRatio ?? DEFAULT_RSVP_DELIVERED_RATIO),
-					),
-				)
-			: ((paginationStyle === "page" ? readingRates.data?.pageWpm : readingRates.data?.scrollWpm) ??
-				AVERAGE_READER_WPM);
+	const estimateWpm = timeLeftWpm(
+		speedModel.data,
+		id,
+		readerMode === "rsvp" ? "rsvp" : paginationStyle,
+		rsvpSettings.wpm,
+	);
 	const bookMinutesRemaining =
 		showReadingTime && totalWordCount > 0
 			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm
@@ -2482,6 +2712,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
 	}
 
+	const nextChapter = hasNext
+		? seriesChapters?.find((c) => c.chapterIndex === (book.chapterIndex ?? -1) + 1)
+		: undefined;
+	const nextChapterMinutes =
+		showReadingTime && nextChapter && nextChapter.wordCount > 0
+			? nextChapter.wordCount / estimateWpm
+			: null;
+
 	// Shared end-of-chapter footer for both views. Returns null inside
 	// `NextChapterFooter` for standalone books / last-chapter, so it's safe
 	// to drop in unconditionally.
@@ -2491,6 +2729,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			hasNext={hasNext}
 			onNext={handleNextChapter}
 			onPrev={() => void chapterAdvance.tryRetreat()}
+			nextMinutes={nextChapterMinutes}
 		/>
 	);
 
@@ -2500,580 +2739,701 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(book.catalogId ? externalSourceUrl(book.catalogId) : null);
 
 	return (
-		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
-			<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
-				<div className="flex h-12 items-center gap-0.5 px-1">
-					<button
-						type="button"
-						onClick={() => history.back()}
-						aria-label="Back"
-						className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-					>
-						<ChevronLeft className="size-5" />
-					</button>
-					{book.seriesId != null && (
-						<>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => void chapterAdvance.tryRetreat()}
-								disabled={!hasPrev}
-								aria-label="Previous chapter"
-							>
-								<ChevronLeft />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={handleNextChapter}
-								disabled={!hasNext}
-								aria-label="Next chapter"
-							>
-								<ChevronRight />
-							</Button>
-						</>
+		<ReaderApiContext.Provider value={readerApi}>
+			<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
+				{fullscreen.isFullscreen && (
+					<div
+						className="fixed inset-x-0 top-0 z-40 h-2"
+						onPointerEnter={headerReveal.reveal}
+						onPointerLeave={headerReveal.hideSoon}
+						aria-hidden
+						data-testid="fullscreen-reveal-zone"
+					/>
+				)}
+				<header
+					className={cn(
+						"flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur",
+						// An overlay in fullscreen, so revealing it never moves the text (mockup B).
+						fullscreen.isFullscreen &&
+							"fixed inset-x-0 top-0 z-40 shadow-lg transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none",
+						fullscreen.isFullscreen && !headerReveal.isRevealed && "-translate-y-full",
 					)}
-					<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
-						{book.title}
-					</h1>
-					{goalPlan && goalToday && (
-						<GoalChip
-							plan={goalPlan}
-							today={goalToday}
-							onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
-						/>
-					)}
-					{IS_READ_ALOUD_SUPPORTED && (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={readAloud.toggle}
-							disabled={!wordIndex}
-							aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
-							className={isReadAloudActive ? "text-primary" : undefined}
+					onPointerEnter={fullscreen.isFullscreen ? headerReveal.reveal : undefined}
+					onPointerLeave={fullscreen.isFullscreen ? headerReveal.hideSoon : undefined}
+					data-testid="reader-bar"
+					ref={headerRef}
+				>
+					<div className="flex h-12 items-center gap-0.5 px-1">
+						<IconButton
+							aria-label="Back"
+							title="Back"
+							onClick={() =>
+								// A cold deep link has no history to go back to; Android back lands on the Library too.
+								router.history.canGoBack()
+									? router.history.back()
+									: void router.navigate({ to: "/tabs/library", replace: true })
+							}
 						>
-							{readAloud.status === "playing" ? <Pause /> : <Headphones />}
-						</Button>
-					)}
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={handleRsvpToggle}
-						disabled={!content}
-						aria-label={
-							readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
-						}
-						className={readerMode === "rsvp" ? "text-primary" : undefined}
-					>
-						{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setAnnotationsOpen(true)}
-						disabled={!content}
-						aria-label="Annotations"
-					>
-						<Bookmark />
-					</Button>
-					<DropdownMenu>
+							<ChevronLeft />
+						</IconButton>
+						{book.seriesId != null && (
+							<>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => void chapterAdvance.tryRetreat()}
+									disabled={!hasPrev}
+									aria-label="Previous chapter"
+									title="Previous chapter"
+								>
+									<ChevronLeft />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={handleNextChapter}
+									disabled={!hasNext}
+									aria-label="Next chapter"
+									title="Next chapter"
+								>
+									<ChevronRight />
+								</Button>
+							</>
+						)}
+						<h1
+							className={cn(
+								"m-0 flex-1 truncate px-1 font-semibold text-base leading-none",
+								isTitleHidden && "sr-only",
+							)}
+						>
+							{book.title}
+						</h1>
+						{isTitleHidden && <span aria-hidden className="flex-1" />}
 						<AppearancePopover
 							open={appearanceOpen}
 							onOpenChange={setAppearanceOpen}
+							onOpenAllSettings={() => {
+								setAppearanceOpen(false);
+								router.navigate({ href: "/tabs/settings/reader" });
+							}}
 							anchor={
-								<span className="inline-flex">
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="icon">
-											<MoreVertical />
-											{/* Text, not aria-label: Android reads a menu button's text and drops its
-											    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
-											<span className="sr-only">More actions</span>
-										</Button>
-									</DropdownMenuTrigger>
-								</span>
+								<IconButton
+									aria-label="Appearance"
+									title="Appearance"
+									aria-expanded={appearanceOpen}
+									onClick={() => setAppearanceOpen((o) => !o)}
+								>
+									<span aria-hidden className="font-semibold text-base leading-none">
+										Aa
+									</span>
+								</IconButton>
 							}
 						/>
-						<DropdownMenuContent
-							align="end"
-							className="w-64 p-1.5"
-							// Opened once the menu has fully closed: earlier, the menu's own
-							// focus moves while closing read as the popover losing focus.
-							onCloseAutoFocus={(e) => {
-								if (!openAppearanceOnMenuCloseRef.current) return;
-								openAppearanceOnMenuCloseRef.current = false;
-								e.preventDefault();
-								setAppearanceOpen(true);
-							}}
+						{/* RSVP has its own Listen in its controls. */}
+						{IS_READ_ALOUD_SUPPORTED && !isHeaderNarrow && readerMode !== "rsvp" && (
+							<IconButton
+								onClick={readAloud.toggle}
+								disabled={!wordIndex}
+								aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
+								title={withKey(
+									readAloud.status === "playing" ? "Pause listening" : "Listen",
+									listenKey,
+								)}
+								className={isReadAloudActive ? "text-primary" : undefined}
+							>
+								{readAloud.status === "playing" ? <Pause /> : <Headphones />}
+							</IconButton>
+						)}
+						<IconButton
+							onClick={handleRsvpToggle}
+							disabled={!content}
+							aria-label={
+								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
+							}
+							title={withKey(
+								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader",
+								rsvpKey,
+							)}
+							className={readerMode === "rsvp" ? "text-primary" : undefined}
 						>
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => setSearchOpen(true)}
+							{readerMode === "rsvp" ? <BookOpenText /> : <Zap />}
+						</IconButton>
+						{!isHeaderNarrow && (
+							<BookmarkRibbon
+								isOnScreen={readerBookmarks.isOnScreen}
 								disabled={!content}
-							>
-								<Search />
-								<span>Search</span>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => {
-									openAppearanceOnMenuCloseRef.current = true;
-								}}
-							>
-								<Type />
-								<span>Appearance</span>
-							</DropdownMenuItem>
-							{IS_READ_ALOUD_SUPPORTED && (
+								onToggle={readerBookmarks.toggle}
+							/>
+						)}
+						{fullscreen.isFullscreen && (
+							<Button variant="outline" size="sm" onClick={fullscreen.exit} className="mx-1 gap-2">
+								Leave fullscreen
+								<KeyChips spec="f" />
+							</Button>
+						)}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<IconButton aria-label="More actions" title="More actions">
+									<MoreVertical />
+									{/* Text, not aria-label alone: Android reads a menu button's text and drops its
+									    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
+									<span className="sr-only">More actions</span>
+								</IconButton>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-64 p-1.5">
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
-									onSelect={() => history.push("/tabs/settings/read-aloud")}
+									onSelect={() => openAnnotations(chapters.length > 0)}
+									disabled={!content}
 								>
-									<Headphones />
-									<span>Listen settings</span>
+									<ListTree />
+									<span>Contents and bookmarks</span>
 								</DropdownMenuItem>
-							)}
-							{overflowSourceUrl && (
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
-									onSelect={() => {
-										void Browser.open({ url: overflowSourceUrl });
-									}}
+									onSelect={() => setSearchOpen(true)}
+									disabled={!content}
 								>
-									<ExternalLink />
-									<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
+									<Search />
+									<span>Search in book</span>
 								</DropdownMenuItem>
+								{isHeaderNarrow && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={readerBookmarks.toggle}
+										disabled={!content}
+									>
+										<Bookmark />
+										<span>
+											{readerBookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here"}
+										</span>
+										<MenuKey commandId="reader.bookmark" />
+									</DropdownMenuItem>
+								)}
+								{isHeaderNarrow && IS_READ_ALOUD_SUPPORTED && readerMode !== "rsvp" && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={readAloud.toggle}
+										disabled={!wordIndex}
+									>
+										<Headphones />
+										<span>{readAloud.status === "playing" ? "Pause listening" : "Listen"}</span>
+										<MenuKey commandId="listen.toggle" />
+									</DropdownMenuItem>
+								)}
+								{isMiniAvailable() && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={mini.isAttached ? closeMini : openMiniWindow}
+										disabled={!content}
+									>
+										<PictureInPicture />
+										<span>{mini.isAttached ? "Quick RSVP · on" : "Quick RSVP"}</span>
+									</DropdownMenuItem>
+								)}
+								{isFullscreenSupported() && (
+									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
+										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
+										<span>{fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen"}</span>
+										<MenuKey commandId="reader.fullscreen" />
+									</DropdownMenuItem>
+								)}
+								{IS_READ_ALOUD_SUPPORTED && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={() => router.navigate({ href: "/tabs/settings/read-aloud" })}
+									>
+										<Headphones />
+										<span>Listen settings</span>
+									</DropdownMenuItem>
+								)}
+								{overflowSourceUrl && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={() => {
+											openLink(overflowSourceUrl);
+										}}
+									>
+										<ExternalLink />
+										<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
+									</DropdownMenuItem>
+								)}
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => router.navigate({ href: `/tabs/library/book/${book.id}` })}
+								>
+									<BookText />
+									<span>Book details</span>
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => bookActions.open(book)}
+								>
+									<Settings2 />
+									<span>Manage book…</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+						{bookActions.overlays}
+					</div>
+				</header>
+
+				<div
+					ref={setViewContainerEl}
+					// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
+					// min-h-0: a clip box is no scroll container, so as a flex item it would
+					// otherwise grow to its content (RSVP's tall spacer) past the screen.
+					className="relative min-h-0 flex-1 overflow-clip"
+					data-testid="reader-view"
+				>
+					<ReaderAnnouncer />
+					{mini.isAttached && (
+						<div
+							className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-lg"
+							data-testid="mini-banner"
+						>
+							{mini.isPlaying ? (
+								<span className="size-2 rounded-full bg-[var(--goal-met)]" />
+							) : (
+								<span className="size-2 rounded-[2px] bg-muted-foreground" />
 							)}
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => {
-									history.push(
-										book.seriesId != null
-											? `/tabs/library/series/${book.seriesId}`
-											: `/tabs/library/book/${book.id}`,
-									);
-								}}
-							>
-								<Info />
-								<span>{book.seriesId != null ? "View series" : "View book"}</span>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</header>
+							<span>
+								{mini.isPlaying
+									? `Playing in Quick RSVP · ${rsvpSettings.wpm} wpm`
+									: "Paused in Quick RSVP"}
+							</span>
+							<Button variant="outline" size="sm" onClick={closeMini}>
+								Bring back here
+							</Button>
+						</div>
+					)}
+					{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
+					{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
+					{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
+						<p className="sr-only">
+							{readerMode === "rsvp"
+								? "This view flashes the book one word at a time. To listen to the book, turn on the Listen button at the top, then play."
+								: "This view shows the book a page at a time. To listen to the book, use the Listen button at the top."}
+						</p>
+					)}
+					{chapterFetch.kind === "locked" ? (
+						<ChapterStateOverlay status="locked" />
+					) : chapterFetch.kind === "error" ? (
+						<ChapterStateOverlay
+							status="error"
+							reason={chapterFetch.reason}
+							provider={series?.provider}
+							onRetry={chapterFetch.retry}
+						/>
+					) : isShowingSkeleton ? (
+						<ReaderSkeleton />
+					) : readerMode === "rsvp" ? (
+						<RsvpView
+							ref={rsvpViewRef}
+							content={content ?? ""}
+							initialWord={rsvpInitWord}
+							settings={rsvpSettings}
+							fontSize={readerFontSize}
+							onPositionChange={handleRsvpPositionChange}
+							onFinished={handleRsvpFinished}
+							onWpmChange={handleRsvpWpmChange}
+							onLookup={openDictionaryModal}
+							bookWordIndex={wordIndex}
+							linkHrefAt={findLinkAt}
+							onLinkTap={handleLinkTap}
+							isSessionPaused={isSessionPaused}
+							audio={rsvpAudio}
+							onPlayingChange={setIsRsvpPlaying}
+						/>
+					) : paginationStyle === "page" ? (
+						<PageView
+							ref={scrollViewRef}
+							key={`page-${id}`}
+							paragraphs={paragraphs}
+							paragraphStartWords={paragraphStartWords}
+							entriesByParagraph={entriesByParagraph}
+							chapterHeadingByParagraph={chapterHeadingByParagraph}
+							figuresByParagraph={figureMap.byParagraph}
+							trailingFigures={figureMap.trailing}
+							totalWords={totalWordCount}
+							initialWord={lastWordRef.current ?? seedWord ?? 0}
+							fontSize={readerFontSize}
+							fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+							isBold={readerFont?.isBold ?? false}
+							lineSpacing={readerLineSpacing}
+							margin={readerMargin}
+							textSpacing={textSpacing}
+							textAlign={textAlign}
+							showActiveWordUnderline={readerActiveWordUnderline}
+							lang={hyphenationLang(book.language)}
+							animatePageTurns={pageTurnAnimation}
+							followFinger={!isEinkMode}
+							activeWord={shownActiveWord}
+							highlightsByParagraph={sel.highlightsByParagraph}
+							glossaryByParagraph={glossaryByParagraph}
+							linksByParagraph={linksByParagraph}
+							discussionByParagraph={discussionByParagraph}
+							goalDivider={goalDivider}
+							selectionRange={sel.selectionRange}
+							isSelecting={isSelecting}
+							onWordTap={handlePageWordTap}
+							onWordLongPress={sel.handleWordLongPress}
+							onWordLongPressDrag={sel.extendSelectionTo}
+							onWordMouseDragStart={handleWordMouseDragStart}
+							onCancelSelection={sel.cancelSelection}
+							onPositionSettle={handleScrollPositionSettle}
+							onMotion={onRulerMotion}
+							onColumns={onRulerColumns}
+							onInitialActiveOffset={handleSetActiveWord}
+							onTap={handleToggleProgressBar}
+							onHideProgressBar={handleHideProgressBar}
+							onTurnStart={handlePageTurnStart}
+							footer={advanceFooter}
+						/>
+					) : (
+						<ScrollView
+							ref={scrollViewRef}
+							key={`scroll-${id}`}
+							paragraphs={paragraphs}
+							paragraphStartWords={paragraphStartWords}
+							entriesByParagraph={entriesByParagraph}
+							chapterHeadingByParagraph={chapterHeadingByParagraph}
+							figuresByParagraph={figureMap.byParagraph}
+							trailingFigures={figureMap.trailing}
+							findParagraphIndexForWord={findParagraphIndexForWord}
+							initialWord={lastWordRef.current ?? seedWord ?? 0}
+							getAnchorWord={getScrollAnchorWord}
+							fontSize={readerFontSize}
+							fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+							isBold={readerFont?.isBold ?? false}
+							lineSpacing={readerLineSpacing}
+							margin={readerMargin}
+							textSpacing={textSpacing}
+							textAlign={textAlign}
+							showActiveWordUnderline={readerActiveWordUnderline}
+							lang={hyphenationLang(book.language)}
+							activeWord={shownActiveWord}
+							highlightsByParagraph={sel.highlightsByParagraph}
+							glossaryByParagraph={glossaryByParagraph}
+							linksByParagraph={linksByParagraph}
+							discussionByParagraph={discussionByParagraph}
+							goalDivider={goalDivider}
+							selectionRange={sel.selectionRange}
+							onWordTap={handleWordTap}
+							onWordLongPress={sel.handleWordLongPress}
+							onWordLongPressDrag={sel.extendSelectionTo}
+							onWordMouseDragStart={handleWordMouseDragStart}
+							onPositionSettle={handleScrollPositionSettle}
+							onInitialActiveOffset={handleSetActiveWord}
+							onProgressChange={handleSetProgressWord}
+							onHighlightClear={handleScrollHighlightClear}
+							onHideProgressBar={handleHideProgressBar}
+							onTap={handleScrollTap}
+							isSelecting={isSelecting}
+							syncSelectionHandles={syncSelectionHandles}
+							isScrubbingRef={isScrubbingRef}
+							isScrubbing={scrub.isDragging}
+							footer={advanceFooter}
+						/>
+					)}
 
-			<div
-				ref={setViewContainerEl}
-				// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
-				// min-h-0: a clip box is no scroll container, so as a flex item it would
-				// otherwise grow to its content (RSVP's tall spacer) past the screen.
-				className="relative min-h-0 flex-1 overflow-clip"
-				data-testid="reader-view"
-			>
-				<ReaderAnnouncer />
-				{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
-				{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
-				{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
-					<p className="sr-only">
-						{readerMode === "rsvp"
-							? "This view flashes the book one word at a time."
-							: "This view shows the book a page at a time."}{" "}
-						To listen to the book, use the Listen button at the top.
-					</p>
-				)}
-				{chapterFetch.kind === "locked" ? (
-					<ChapterStateOverlay status="locked" />
-				) : chapterFetch.kind === "error" ? (
-					<ChapterStateOverlay
-						status="error"
-						reason={chapterFetch.reason}
-						provider={series?.provider}
-						onRetry={chapterFetch.retry}
-					/>
-				) : isShowingSkeleton ? (
-					<ReaderSkeleton />
-				) : readerMode === "rsvp" ? (
-					<RsvpView
-						ref={rsvpViewRef}
-						content={content ?? ""}
-						initialWord={rsvpInitWord}
-						settings={rsvpSettings}
-						fontSize={readerFontSize}
-						onPositionChange={handleRsvpPositionChange}
-						onFinished={handleRsvpFinished}
-						onWpmChange={handleRsvpWpmChange}
-						onLookup={openDictionaryModal}
-						bookWordIndex={wordIndex}
-						linkHrefAt={findLinkAt}
-						onLinkTap={handleLinkTap}
-						isSessionPaused={isSessionPaused}
-						voice={rsvpVoice}
-						onPlayingChange={setIsRsvpPlaying}
-					/>
-				) : paginationStyle === "page" ? (
-					<PageView
-						ref={scrollViewRef}
-						key={`page-${id}`}
-						paragraphs={paragraphs}
-						paragraphStartWords={paragraphStartWords}
-						entriesByParagraph={entriesByParagraph}
-						chapterHeadingByParagraph={chapterHeadingByParagraph}
-						figuresByParagraph={figureMap.byParagraph}
-						trailingFigures={figureMap.trailing}
-						totalWords={totalWordCount}
-						initialWord={lastWordRef.current ?? seedWord ?? 0}
-						fontSize={readerFontSize}
-						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
-						isBold={readerFont?.isBold ?? false}
-						lineSpacing={readerLineSpacing}
-						margin={readerMargin}
-						textSpacing={textSpacing}
-						textAlign={textAlign}
-						showActiveWordUnderline={readerActiveWordUnderline}
-						lang={hyphenationLang(book.language)}
-						animatePageTurns={pageTurnAnimation}
-						followFinger={!isEinkMode}
-						activeWord={shownActiveWord}
-						highlightsByParagraph={sel.highlightsByParagraph}
-						glossaryByParagraph={glossaryByParagraph}
-						linksByParagraph={linksByParagraph}
-						discussionByParagraph={discussionByParagraph}
-						goalDivider={goalDivider}
-						selectionRange={sel.selectionRange}
-						isSelecting={isSelecting}
-						onWordTap={handlePageWordTap}
-						onWordLongPress={sel.handleWordLongPress}
-						onWordLongPressDrag={sel.extendSelectionTo}
-						onWordMouseDragStart={handleWordMouseDragStart}
-						onCancelSelection={sel.cancelSelection}
-						onPositionSettle={handleScrollPositionSettle}
-						onMotion={onRulerMotion}
-						onColumns={onRulerColumns}
-						onInitialActiveOffset={handleSetActiveWord}
-						onTap={handleToggleProgressBar}
-						onHideProgressBar={handleHideProgressBar}
-						onTurnStart={handlePageTurnStart}
-						footer={advanceFooter}
-					/>
-				) : (
-					<ScrollView
-						ref={scrollViewRef}
-						key={`scroll-${id}`}
-						paragraphs={paragraphs}
-						paragraphStartWords={paragraphStartWords}
-						entriesByParagraph={entriesByParagraph}
-						chapterHeadingByParagraph={chapterHeadingByParagraph}
-						figuresByParagraph={figureMap.byParagraph}
-						trailingFigures={figureMap.trailing}
-						findParagraphIndexForWord={findParagraphIndexForWord}
-						initialWord={lastWordRef.current ?? seedWord ?? 0}
-						getAnchorWord={getScrollAnchorWord}
-						fontSize={readerFontSize}
-						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
-						isBold={readerFont?.isBold ?? false}
-						lineSpacing={readerLineSpacing}
-						margin={readerMargin}
-						textSpacing={textSpacing}
-						textAlign={textAlign}
-						showActiveWordUnderline={readerActiveWordUnderline}
-						lang={hyphenationLang(book.language)}
-						activeWord={shownActiveWord}
-						highlightsByParagraph={sel.highlightsByParagraph}
-						glossaryByParagraph={glossaryByParagraph}
-						linksByParagraph={linksByParagraph}
-						discussionByParagraph={discussionByParagraph}
-						goalDivider={goalDivider}
-						selectionRange={sel.selectionRange}
-						onWordTap={handleWordTap}
-						onWordLongPress={sel.handleWordLongPress}
-						onWordLongPressDrag={sel.extendSelectionTo}
-						onWordMouseDragStart={handleWordMouseDragStart}
-						onPositionSettle={handleScrollPositionSettle}
-						onInitialActiveOffset={handleSetActiveWord}
-						onProgressChange={handleSetProgressWord}
-						onHighlightClear={handleScrollHighlightClear}
-						onHideProgressBar={handleHideProgressBar}
-						onTap={handleScrollTap}
-						isSelecting={isSelecting}
-						syncSelectionHandles={syncSelectionHandles}
-						isScrubbingRef={isScrubbingRef}
-						isScrubbing={scrub.isDragging}
-						footer={advanceFooter}
-					/>
-				)}
-
-				{/* ── Progress bar ── */}
-				{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
-				{isProgressCollapsed ? (
-					!isShowingSkeleton && (
-						<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
+					{/* ── Progress bar ── */}
+					{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
+					{isProgressCollapsed ? (
+						!isShowingSkeleton && (
+							<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
+								<BuddyReadMarkers
+									markers={buddy.markers}
+									myWord={progressWord}
+									approximate={buddy.approximate}
+									isCollapsed
+								/>
+								{progressTicks}
+								<div className="reader-progress-fill-track">
+									<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+								</div>
+							</div>
+						)
+					) : (
+						<div
+							ref={scrub.progressBarRef}
+							className="reader-progress-bar"
+							data-toast-clear
+							onPointerDown={scrub.handleProgressPointerDown}
+							onPointerMove={scrub.handleProgressPointerMove}
+							onPointerUp={scrub.handleProgressPointerUp}
+							onPointerCancel={scrub.handleProgressPointerCancel}
+						>
+							{(scrub.isDragging || scrub.isShowingInfo) && (
+								<ScrubBubble
+									chapterTitle={chapters[chapterIndexAt(chapters, bubbleWord)]?.title}
+									pct={percentOfBook(bubbleWord)}
+								/>
+							)}
 							<BuddyReadMarkers
 								markers={buddy.markers}
 								myWord={progressWord}
 								approximate={buddy.approximate}
-								isCollapsed
+								isCollapsed={false}
 							/>
-							{browseAnchorTick}
-							<div className="reader-progress-fill-track">
+							{progressTicks}
+							{/* The slider role sits on the track, not the bar: a slider is a leaf, and
+						    assistive tech would not reach the marker buttons inside it. */}
+							{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
+							<div
+								className="reader-progress-fill-track"
+								aria-label="Reading progress"
+								role="slider"
+								aria-valuenow={Math.round(progressPct)}
+								aria-valuemin={0}
+								aria-valuemax={100}
+							>
 								<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 							</div>
-						</div>
-					)
-				) : (
-					<div
-						ref={scrub.progressBarRef}
-						className="reader-progress-bar"
-						onPointerDown={scrub.handleProgressPointerDown}
-						onPointerMove={scrub.handleProgressPointerMove}
-						onPointerUp={scrub.handleProgressPointerUp}
-						onPointerCancel={scrub.handleProgressPointerCancel}
-					>
-						{scrub.isDragging && (
-							<div
-								className="reader-scrub-bubble"
-								style={{ left: `clamp(70px, ${progressPct}%, calc(100% - 70px))` }}
-								role="status"
-							>
-								{currentChapterIndex >= 0 && (
-									<span className="reader-scrub-bubble-chapter">
-										{chapters[currentChapterIndex].title}
+							<DiscussionTicks ticks={discussionTicks} />
+							<div className="reader-progress-label">
+								<span>
+									{Math.round(progressPct)}%
+									{bookMinutesRemaining > 0 && (
+										<> · {formatReadingTime(bookMinutesRemaining)} left</>
+									)}
+									<LiveWpm
+										settings={dbSettings}
+										mode={sessionMode}
+										isListening={isReadAloudActive}
+										getRate={getLiveRate}
+									/>
+									{readingNowCount > 0 && (
+										<>
+											{" · "}
+											<span className="reader-buddy-live-dot" /> {readingNowCount} reading
+										</>
+									)}
+									{goalPlan && goalToday && (
+										<>
+											{" · "}
+											<GoalChip
+												plan={goalPlan}
+												today={goalToday}
+												onOpenDetails={() =>
+													router.navigate({ href: `/tabs/library/book/${book.id}` })
+												}
+											/>
+										</>
+									)}
+								</span>
+								{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
+									<span className="reader-progress-chapter-time">
+										{chapters[currentChapterIndex].title} ·{" "}
+										{formatReadingTime(chapterMinutesRemaining)} left
 									</span>
 								)}
-								<span>{Math.round(progressPct)}%</span>
 							</div>
-						)}
-						<BuddyReadMarkers
-							markers={buddy.markers}
-							myWord={progressWord}
-							approximate={buddy.approximate}
-							isCollapsed={false}
+						</div>
+					)}
+
+					{browseAnchor !== null && readerMode !== "rsvp" && !isShowingSkeleton && (
+						<BrowseBar
+							anchorPct={browseAnchorPct}
+							onBack={browse.back}
+							onReadFromHere={browse.readFromHere}
 						/>
-						{browseAnchorTick}
-						{/* The slider role sits on the track, not the bar: a slider is a leaf, and
-						    assistive tech would not reach the marker buttons inside it. */}
-						{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
-						<div
-							className="reader-progress-fill-track"
-							aria-label="Reading progress"
-							role="slider"
-							aria-valuenow={Math.round(progressPct)}
-							aria-valuemin={0}
-							aria-valuemax={100}
-						>
-							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
-						</div>
-						<DiscussionTicks ticks={discussionTicks} />
-						<div className="reader-progress-label">
-							<span>
-								{Math.round(progressPct)}%
-								{bookMinutesRemaining > 0 && <> · {formatReadingTime(bookMinutesRemaining)} left</>}
-								{readingNowCount > 0 && (
-									<>
-										{" · "}
-										<span className="reader-buddy-live-dot" /> {readingNowCount} reading
-									</>
-								)}
-							</span>
-							{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
-								<span className="reader-progress-chapter-time">
-									{chapters[currentChapterIndex].title} ·{" "}
-									{formatReadingTime(chapterMinutesRemaining)} left
-								</span>
-							)}
-						</div>
-					</div>
-				)}
+					)}
 
-				{browseAnchor !== null && readerMode !== "rsvp" && !isShowingSkeleton && (
-					<BrowseBar
-						anchorPct={browseAnchorPct}
-						onBack={browse.back}
-						onReadFromHere={browse.readFromHere}
-					/>
-				)}
+					{isReadAloudActive && readerMode !== "rsvp" && !isShowingSkeleton && (
+						<ReadAloudControls
+							status={readAloud.status}
+							wpm={ttsSpeech.wpm}
+							measuredWpm={readAloud.measuredWpm}
+							sleepTimer={readAloud.sleepTimer}
+							isFollowing={readAloud.isFollowing}
+							onTogglePlay={readAloud.toggle}
+							onSkip={readAloud.skip}
+							onWpmChange={(wpm) => updateSetting("ttsWpm", wpm)}
+							onOpenSleepTimer={() => setIsSleepTimerOpen(true)}
+							onOpenVoice={() => setIsVoiceSheetOpen(true)}
+							onStop={readAloud.stop}
+							onBackToVoice={handleBackToVoice}
+							onReadFromView={readAloud.readFromView}
+						/>
+					)}
 
-				{isReadAloudActive && !isShowingSkeleton && (
-					<ReadAloudControls
-						status={readAloud.status}
-						wpm={ttsSpeech.wpm}
-						measuredWpm={readAloud.measuredWpm}
-						sleepTimer={readAloud.sleepTimer}
-						isFollowing={readAloud.isFollowing}
-						onTogglePlay={readAloud.toggle}
-						onSkip={readAloud.skip}
-						onWpmChange={(wpm) => updateSetting("ttsWpm", wpm)}
-						onOpenSleepTimer={() => setIsSleepTimerOpen(true)}
-						onOpenVoice={() => setIsVoiceSheetOpen(true)}
-						onStop={readAloud.stop}
-						onBackToVoice={handleBackToVoice}
-						onReadFromView={readAloud.readFromView}
-					/>
-				)}
+					{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
+				</div>
 
-				{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
-			</div>
+				{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
+				<SelectionOverlay
+					isSelecting={sel.isSelecting}
+					isHidden={sel.noteInputOpen}
+					step={sel.selectionSavedId ? "styled" : "actions"}
+					isSingleWord={
+						!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
+					}
+					selectionColor={sel.selectionColor}
+					toolbarRef={sel.toolbarRef}
+					startHandleRef={sel.startHandleRef}
+					endHandleRef={sel.endHandleRef}
+					onHighlight={sel.handleSelectionHighlight}
+					onColorChange={sel.handleSelectionColorChange}
+					onNote={sel.handleSelectionNote}
+					onLookup={handleSelectionLookup}
+					onAddToGlossary={handleAddToGlossary}
+					onDelete={sel.handleSelectionDelete}
+					onComment={discussionRead ? handleSelectionComment : undefined}
+					onShare={discussionRead ? handleSelectionShare : undefined}
+					onStartHandlePointerDown={sel.handleStartHandlePointerDown}
+					onEndHandlePointerDown={sel.handleEndHandlePointerDown}
+				/>
 
-			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
-			<SelectionOverlay
-				isSelecting={sel.isSelecting}
-				isHidden={sel.noteInputOpen}
-				step={sel.selectionSavedId ? "styled" : "actions"}
-				isSingleWord={
-					!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
-				}
-				selectionColor={sel.selectionColor}
-				toolbarRef={sel.toolbarRef}
-				startHandleRef={sel.startHandleRef}
-				endHandleRef={sel.endHandleRef}
-				onHighlight={sel.handleSelectionHighlight}
-				onColorChange={sel.handleSelectionColorChange}
-				onNote={sel.handleSelectionNote}
-				onLookup={handleSelectionLookup}
-				onAddToGlossary={handleAddToGlossary}
-				onDelete={sel.handleSelectionDelete}
-				onComment={discussionRead ? handleSelectionComment : undefined}
-				onShare={discussionRead ? handleSelectionShare : undefined}
-				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
-				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
-			/>
+				{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
+				<AnnotationsSheet
+					isOpen={annotationsOpen}
+					opensOnContents={annotationsOnContents}
+					onClose={() => setAnnotationsOpen(false)}
+					theme={theme}
+					chapters={chapters}
+					currentChapterIndex={currentChapterIndex}
+					onJumpChapter={jumpToChapter}
+					seriesId={book.seriesId ?? null}
+					bookmarks={bookmarkRows}
+					currentBookmarkId={currentBookmarkId}
+					onJumpBookmark={navigateToWord}
+					onRenameBookmark={(bookmarkId, label) =>
+						renameBookmark({ id: bookmarkId, bookId: id, label })
+					}
+					onDeleteBookmark={(bookmarkId) => deleteBookmark({ id: bookmarkId, bookId: id })}
+					highlights={highlightRows}
+					onJumpHighlight={handleHighlightJump}
+					glossary={glossaryEntries}
+					currentBookId={id}
+					onOpenEntry={(entry) => {
+						setAnnotationsOpen(false);
+						setEditingGlossaryEntry(entry);
+					}}
+					onAddEntry={handleAddEntryFromSheet}
+					browse={
+						readerMode === "rsvp"
+							? undefined
+							: {
+									isBrowsing: browseAnchor !== null,
+									onToggle: browseAnchor === null ? browse.start : browse.back,
+								}
+					}
+				/>
 
-			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
-			<AnnotationsSheet
-				isOpen={annotationsOpen}
-				onClose={() => setAnnotationsOpen(false)}
-				theme={theme}
-				chapters={chapters}
-				currentChapterIndex={currentChapterIndex}
-				onJumpChapter={navigateToWord}
-				seriesId={book.seriesId ?? null}
-				highlights={highlightRows}
-				onJumpHighlight={handleHighlightJump}
-				glossary={glossaryEntries}
-				currentBookId={id}
-				onOpenEntry={(entry) => {
-					setAnnotationsOpen(false);
-					setEditingGlossaryEntry(entry);
-				}}
-				onAddEntry={handleAddEntryFromSheet}
-				browse={
-					readerMode === "rsvp"
-						? undefined
-						: {
-								isBrowsing: browseAnchor !== null,
-								onToggle: browseAnchor === null ? browse.start : browse.back,
+				{/* ── Glossary entry modal ── */}
+				<GlossaryEntryModal
+					entry={editingGlossaryEntry}
+					currentBookId={id}
+					firstMentionContext={editingMentionContext}
+					onClose={handleGlossaryModalClose}
+					onSave={handleGlossarySave}
+					onDelete={handleGlossaryDelete}
+					onJumpFirst={handleJumpFirstMention}
+					onJumpNext={handleJumpNextMention}
+					theme={theme}
+				/>
+
+				{/* ── Search modal ── */}
+				<SearchModal
+					isOpen={searchOpen}
+					onClose={() => {
+						setSearchOpen(false);
+						setSearchInitialQuery(undefined);
+					}}
+					content={content ?? ""}
+					onJump={handleSearchJump}
+					theme={theme}
+					initialQuery={searchInitialQuery}
+				/>
+
+				{/* ── Dictionary modal ── */}
+				<DictionaryModal
+					word={selectedWord}
+					lang={book.language}
+					onClose={closeDictionaryModal}
+					onSearch={handleDictSearch}
+					onAddToGlossary={handleAddWordToGlossary}
+					theme={theme}
+				/>
+
+				{discussionRead && (
+					<>
+						<DiscussionThreadSheet
+							buddyReadId={discussionRead.id}
+							items={threadItems}
+							onClose={() => setThreadIds(null)}
+							theme={theme}
+						/>
+						<CommentComposerSheet
+							buddyReadId={discussionRead.id}
+							selection={commentSelection}
+							onClose={() => setCommentSelection(null)}
+							theme={theme}
+						/>
+						<ShareHighlightSheet
+							buddyReadId={discussionRead.id}
+							highlight={sharingHighlight}
+							text={
+								sharingHighlight
+									? sel.extractRangeText(sharingHighlight.startWord, sharingHighlight.endWord)
+									: ""
 							}
-				}
-			/>
-
-			{/* ── Glossary entry modal ── */}
-			<GlossaryEntryModal
-				entry={editingGlossaryEntry}
-				currentBookId={id}
-				firstMentionContext={editingMentionContext}
-				onClose={handleGlossaryModalClose}
-				onSave={handleGlossarySave}
-				onDelete={handleGlossaryDelete}
-				onJumpFirst={handleJumpFirstMention}
-				onJumpNext={handleJumpNextMention}
-				theme={theme}
-			/>
-
-			{/* ── Search modal ── */}
-			<SearchModal
-				isOpen={searchOpen}
-				onClose={() => {
-					setSearchOpen(false);
-					setSearchInitialQuery(undefined);
-				}}
-				content={content ?? ""}
-				onJump={handleSearchJump}
-				theme={theme}
-				initialQuery={searchInitialQuery}
-			/>
-
-			{/* ── Dictionary modal ── */}
-			<DictionaryModal
-				word={selectedWord}
-				lang={book.language}
-				onClose={closeDictionaryModal}
-				onSearch={handleDictSearch}
-				onAddToGlossary={handleAddWordToGlossary}
-				theme={theme}
-			/>
-
-			{discussionRead && (
-				<>
-					<DiscussionThreadSheet
-						buddyReadId={discussionRead.id}
-						items={threadItems}
-						onClose={() => setThreadIds(null)}
-						theme={theme}
-					/>
-					<CommentComposerSheet
-						buddyReadId={discussionRead.id}
-						selection={commentSelection}
-						onClose={() => setCommentSelection(null)}
-						theme={theme}
-					/>
-					<ShareHighlightSheet
-						buddyReadId={discussionRead.id}
-						highlight={sharingHighlight}
-						text={
-							sharingHighlight
-								? sel.extractRangeText(sharingHighlight.startWord, sharingHighlight.endWord)
-								: ""
-						}
-						syncNow={syncNow}
-						onClose={() => setSharingHighlight(null)}
-						theme={theme}
-					/>
-				</>
-			)}
-
-			<ActionSheet
-				open={isSleepTimerOpen}
-				onOpenChange={setIsSleepTimerOpen}
-				title="Stop listening after"
-				items={sleepTimerItems}
-			/>
-			<VoiceSheet
-				open={isVoiceSheetOpen}
-				onOpenChange={setIsVoiceSheetOpen}
-				language={book.language ?? null}
-				languageLabel={languageName(book.language ?? null)}
-				selected={ttsSpeech.voice}
-				speech={ttsSpeech}
-				onSelect={handleVoiceSelect}
-				className={`reader-theme-${theme}`}
-			/>
-
-			{/* Note input drawer (during selection). */}
-			<Drawer
-				open={sel.noteInputOpen}
-				onOpenChange={(open) => {
-					if (!open) sel.handleSelectionNoteDone();
-				}}
-			>
-				<DrawerContent className={`reader-theme-${theme}`}>
-					<DrawerHeader className="flex flex-row items-center justify-between gap-2">
-						<DrawerTitle className="flex-1">Note</DrawerTitle>
-						<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
-							Done
-						</Button>
-					</DrawerHeader>
-					<div className="px-5 pb-6">
-						<textarea
-							value={sel.pendingNote}
-							onChange={(e) => sel.setPendingNote(e.target.value)}
-							placeholder="Add a note to this highlight…"
-							rows={4}
-							className="min-h-24 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-							// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
-							autoFocus
+							syncNow={syncNow}
+							onClose={() => setSharingHighlight(null)}
+							theme={theme}
 						/>
-					</div>
-				</DrawerContent>
-			</Drawer>
-			<SessionDebugBadge getSnapshot={getDebugSnapshot} />
-		</div>
+					</>
+				)}
+
+				<ActionSheet
+					open={isSleepTimerOpen}
+					onOpenChange={setIsSleepTimerOpen}
+					title="Stop listening after"
+					items={sleepTimerItems}
+				/>
+				<VoiceSheet
+					open={isVoiceSheetOpen}
+					onOpenChange={setIsVoiceSheetOpen}
+					language={book.language ?? null}
+					languageLabel={languageName(book.language ?? null)}
+					selected={ttsSpeech.voice}
+					speech={ttsSpeech}
+					onSelect={handleVoiceSelect}
+					className={`reader-theme-${theme}`}
+				/>
+
+				{/* Note input drawer (during selection). */}
+				<Drawer
+					open={sel.noteInputOpen}
+					onOpenChange={(open) => {
+						if (!open) sel.handleSelectionNoteDone();
+					}}
+				>
+					<DrawerContent className={`reader-theme-${theme}`}>
+						<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+							<DrawerTitle className="flex-1">Note</DrawerTitle>
+							<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
+								Done
+							</Button>
+						</DrawerHeader>
+						<div className="px-5 pb-6">
+							<textarea
+								value={sel.pendingNote}
+								onChange={(e) => sel.setPendingNote(e.target.value)}
+								placeholder="Add a note to this highlight…"
+								rows={4}
+								className="min-h-24 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+								// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
+								autoFocus
+							/>
+						</div>
+					</DrawerContent>
+				</Drawer>
+				<SessionDebugBadge getSnapshot={getDebugSnapshot} />
+			</div>
+		</ReaderApiContext.Provider>
 	);
 };
 

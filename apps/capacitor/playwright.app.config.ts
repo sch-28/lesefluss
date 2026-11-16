@@ -11,6 +11,27 @@ const PORT = 3417;
 process.env.E2E_APP_DB ??= `${DB_PREFIX}${Date.now()}`;
 process.env.E2E_APP_PORT = String(PORT);
 
+const DB_BROWSERS = /db-browsers\.spec\.ts/;
+/**
+ * WebKit runs only on request: E2E_WEBKIT_WS connects to a Playwright server
+ * (scripts/e2e-app-webkit.sh starts one in Docker for hosts that can't launch
+ * WebKit), E2E_WEBKIT=1 launches it locally.
+ */
+const WEBKIT_WS = process.env.E2E_WEBKIT_WS;
+const webkitProjects =
+	WEBKIT_WS || process.env.E2E_WEBKIT
+		? [
+				{
+					name: "webkit",
+					use: {
+						...devices["Desktop Safari"],
+						connectOptions: WEBKIT_WS ? { wsEndpoint: WEBKIT_WS } : undefined,
+					},
+					testMatch: DB_BROWSERS,
+				},
+			]
+		: [];
+
 export default defineConfig({
 	testDir: "./e2e-app",
 	timeout: 60_000,
@@ -21,6 +42,8 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${PORT}`,
 		trace: "retain-on-failure",
+		// page.route never sees what a service worker answers; offline-shell.spec.ts allows them.
+		serviceWorkers: "block",
 	},
 	webServer: {
 		command: "node e2e-app/support/serve.mjs",
@@ -39,5 +62,7 @@ export default defineConfig({
 			testMatch: /.*\.spec\.ts/,
 			dependencies: ["setup"],
 		},
+		{ name: "firefox", use: { ...devices["Desktop Firefox"] }, testMatch: DB_BROWSERS },
+		...webkitProjects,
 	],
 });

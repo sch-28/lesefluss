@@ -1,7 +1,9 @@
 import type * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { SHEET_HEADER_CLASS, SHEET_SUBTITLE_CLASS, SHEET_TITLE_CLASS } from "./sheet-header";
 
 declare global {
 	interface Window {
@@ -38,12 +40,25 @@ function drawerSnapPoints(visible: number[]): number[] {
 	return visible.map((v) => Math.min(1, v + 1 - DRAWER_MAX_HEIGHT));
 }
 
-function Drawer({ repositionInputs, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+function Drawer({
+	repositionInputs,
+	open,
+	defaultOpen,
+	onOpenChange,
+	...props
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false), props.dismissible ?? true);
+	// vaul dims only from the last snap point by default; every snap of ours is a modal sheet.
+	const snapDim = props.snapPoints ? { fadeFromIndex: props.fadeFromIndex ?? 0 } : {};
 	return (
 		<DrawerPrimitive.Root
 			data-slot="drawer"
 			repositionInputs={repositionInputs ?? !isNativeShell()}
+			open={isOpen}
+			onOpenChange={setOpen}
 			{...props}
+			{...(snapDim as object)}
 		/>
 	);
 }
@@ -68,7 +83,7 @@ function DrawerOverlay({
 		<DrawerPrimitive.Overlay
 			data-slot="drawer-overlay"
 			className={cn(
-				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in",
+				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=open]:animate-in dark:bg-black/60",
 				className,
 			)}
 			{...props}
@@ -92,6 +107,8 @@ function DrawerContent({
 				className={cn(
 					"group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-popover-foreground outline-none",
 					"data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[85vh] data-[vaul-drawer-direction=bottom]:rounded-t-2xl data-[vaul-drawer-direction=bottom]:pb-[var(--safe-bottom)]",
+					// Desktop: a centered panel, never a full-width bottom drawer (LESE-185.14).
+					"md:data-[vaul-drawer-direction=bottom]:bottom-6 md:data-[vaul-drawer-direction=bottom]:mx-auto md:data-[vaul-drawer-direction=bottom]:w-full md:data-[vaul-drawer-direction=bottom]:max-w-xl md:data-[vaul-drawer-direction=bottom]:rounded-2xl md:data-[vaul-drawer-direction=bottom]:shadow-2xl md:data-[vaul-drawer-direction=bottom]:ring-1 md:data-[vaul-drawer-direction=bottom]:ring-foreground/10",
 					"data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[85vh] data-[vaul-drawer-direction=top]:rounded-b-2xl data-[vaul-drawer-direction=top]:pt-[var(--safe-top)]",
 					"data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:border-border data-[vaul-drawer-direction=right]:border-l sm:data-[vaul-drawer-direction=right]:max-w-sm",
 					"data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:border-border data-[vaul-drawer-direction=left]:border-r sm:data-[vaul-drawer-direction=left]:max-w-sm",
@@ -112,13 +129,7 @@ function DrawerContent({
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
-	return (
-		<div
-			data-slot="drawer-header"
-			className={cn("flex flex-col gap-1 px-5 pt-2 pb-3", className)}
-			{...props}
-		/>
-	);
+	return <div data-slot="drawer-header" className={cn(SHEET_HEADER_CLASS, className)} {...props} />;
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -135,7 +146,7 @@ function DrawerTitle({ className, ...props }: React.ComponentProps<typeof Drawer
 	return (
 		<DrawerPrimitive.Title
 			data-slot="drawer-title"
-			className={cn("font-semibold text-base text-foreground", className)}
+			className={cn(SHEET_TITLE_CLASS, className)}
 			{...props}
 		/>
 	);
@@ -148,7 +159,7 @@ function DrawerDescription({
 	return (
 		<DrawerPrimitive.Description
 			data-slot="drawer-description"
-			className={cn("text-muted-foreground text-sm", className)}
+			className={cn(SHEET_SUBTITLE_CLASS, className)}
 			{...props}
 		/>
 	);

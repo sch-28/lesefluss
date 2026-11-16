@@ -13,7 +13,7 @@ vi.mock("../../../services/serial-scrapers", () => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 250, source: "measured" }, sittings: 3 } }),
 		useSearchSerials: () => ({ data: undefined, isLoading: false, isFetching: false }),
 		useSearchSerialPages,
 		usePopularSerials,
@@ -168,5 +168,17 @@ describe("web-novel search paging and filters", () => {
 			<WebNovelSearchPanel query="cradle" provider="royalroad" viewMode="grid" onPick={vi.fn()} />,
 		);
 		expect(view.container.querySelector('[role="status"]')).not.toBeNull();
+	});
+
+	it("names the providers missing from the 'All' popular shelf by label", async () => {
+		caps.current = {};
+		usePopularSerials.mockReturnValue({
+			data: page(["Top"], ["royalroad"]),
+			isLoading: false,
+			isFetching: false,
+		});
+		view = await render(<WebNovelSearchPanel query="" viewMode="grid" onPick={vi.fn()} />);
+		expect(view.container.querySelectorAll('[data-testid="web-novel-card"]')).toHaveLength(1);
+		expect(view.text()).toContain("Some providers unavailable: Royal Road");
 	});
 });

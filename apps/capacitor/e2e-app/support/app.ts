@@ -42,7 +42,7 @@ export async function getJson<T = unknown>(api: APIRequestContext, path: string)
 }
 
 /**
- * Wipes the app's local data (IndexedDB, storage). Runs from a plain page on the
+ * Wipes the app's local data (IndexedDB, OPFS, storage, service workers and their caches). Runs from a plain page on the
  * same origin, so the app never boots and holds no open database handle.
  */
 export async function resetAppStorage(page: Page) {
@@ -59,8 +59,14 @@ export async function resetAppStorage(page: Page) {
 					}),
 			),
 		);
+		// Playwright's WebKit has no navigator.storage at all; the app runs on the legacy store there.
+		const opfs = await navigator.storage?.getDirectory().catch(() => null);
+		await opfs?.removeEntry("lesefluss", { recursive: true }).catch(() => {});
 		localStorage.clear();
 		sessionStorage.clear();
+		const workers = (await navigator.serviceWorker?.getRegistrations()) ?? [];
+		await Promise.all(workers.map((reg) => reg.unregister()));
+		await Promise.all((await caches.keys()).map((name) => caches.delete(name)));
 	});
 }
 

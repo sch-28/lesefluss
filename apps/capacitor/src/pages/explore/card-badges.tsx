@@ -21,6 +21,7 @@ type QuickAddButtonProps = {
 	isAdding: boolean;
 	onAdd: () => void;
 	className?: string;
+	icon?: React.ComponentType<{ className?: string }>;
 };
 
 /**
@@ -32,6 +33,7 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 	isAdding,
 	onAdd,
 	className,
+	icon: Icon = Plus,
 }) => (
 	<button
 		type="button"
@@ -39,29 +41,42 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 		disabled={isAdding}
 		onClick={onAdd}
 		className={cn(
-			"flex size-8 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur active:opacity-70 disabled:opacity-70",
+			"relative flex size-8 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur before:absolute before:-inset-1.5 before:content-[''] active:opacity-70 disabled:opacity-70",
 			className,
 		)}
 	>
-		{isAdding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+		{isAdding ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
 	</button>
 );
 
-/** QuickAddButton pinned to the bottom-right of a 2:3 cover that starts at the card's top. */
-export const QuickAddOverlay: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
-	<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
-		<QuickAddButton {...props} className="pointer-events-auto absolute right-1.5 bottom-1.5" />
-	</div>
+/**
+ * QuickAddButton in the card's bottom corner, beside the author and length lines:
+ * on the cover it hid titles printed into the art, beside the title it cut the
+ * title short. Those lines keep `QUICK_ADD_CLEARANCE` free for it, so the card
+ * must always render them.
+ */
+export const QuickAddBesideMeta: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
+	<QuickAddButton {...props} className="absolute right-0 bottom-0" />
 );
 
-/** Reading time in a cover's top-right corner; the visible "~4h" is hidden from screen readers in favour of a sentence. */
-export const CoverLengthBadge: React.FC<{ labels: LengthLabels }> = ({ labels }) => (
-	<span
-		data-testid="cover-length-badge"
-		className="absolute top-1.5 right-1.5 rounded-sm bg-black/50 px-1.5 py-0.5 font-medium text-[0.6rem] text-white/90 tabular-nums backdrop-blur-sm"
-	>
-		<LengthText labels={labels} variant="time" />
-	</span>
+export const QUICK_ADD_CLEARANCE = "pr-9";
+
+/**
+ * Under a card's title, off the cover, where corner badges hid titles printed into the art.
+ * Holds its line when empty, so every card in a row, and the skeleton, keeps one height.
+ */
+export const CardMeta: React.FC<{ labels?: LengthLabels | null; isInLibrary?: boolean }> = ({
+	labels,
+	isInLibrary,
+}) => (
+	<div className="mt-1 flex min-h-[1lh] flex-wrap items-center gap-1 text-[0.7rem]">
+		{isInLibrary && <InLibraryBadge />}
+		{labels && (
+			<span data-testid="card-length" className="text-muted-foreground tabular-nums">
+				<LengthText labels={labels} variant="time" />
+			</span>
+		)}
+	</div>
 );
 
 /** Length as text, read out as a sentence rather than "tilde … middle dot". */

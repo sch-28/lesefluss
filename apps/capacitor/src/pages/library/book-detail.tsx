@@ -1,29 +1,31 @@
 import { displayHostname } from "@lesefluss/book-import";
 import {
+	BOOK_STATUS_LABELS,
+	bookPace,
 	bookStatus,
 	isSyncEligible,
 	parseBookTags,
-	readingProgress,
 	wordPos,
 } from "@lesefluss/core";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@lesefluss/ui/alert-dialog";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Pencil, Share2, Trash2, Users } from "lucide-react";
+import {
+	BookOpen,
+	Cpu,
+	Image as ImageIcon,
+	Layers,
+	MoreVertical,
+	Pencil,
+	Plus,
+	Users,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
-import { ShareSheet } from "../../components/social/share-sheet";
+import { ReservedCard } from "../../components/reserved-card";
+import { ShareCardSheet } from "../../components/share-card/share-card-sheet";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -35,11 +37,14 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
 import { useCloudStorage } from "../../services/db/hooks/use-cloud-storage";
 import { queries } from "../../services/db/queries";
+import { finishedCardData } from "../../services/share-card/card-data";
+import { summariseBookReading } from "../../services/stats/book-summary";
 import { SYNC_ENABLED } from "../../services/sync";
 import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
+import { useBookActions } from "./book-actions/use-book-actions";
 import {
 	BookBuddyRead,
 	BUDDY_READ_BLOCKER_TEXT,
@@ -48,21 +53,19 @@ import {
 	useBookBuddyRead,
 } from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
-import BookEditSheet, {
-	type BookEditValues,
-	bookToEditValues,
-	editValuesToPatch,
-} from "./book-edit-sheet";
+import { BookDangerZone } from "./book-danger-zone";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
+import { BookSessions } from "./book-sessions";
 import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
+import { openReaderLabel } from "./open-reader-label";
 import { GoalCard } from "./reading-goal/goal-card";
-import { SessionTable } from "./session-table";
-import { FILTER_LABELS } from "./sort-filter";
 
 import TransferModal from "./transfer-modal";
+import { useBookDetailReady } from "./use-book-detail-ready";
+import { useAuthorSeriesSuggestion, useBookSeries } from "./use-book-series";
 
 interface Props {
 	id?: string;
@@ -78,7 +81,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const { data: content } = queryHooks.useBookContent(id);
 	const { chapters, isResolved: areChaptersResolved } = useBookChapters(id);
 	const { data: allBooks } = queryHooks.useBooks();
-	const { data: highlights = [] } = useQuery({
+	const { data: speedModel } = queryHooks.useStatsSpeedModel();
+	const { data: highlights = [], isLoading: isHighlightsLoading } = useQuery({
 		queryKey: bookKeys.highlights(id),
 		queryFn: () => queries.getHighlightsByBook(id),
 		enabled: !!id,
@@ -100,18 +104,26 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			isMountedRef.current = false;
 		};
 	}, []);
-	const deleteMutation = queryHooks.useDeleteBook();
-	const updateMutation = queryHooks.useUpdateBook();
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
-	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-	const [isEditOpen, setIsEditOpen] = useState(false);
-	const [isShareOpen, setIsShareOpen] = useState(false);
 	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
+	const [isCardOpen, setIsCardOpen] = useState(false);
+	const isFinished = book ? bookStatus(book) === "finished" && book.finishedAt !== null : false;
+	const { data: bookSessions } = queryHooks.useBookReadingSessions(isCardOpen ? id : "");
+	const finishedCard = useMemo(() => {
+		if (!isCardOpen || !book || book.finishedAt === null || !bookSessions) return null;
+		return finishedCardData({
+			book: {
+				title: book.title,
+				author: book.author,
+				coverImage: allBooks?.covers.get(book.id) ?? null,
+				wordCount: book.wordCount,
+				finishedAt: book.finishedAt,
+			},
+			sessions: bookSessions,
+			model: speedModel,
+		});
+	}, [isCardOpen, book, bookSessions, allBooks, speedModel]);
 	const canShare = isLoggedIn && SYNC_ENABLED;
-	// A session lost while the sheet is open would leave a friend list that can only fail.
-	useEffect(() => {
-		if (!canShare) setIsShareOpen(false);
-	}, [canShare]);
 	const buddyRead = useBookBuddyRead(book ?? { originKey: null }, canShare);
 	const hasRunningBuddyRead = buddyRead?.status === "in_progress";
 	const { data: cloudStorage } = useCloudStorage(isLoggedIn && SYNC_ENABLED);
@@ -120,7 +132,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const { data: serverContentIds } = useQuery({
 		queryKey: syncKeys.serverContentIds,
 		queryFn: getServerContentIds,
-		enabled: canShare && (isShareOpen || isBuddyReadOpen),
+		enabled: canShare && isBuddyReadOpen,
 		staleTime: 0,
 	});
 
@@ -129,41 +141,43 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// (e.g. useBookDeviceState, useBookDeviceActions) trigger React error
 	// #310 on the first to second render transition because the hook count
 	// would differ between renders.
-	const headerActions = useMemo(
-		() => [
-			{ label: "Edit", icon: Pencil, onClick: () => setIsEditOpen(true) },
-			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
+	const series = useBookSeries(id);
+	const seriesSuggestion = useAuthorSeriesSuggestion(id, book?.author ?? null);
+	const addNumbered = queryHooks.useAddNumberedBooks();
+	const bookActions = useBookActions({
+		surface: "detail",
+		onDeleted: () => router.navigate({ to: "/tabs/library", replace: true }),
+		extras: () => [
+			...(isFinished
+				? [{ label: "Share card", icon: ImageIcon, onSelect: () => setIsCardOpen(true) }]
+				: []),
 			// Shown signed out too: the sheet explains that reading together needs an account.
 			...(SYNC_ENABLED && !hasRunningBuddyRead
-				? [{ label: "Start buddy read", icon: Users, onClick: () => setIsBuddyReadOpen(true) }]
+				? [{ label: "Start buddy read", icon: Users, onSelect: () => setIsBuddyReadOpen(true) }]
 				: []),
+		],
+	});
+	const openBookMenu = bookActions.open;
+	const headerActions = useMemo(
+		() => [
 			{
-				label: "Delete",
-				icon: Trash2,
-				destructive: true,
-				onClick: () => setIsDeleteOpen(true),
+				label: "Edit",
+				icon: Pencil,
+				onClick: () =>
+					void router.navigate({
+						to: "/tabs/library/book/$id/edit",
+						params: { id },
+					}),
+			},
+			{
+				label: "More actions",
+				icon: MoreVertical,
+				onClick: () => {
+					if (book) openBookMenu(book);
+				},
 			},
 		],
-		[canShare, hasRunningBuddyRead],
-	);
-	// Memoised because the sheet reseeds its form whenever `initial` changes; a
-	// fresh object every render would discard what the reader is typing.
-	const editValues = useMemo<BookEditValues>(
-		() =>
-			bookToEditValues(
-				book ?? {
-					title: "",
-					author: null,
-					description: null,
-					language: null,
-					status: null,
-					rating: null,
-					review: null,
-					tags: null,
-					hideFromProfile: false,
-				},
-			),
-		[book],
+		[router, id, book, openBookMenu],
 	);
 	const deviceState = useBookDeviceState(book?.id ?? null);
 	const deviceActions = useBookDeviceActions({
@@ -171,6 +185,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		bookTitle: book?.title,
 		onUpload: () => setIsTransferOpen(true),
 	});
+	const areCardsReady = useBookDetailReady(book);
 
 	if (isPending) {
 		return (
@@ -178,6 +193,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				cover={null}
 				title="Loading..."
 				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				headerActions={headerActions.map((action) => ({ ...action, disabled: true }))}
 				isLoading
 			/>
 		);
@@ -202,7 +218,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		: book.catalogId
 			? getCoverUrl(book.catalogId)
 			: null;
-	const progress = readingProgress(book);
 	const externalUrl = book.sourceUrl
 		? book.sourceUrl
 		: book.catalogId
@@ -218,10 +233,28 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					? displayHostname(book.sourceUrl)
 					: null;
 
+	// The book row is local and lands first: show the page's frame from it while
+	// the late cards load, so the page never flashes blank or shifts its hero.
+	if (!areCardsReady || isHighlightsLoading) {
+		return (
+			<DetailShell
+				cover={cover}
+				eyebrow={eyebrow}
+				title={book.title}
+				author={book.author}
+				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				externalLink={externalUrl ? { href: externalUrl } : undefined}
+				headerActions={headerActions}
+			>
+				<ReservedCard isPending height="60vh" />
+				{bookActions.overlays}
+			</DetailShell>
+		);
+	}
+
 	// Pages, not time: time measures the reader, so two books at nine and four
 	// hours say nothing comparable about the books.
 	const pages = bookPageCount(book);
-	const chapterCount = chapters.length;
 	const notBackedUpIds = new Set(cloudStorage?.notBackedUp.map((b) => b.id));
 	const isNotBackedUp = notBackedUpIds.has(book.id);
 	const shareBlocker = shareBlockerFor(book, serverContentIds, notBackedUpIds);
@@ -256,19 +289,47 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const tags = parseBookTags(book.tags);
 	const facts = [
 		// The shelf leads: it is the one fact the reader chose rather than earned.
-		FILTER_LABELS[bookStatus(book)],
+		BOOK_STATUS_LABELS[bookStatus(book)],
+		series ? (
+			<button
+				key="series"
+				type="button"
+				data-testid="book-series-chip"
+				onClick={() =>
+					router.navigate({ to: "/tabs/library", search: { collection: series.collectionId } })
+				}
+				className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
+			>
+				<Layers className="size-3" />
+				{series.index === null ? series.name : `${series.name} ${formatSeriesNumber(series.index)}`}
+			</button>
+		) : seriesSuggestion ? (
+			<button
+				key="series-suggestion"
+				type="button"
+				data-testid="book-series-suggestion"
+				disabled={addNumbered.isPending}
+				onClick={() =>
+					addNumbered.mutate({
+						target: { collectionId: seriesSuggestion.collectionId },
+						numbers: new Map([[book.id, seriesSuggestion.index]]),
+					})
+				}
+				className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+			>
+				<Plus className="size-3" />
+				{`Add to ${seriesSuggestion.name} ${formatSeriesNumber(seriesSuggestion.index)}?`}
+			</button>
+		) : null,
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
-		chapterCount > 0 ? `${chapterCount} chapters` : null,
-		`${progress}% read`,
-		book.fileFormat.toUpperCase(),
-		highlights.length > 0
-			? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}`
-			: null,
 		deviceState.isReachable && deviceState.isOnDevice ? (
 			<DeviceBadge key="device" bookId={book.id} style="text" />
 		) : null,
 	].filter((fact) => fact !== null);
+
+	const { minutesLeft } = summariseBookReading(book, bookPace(speedModel, book.id));
+	const openLabel = openReaderLabel(book, chapters, minutesLeft);
 
 	const secondaryActions = !IS_WEB
 		? deviceActions.map((a) => ({
@@ -289,7 +350,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				facts={facts}
 				subjects={catalogMeta?.subjects ?? undefined}
 				primaryAction={{
-					label: "Open reader",
+					...openLabel,
 					icon: BookOpen,
 					onClick: () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}
@@ -329,8 +390,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				{book.review && (
-					<section className="rounded-lg border border-border bg-card p-4 text-card-foreground">
-						<h2 className="m-0 mb-2 font-semibold text-base">Your notes</h2>
+					<section className="book-detail-card">
+						<h2 className="book-detail-section-title">Your notes</h2>
 						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
 							{book.review}
 						</p>
@@ -341,7 +402,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				{canShare && <BookShares bookId={book.id} enabled={!book.seriesId} />}
 				{canShare && buddyRead && <BookBuddyRead read={buddyRead} book={book} />}
 				<BookJourney book={book} />
-				<BookFileCard book={book} chapterCount={chapterCount} />
+				<BookFileCard book={book} />
 				<BookChapters
 					chapters={chapters}
 					wordCount={book.wordCount}
@@ -349,8 +410,13 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					onJump={handleChapterJump}
 					isResolved={areChaptersResolved}
 				/>
-				<BookHighlights highlights={highlights} />
-				<SessionTable mode="book" bookId={book.id} />
+				<BookHighlights bookId={book.id} highlights={highlights} />
+				<BookSessions book={book} />
+				<BookDangerZone
+					book={book}
+					onResetProgress={() => bookActions.requestReset(book)}
+					onDeleteBook={() => bookActions.requestDelete(book)}
+				/>
 			</DetailShell>
 
 			{!IS_WEB && (
@@ -362,13 +428,13 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				/>
 			)}
 
-			<ShareSheet
-				isOpen={isShareOpen}
-				onClose={() => setIsShareOpen(false)}
-				bookId={book.id}
-				bookTitle={book.title}
-				blocker={shareBlocker}
-			/>
+			{finishedCard && (
+				<ShareCardSheet
+					card={finishedCard}
+					filename="lesefluss-finished"
+					onClose={() => setIsCardOpen(false)}
+				/>
+			)}
 			<StartBuddyReadSheet
 				isOpen={isBuddyReadOpen}
 				onClose={() => setIsBuddyReadOpen(false)}
@@ -377,43 +443,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				bookTitle={book.title}
 				blocker={shareBlocker ? BUDDY_READ_BLOCKER_TEXT[shareBlocker] : null}
 			/>
-			<BookEditSheet
-				isOpen={isEditOpen}
-				onClose={() => setIsEditOpen(false)}
-				initial={editValues}
-				progress={{ wordCount: book.wordCount, wordPosition: book.wordPosition }}
-				isSaving={updateMutation.isPending}
-				onSave={(values) => {
-					updateMutation.mutate(
-						{ id: book.id, values: editValuesToPatch(values) },
-						{ onSuccess: () => setIsEditOpen(false) },
-					);
-				}}
-			/>
-
-			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Delete book?</AlertDialogTitle>
-						<AlertDialogDescription>
-							"{book.title}" will be removed from your library.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={() => {
-								deleteMutation.mutate(book, {
-									onSuccess: () => router.navigate({ to: "/tabs/library", replace: true }),
-								});
-							}}
-						>
-							Delete
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			{bookActions.overlays}
 		</>
 	);
 };

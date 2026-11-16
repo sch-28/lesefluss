@@ -32,8 +32,11 @@ type UseLibraryImports = {
  * Error-to-toast mapping is global (see `ERROR_TOASTS`) — any code path
  * that throws a known code gets the same UX, regardless of which mutation
  * surfaced it.
+ *
+ * A book imported while `targetCollectionId` is set joins that collection.
+ * Serials are not books and stay out of it.
  */
-export function useLibraryImports(): UseLibraryImports {
+export function useLibraryImports(targetCollectionId?: string): UseLibraryImports {
 	const importFile = queryHooks.useImportBook();
 	const importClipboard = queryHooks.useImportBookFromClipboard();
 	const importUrl = queryHooks.useImportBookFromUrl();
@@ -85,7 +88,8 @@ export function useLibraryImports(): UseLibraryImports {
 		vars: V,
 	): Promise<boolean> => {
 		try {
-			stage(await mutation.mutateAsync(vars));
+			const staged = await mutation.mutateAsync(vars);
+			stage(targetCollectionId ? { ...staged, targetCollectionId } : staged);
 			mutation.reset();
 			return true;
 		} catch (err) {

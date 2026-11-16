@@ -1,7 +1,7 @@
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { providerLabel, type SearchResult } from "../../services/serial-scrapers";
-import { CoverLengthBadge, InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
 import { describeLength } from "./length";
 import TextCover from "./text-cover";
 import { useReadingSpeed } from "./use-reading-speed";
@@ -40,32 +40,34 @@ export const WebNovelCard: React.FC<{
 						alt={result.title}
 						fallback={<TextCover result={result} />}
 					/>
-					{lengthLabels && <CoverLengthBadge labels={lengthLabels} />}
-					{quickAdd.isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
 				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+						className="min-h-[2lh] overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 					>
 						{result.title}
 					</div>
-					{result.author && (
-						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-							{result.author}
-						</div>
-					)}
+					{/* Every line holds its height when empty, so cards in a row and their
+					    skeleton (`webNovelCardExtraLines`) keep one height. */}
+					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+						{result.author}
+					</div>
 					{showProvider && (
-						<div className="mt-0.5 text-[0.7rem] text-muted-foreground">
+						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">
 							{providerLabel(result.provider)}
 						</div>
 					)}
-					{chapters && <div className="mt-0.5 text-[0.7rem] text-muted-foreground">{chapters}</div>}
+					{/* The quick-add button spans only the two bottom lines, so the author keeps the full width. */}
+					<div className={canQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
+						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">{chapters}</div>
+						<CardMeta labels={lengthLabels} isInLibrary={quickAdd.isInLibrary} />
+					</div>
 				</div>
 			</button>
 			{canQuickAdd && (
-				<QuickAddOverlay
+				<QuickAddBesideMeta
 					title={result.title}
 					isAdding={quickAdd.isImporting}
 					onAdd={() => quickAdd.start(result.title)}
@@ -74,3 +76,6 @@ export const WebNovelCard: React.FC<{
 		</div>
 	);
 };
+
+/** The lines a web novel card has beyond a catalog card's, for `CardSkeleton`'s `extraLines`. */
+export const webNovelCardExtraLines = (showProvider: boolean) => (showProvider ? 2 : 1);

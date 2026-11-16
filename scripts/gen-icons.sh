@@ -5,6 +5,7 @@
 # Outputs:
 #   apps/web/public/          - favicon.ico, favicon*.png, apple-touch-icon.png, logo.png
 #   apps/extension/public/    - icon-*.png, logo.png
+#   apps/capacitor/public/    - favicon.png, apple-touch-icon.png, icons/ (web app manifest)
 #   apps/capacitor/android/   - mipmap-*/ic_launcher*.png, drawable-*/splash.png
 
 set -euo pipefail
@@ -40,13 +41,14 @@ if ! command -v magick &>/dev/null; then
   exit 1
 fi
 
-# Compose logo onto a solid square canvas with padding
-# Usage: icon_compose <canvas_px> <output_path> [scale]
+# Compose logo onto a square canvas with padding. Touch icons pass the disc
+# color as bg: iOS fills transparent corners with black.
+# Usage: icon_compose <canvas_px> <output_path> [scale] [bg_color]
 icon_compose() {
-  local size=$1 out=$2 scale=${3:-$ICON_LOGO_SCALE}
+  local size=$1 out=$2 scale=${3:-$ICON_LOGO_SCALE} bg=${4:-$ICON_BG}
   local logo_px
   logo_px=$(echo "$size $scale" | awk '{printf "%d", $1 * $2}')
-  magick -size "${size}x${size}" "xc:${ICON_BG}" \
+  magick -size "${size}x${size}" "xc:${bg}" \
     \( "$SRC" -resize "${logo_px}x${logo_px}" \) \
     -gravity center -composite "$out"
 }
@@ -91,8 +93,8 @@ echo "  favicon-32x32.png"
 icon_compose 48  "$WEB/favicon-48x48.png" 1.0
 echo "  favicon-48x48.png"
 
-icon_compose 180 "$WEB/apple-touch-icon.png" 1.0
-echo "  apple-touch-icon.png (180x180)"
+icon_compose 180 "$WEB/apple-touch-icon.png" 1.0 "$LIGHT_DISC"
+echo "  apple-touch-icon.png (180x180, solid)"
 
 magick "$WEB/favicon-16x16.png" "$WEB/favicon-32x32.png" "$WEB/favicon-48x48.png" "$WEB/favicon.ico"
 echo "  favicon.ico (16+32+48)"
@@ -120,8 +122,15 @@ echo "  logo.png"
 icon_compose 512 "$CAP/favicon.png" 1.0
 echo "  favicon.png (512x512)"
 
-icon_compose 180 "$CAP/apple-touch-icon.png" 1.0
-echo "  apple-touch-icon.png (180x180)"
+icon_compose 180 "$CAP/apple-touch-icon.png" 1.0 "$LIGHT_DISC"
+echo "  apple-touch-icon.png (180x180, solid)"
+
+mkdir -p "$CAP/icons"
+icon_compose 192 "$CAP/icons/icon-192.png" 1.0
+icon_compose 512 "$CAP/icons/icon-512.png" 1.0
+# Maskable: launchers crop to the inner 80% circle, so the logo sits inside it.
+icon_compose 512 "$CAP/icons/icon-maskable-512.png" 0.8 "$LIGHT_DISC"
+echo "  icons/icon-192.png, icons/icon-512.png, icons/icon-maskable-512.png"
 
 # ── Android launcher icons ────────────────────────────────────────────────────
 echo ""

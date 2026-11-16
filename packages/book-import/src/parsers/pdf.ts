@@ -271,15 +271,17 @@ async function extractChapters(
 	}
 
 	const chapters: Chapter[] = [];
-	const visit = async (node: OutlineNode): Promise<void> => {
+	const visit = async (node: OutlineNode, level: number): Promise<void> => {
 		const pageIndex = await resolvePageIndex(doc, node.dest);
 		if (pageIndex !== null && pageIndex >= 0 && pageIndex < pageOffsets.length) {
 			const title = node.title?.trim();
-			if (title) chapters.push({ title, startByte: pageOffsets[pageIndex] });
+			if (title) {
+				chapters.push({ title, startByte: pageOffsets[pageIndex], ...(level > 0 && { level }) });
+			}
 		}
-		for (const child of node.items ?? []) await visit(child);
+		for (const child of node.items ?? []) await visit(child, level + 1);
 	};
-	for (const node of outline) await visit(node);
+	for (const node of outline) await visit(node, 0);
 
 	if (chapters.length === 0) return null;
 

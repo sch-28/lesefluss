@@ -1,3 +1,5 @@
+import type { DbDriverKind, DbRow } from "../services/db/driver";
+
 /**
  * Dev-only window hooks over the local database for Playwright e2e tests. The
  * callsite is wrapped in `if (import.meta.env.DEV)`, so this tree-shakes out of
@@ -13,14 +15,6 @@ export function exposeBookRowRead(read: E2EReadBookRow): void {
 	(
 		window as unknown as { __lesefluss_e2e_readBookRow?: E2EReadBookRow }
 	).__lesefluss_e2e_readBookRow = read;
-}
-
-export type E2EInvalidate = (queryKey: readonly unknown[]) => Promise<void>;
-
-/** Lets a test refetch queries the way a sync pull or a chapter fetch does. */
-export function exposeQueryInvalidate(invalidate: E2EInvalidate): void {
-	(window as unknown as { __lesefluss_e2e_invalidate?: E2EInvalidate }).__lesefluss_e2e_invalidate =
-		invalidate;
 }
 
 export type E2ERemotePosition = (
@@ -40,4 +34,28 @@ export function exposeRemotePosition(apply: E2ERemotePosition): void {
 	(
 		window as unknown as { __lesefluss_e2e_remotePosition?: E2ERemotePosition }
 	).__lesefluss_e2e_remotePosition = apply;
+}
+
+export type E2EBookSession = { mode: string; durationMs: number; wordsRead: number };
+
+export type E2EReadBookSessions = (bookId: string) => Promise<E2EBookSession[]>;
+
+/** Lets a test check that a sitting reached stats. */
+export function exposeBookSessionsRead(read: E2EReadBookSessions): void {
+	(
+		window as unknown as { __lesefluss_e2e_readBookSessions?: E2EReadBookSessions }
+	).__lesefluss_e2e_readBookSessions = read;
+}
+
+export type E2EDbProbe = {
+	kind: () => DbDriverKind | null;
+	execute: (sql: string) => Promise<void>;
+	query: (sql: string) => Promise<DbRow[]>;
+	/** One reader position write through the reader's own path; resolves to its duration in ms. */
+	timePositionSave: (bookId: string, word: number) => Promise<number>;
+};
+
+/** Raw access to the active driver, for seeding a large library and timing saves on it. */
+export function exposeDbProbe(probe: E2EDbProbe): void {
+	(window as unknown as { __lesefluss_e2e_db?: E2EDbProbe }).__lesefluss_e2e_db = probe;
 }

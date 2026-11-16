@@ -22,6 +22,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		addedAt: 0,
 		lastRead: null,
 		finishedAt: null,
+		firstSittingAt: null,
 		source: null,
 		catalogId: null,
 		sourceUrl: null,
@@ -41,6 +42,9 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		originKey: null,
 		updatedAt: 0,
 		metadataUpdatedAt: 0,
+		seriesName: null,
+		seriesIndex: null,
+		seriesUpdatedAt: 0,
 		...overrides,
 	};
 }
@@ -58,6 +62,8 @@ function makeSession(overrides: Partial<ReadingSession> = {}): ReadingSession {
 		endWord: wordPos(0),
 		furthestWord: null,
 		wpmAvg: null,
+		fontSize: null,
+		segmentWpm: null,
 		updatedAt: 0,
 		...overrides,
 	};

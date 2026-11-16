@@ -18,14 +18,19 @@ import { commitBook } from "./commit";
 import { parse, parseAndCommit } from "./pipeline";
 import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
-import type { ImportExtras, ImportOverrides, StagedImport } from "./types";
+import type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } from "./types";
 
 export { attachOriginalToBook, findAttachCandidate } from "./attach-original";
 export { importScannedFile, probeScannedFile } from "./batch";
 export { removeBook } from "./commit";
-export type { FolderScan, ScannedFile, ScannedFileHandle } from "./sources/folder-scan";
-export { pickBookFolder, readScannedFile } from "./sources/folder-scan";
-export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
+export type {
+	BatchPickerKind,
+	FolderScan,
+	ScannedFile,
+	ScannedFileHandle,
+} from "./sources/folder-scan";
+export { batchPickerKind, pickBookFolder, readScannedFile } from "./sources/folder-scan";
+export type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } from "./types";
 
 /**
  * Write a staged import, with the reader's corrections applied over whatever the
@@ -35,8 +40,10 @@ export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 export async function commitStagedImport(
 	staged: StagedImport,
 	overrides?: ImportOverrides,
+	/** Absent when the reader left the series row as the file has it. */
+	series?: ImportSeriesChoice,
 ): Promise<Book> {
-	return commitBook(staged.payload, staged.extras, overrides);
+	return commitBook(staged.payload, staged.extras, overrides, { series });
 }
 
 /**
@@ -71,7 +78,7 @@ export async function parseBookFromBlob(blob: Blob, fileName: string): Promise<S
 }
 
 /**
- * Parse and write in one step, without a confirm sheet. Only the catalog uses
+ * Parse and write in one step, without the Add book page. Only the catalog uses
  * this: its metadata is curated, and onboarding imports several starter books
  * at once, which would otherwise queue up a sheet per book during first run.
  */

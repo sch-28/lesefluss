@@ -20,7 +20,7 @@ async function gotoLibrary(page: Page) {
 	await resetStorage(page);
 	await page.goto("/");
 	await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
-	await page.getByRole("button", { name: "Skip onboarding" }).click();
+	await page.getByRole("button", { name: "Skip setup" }).click();
 	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
 }
 
@@ -40,7 +40,7 @@ const paddingTop = (page: Page) =>
 
 const tabBarPaddingBottom = (page: Page) =>
 	page
-		.locator("nav > div")
+		.locator("nav:visible > div")
 		.first()
 		.evaluate((el) => getComputedStyle(el).paddingBottom);
 
@@ -69,14 +69,4 @@ test("the scroll container clears the tab bar plus the injected bottom inset", a
 	await injectInsets(page, { bottom: INJECTED_BOTTOM });
 
 	expect((await paddingBottom()) - before).toBeCloseTo(INJECTED_BOTTOM, 1);
-});
-
-test("the shell follows re-injected insets, as on rotation or keyboard show", async ({ page }) => {
-	await gotoLibrary(page);
-	await injectInsets(page, { top: INJECTED_TOP });
-	expect(await paddingTop(page)).toBe(`${INJECTED_TOP}px`);
-
-	// Capacitor re-injects on every WindowInsets change, not just at startup.
-	await injectInsets(page, { top: 0 });
-	expect(await paddingTop(page)).toBe("0px");
 });

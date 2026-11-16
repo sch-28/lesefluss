@@ -9,7 +9,9 @@ import {
 	readerLayoutFor,
 	readingRulerFor,
 	round2,
+	SPACING_PRESETS,
 	spacingLabel,
+	spacingPresetOf,
 	stepSetting,
 	textAlignFor,
 	textAlignVars,
@@ -67,6 +69,44 @@ describe("textSpacingFor", () => {
 			word: SETTING_CONSTRAINTS.READER_WORD_SPACING.max,
 			paragraph: SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.min,
 		});
+	});
+});
+
+describe("spacing presets", () => {
+	it("keeps every preset value in range and on its step grid", () => {
+		const {
+			READER_LINE_SPACING,
+			READER_LETTER_SPACING,
+			READER_WORD_SPACING,
+			READER_PARAGRAPH_SPACING,
+		} = SETTING_CONSTRAINTS;
+		const onGrid = (v: number, c: { min: number; max: number; step: number }) => {
+			const steps = (v - c.min) / c.step;
+			return v >= c.min && v <= c.max && Math.abs(steps - Math.round(steps)) < 1e-9;
+		};
+		for (const p of Object.values(SPACING_PRESETS)) {
+			expect(onGrid(p.line, READER_LINE_SPACING)).toBe(true);
+			expect(onGrid(p.letter, READER_LETTER_SPACING)).toBe(true);
+			expect(onGrid(p.word, READER_WORD_SPACING)).toBe(true);
+			expect(onGrid(p.paragraph, READER_PARAGRAPH_SPACING)).toBe(true);
+		}
+	});
+
+	it("reads the defaults as Normal and fine-tuned values as no preset", () => {
+		expect(spacingPresetOf(SPACING_PRESETS.normal)).toBe("normal");
+		expect(spacingPresetOf({ ...defaultSpacing, line: 1.5, paragraph: 0.8 })).toBe("compact");
+		expect(spacingPresetOf({ ...SPACING_PRESETS.airy, word: 0 })).toBeNull();
+	});
+
+	it("matches what textSpacingFor reads back after a preset is saved", () => {
+		for (const p of Object.values(SPACING_PRESETS)) {
+			const read = textSpacingFor({
+				readerLetterSpacing: p.letter,
+				readerWordSpacing: p.word,
+				readerParagraphSpacing: p.paragraph,
+			});
+			expect(spacingPresetOf({ ...read, line: p.line })).not.toBeNull();
+		}
 	});
 });
 

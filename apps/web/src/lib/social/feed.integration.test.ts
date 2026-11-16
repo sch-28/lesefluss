@@ -50,6 +50,8 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 	type Patch = {
 		wordPosition?: number;
 		finishedAt?: Date | null;
+		/** Defaults to a real sitting with any pushed position; null pushes a glance. */
+		firstSittingAt?: number | null;
 		rating?: number;
 		deleted?: boolean;
 	};
@@ -74,6 +76,11 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 			source: stored?.source ?? null,
 			seriesId: stored?.seriesId ?? null,
 			finishedAt: finishedAt ? finishedAt.getTime() : null,
+			firstSittingAt:
+				patch.firstSittingAt !== undefined
+					? patch.firstSittingAt
+					: (stored?.firstSittingAt?.getTime() ??
+						((patch.wordPosition ?? 0) > 0 ? at.getTime() : null)),
 			rating: patch.rating ?? stored?.rating ?? null,
 			metadataUpdatedAt: revision,
 			chapterStatus: "fetched",
@@ -151,6 +158,14 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 		for (const leak of ["@example.test", "wordPosition", "review", "text"]) {
 			expect(json).not.toContain(leak);
 		}
+	});
+
+	test("a glance that only saves a position records nothing; the first real sitting records started", async () => {
+		await addBook(ben, "bbbb0040");
+		await push(ben, "bbbb0040", { wordPosition: 50, firstSittingAt: null });
+		expect(await eventsOf(ben)).toEqual([]);
+		await push(ben, "bbbb0040", { wordPosition: 80, firstSittingAt: now.getTime() });
+		expect((await eventsOf(ben)).map((e) => e.type)).toEqual(["started"]);
 	});
 
 	test("nothing is recorded for new rows, old finishes, articles, serial chapters or tombstones", async () => {

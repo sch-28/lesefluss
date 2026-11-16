@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { clampWord, decideExternalPosition, type ExternalPositionState } from "./external-position";
+import {
+	clampWord,
+	decideExternalPosition,
+	type ExternalPositionState,
+	followLoweredRevision,
+} from "./external-position";
 
 const idle: ExternalPositionState = {
 	seenRev: 1000,
@@ -55,5 +60,29 @@ describe("clampWord", () => {
 		expect(clampWord(5000, 1000)).toBe(999);
 		expect(clampWord(-3, 1000)).toBe(0);
 		expect(clampWord(10, 0)).toBe(0);
+	});
+});
+
+describe("followLoweredRevision", () => {
+	const FAST = 9000;
+	const CLAMPED = 2000;
+	const onFast = { base: FAST, decided: FAST, lastLanded: FAST };
+
+	it("lets a newer row from another device reach a reader whose clock ran ahead", () => {
+		const row = { wordPosition: 400, updatedAt: 3000 };
+		expect(decideExternalPosition(row, { ...idle, seenRev: onFast.decided })).toBe("ignore");
+		const revs = followLoweredRevision(onFast, FAST, CLAMPED);
+		expect(revs).toEqual({ base: CLAMPED, decided: CLAMPED, lastLanded: CLAMPED });
+		expect(decideExternalPosition(row, { ...idle, seenRev: revs.decided })).toBe("adopt");
+	});
+
+	it("keeps the revision of a write the reader made after the push", () => {
+		const wroteSince = { ...onFast, base: FAST + 1 };
+		expect(followLoweredRevision(wroteSince, FAST, CLAMPED)).toBe(wroteSince);
+	});
+
+	it("keeps an older revision it had already decided on", () => {
+		const revs = followLoweredRevision({ ...onFast, decided: 1000 }, FAST, CLAMPED);
+		expect(revs.decided).toBe(1000);
 	});
 });

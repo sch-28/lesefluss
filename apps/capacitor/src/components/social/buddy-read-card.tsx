@@ -84,7 +84,7 @@ export function BuddyReadCard({
 			>
 				{isFeatured && <CoverBackdrop src={cover} className="opacity-70" />}
 				<div className="relative">
-					<div className="flex gap-3.5">
+					<div className="flex gap-3">
 						<div
 							className={cn(
 								"relative aspect-[2/3] shrink-0 overflow-hidden rounded-md bg-muted",
@@ -104,7 +104,7 @@ export function BuddyReadCard({
 									{read.author}
 								</div>
 							)}
-							<div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+							<div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
 								{isFinished ? (
 									<FinishedLabel />
 								) : (

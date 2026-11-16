@@ -23,7 +23,9 @@ vi.mock("../../../services/db/hooks", async () => {
 	const { bookKeys } = await import("../../../services/db/hooks/query-keys");
 	return {
 		queryHooks: {
-			useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+			useStatsSpeedModel: () => ({
+				data: { pace: { wpm: 300, source: "measured" }, sittings: 12 },
+			}),
 			useSeriesList: () => ({ data: [] }),
 			useLibraryCatalogIds: () =>
 				useQuery({ queryKey: bookKeys.catalogIds, queryFn: getLibraryCatalogIds }),
@@ -33,7 +35,13 @@ vi.mock("../../../services/db/hooks", async () => {
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../../../services/serial-scrapers", () => ({ providerLabel: (id: string) => id }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: toastError, info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: toastError,
+		info: vi.fn(),
+	},
 }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate }) }));
 
@@ -230,15 +238,15 @@ describe("catalog card membership and quick add", () => {
 });
 
 describe("catalog length", () => {
-	it("puts the reading time in the grid card's corner badge instead of the source", async () => {
+	it("puts the reading time under the grid card's title instead of the source", async () => {
 		const estimated = book({
 			source: "standard_ebooks",
 			wordCount: 78_000,
 			wordCountEstimated: true,
 		});
 		view = await render(<CatalogResultCard result={estimated} onOpen={vi.fn()} />);
-		const badge = view.container.querySelector('[data-testid="cover-length-badge"]');
-		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("~4h 20m");
+		const badge = view.container.querySelector('[data-testid="card-length"]');
+		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("4h 20m");
 		expect(badge?.querySelector(".sr-only")?.textContent).toBe("About 4 hours 20 minutes to read");
 		expect(view.text()).not.toContain("SE");
 		expect(view.text()).not.toContain("pages");
@@ -252,8 +260,29 @@ describe("catalog length", () => {
 		);
 	});
 
+	it("shows list row subjects cleaned like the detail tags, as plain text", async () => {
+		view = await render(
+			<CatalogListItem
+				result={book({ subjects: ["England -- Fiction", "Love stories", "Fiction"] })}
+				onOpen={vi.fn()}
+			/>,
+		);
+		expect(view.text()).toContain("England · Fiction · Love stories");
+		expect(view.text()).not.toContain("--");
+	});
+
+	it("keeps the length off the cover, where it hid printed titles", async () => {
+		view = await render(
+			<CatalogResultCard result={book({ wordCount: 75_000 })} onOpen={vi.fn()} />,
+		);
+		const cover = view.container.querySelector(".aspect-2\\/3");
+		expect(cover).not.toBeNull();
+		expect(cover?.querySelector('[data-testid="card-length"]')).toBeNull();
+		expect(view.container.querySelector('[data-testid="card-length"]')).not.toBeNull();
+	});
+
 	it("shows no badge when the length is unknown", async () => {
 		view = await render(<CatalogResultCard result={book({ wordCount: null })} onOpen={vi.fn()} />);
-		expect(view.container.querySelector('[data-testid="cover-length-badge"]')).toBeNull();
+		expect(view.container.querySelector('[data-testid="card-length"]')).toBeNull();
 	});
 });

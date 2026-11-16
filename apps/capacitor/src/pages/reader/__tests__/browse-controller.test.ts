@@ -202,6 +202,23 @@ describe("BrowseController", () => {
 		expect(env.controller.onDevicePosition(7_000)).toBe(false);
 	});
 
+	it("leave drops the anchor without writing it and ends the sitting", () => {
+		const env = setup();
+		env.controller.enterForJump(5_000);
+		env.controller.leave();
+		expect(env.controller.isBrowsing).toBe(false);
+		expect(env.writes).toEqual([]);
+		expect(env.moves).toEqual([]);
+		expect(env.session.end).toHaveBeenCalledOnce();
+	});
+
+	it("leave while not browsing does nothing", () => {
+		const env = setup();
+		env.controller.leave();
+		expect(env.session.end).not.toHaveBeenCalled();
+		expect(env.anchors).toEqual([]);
+	});
+
 	it("reset leaves browse mode", () => {
 		const env = setup();
 		env.controller.start();

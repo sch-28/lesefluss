@@ -1,45 +1,29 @@
 import { expect, test } from "@playwright/test";
 
-test("reader settings preview follows text size changes", async ({ page }) => {
+test("reader settings preview follows text size, spacing and justify", async ({ page }) => {
 	await page.goto("/tabs/settings/reader");
 	const paragraph = page.getByTestId("reader-preview").locator(".reader-paragraph").first();
 	await expect(paragraph).toBeVisible();
 
 	const fontSizeOf = () =>
 		paragraph.evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize));
-	const before = await fontSizeOf();
-
+	const fontSize = await fontSizeOf();
 	await page.getByRole("button", { name: "Increase Text size" }).click();
-	await expect.poll(fontSizeOf).toBeGreaterThan(before);
-});
+	await expect.poll(fontSizeOf).toBeGreaterThan(fontSize);
 
-test("reader settings preview follows spacing changes", async ({ page }) => {
-	await page.goto("/tabs/settings/reader");
-	const paragraph = page.getByTestId("reader-preview").locator(".reader-paragraph").first();
-	await expect(paragraph).toBeVisible();
 	const spacingOf = () =>
 		paragraph.evaluate((el) => {
 			const style = getComputedStyle(el);
 			return `${style.letterSpacing}|${style.wordSpacing}|${style.marginBottom}`;
 		});
-	const before = await spacingOf();
-
 	for (const label of ["Letter spacing", "Word spacing", "Paragraph spacing"]) {
 		const previous = await spacingOf();
 		await page.getByRole("button", { name: `Increase ${label}` }).click();
 		await expect.poll(spacingOf, `${label} reached the preview`).not.toBe(previous);
 	}
-	expect(await spacingOf()).not.toBe(before);
-});
 
-test("reader settings preview follows justify", async ({ page }) => {
-	await page.goto("/tabs/settings/reader");
-	const paragraph = page.getByTestId("reader-preview").locator(".reader-paragraph").first();
-	await expect(paragraph).toBeVisible();
 	const alignOf = () => paragraph.evaluate((el) => getComputedStyle(el).textAlign);
 	expect(await alignOf()).toBe("start");
-
 	await page.getByRole("switch", { name: "Justify text" }).click();
-
 	await expect.poll(alignOf).toBe("justify");
 });

@@ -77,7 +77,7 @@ Rate limiting: Better Auth's built-in limiter is enabled (10 req/min, memory sto
 
 - **Response headers** - set globally via Nitro `routeRules` in `vite.config.ts`: HSTS, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and a pragmatic CSP (`'unsafe-inline'` for script/style, external origins derived from `GOATCOUNTER_URL` / `BETTER_AUTH_URL` env vars).
 - **Rate limiting** - `/api/sync` uses `src/lib/rate-limit.ts` (in-memory token bucket, 30/min per user; single-instance VPS, resets on restart). Body size cap is enforced at the reverse proxy, not in Node.
-- **Content quota** - `src/lib/content-quota.ts`: per-account cap (default 500 MB, env `SYNC_CONTENT_QUOTA_BYTES`) on the server-measured `octet_length` of content + cover + chapters + link ranges across live `sync_books` rows (`file_size` is client-supplied and ignored). Enforced on sync push (over-quota books are stored without content, rest of the push commits, response is 413 listing `rejectedContentBookIds` plus `rejectedContentBytes`, each book's growth in bytes, so the client re-offers a book only once that much is free), article import (413) and share/buddy-read copies (counts against the recipient; refused with `quota_exceeded` 413). A per-user advisory lock serialises the check. `GET /api/sync` returns `contentQuota`.
+- **Content quota** - `src/lib/content-quota.ts`: per-account cap (default 500 MB, env `SYNC_CONTENT_QUOTA_BYTES`) on the server-measured `octet_length` of content + cover + chapters + link ranges across live `sync_books` rows (`file_size` is client-supplied and ignored). Enforced on sync push (over-quota books are stored without content, rest of the push commits, response is 413 listing `rejectedContentBookIds` plus `rejectedContentBytes`, each book's growth in bytes, so the client re-offers a book only once that much is free, plus `stamps` when the push was clamped), article import (413) and share/buddy-read copies (counts against the recipient; refused with `quota_exceeded` 413). A per-user advisory lock serialises the check. `GET /api/sync` returns `contentQuota`.
 - **Meta + canonical** - `src/utils/seo.ts` exports `seo({ title, description, path })` returning `{ meta, links }`. Each public route spreads this. The root intentionally calls `seo()` without `path` so no canonical is emitted; each child route emits its own.
 - **Structured data** - `src/utils/structured-data.ts` provides `WebSite`, `Organization`, `SoftwareApplication`, and `faqPageSchema()` helpers. Root injects WebSite+Organization site-wide; `/` adds SoftwareApplication; `/docs` adds FAQPage from troubleshooting items.
 - **Verification scaffolding** - `buildVerificationMeta()` in `seo.ts` emits Google/Bing site-verification meta when `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` env vars are set.
@@ -91,8 +91,8 @@ Simple full-snapshot sync first. Delta sync can come later.
 
 **Flow:**
 1. User logs in → session token stored in Capacitor `@capacitor/preferences`
-2. On app open: `GET /api/sync` → merge into local DB (server wins if `updated_at` newer)
-3. On any local write: debounced `POST /api/sync` with updated rows
+2. On app open: `GET /api/sync` → merge into local DB (server wins if `updated_at` newer). The answer carries `serverTime`, from which the client keeps its clock offset for the stamps it writes (a body field: `Date` is not CORS-readable for the native app)
+3. On any local write: debounced `POST /api/sync` with updated rows. The server clamps book and settings stamps to its own clock; when it clamped any, it answers 200 with them (`SyncPushStamps`, else 204) and the client lowers its own stamps to them
 
 **Conflict resolution:** last-write-wins by `updated_at` for all entities. Deletions are `deleted` tombstones (books, series, highlights, glossary entries, goals, reading sessions).
 
@@ -102,7 +102,9 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 
 **Build:** `pnpm build:app` (runs `scripts/build-capacitor-embed.sh`) - builds capacitor with `WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true`, copies output to `public/app/`.
 
-**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro.
+**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro. Any missing file path under `/app/` (`src/lib/app-file-path.ts`) is a 404, never the shell: a tab still on the previous build must see the import fail, so `src/lib/stale-chunk-reload.ts` in the capacitor app can reload it, and the service worker must never cache HTML under a file name.
+
+**Installable app (PWA):** the web build emits `/app/manifest.webmanifest` (scope `/`, start `/app/`), which every website page links, and `/app/sw.js`, served `cache-control: no-cache` (`vite.config.ts` route rule). The worker keeps the built shell in the browser for offline starts and never answers `/api` or other server calls. A new deploy waits in the worker until the user taps Reload on the app's update bar, so a deploy is not live for an open tab right away. To roll back a broken worker, deploy a `sw.js` that unregisters itself.
 
 **Auth:** Same-domain cookie auth - user logs in on `/login`, the capacitor app detects the session via `/api/auth/get-session` and syncs automatically. No second login needed.
 

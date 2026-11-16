@@ -7,8 +7,10 @@ import {
 	isMeasurableSitting,
 	type ReadingMode,
 	readingDayKeys,
+	type SpeedWindow,
 	type StreakResult,
 	streakFromDays,
+	wpmFrom,
 } from "@lesefluss/core";
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
@@ -54,14 +56,18 @@ export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number
 	return msByDay;
 }
 
+/** The local reading days a sitting starting at `startedAt` counts toward. */
+export function readingDaysOfSitting(startedAt: number): string[] {
+	return readingDayKeys(localDateKey(startedAt), new Date(startedAt).getHours());
+}
+
 /** Local days the rows count toward for the streak, keyed by `localDateKey`.
  *  A late-night sitting counts for the evening before as well as its own day. */
 export function readDaysOf(rows: SessionTiming[]): Set<string> {
 	const days = new Set<string>();
 	for (const row of rows) {
 		if (row.durationMs <= 0) continue;
-		const hour = new Date(row.startedAt).getHours();
-		for (const key of readingDayKeys(localDateKey(row.startedAt), hour)) days.add(key);
+		for (const key of readingDaysOfSitting(row.startedAt)) days.add(key);
 	}
 	return days;
 }
@@ -164,20 +170,43 @@ export interface WpmSession {
 	durationMs: number;
 }
 
-type Bucket = { sumWordsWpm: number; sumWords: number };
+/** A ratio summed per bucket: words over active ms, or dial × words over words. */
+type Bucket = { num: number; den: number };
 
-function addToBucket(map: Map<number, Bucket>, bucketStart: number, wpm: number, words: number) {
-	const bucket = map.get(bucketStart) ?? { sumWordsWpm: 0, sumWords: 0 };
-	bucket.sumWordsWpm += wpm * words;
-	bucket.sumWords += words;
+function addToBucket(map: Map<number, Bucket>, bucketStart: number, num: number, den: number) {
+	const bucket = map.get(bucketStart) ?? { num: 0, den: 0 };
+	bucket.num += num;
+	bucket.den += den;
 	map.set(bucketStart, bucket);
 }
 
+export interface TrendTestMarker {
+	bucketIndex: number;
+	wpm: number;
+	takenAt: number;
+}
+
+/** Each test in the bucket it was taken in; one before the first bucket, or
+ *  without a figure for this view, has no place on the chart. */
+export function trendTestMarkers(
+	tests: readonly { takenAt: number; wpm: number | null }[],
+	starts: readonly number[],
+): TrendTestMarker[] {
+	const markers: TrendTestMarker[] = [];
+	for (const test of tests) {
+		if (test.wpm == null) continue;
+		let bucketIndex = -1;
+		for (let i = 0; i < starts.length && starts[i] <= test.takenAt; i++) bucketIndex = i;
+		if (bucketIndex >= 0) markers.push({ bucketIndex, wpm: test.wpm, takenAt: test.takenAt });
+	}
+	return markers.sort((a, b) => a.takenAt - b.takenAt);
+}
+
 /**
- * WPM trend, words-weighted so one short session can't dominate a bucket. Every
- * reading mode feeds `measured`, the one figure the user asked for; listening
- * feeds nothing. `rsvpTarget` is a reference line built from the dial on RSVP rows
- * only. Bucket width follows the selected period.
+ * WPM trend. `measured` is words over active time per bucket across every
+ * reading mode, the speed model's definition, so the trend and the speed shown
+ * elsewhere agree; listening feeds nothing. `rsvpTarget` is a reference line from
+ * the dial on RSVP rows, words-weighted. Bucket width follows the selected period.
  */
 export function buildWpmTrend(
 	rows: WpmSession[],
@@ -188,46 +217,44 @@ export function buildWpmTrend(
 
 	for (const r of rows) {
 		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
-		// Every reading mode contributes to one measured series. `wpmAvg` is not
-		// usable here: on rsvp rows it holds the dial, which is an input.
+		// `wpmAvg` is not usable for the measured line: on rsvp rows it holds the dial.
 		if (isMeasurableSitting({ mode: r.mode, wordsRead: r.words, durationMs: r.durationMs })) {
-			const wpm = Math.round(r.words / (r.durationMs / 60_000));
-			if (wpm > 0) addToBucket(measuredBuckets, bucketStart, wpm, r.words);
+			addToBucket(measuredBuckets, bucketStart, r.words, r.durationMs);
 		}
 		if (r.mode === "rsvp" && r.wpmAvg != null) {
-			addToBucket(targetBuckets, bucketStart, r.wpmAvg, Math.max(1, r.words));
+			const weight = Math.max(1, r.words);
+			addToBucket(targetBuckets, bucketStart, r.wpmAvg * weight, weight);
 		}
 	}
 
-	function buildSeries(source: Map<number, Bucket>): WpmPoint[] {
+	const measuredWpm = (b: Bucket) => wpmFrom(b.num, b.den) ?? 0;
+	const dialWpm = (b: Bucket) => (b.den > 0 ? Math.round(b.num / b.den) : 0);
+
+	function buildSeries(source: Map<number, Bucket>, rate: (b: Bucket) => number): WpmPoint[] {
 		return buckets.starts.map((bucketStart) => {
 			const b = source.get(bucketStart);
-			return {
-				bucketStart,
-				avgWpm: b && b.sumWords > 0 ? Math.round(b.sumWordsWpm / b.sumWords) : 0,
-			};
+			return { bucketStart, avgWpm: b ? rate(b) : 0 };
 		});
 	}
 
-	function averageOver(source: Map<number, Bucket>): number {
-		let sumWordsWpm = 0;
-		let sumWords = 0;
+	function averageOver(source: Map<number, Bucket>, rate: (b: Bucket) => number): number {
+		const total: Bucket = { num: 0, den: 0 };
 		for (const bucketStart of buckets.starts) {
 			const b = source.get(bucketStart);
 			if (!b) continue;
-			sumWordsWpm += b.sumWordsWpm;
-			sumWords += b.sumWords;
+			total.num += b.num;
+			total.den += b.den;
 		}
-		return sumWords > 0 ? Math.round(sumWordsWpm / sumWords) : 0;
+		return rate(total);
 	}
 
 	return {
 		granularity: buckets.granularity,
-		measured: buildSeries(measuredBuckets),
-		rsvpTarget: buildSeries(targetBuckets),
+		measured: buildSeries(measuredBuckets, measuredWpm),
+		rsvpTarget: buildSeries(targetBuckets, dialWpm),
 		averages: {
-			measured: averageOver(measuredBuckets),
-			rsvpTarget: averageOver(targetBuckets),
+			measured: averageOver(measuredBuckets, measuredWpm),
+			rsvpTarget: averageOver(targetBuckets, dialWpm),
 		},
 	};
 }
@@ -337,6 +364,40 @@ export function trendBucketsFor(
 		cursor = previousMonthStart(cursor);
 	}
 	return { granularity: "month", starts: starts.reverse() };
+}
+
+/**
+ * Buckets for a speed-model window, spanning just the sittings it holds. A
+ * recent window that reaches back nine days plots days, one that reaches back a
+ * year plots weeks or months, as all time would.
+ */
+export function windowTrendBuckets(
+	window: SpeedWindow,
+	oldestSittingAt: number | undefined,
+	now: number,
+): { granularity: TrendGranularity; starts: number[] } {
+	const oldest = oldestSittingAt ?? now;
+	// Counted in calendar days: a window cut at an hour (30d is now minus 30 days)
+	// can reach into a day the fixed 7 or 30 buckets would leave off.
+	if (window === "30d") return { granularity: "day", starts: localDayStarts(oldest, now, 30) };
+	if (window === "recent") {
+		const days = localDayStarts(oldest, now, 1).length;
+		if (days <= 7) return { granularity: "day", starts: localDayStarts(oldest, now, 7) };
+		if (days <= 31) return { granularity: "day", starts: localDayStarts(oldest, now, 30) };
+	}
+	return trendBucketsFor("all", now, oldest);
+}
+
+/** Day starts back from today to `from`'s day, at least `minDays` of them. */
+function localDayStarts(from: number, now: number, minDays: number): number[] {
+	const first = startOfLocalDay(from);
+	const starts: number[] = [];
+	let cursor = startOfLocalDay(now);
+	while (starts.length < minDays || cursor >= first) {
+		starts.push(cursor);
+		cursor = previousLocalDayStart(cursor);
+	}
+	return starts.reverse();
 }
 
 export interface SpeedSample {

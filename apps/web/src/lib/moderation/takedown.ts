@@ -1,13 +1,14 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { type DbExecutor, db, type Tx } from "~/db";
 import { type SocialTakedown, socialTakedown, syncBooks, syncHighlights } from "~/db/schema";
+import { tombstoneBookmarksOfDeletedBooks } from "~/lib/sync-bookmark-upsert";
 
 export type TakedownScope = SocialTakedown["scope"];
 
 /**
  * Soft-deletes one synced book so the tombstone reaches the owner's devices on
  * the next pull. Content columns are nulled to reclaim space; the row stays as
- * a sticky tombstone and the book's highlights are tombstoned with it.
+ * a sticky tombstone and the book's highlights and bookmarks are tombstoned with it.
  */
 export async function tombstoneBook(
 	tx: Tx,
@@ -31,6 +32,7 @@ export async function tombstoneBook(
 				eq(syncHighlights.deleted, false),
 			),
 		);
+	await tombstoneBookmarksOfDeletedBooks(tx, userId);
 	return true;
 }
 

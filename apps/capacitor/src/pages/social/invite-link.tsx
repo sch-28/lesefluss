@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Copy, Link2, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
@@ -82,16 +82,20 @@ function InviteLinkContent() {
 					</p>
 					{current ? (
 						<>
-							<Input
-								readOnly
-								value={current.url}
-								aria-label="Your invite link"
-								onFocus={(e) => e.currentTarget.select()}
-							/>
-							<p className="text-muted-foreground text-xs">
-								Expires on {formatExpiry(current.expiresAt)}.
-							</p>
-							<div className="flex flex-wrap gap-2">
+							<div className="flex flex-col gap-3">
+								<InputHitArea>
+									<Input
+										readOnly
+										value={current.url}
+										aria-label="Your invite link"
+										onFocus={(e) => e.currentTarget.select()}
+									/>
+								</InputHitArea>
+								<p className="text-muted-foreground text-xs">
+									Expires on {formatExpiry(current.expiresAt)}.
+								</p>
+							</div>
+							<div className="flex flex-wrap gap-x-2 gap-y-4">
 								<Button size="sm" onClick={() => share(current.url)}>
 									<Share2 /> Share
 								</Button>
@@ -105,14 +109,6 @@ function InviteLinkContent() {
 									onClick={() => setConfirm("replace")}
 								>
 									<Link2 /> New link
-								</Button>
-								<Button
-									size="sm"
-									variant="ghost"
-									disabled={isBusy}
-									onClick={() => setConfirm("revoke")}
-								>
-									<Trash2 /> Revoke
 								</Button>
 							</div>
 						</>
@@ -136,6 +132,20 @@ function InviteLinkContent() {
 					<PasteInviteField />
 				</div>
 			</Section>
+
+			{current && (
+				<Section title="Danger zone">
+					<button
+						type="button"
+						disabled={isBusy}
+						onClick={() => setConfirm("revoke")}
+						className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-muted/60 disabled:opacity-50"
+					>
+						<Trash2 className="size-5" />
+						<span className="font-medium text-sm">Revoke invite link</span>
+					</button>
+				</Section>
+			)}
 
 			<ConfirmDialog
 				open={confirm !== null}

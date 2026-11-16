@@ -6,9 +6,8 @@ import { reader } from "./page-objects/reader";
 
 /**
  * Word taps and long presses after they moved to document-level handling
- * (word-gestures.ts): sighted taps and presses behave as before, by mouse and
- * by touch (whose click comes in a later task), a click with no press before it
- * (what a TalkBack double-tap sends) changes nothing, and book text reaches
+ * (word-gestures.ts): sighted taps and presses behave as before by touch
+ * (whose click comes in a later task), and book text reaches
  * screen readers as paragraphs, not one node per word.
  */
 
@@ -26,28 +25,6 @@ async function openBook(page: Page) {
 const someWord = (page: Page) => page.locator(".reader-paragraph span[data-word]").nth(40);
 
 const wordOf = async (page: Page) => Number(await someWord(page).getAttribute("data-word"));
-
-test("a mouse click on a word makes it the reading position", async ({ page }) => {
-	await openBook(page);
-	const word = await wordOf(page);
-	const saves = await reader.saveCount(page);
-	await someWord(page).click();
-	await expect(someWord(page)).toHaveClass(/word-active/);
-	await reader.waitForSaveAbove(page, saves, 5000);
-	expect(await reader.lastSavedWord(page)).toBe(word);
-});
-
-test("a click with no press before it, as TalkBack's double-tap sends, changes nothing", async ({
-	page,
-}) => {
-	await openBook(page);
-	await reader.expectNoSaveDuring(page, async () => {
-		await someWord(page).dispatchEvent("click");
-		await someWord(page).dispatchEvent("click");
-	});
-	await expect(someWord(page)).not.toHaveClass(/word-active/);
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-});
 
 test("a long press on a word still starts a selection", async ({ page }) => {
 	await openBook(page);

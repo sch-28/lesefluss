@@ -1,10 +1,10 @@
 import { isLikelyUrl, normalizeUrl } from "@lesefluss/book-import";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { Modal } from "../../components/modal";
+import { EntryDialog } from "../../components/entry-dialog";
 
 interface PasteUrlModalProps {
 	isOpen: boolean;
@@ -33,7 +33,7 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 	};
 
 	return (
-		<Modal
+		<EntryDialog
 			open={isOpen}
 			onOpenChange={(open) => {
 				if (!open) onClose();
@@ -42,25 +42,36 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 			description="Paste an article link or a supported web novel URL from Royal Road, ScribbleHub, Archive of Our Own, or Wuxiaworld."
 			dismissable={!isImporting}
 		>
-			<Input
-				type="url"
-				inputMode="url"
-				autoCapitalize="off"
-				autoCorrect="off"
-				spellCheck={false}
-				placeholder="https://www.royalroad.com/fiction/..."
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") handleSubmit();
+			{/* noValidate: a bare "example.com" fails type=url but normalizeUrl accepts it. */}
+			<form
+				noValidate
+				className="flex flex-col gap-3"
+				onSubmit={(e) => {
+					e.preventDefault();
+					handleSubmit();
 				}}
-				disabled={isImporting}
-			/>
-			<Button onClick={handleSubmit} disabled={!canSubmit} className="w-full">
-				{isImporting ? <Loader2 className="animate-spin" /> : null}
-				{isImporting ? "Importing..." : "Import"}
-			</Button>
-		</Modal>
+			>
+				<InputHitArea>
+					<Input
+						type="url"
+						inputMode="url"
+						autoCapitalize="off"
+						autoCorrect="off"
+						spellCheck={false}
+						enterKeyHint="go"
+						aria-label="Book or article URL"
+						placeholder="https://www.royalroad.com/fiction/..."
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						disabled={isImporting}
+					/>
+				</InputHitArea>
+				<Button type="submit" disabled={!canSubmit} className="w-full">
+					{isImporting ? <Loader2 className="animate-spin" /> : null}
+					{isImporting ? "Importing..." : "Import"}
+				</Button>
+			</form>
+		</EntryDialog>
 	);
 };
 

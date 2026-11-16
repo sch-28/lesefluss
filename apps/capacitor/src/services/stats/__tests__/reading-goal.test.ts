@@ -65,8 +65,7 @@ function input(goal: GoalParams, overrides: Partial<GoalPlanInput> = {}): GoalPl
 		goal,
 		book: { wordCount: WORDS, wordPosition: goal.startWord },
 		sessions: [],
-		bookWpm: null,
-		globalWpm: null,
+		pace: { wpm: 225, source: "default" },
 		now: at("2026-03-01", "12:00"),
 		...overrides,
 	};
@@ -96,8 +95,18 @@ describe("newGoalPlanFields", () => {
 			WORDS,
 			at("2026-03-01"),
 		);
-		// 100 / 0.55 = 181.8, so 182 days including the first.
-		expect(fields.targetDate).toBe("2026-08-29");
+		// 0.55% of 1000 words is 6 whole words a day, as the plan line reads it: 167 days.
+		expect(fields.targetDate).toBe("2026-08-14");
+		const p = plan(
+			input({
+				...fields,
+				status: "active",
+				startedAt: at("2026-03-01"),
+				startWord: wordPos(0),
+				completedAt: null,
+			}),
+		);
+		expect(p.planSeries.at(-1)?.date).toBe(fields.targetDate);
 	});
 });
 
@@ -107,15 +116,17 @@ describe("today's target", () => {
 		expect(p.dailyTarget.words).toBe(100);
 		expect(p.dailyTarget.percent).toBeCloseTo(10);
 		expect(p.dailyTarget.minutes).toBeCloseTo(100 / 225);
-		expect(p.pace).toEqual({ wpm: 225, isMeasured: false });
+		expect(p.pace).toEqual({ wpm: 225, source: "default" });
 	});
 
-	it("prefers this book's speed, then the global measured speed", () => {
+	it("converts words to minutes at the pace it is given", () => {
 		const goal = deadlineGoal("2026-03-10");
-		expect(plan(input(goal, { bookWpm: 200, globalWpm: 300 })).dailyTarget.minutes).toBeCloseTo(
-			0.5,
-		);
-		expect(plan(input(goal, { globalWpm: 250 })).dailyTarget.minutes).toBeCloseTo(0.4);
+		expect(
+			plan(input(goal, { pace: { wpm: 200, source: "book" } })).dailyTarget.minutes,
+		).toBeCloseTo(0.5);
+		expect(
+			plan(input(goal, { pace: { wpm: 250, source: "measured" } })).dailyTarget.minutes,
+		).toBeCloseTo(0.4);
 	});
 
 	it("does not change while reading during the same day", () => {
@@ -423,7 +434,7 @@ describe("counters", () => {
 		expect(p.daysTargetMet).toBe(1);
 	});
 
-	it("ignores reading earlier on the day the goal was created", () => {
+	it("counts reading earlier on the day the goal was created, once", () => {
 		const created = at("2026-03-01", "15:00");
 		const goal = deadlineGoal("2026-03-10", created, 200);
 		const p = plan(
@@ -433,11 +444,27 @@ describe("counters", () => {
 				book: { wordCount: WORDS, wordPosition: 200 },
 			}),
 		);
+		expect(p.dayStartWord).toBe(0);
+		expect(p.progressToday.words).toBe(200);
+		expect(p.daysRead).toBe(1);
+		// The whole book over 10 days, from the morning's start: the morning is not a head start.
+		expect(p.dailyTarget.words).toBe(100);
+		expect(p.aheadBehind.words).toBe(100);
+	});
+
+	it("leaves reading from before the goal's day out", () => {
+		const created = at("2026-03-02", "15:00");
+		const goal = deadlineGoal("2026-03-11", created, 200);
+		const p = plan(
+			input(goal, {
+				now: at("2026-03-02", "16:00"),
+				sessions: [session("2026-03-01", "21:00", 0, 200)],
+				book: { wordCount: WORDS, wordPosition: 200 },
+			}),
+		);
 		expect(p.dayStartWord).toBe(200);
 		expect(p.progressToday.words).toBe(0);
 		expect(p.daysRead).toBe(0);
-		// 800 left over 10 days.
-		expect(p.dailyTarget.words).toBe(80);
 	});
 });
 
@@ -713,6 +740,20 @@ describe("replanGoal", () => {
 		expect(after.aheadBehind.words).toBe(0);
 	});
 
+	it("keeps the morning's reading when the plan restarts on the goal's first day", () => {
+		const goal = deadlineGoal("2026-03-10", at("2026-03-01", "15:00"), 200);
+		const day = {
+			now: at("2026-03-01", "16:00"),
+			sessions: [session("2026-03-01", "09:00", 0, 200)],
+			book: { wordCount: WORDS, wordPosition: wordPos(200) },
+		};
+		const fields = replanGoal(input(goal, day), { targetDate: "2026-03-20" });
+		expect(fields.planStartWord).toBe(0);
+		const after = plan(input({ ...goal, ...fields }, day));
+		expect(after.dayStartWord).toBe(0);
+		expect(after.progressToday.words).toBe(200);
+	});
+
 	it("restarts the plan line, so earlier misses no longer count as behind", () => {
 		const goal = deadlineGoal("2026-03-10");
 		const book = { wordCount: WORDS, wordPosition: wordPos(140) };
@@ -723,5 +764,216 @@ describe("replanGoal", () => {
 		const after = plan(input({ ...goal, ...fields }, { now, sessions: history, book }));
 		expect(after.aheadBehind.words).toBe(0);
 		expect(after.targetDate).toBe("2026-03-20");
+	});
+});
+
+describe("minute goals", () => {
+	const WPM = 10;
+
+	function minuteGoal(dailyMinutes: number, created = at("2026-03-01", "10:00")) {
+		return {
+			...newGoalPlanFields(
+				{ mode: "pace", dailyPercent: ((dailyMinutes * WPM) / WORDS) * 100, dailyMinutes },
+				0,
+				WORDS,
+				created,
+			),
+			status: "active",
+			startedAt: created,
+			startWord: wordPos(0),
+			completedAt: null,
+		} satisfies GoalParams;
+	}
+
+	function timed(
+		date: string,
+		time: string,
+		startWord: number,
+		endWord: number,
+		minutes: number,
+	): GoalSession {
+		return { ...session(date, time, startWord, endWord), durationMs: minutes * MINUTE };
+	}
+
+	function minuteInput(goal: GoalParams, overrides: Partial<GoalPlanInput> = {}) {
+		return input(goal, { pace: { wpm: WPM, source: "book" }, ...overrides });
+	}
+
+	it("stores the minutes, and a deadline goal stores none", () => {
+		expect(minuteGoal(20).dailyMinutes).toBe(20);
+		expect(deadlineGoal("2026-03-10").dailyMinutes).toBeNull();
+		expect(paceGoal(5).dailyMinutes).toBeNull();
+	});
+
+	it("counts active minutes across sittings and modes, not words", () => {
+		const goal = minuteGoal(20);
+		const p = plan(
+			minuteInput(goal, {
+				book: { wordCount: WORDS, wordPosition: 30 },
+				sessions: [
+					timed("2026-03-01", "11:00", 0, 20, 8),
+					{ ...timed("2026-03-01", "11:30", 20, 30, 7), startedAt: at("2026-03-01", "11:20") },
+				],
+				now: at("2026-03-01", "12:00"),
+			}),
+		);
+		expect(p.dailyMinutes).toBe(20);
+		expect(p.dailyTarget.minutes).toBe(20);
+		expect(p.progressToday.minutes).toBe(15);
+		expect(p.isTodayMet).toBe(false);
+	});
+
+	it("meets a day on minutes even when few words were read", () => {
+		const goal = minuteGoal(20);
+		const p = plan(
+			minuteInput(goal, {
+				book: { wordCount: WORDS, wordPosition: 5 },
+				sessions: [timed("2026-03-01", "11:00", 0, 5, 25)],
+				now: at("2026-03-01", "12:00"),
+			}),
+		);
+		expect(p.isTodayMet).toBe(true);
+		expect(p.daysTargetMet).toBe(1);
+	});
+
+	it("judges past days by their minutes", () => {
+		const goal = minuteGoal(20);
+		const p = plan(
+			minuteInput(goal, {
+				book: { wordCount: WORDS, wordPosition: 500 },
+				sessions: [
+					timed("2026-03-01", "18:00", 0, 400, 5),
+					timed("2026-03-02", "18:00", 400, 450, 30),
+				],
+				now: at("2026-03-03", "09:00"),
+			}),
+		);
+		// 1 March read far but briefly; 2 March read little but long enough.
+		expect(p.daysTargetMet).toBe(1);
+	});
+
+	it("counts minutes read earlier on the day the goal began", () => {
+		const goal = minuteGoal(20, at("2026-03-01", "12:00"));
+		const p = plan(
+			minuteInput(goal, {
+				sessions: [timed("2026-03-01", "11:00", 0, 10, 30)],
+				now: at("2026-03-01", "13:00"),
+			}),
+		);
+		expect(p.progressToday.minutes).toBe(30);
+		expect(p.isTodayMet).toBe(true);
+	});
+
+	it("does not count minutes read the day before the goal began", () => {
+		const goal = minuteGoal(20, at("2026-03-02", "12:00"));
+		const p = plan(
+			minuteInput(goal, {
+				sessions: [timed("2026-03-01", "11:00", 0, 10, 30)],
+				now: at("2026-03-02", "13:00"),
+			}),
+		);
+		expect(p.progressToday.minutes).toBe(0);
+		expect(p.isTodayMet).toBe(false);
+	});
+
+	it("projects the finish from the minutes at the pace the goal was set with", () => {
+		// 20 min × 10 wpm = 200 words a day: 1000 words take 5 days.
+		const p = plan(minuteInput(minuteGoal(20)));
+		expect(p.dailyTarget.words).toBe(200);
+		expect(p.projectedFinishDate).toBe("2026-03-05");
+		// A faster pace since then moves the finish only through the words actually read.
+		const faster = plan(minuteInput(minuteGoal(20), { pace: { wpm: 25, source: "book" } }));
+		expect(faster.projectedFinishDate).toBe("2026-03-05");
+		const readFar = plan(
+			minuteInput(minuteGoal(20), {
+				book: { wordCount: WORDS, wordPosition: 500 },
+				sessions: [timed("2026-03-01", "11:00", 0, 500, 20)],
+			}),
+		);
+		expect(readFar.projectedFinishDate).toBe("2026-03-04");
+	});
+
+	it("keeps a pace goal's stored target date when the day's earlier reading counts", () => {
+		const created = at("2026-05-01", "15:00");
+		const fields = newGoalPlanFields({ mode: "pace", dailyPercent: 1 }, 200, WORDS, created);
+		const goal = {
+			...fields,
+			status: "active",
+			startedAt: created,
+			startWord: wordPos(200),
+			completedAt: null,
+		} satisfies GoalParams;
+		const p = plan(
+			input(goal, {
+				now: at("2026-05-01", "16:00"),
+				sessions: [session("2026-05-01", "09:00", 0, 200)],
+				book: { wordCount: WORDS, wordPosition: 200 },
+			}),
+		);
+		expect(p.progressToday.words).toBe(200);
+		expect(p.targetDate).toBe(fields.targetDate);
+		expect(p.projectedFinishDate).toBe(fields.targetDate);
+		expect(p.planSeries.at(-1)?.date).toBe(fields.targetDate);
+		expect(p.aheadBehind.words).toBe(0);
+	});
+
+	it("shows one finish date on the card, the chart's end and the stored target date", () => {
+		// The device case: a long book, a fractional pace, a stored percent rounded up.
+		const words = 1_267_069;
+		const dailyPercent = Math.ceil(((30 * 247.3) / words) * 100 * 100) / 100;
+		const created = at("2026-11-07", "10:00");
+		const fields = newGoalPlanFields(
+			{ mode: "pace", dailyPercent, dailyMinutes: 30 },
+			1_000,
+			words,
+			created,
+		);
+		const goal = {
+			...fields,
+			status: "active",
+			startedAt: created,
+			startWord: wordPos(1_000),
+			completedAt: null,
+		} satisfies GoalParams;
+		for (const wpm of [247.3, 261.8]) {
+			const p = plan(
+				input(goal, {
+					book: { wordCount: words, wordPosition: 1_000 },
+					pace: { wpm, source: "book" },
+					now: at("2026-11-07", "12:00"),
+				}),
+			);
+			expect(p.projectedFinishDate).toBe(fields.targetDate);
+			expect(p.targetDate).toBe(fields.targetDate);
+			expect(p.planSeries.at(-1)?.date).toBe(fields.targetDate);
+		}
+		const replanned = replanGoal(
+			input(goal, {
+				book: { wordCount: words, wordPosition: 1_000 },
+				pace: { wpm: 261.8, source: "book" },
+				now: at("2026-11-09", "09:00"),
+			}),
+			{ dailyMinutes: 45, dailyPercent: dailyPercent * 1.5 },
+		);
+		const after = plan(
+			input(
+				{ ...goal, ...replanned },
+				{
+					book: { wordCount: words, wordPosition: 1_000 },
+					now: at("2026-11-09", "10:00"),
+				},
+			),
+		);
+		expect(after.projectedFinishDate).toBe(replanned.targetDate);
+		expect(after.planSeries.at(-1)?.date).toBe(replanned.targetDate);
+	});
+
+	it("keeps the minutes through a replan and drops them on a switch to a deadline", () => {
+		const goal = minuteGoal(20);
+		const i = minuteInput(goal, { now: at("2026-03-02", "09:00") });
+		expect(replanGoal(i, {}).dailyMinutes).toBe(20);
+		expect(replanGoal(i, { dailyMinutes: 45 }).dailyMinutes).toBe(45);
+		expect(replanGoal(i, { dailyMinutes: null }).dailyMinutes).toBeNull();
+		expect(replanGoal(i, { mode: "deadline", targetDate: "2026-03-20" }).dailyMinutes).toBeNull();
 	});
 });

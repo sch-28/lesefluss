@@ -1,220 +1,313 @@
-import { ResponsiveLine } from "@nivo/line";
-import { motion } from "framer-motion";
-import { useMemo } from "react";
-import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
+import { AVERAGE_READER_WPM, type SpeedWindow } from "@lesefluss/core";
+import { useRef } from "react";
+import { useElementWidth } from "../../../hooks/use-element-width";
 import { queryHooks } from "../../../services/db/hooks";
-import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
+import type { SpeedTrendMode } from "../../../services/db/queries/stats";
+import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
-import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
-import { evenTickIndices, formatDayTick } from "./chart-axis";
-import { ChartTooltip } from "./chart-tooltip";
-import { buildNivoTheme } from "./nivo-theme";
+import { formatShortDate } from "../../../utils/date-utils";
+import { evenTickIndices } from "./chart-axis";
 
-const COLORS = {
-	rsvpTarget: "#c94b2a", // brand orange
-	measured: { dark: "#94a3b8", light: "#475569" }, // slate
-} as const;
+/** Until the card is measured; the chart then draws at its real width so text never scales. */
+const DEFAULT_WIDTH = 358;
+const HEIGHT = 150;
+const PLOT_LEFT = 30;
+// Room right of the plot for the reference line labels, so they never sit on the line.
+const LABEL_GUTTER = 50;
+const PLOT_TOP = 10;
+const PLOT_BOTTOM = 120;
+const GRID_LINES = 4;
+const MAX_X_LABELS = 4;
+const AXIS_STEPS = [10, 20, 25, 50, 100, 200, 500];
 
-const MAX_AXIS_TICKS = 5;
+const NO_TESTS: TrendTestMarker[] = [];
 
-function formatBucketTick(starts: number[], granularity: TrendGranularity, index: number): string {
-	const start = starts[index];
-	if (start === undefined) return "";
+/**
+ * The y-axis around the data, not from zero: three steps that cover the lowest and
+ * highest value, so a 20 wpm change reads as a change and not as a flat line.
+ */
+export function wpmAxisDomain(values: readonly number[]): {
+	min: number;
+	max: number;
+	step: number;
+} {
+	const shown = values.filter((v) => v > 0);
+	if (shown.length === 0) return { min: 0, max: 300, step: 100 };
+	const low = Math.min(...shown);
+	const high = Math.max(...shown);
+	for (const step of AXIS_STEPS) {
+		const min = Math.floor(low / step) * step;
+		if (min + step * (GRID_LINES - 1) >= high)
+			return { min, max: min + step * (GRID_LINES - 1), step };
+	}
+	const step = AXIS_STEPS.at(-1) ?? 500;
+	const min = Math.floor(low / step) * step;
+	return { min, max: min + step * Math.ceil((high - min) / step), step };
+}
+
+/** The x-axis starts at the first bucket with data, so a window's empty start isn't drawn. */
+export function firstShownBucket(
+	measured: readonly { avgWpm: number }[],
+	tests: readonly TrendTestMarker[],
+): number {
+	const firstReading = measured.findIndex((p) => p.avgWpm > 0);
+	const candidates = [
+		...(firstReading >= 0 ? [firstReading] : []),
+		...tests.map((t) => t.bucketIndex),
+	];
+	return candidates.length > 0 ? Math.max(0, Math.min(...candidates)) : 0;
+}
+
+function formatBucketTick(start: number, granularity: TrendGranularity): string {
 	const d = new Date(start);
 	switch (granularity) {
 		case "hour":
-			return `${String(d.getHours()).padStart(2, "0")}:00`;
+			return d.toLocaleTimeString(undefined, { hour: "numeric" });
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:
-			return formatDayTick(start);
+			return formatShortDate(start);
 	}
+}
+
+/** The x-axis legend names the window and the dates it covers, so "Last 10h" over two weeks of ticks reads right. */
+export function trendAxisLegend(windowLabel: string, bucketStarts: readonly number[]): string {
+	const first = bucketStarts[0];
+	const last = bucketStarts.at(-1);
+	if (first === undefined || last === undefined) return windowLabel;
+	const from = formatShortDate(first);
+	const to = formatShortDate(last);
+	return from === to ? `${windowLabel} · ${from}` : `${windowLabel} · ${from} – ${to}`;
+}
+
+function ChartFrame({
+	width,
+	label,
+	children,
+}: {
+	width: number;
+	label: string;
+	children?: React.ReactNode;
+}) {
+	return (
+		<svg
+			viewBox={`0 0 ${width} ${HEIGHT}`}
+			className="block w-full"
+			style={{ height: HEIGHT }}
+			role="img"
+			aria-label={label}
+		>
+			{children}
+		</svg>
+	);
 }
 
 interface Props {
-	period: TrendPeriod;
-	periodLabel: string;
+	window: SpeedWindow;
+	mode: SpeedTrendMode;
+	windowLabel: string;
 	now: number;
 }
 
-export function WpmTrend({ period, periodLabel, now }: Props) {
-	const { theme, isEinkMode } = useTheme();
-	const trend = queryHooks.useStatsWpmTrend(period, now);
-	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
-
-	const points = useMemo(
-		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
-		[trend.data],
+/** The measured element stays mounted across loading and mode switches, so the width keeps following it. */
+export function WpmTrend(props: Props) {
+	const frameRef = useRef<HTMLDivElement>(null);
+	const width = useElementWidth(frameRef) || DEFAULT_WIDTH;
+	return (
+		<div ref={frameRef}>
+			<WpmTrendChart {...props} width={width} />
+		</div>
 	);
-	const hasReading = points.some((p) => p.y > 0);
-	const lineColor = isDarkTheme(theme) ? COLORS.measured.dark : COLORS.measured.light;
-	const chartData = useMemo(
-		() => [{ id: "Reading speed", color: lineColor, data: points }],
-		[lineColor, points],
-	);
+}
 
-	if (!trend.isLoading && !hasReading) {
+function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { width: number }) {
+	const trend = queryHooks.useStatsWpmTrend(window, mode, now);
+	const plotRight = width - LABEL_GUTTER;
+	const data = trend.data;
+	const tests = data?.tests ?? NO_TESTS;
+
+	if (!data) {
 		return (
-			<motion.section
-				initial={{ opacity: 0, y: 12 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true, amount: 0.25 }}
-				transition={{ duration: 0.5 }}
-				className="mb-10 px-4"
-			>
-				<header className="mb-3">
-					<h2 className="font-semibold text-lg">Reading speed</h2>
-				</header>
-				<div className="rounded-xl border border-current/15 border-dashed p-6 text-center text-sm opacity-70">
-					Read in any mode to see your speed trend.
-				</div>
-			</motion.section>
+			<div data-testid="wpm-trend-loading">
+				<ChartFrame width={width} label="Reading speed chart" />
+			</div>
 		);
 	}
 
-	const averages = trend.data?.averages ?? { measured: 0, rsvpTarget: 0 };
-	const granularity = trend.data?.granularity ?? "week";
-	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
-	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
-	const hasRsvpTarget = averages.rsvpTarget > 0;
-	const yMax = Math.max(AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((point) => point.y));
-	// nivo already puts role="img" on the svg; this gives it a label, so the chart
-	// reads as one sentence rather than a pile of numbers.
-	const chartSummary = trend.data
-		? summariseWpmTrend(trend.data, periodLabel)
-		: "Reading speed chart";
+	const measured = data.measured;
+	const hasReading = measured.some((p) => p.avgWpm > 0);
+	if (!hasReading && tests.length === 0) {
+		return (
+			<p className="m-0 text-muted-foreground text-sm">
+				Not enough reading in this window for a trend.
+			</p>
+		);
+	}
+
+	const start = firstShownBucket(measured, tests);
+	const end = Math.max(start, measured.length - 1);
+	const x = (i: number) =>
+		end === start ? plotRight : PLOT_LEFT + ((i - start) / (end - start)) * (plotRight - PLOT_LEFT);
+	const domain = wpmAxisDomain([...measured.map((p) => p.avgWpm), ...tests.map((t) => t.wpm)]);
+	const y = (wpm: number) =>
+		PLOT_BOTTOM - ((wpm - domain.min) / (domain.max - domain.min)) * (PLOT_BOTTOM - PLOT_TOP);
+	const inRange = (wpm: number) => wpm >= domain.min && wpm <= domain.max;
+
+	const points = measured.flatMap((p, i) =>
+		p.avgWpm > 0 && i >= start ? [{ x: x(i), y: y(p.avgWpm) }] : [],
+	);
+	const line = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+	const first = points[0];
+	const last = points.at(-1);
+	const area =
+		first && last
+			? `M${first.x.toFixed(1)},${PLOT_BOTTOM} L${line.split(" ").join(" L")} L${last.x.toFixed(1)},${PLOT_BOTTOM} Z`
+			: null;
+
+	const shownStarts = measured.slice(start, end + 1).map((p) => p.bucketStart);
+	const ticks = evenTickIndices(shownStarts.length, MAX_X_LABELS);
+	const dial = data.averages.rsvpTarget;
 
 	return (
-		<motion.section
-			initial={{ opacity: 0, y: 12 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true, amount: 0.25 }}
-			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
-		>
-			<header className="mb-3 flex items-end justify-between">
-				<div>
-					<h2 className="font-semibold text-lg">Reading speed</h2>
-					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
-						{periodLabel} · words per minute
-					</p>
-				</div>
-				<div className="text-right">
-					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">
-						{averages.measured}
-					</div>
-					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
-						words per minute
-					</div>
-					{hasRsvpTarget && (
-						<div className="mt-0.5 text-[11px] opacity-60">RSVP set to {averages.rsvpTarget}</div>
-					)}
-				</div>
-			</header>
+		<div data-testid="wpm-trend">
+			<ChartFrame
+				width={width}
+				label={summariseWpmTrend(data, trendAxisLegend(windowLabel, shownStarts))}
+			>
+				{Array.from({ length: GRID_LINES }, (_, i) => {
+					const wpm = domain.min + i * domain.step;
+					return (
+						<g key={wpm}>
+							<line
+								x1={PLOT_LEFT}
+								x2={plotRight}
+								y1={y(wpm)}
+								y2={y(wpm)}
+								className="stroke-border"
+							/>
+							<text
+								x={PLOT_LEFT - 6}
+								y={y(wpm) + 4}
+								textAnchor="end"
+								className="fill-muted-foreground text-[10px]"
+							>
+								{wpm}
+							</text>
+						</g>
+					);
+				})}
+				{area && <path d={area} className="fill-primary" opacity={0.12} />}
+				{inRange(AVERAGE_READER_WPM) && (
+					<ReferenceLine
+						y={y(AVERAGE_READER_WPM)}
+						plotRight={plotRight}
+						lines={["Avg", "reader"]}
+						testId="wpm-trend-avg"
+					/>
+				)}
+				{dial > 0 && inRange(dial) && (
+					<ReferenceLine
+						y={y(dial)}
+						plotRight={plotRight}
+						lines={["Dial"]}
+						testId="wpm-trend-dial"
+					/>
+				)}
+				{points.length > 1 && (
+					<polyline
+						points={line}
+						className="fill-none stroke-primary"
+						strokeWidth={2}
+						strokeLinejoin="round"
+					/>
+				)}
+				{points.map((p) => (
+					<circle key={p.x} cx={p.x} cy={p.y} r={2.5} className="fill-primary" />
+				))}
+				{last && (
+					<circle
+						cx={last.x}
+						cy={last.y}
+						r={4.5}
+						className="fill-primary stroke-card"
+						strokeWidth={2}
+					/>
+				)}
+				{tests.map((test) => {
+					const tx = x(Math.max(start, test.bucketIndex));
+					const ty = y(test.wpm);
+					return (
+						<g key={test.takenAt} data-testid="wpm-trend-test">
+							<rect
+								x={tx - 4}
+								y={ty - 4}
+								width={8}
+								height={8}
+								transform={`rotate(45 ${tx} ${ty})`}
+								className="fill-foreground stroke-card"
+								strokeWidth={1.5}
+							/>
+						</g>
+					);
+				})}
+				{ticks.map((i, n) => {
+					const bucketStart = shownStarts[i];
+					if (bucketStart === undefined) return null;
+					const anchor = n === 0 ? "start" : n === ticks.length - 1 ? "end" : "middle";
+					return (
+						<text
+							key={bucketStart}
+							x={x(start + i)}
+							y={HEIGHT - 10}
+							textAnchor={ticks.length === 1 ? "end" : anchor}
+							className="fill-muted-foreground text-[10px]"
+							data-testid="wpm-trend-tick"
+						>
+							{formatBucketTick(bucketStart, data.granularity)}
+						</text>
+					);
+				})}
+			</ChartFrame>
+			{tests.length > 0 && (
+				<p className="m-0 mt-1 text-muted-foreground text-xs">
+					<span aria-hidden="true">◆</span> Speed test
+				</p>
+			)}
+		</div>
+	);
+}
 
-			<div className="h-[220px]" role="img" aria-label={chartSummary}>
-				<ResponsiveLine
-					role="presentation"
-					data={chartData}
-					margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
-					xScale={{ type: "linear" }}
-					// Markers never enter the scale, so the reference lines have to be
-					// folded in by hand or they render off-plot and get clipped.
-					yScale={{ type: "linear", min: 0, max: yMax, stacked: false }}
-					curve="monotoneX"
-					enableArea={true}
-					areaOpacity={0.18}
-					colors={chartData.map((d) => d.color)}
-					lineWidth={2.5}
-					enablePoints={true}
-					pointSize={5}
-					pointColor={{ from: "color" }}
-					pointBorderWidth={2}
-					pointBorderColor={{ from: "serieColor" }}
-					enableGridX={false}
-					axisBottom={{
-						tickSize: 0,
-						tickPadding: 8,
-						tickValues: tickIndices,
-						format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
-						legend: periodLabel,
-						legendPosition: "middle",
-						legendOffset: 36,
-					}}
-					axisLeft={{
-						tickSize: 0,
-						tickPadding: 8,
-						tickValues: 4,
-						legend: "Words per minute",
-						legendPosition: "middle",
-						legendOffset: -44,
-					}}
-					theme={nivoTheme}
-					animate={!isEinkMode}
-					motionConfig="gentle"
-					useMesh={true}
-					tooltip={({ point }) => {
-						const x = Number(point.data.x);
-						const y = Number(point.data.y);
-						const when = formatBucketTick(bucketStarts, granularity, x);
-						return (
-							<ChartTooltip>
-								<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-									<span
-										style={{
-											display: "inline-block",
-											width: 8,
-											height: 8,
-											borderRadius: 9999,
-											backgroundColor: point.seriesColor,
-										}}
-									/>
-									<span style={{ opacity: 0.85 }}>{point.seriesId}</span>
-								</div>
-								<div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-									<span style={{ fontSize: 18, fontWeight: 700 }}>{y}</span>
-									<span style={{ opacity: 0.6 }}>WPM</span>
-								</div>
-								<div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>{when}</div>
-							</ChartTooltip>
-						);
-					}}
-					markers={[
-						{
-							axis: "y",
-							value: AVERAGE_READER_WPM,
-							lineStyle: {
-								stroke: isDarkTheme(theme) ? "#94a3b8" : "#64748b",
-								strokeWidth: 1,
-								strokeDasharray: "4 4",
-								strokeOpacity: 0.6,
-							},
-							legend: `Avg reader ${AVERAGE_READER_WPM}`,
-							legendPosition: "top-left",
-							textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-						},
-						...(hasRsvpTarget
-							? [
-									{
-										axis: "y" as const,
-										value: averages.rsvpTarget,
-										lineStyle: {
-											stroke: COLORS.rsvpTarget,
-											strokeWidth: 1,
-											strokeDasharray: "4 4",
-											strokeOpacity: 0.7,
-										},
-										legend: `Target ${averages.rsvpTarget}`,
-										legendPosition: "top-right" as const,
-										textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-									},
-								]
-							: []),
-					]}
-				/>
-			</div>
-		</motion.section>
+function ReferenceLine({
+	y,
+	plotRight,
+	lines,
+	testId,
+}: {
+	y: number;
+	plotRight: number;
+	lines: string[];
+	testId: string;
+}) {
+	return (
+		<g data-testid={testId}>
+			<line
+				x1={PLOT_LEFT}
+				x2={plotRight}
+				y1={y}
+				y2={y}
+				className="stroke-muted-foreground"
+				strokeDasharray="3 3"
+			/>
+			{lines.map((text, i) => (
+				<text
+					key={text}
+					x={plotRight + 6}
+					y={y - 2 + i * 13}
+					className="fill-muted-foreground text-[10px]"
+				>
+					{text}
+				</text>
+			))}
+		</g>
 	);
 }

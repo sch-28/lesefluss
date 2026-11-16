@@ -36,8 +36,14 @@ vi.mock("../../db/queries", () => ({
 		getAllEntries: vi.fn(async () => []),
 		getSeriesForSync: vi.fn(async () => []),
 		getAllGoalsForSync: vi.fn(async () => []),
+		getAllCollectionsForSync: vi.fn(async () => []),
+		getAllCollectionBooksForSync: vi.fn(async () => []),
+		getAllSmartShelvesForSync: vi.fn(async () => []),
+		getAllBookmarksForSync: vi.fn(async () => []),
+		getAllWishlistForSync: vi.fn(async () => []),
 		completeFinishedGoals: vi.fn(async () => {}),
 		getReadingSessionsSince: vi.fn(async () => []),
+		getSpeedTests: vi.fn(async () => []),
 	},
 }));
 
@@ -50,6 +56,8 @@ vi.mock("../../authed-fetch", async (importOriginal) => ({
 	}),
 }));
 
+import { localDateKey } from "../../../utils/date-utils";
+import { sittingCarries } from "../../reading-sessions/carry";
 import { pushSync } from "../index";
 import {
 	clearAccountScopedState,
@@ -62,6 +70,22 @@ beforeEach(() => {
 	preferenceStore.clear();
 	pushed.length = 0;
 });
+
+function stashBurst(bookId: string) {
+	const now = Date.now();
+	sittingCarries.stash({
+		id: "carry",
+		bookId,
+		dayKey: localDateKey(now),
+		startedAt: now - 30_000,
+		startPos: 0,
+		readSpans: [[0, 100]],
+		accumulatedActiveMs: 30_000,
+		modeActiveMs: { scroll: 30_000 },
+		rsvpDialWpm: null,
+		lastActivityAt: now,
+	});
+}
 
 describe("settings push before adoption", () => {
 	it("withholds fresh-install settings until the account's have been pulled", async () => {
@@ -87,5 +111,11 @@ describe("hasAdoptedServerSettings", () => {
 		preferenceStore.set(LAST_SYNCED_KEY, "123");
 		await clearAccountScopedState();
 		expect(await hasAdoptedServerSettings()).toBe(false);
+	});
+
+	it("drops a waiting short burst, which belongs to the previous account", async () => {
+		stashBurst("b1");
+		await clearAccountScopedState();
+		expect(sittingCarries.take("b1", Date.now())).toBeNull();
 	});
 });

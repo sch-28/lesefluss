@@ -4,6 +4,7 @@ import type {
 	ImportImageAnchor,
 	ImportLink,
 } from "@lesefluss/book-import";
+import type { OpfSeries } from "@lesefluss/book-import/parsers/opf-series";
 import {
 	byteRangeToWordRange,
 	FINISHED_PERCENT_THRESHOLD,
@@ -11,22 +12,28 @@ import {
 	type SerializedWordIndex,
 	WordIndex,
 	type WordPosition,
+	wordPos,
 } from "@lesefluss/core";
 import {
 	and,
+	asc,
 	desc,
 	eq,
 	gt,
+	isNotNull,
 	isNull,
 	lt,
 	lte,
 	ne,
+	or,
 	type SQL,
 	type SQLWrapper,
 	sql,
 } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
+import { log } from "../../../utils/log";
 import type { BookMergeUpdate } from "../../sync/book-merge";
+import { serverClockOffset, serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
@@ -35,6 +42,7 @@ import {
 	type BookImage,
 	bookContent,
 	bookImages,
+	bookmarks,
 	books,
 	type Chapter,
 	glossaryEntries,
@@ -46,6 +54,7 @@ import {
 	readingGoals,
 	readingSessions,
 } from "../schema";
+import { deleteSeriesEmptiedByBook } from "./collections";
 
 /** Reader-editable columns, the ones `metadata_updated_at` is the revision of. */
 const METADATA_COLUMNS = [
@@ -57,6 +66,9 @@ const METADATA_COLUMNS = [
 	"tags",
 	"hideFromProfile",
 ] as const satisfies readonly (keyof NewBook)[];
+
+/** The book-level series, the columns `series_updated_at` is the revision of. */
+const SERIES_COLUMNS = ["seriesName", "seriesIndex"] as const satisfies readonly (keyof NewBook)[];
 
 /** The production drizzle proxy as a chunked-column executor (see long-text.ts). */
 const longText: LongTextExecutor = {
@@ -271,8 +283,12 @@ type BookContentColumns = {
  * `content` and `wordIndex` can each be tens of MB; writing them in one insert
  * OOMs the Capacitor bridge (see long-text.ts). When everything fits one bridge
  * chunk we keep the plain single insert (the common path, unchanged). Otherwise
- * we seed the row with the small columns and append the large ones in chunks. On
- * any failure both rows are deleted so a partial write doesn't orphan content.
+ * we seed the row with the small columns and append the large ones in chunks.
+ *
+ * The `books` row goes in last: a page closed mid-import leaves only a content
+ * row no book points to, never a book with half its text, and
+ * `deleteOrphanedContentRows` clears it on the next start. On a failure both
+ * rows are deleted here.
  */
 async function commitBookContent(
 	book: NewBook,
@@ -284,7 +300,6 @@ async function commitBookContent(
 		content.length <= LONG_TEXT_CHUNK && (wordIndexJson?.length ?? 0) <= LONG_TEXT_CHUNK;
 
 	try {
-		await db.insert(books).values(book);
 		if (fitsOneChunk) {
 			await db.insert(bookContent).values({
 				bookId: book.id,
@@ -324,6 +339,7 @@ async function commitBookContent(
 				);
 			}
 		}
+		await db.insert(books).values(book);
 	} catch (err) {
 		await db
 			.delete(bookContent)
@@ -431,6 +447,7 @@ export async function addBookWithContent(
 	const dbChapters: Chapter[] = (importChapters ?? []).map((ch) => ({
 		title: ch.title,
 		startWord: wi.firstShownWord(ch.startByte),
+		...(ch.level && { level: ch.level }),
 	}));
 	const dbLinks: LinkRange[] = (importLinks ?? []).map((l) => ({
 		href: l.href,
@@ -478,6 +495,11 @@ export async function addServerBookWithContent(
 }
 
 /** The finished rule in SQL, for a book row at `position`. Same rule as `isFinishedPosition`. */
+/** Mirrors core `hasRealProgress`. */
+export function hasRealProgressSql(): SQL {
+	return sql`(${books.firstSittingAt} IS NOT NULL AND ${books.wordPosition} > 0)`;
+}
+
 export function isFinishedSql(position: SQLWrapper | number = books.wordPosition): SQL {
 	return sql`(${books.wordCount} > 0 AND ${position} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD})`;
 }
@@ -504,7 +526,7 @@ export async function updateBook(
 	/** When the change happened. Defaults to now, but the sync pull
 	 *  replays changes made on another device at another time, and stamping
 	 *  those with wall clock would date an old finish to today. */
-	occurredAt: number = Date.now(),
+	occurredAt: number = serverNow(),
 	options: { isDeviceLocal?: boolean; onlyIf?: SQL } = {},
 ): Promise<void> {
 	const stamped: Partial<Omit<NewBook, "id">> = { ...data };
@@ -514,11 +536,15 @@ export async function updateBook(
 	// fields therefore carry their own stamp.
 	const movesPosition = data.wordPosition !== undefined || data.lastRead !== undefined;
 	const editsMetadata = METADATA_COLUMNS.some((column) => data[column] !== undefined);
+	const editsSeries = SERIES_COLUMNS.some((column) => data[column] !== undefined);
 	if (!options.isDeviceLocal && movesPosition && data.updatedAt === undefined) {
 		stamped.updatedAt = occurredAt;
 	}
 	if (!options.isDeviceLocal && editsMetadata && data.metadataUpdatedAt === undefined) {
 		stamped.metadataUpdatedAt = occurredAt;
+	}
+	if (!options.isDeviceLocal && editsSeries && data.seriesUpdatedAt === undefined) {
+		stamped.seriesUpdatedAt = occurredAt;
 	}
 	// Stamp the first crossing of the finished threshold as the position moves.
 	// Done in SQL rather than read-then-write because position saves are frequent
@@ -542,6 +568,48 @@ export async function updateBook(
 		.where(options.onlyIf ? and(eq(books.id, id), options.onlyIf) : eq(books.id, id));
 }
 
+/**
+ * Back to the first word. `finished_at` is kept: it is never cleared, and the
+ * sync pull would restore it anyway, so a finished book goes to Automatic and
+ * stays Finished. Any other book goes to Want to read: its first-sitting marker
+ * cannot be cleared either (it merges earliest-wins), and on Automatic a mere
+ * glance would put it back on Reading. The next real sitting lifts Want to read
+ * (`statusAfterRealSitting`). The revision lands above the row's own, so an
+ * open reader adopts the start instead of saving its old word over it.
+ */
+export async function resetBookProgress(id: string): Promise<void> {
+	const [row] = await db
+		.select({ updatedAt: books.updatedAt, finishedAt: books.finishedAt })
+		.from(books)
+		.where(eq(books.id, id));
+	if (!row) return;
+	const now = serverNow();
+	await updateBook(
+		id,
+		{
+			wordPosition: wordPos(0),
+			status: row.finishedAt == null ? "want" : null,
+			finishedAt: row.finishedAt,
+			updatedAt: Math.max(now, row.updatedAt + 1),
+		},
+		now,
+	);
+}
+
+/**
+ * Records a real sitting that started at `at`, keeping an earlier one. Claims
+ * no revision, like the `finishedAt` catch-up: the marker merges earliest-wins
+ * on its own, and every push carries it.
+ */
+export async function markFirstSitting(id: string, at: number): Promise<void> {
+	await db
+		.update(books)
+		.set({ firstSittingAt: at })
+		.where(
+			and(eq(books.id, id), or(isNull(books.firstSittingAt), sql`${books.firstSittingAt} > ${at}`)),
+		);
+}
+
 export type PositionRow = { wordPosition: number; updatedAt: number };
 
 /**
@@ -549,9 +617,12 @@ export type PositionRow = { wordPosition: number; updatedAt: number };
  * revision is still one the reader has seen (`baseRev`), so it can never replace
  * a newer position written meanwhile (a sync pull, a BLE device). Returns the revision it stamped, whether it landed, and the row as it is now.
  */
-/** A reader write's revision: above every one it has seen, even when this clock is behind. */
+/**
+ * A reader write's revision: `lastRead` on the server's clock, and above every
+ * revision it has seen, even when this clock is behind.
+ */
 export function nextPositionRevision(lastRead: number, baseRev: number): number {
-	return Math.max(lastRead, baseRev + 1);
+	return Math.max(lastRead + serverClockOffset(), baseRev + 1);
 }
 
 /**
@@ -618,6 +689,9 @@ export async function applyBookMerge(
 		review,
 		tags,
 		hideFromProfile,
+		seriesUpdatedAt,
+		seriesName,
+		seriesIndex,
 		...unrouted
 	} = update;
 	// A column added to BookMergeUpdate must be routed above, under its stamp.
@@ -645,6 +719,8 @@ export async function applyBookMerge(
 			.where(eq(books.id, id));
 		if (now && now.updatedAt !== updatedAt) skippedPosition = { wordPosition, updatedAt };
 	}
+	// A missing count is filled whatever the position stamps decided.
+	if (wordCount !== undefined) await setMissingWordCount(id, wordCount);
 	if (metadataUpdatedAt !== undefined) {
 		const metadata = Object.fromEntries(
 			Object.entries({
@@ -663,10 +739,58 @@ export async function applyBookMerge(
 			onlyIf: lt(books.metadataUpdatedAt, metadataUpdatedAt),
 		});
 	}
+	if (seriesUpdatedAt !== undefined) {
+		await updateBook(
+			id,
+			{ seriesName: seriesName ?? null, seriesIndex: seriesIndex ?? null, seriesUpdatedAt },
+			occurredAt,
+			{ onlyIf: lt(books.seriesUpdatedAt, seriesUpdatedAt) },
+		);
+	}
 	if (addedAt !== undefined) {
 		await updateBook(id, { addedAt }, occurredAt, { onlyIf: gt(books.addedAt, addedAt) });
 	}
 	return { unrouted: skipped, skippedPosition };
+}
+
+type BookStamps = {
+	updatedAt: number;
+	metadataUpdatedAt?: number | null;
+	seriesUpdatedAt?: number | null;
+};
+
+/**
+ * Lowers a book's stamps to what the server stored for them (see
+ * `adoptPushStamps`). Only ever lowers, so adopting is never a new revision, and
+ * only while the row still holds the pushed stamp.
+ */
+export async function adoptBookStamps(
+	id: string,
+	pushed: BookStamps,
+	stored: { updatedAt: number; metadataUpdatedAt: number; seriesUpdatedAt?: number },
+): Promise<void> {
+	if (stored.updatedAt < pushed.updatedAt) {
+		await db
+			.update(books)
+			.set({ updatedAt: stored.updatedAt })
+			.where(and(eq(books.id, id), eq(books.updatedAt, pushed.updatedAt)));
+	}
+	if (pushed.metadataUpdatedAt != null && stored.metadataUpdatedAt < pushed.metadataUpdatedAt) {
+		await db
+			.update(books)
+			.set({ metadataUpdatedAt: stored.metadataUpdatedAt })
+			.where(and(eq(books.id, id), eq(books.metadataUpdatedAt, pushed.metadataUpdatedAt)));
+	}
+	if (
+		pushed.seriesUpdatedAt != null &&
+		stored.seriesUpdatedAt !== undefined &&
+		stored.seriesUpdatedAt < pushed.seriesUpdatedAt
+	) {
+		await db
+			.update(books)
+			.set({ seriesUpdatedAt: stored.seriesUpdatedAt })
+			.where(and(eq(books.id, id), eq(books.seriesUpdatedAt, pushed.seriesUpdatedAt)));
+	}
 }
 
 /** Nothing was read in this app before it existed, so a session stamped earlier
@@ -733,6 +857,83 @@ export async function backfillFinishedAt(): Promise<void> {
 }
 
 /**
+ * Only fills a 0, so a count that arrived meanwhile (import, sync) is never
+ * overwritten. Leaves `updated_at` alone: that stamp is the position's revision,
+ * and every push already carries the count.
+ */
+export async function setMissingWordCount(id: string, wordCount: number): Promise<void> {
+	if (wordCount <= 0) return;
+	await db
+		.update(books)
+		.set({ wordCount })
+		.where(and(eq(books.id, id), eq(books.wordCount, 0)));
+}
+
+/**
+ * Count the words of books imported before v1.4.0, whose migration added
+ * `word_count` as 0 and whose fill was removed before release. Rows without a
+ * content row (serial chapters not fetched yet) are skipped.
+ *
+ * @returns how many books got a count.
+ */
+export async function backfillWordCounts(): Promise<number> {
+	const rows = await db
+		.select({ id: books.id })
+		.from(books)
+		.innerJoin(bookContent, eq(bookContent.bookId, books.id))
+		.where(and(eq(books.wordCount, 0), eq(books.deleted, false)));
+	let healed = 0;
+	// One book at a time: each rebuild holds a whole book in memory.
+	for (const { id } of rows) {
+		try {
+			const wordIndex = await loadBookWordIndex(id);
+			if (!wordIndex || wordIndex.wordCount <= 0) continue;
+			await setMissingWordCount(id, wordIndex.wordCount);
+			healed++;
+		} catch (err) {
+			// One unreadable book must not keep every later one at 0 on each start.
+			log.warn("db", `word count backfill skipped ${id}:`, err);
+		}
+	}
+	return healed;
+}
+
+/** Stored EPUB originals whose series was never set or cleared, in id order after `afterId`. */
+export async function getSeriesBackfillCandidates(
+	afterId: string | null,
+	limit: number,
+): Promise<{ id: string; filePath: string }[]> {
+	const rows = await db
+		.select({ id: books.id, filePath: books.filePath })
+		.from(books)
+		.where(
+			and(
+				eq(books.fileFormat, "epub"),
+				isNotNull(books.filePath),
+				isNull(books.seriesName),
+				isNull(books.seriesIndex),
+				eq(books.seriesUpdatedAt, 0),
+				eq(books.deleted, false),
+				afterId === null ? undefined : gt(books.id, afterId),
+			),
+		)
+		.orderBy(asc(books.id))
+		.limit(limit);
+	return rows.flatMap((r) => (r.filePath ? [{ id: r.id, filePath: r.filePath }] : []));
+}
+
+/** Revision 1 beats a series no device ever set and loses to any a user set or
+ *  cleared, on this device or another one this device has not pulled yet. */
+const SERIES_FROM_FILE_REVISION = 1;
+
+/** Sets the series only while the book still has none and no revision. */
+export async function fillEmptyBookSeries(id: string, series: OpfSeries): Promise<void> {
+	await updateBook(id, { ...series, seriesUpdatedAt: SERIES_FROM_FILE_REVISION }, undefined, {
+		onlyIf: and(isNull(books.seriesName), isNull(books.seriesIndex), eq(books.seriesUpdatedAt, 0)),
+	});
+}
+
+/**
  * Mark one book as active and clear isActive on every other book.
  * Also resets position to 0 for the newly activated book.
  *
@@ -770,8 +971,9 @@ export async function deleteBook(id: string): Promise<void> {
 	// content, and a later retry cleans them up.
 	await db
 		.update(books)
-		.set({ deleted: true, isActive: false, updatedAt: Date.now() })
+		.set({ deleted: true, isActive: false, updatedAt: serverNow() })
 		.where(eq(books.id, id));
+	await deleteSeriesEmptiedByBook(id);
 	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
@@ -782,6 +984,32 @@ export async function deleteBook(id: string): Promise<void> {
 		.update(readingGoals)
 		.set({ deleted: true, updatedAt: Date.now() })
 		.where(and(eq(readingGoals.bookId, id), eq(readingGoals.deleted, false)));
+	await db
+		.update(bookmarks)
+		.set({ deleted: true, updatedAt: serverNow() })
+		.where(and(eq(bookmarks.bookId, id), eq(bookmarks.deleted, false)));
+}
+
+/**
+ * Deletes content and image rows no book points to, left behind by a page that
+ * closed mid-import (see `commitBookContent`). Run at start, before anything
+ * can be importing. Returns how many content rows went.
+ */
+export async function deleteOrphanedContentRows(): Promise<number> {
+	const noBook = (bookId: SQLWrapper) => sql`${bookId} NOT IN (SELECT ${books.id} FROM ${books})`;
+	const orphans = await db
+		.select({ bookId: bookContent.bookId })
+		.from(bookContent)
+		.where(noBook(bookContent.bookId));
+	if (orphans.length > 0) await db.delete(bookContent).where(noBook(bookContent.bookId));
+	// Each write rewrites the whole legacy web store, so a clean start must write nothing.
+	const orphanImage = await db
+		.select({ bookId: bookImages.bookId })
+		.from(bookImages)
+		.where(noBook(bookImages.bookId))
+		.limit(1);
+	if (orphanImage.length > 0) await db.delete(bookImages).where(noBook(bookImages.bookId));
+	return orphans.length;
 }
 
 /**
@@ -795,5 +1023,6 @@ export async function hardDeleteBook(id: string): Promise<void> {
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(bookImages).where(eq(bookImages.bookId, id));
 	await db.delete(readingGoals).where(eq(readingGoals.bookId, id));
+	await db.delete(bookmarks).where(eq(bookmarks.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
 }

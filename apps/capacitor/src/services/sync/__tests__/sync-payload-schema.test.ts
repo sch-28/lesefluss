@@ -1,4 +1,4 @@
-import { type SyncBook, SyncPayloadSchema } from "@lesefluss/core";
+import { type SyncBook, SyncPayloadSchema, SyncWishlistItemSchema } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 
 function chapterRow(i: number): SyncBook {
@@ -119,5 +119,44 @@ describe("SyncPayloadSchema word-only shape", () => {
 			],
 		});
 		expect(result.success).toBe(true);
+	});
+});
+
+describe("SyncWishlistItemSchema", () => {
+	const item = {
+		itemId: "a1b2c3d4e5f60718",
+		kind: "catalog",
+		ref: "gutenberg:1342",
+		title: "Pride and Prejudice",
+		author: null,
+		coverUrl: null,
+		deleted: false,
+		createdAt: 1700000000000,
+		updatedAt: 1700000000000,
+	};
+
+	it.each([
+		["a Gutenberg id", { ref: "gutenberg:1342" }],
+		["a Standard Ebooks id", { ref: "se:mary-shelley/frankenstein" }],
+		["a source with an underscore", { ref: "standard_ebooks:jane-austen/emma" }],
+		["a series URL", { kind: "serial", ref: "https://www.royalroad.com/fiction/1/x" }],
+		["an http cover", { coverUrl: "https://covers.test/a.jpg" }],
+	])("accepts %s", (_name, over) => {
+		expect(SyncWishlistItemSchema.safeParse({ ...item, ...over }).success).toBe(true);
+	});
+
+	it.each([
+		["a URL as a catalog ref", { ref: "https://example.test/book" }],
+		["a catalog id as a series ref", { kind: "serial", ref: "gutenberg:1342" }],
+		["a script URL as a series ref", { kind: "serial", ref: "javascript:alert(1)" }],
+		["a data URL cover", { coverUrl: "data:image/png;base64,AAAA" }],
+		["an unknown kind", { kind: "podcast" }],
+	])("rejects %s", (_name, over) => {
+		expect(SyncWishlistItemSchema.safeParse({ ...item, ...over }).success).toBe(false);
+	});
+
+	it("keeps an omitted wishlist omitted, so it never reads as an empty one", () => {
+		const result = SyncPayloadSchema.parse({ books: [], settings: null, highlights: [] });
+		expect(result.wishlist).toBeUndefined();
 	});
 });

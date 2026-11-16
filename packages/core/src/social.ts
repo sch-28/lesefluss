@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FINISHED_PERCENT_THRESHOLD } from "./books";
+import type { Milestones } from "./milestones";
 
 export const HANDLE_MIN_LENGTH = 3;
 export const HANDLE_MAX_LENGTH = 20;
@@ -72,6 +73,7 @@ export const UpdateSocialProfileBodySchema = z.object({
 	showFinished: z.boolean().optional(),
 	showStats: z.boolean().optional(),
 	showHighlights: z.boolean().optional(),
+	showMilestones: z.boolean().optional(),
 	feedEnabled: z.boolean().optional(),
 	shareLiveReading: z.boolean().optional(),
 	timeZone: z.string().max(64).optional(),
@@ -109,6 +111,7 @@ export type OwnSocialProfile = {
 	showFinished: boolean;
 	showStats: boolean;
 	showHighlights: boolean;
+	showMilestones: boolean;
 	/** Whether starting and finishing books shows in friends' activity feeds. */
 	feedEnabled: boolean;
 	/** Whether buddy-read members see this user reading live; off also hides theirs. */
@@ -275,6 +278,12 @@ export type InvitePreview = {
 	owner?: SocialIdentity;
 };
 
+/** All a caller without a session learns about an invite: never the owner's id, books or friends. */
+export type SignedOutInvitePreview = {
+	state: InvitePreviewState;
+	owner?: Pick<SocialIdentity, "handle" | "name" | "avatarUrl">;
+};
+
 /** Paths of the social API, shared by the app and the website clients. */
 export const SOCIAL_API = {
 	profile: "/api/social/profile",
@@ -292,6 +301,8 @@ export const SOCIAL_API = {
 	invite: "/api/social/invite",
 	inviteRevoke: "/api/social/invite-revoke",
 	invitePreview: "/api/social/invite-preview",
+	/** Without a session: answers only `signed_out` or `invalid`. */
+	invitePreviewSignedOut: "/api/social/invite-preview-signed-out",
 	inviteRedeem: "/api/social/invite-redeem",
 	inbox: "/api/social/inbox",
 	inboxUnreadCount: "/api/social/inbox-unread-count",
@@ -443,6 +454,7 @@ export const PROFILE_SECTIONS = {
 	currentlyReading: "showCurrentlyReading",
 	finished: "showFinished",
 	stats: "showStats",
+	milestones: "showMilestones",
 } as const satisfies Record<string, keyof OwnSocialProfile>;
 export type ProfileSection = keyof typeof PROFILE_SECTIONS;
 
@@ -502,13 +514,18 @@ export type ProfileFinishedBook = {
 	cover: ProfileCover;
 };
 
+export type ProfileSpeeds = { reading?: number; rsvp?: number };
+
 export type ProfileStats = {
 	booksFinishedThisYear: number;
 	wordsRead: number;
 	/** Null when the owner has no synced sessions: missing data is not zero. */
 	readingTimeMs: number | null;
-	/** From `measuredReadingSpeed`, never the raw RSVP dial. Null like `readingTimeMs`. */
+	/** The speed model's pace, never the raw RSVP dial. Null until measured. Kept for
+	 *  clients older than `speeds`. */
 	readingSpeedWpm: number | null;
+	/** Per-mode speeds, only the modes the owner reads; absent from older servers. */
+	speeds?: ProfileSpeeds;
 	/** Consecutive reading days in the owner's time zone, as the stats page counts them. Null like `readingTimeMs`. */
 	currentStreakDays: number | null;
 	longestStreakDays: number | null;
@@ -527,6 +544,8 @@ export type ProfileView = {
 		currentlyReading?: ProfileBook[];
 		finished?: ProfileFinishedBook[];
 		stats?: ProfileStats;
+		/** Absent from older servers as well as when hidden. */
+		milestones?: Milestones;
 	};
 };
 

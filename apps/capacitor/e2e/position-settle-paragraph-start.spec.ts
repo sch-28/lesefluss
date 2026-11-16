@@ -7,12 +7,11 @@ import { reader } from "./page-objects/reader";
  * Scroll ticks record the start of the paragraph at the top as the position,
  * so a settle on a paragraph's first word (or anywhere in a figure rendered
  * above a paragraph) matches the tick. These settles must still save, without
- * waiting for the flush on leaving the reader.
+ * waiting for the flush on leaving the reader. The save-and-reload case is in
+ * position-smoke.spec.ts.
  */
 
 const SETTLE_WAIT_MS = 5000;
-/** Comfortably past the scroll view's 150ms scroll-end debounce. */
-const NO_SAVE_WAIT_MS = 1000;
 
 async function openBigBook(page: Page) {
 	await seedBigBook(page);
@@ -40,32 +39,10 @@ const scrollElementToTop = (page: Page, selector: string, offsetPx = 0) =>
 
 const wordSpan = (word: number) => `span[data-word="${word}"]`;
 
-async function expectNoSaveFor(page: Page, ms: number) {
-	const requests = await reader.saveRequestCount(page);
-	await page.waitForTimeout(ms);
-	expect(await reader.saveRequestCount(page)).toBe(requests);
-}
-
 async function expectSettleSaves(page: Page, before: number, word: number) {
 	await reader.waitForSaveAbove(page, before, SETTLE_WAIT_MS);
 	expect(await reader.lastSavedWord(page)).toBe(word);
 }
-
-test("a settle on a paragraph's first word saves it, and a reload resumes there", async ({
-	page,
-}) => {
-	await openBigBook(page);
-	const expected = await paragraphStartWord(page, 3);
-	await expectNoSaveFor(page, NO_SAVE_WAIT_MS);
-	const before = await reader.saveCount(page);
-
-	await scrollElementToTop(page, wordSpan(expected));
-
-	await expectSettleSaves(page, before, expected);
-	await page.reload();
-	await reader.expectLoaded(page);
-	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 10_000 }).toBe(expected);
-});
 
 test("consecutive settles on paragraph starts each save", async ({ page }) => {
 	await openBigBook(page);
@@ -87,9 +64,9 @@ test("a settle with the top edge inside a figure saves the paragraph after it", 
 	await openBigBook(page);
 	const figure = '.reader-figure:has(img[alt="Figure 15"])';
 	for (let i = 0; i < 40 && (await page.locator(figure).count()) === 0; i++) {
+		const settles = await reader.settleCount(page);
 		await reader.wheel(page, 600);
-		// The wheel landing and the list mounting what it reveals.
-		await page.waitForTimeout(200);
+		await reader.waitForSettleAbove(page, settles);
 	}
 	await scrollElementToTop(page, figure, 200);
 	// Every settle so far, and its save if any, is done before saves are counted.
@@ -131,19 +108,16 @@ test("scrolling away and settling back on the saved word saves nothing", async (
 	// Two separate scrolls, 40px away and back, within one scroll-end debounce: in
 	// the page in one go (a wheel event marks them as the reader's), as two real
 	// wheels with round trips between can take longer than the debounce.
-	await reader.expectSettledWithoutSave(
-		page,
-		() =>
-			page.evaluate(async () => {
-				const list = document.querySelector(".reader-scroll-content")?.firstElementChild;
-				if (!list) throw new Error("No reader scroller");
-				const resting = list.scrollTop;
-				list.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 40 }));
-				list.scrollTop = resting + 40;
-				await new Promise(requestAnimationFrame);
-				list.scrollTop = resting;
-			}),
-		NO_SAVE_WAIT_MS,
+	await reader.expectSettledWithoutSave(page, () =>
+		page.evaluate(async () => {
+			const list = document.querySelector(".reader-scroll-content")?.firstElementChild;
+			if (!list) throw new Error("No reader scroller");
+			const resting = list.scrollTop;
+			list.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 40 }));
+			list.scrollTop = resting + 40;
+			await new Promise(requestAnimationFrame);
+			list.scrollTop = resting;
+		}),
 	);
 	expect(await reader.scrollModeTopWord(page)).toBe(start);
 });

@@ -589,3 +589,49 @@ describe("useAnchorHold: the reader's own input", () => {
 		expect(api.isPending()).toBe(true);
 	});
 });
+
+describe("useAnchorHold: the reader's input after it ends (LESE-60)", () => {
+	beforeEach(() => api.release("programmatic"));
+
+	it("keeps a selection drag the reader's until its scroll settles", () => {
+		pointer("pointerdown", word(), { clientX: 10, clientY: 10 });
+		pointer("pointermove", window, { clientX: 10, clientY: 30 });
+		expect(api.isReaderInput()).toBe(true);
+		pointer("pointerup", window);
+		act(() => vi.advanceTimersByTime(500));
+		expect(api.isReaderInput()).toBe(true);
+		api.noteScrollEnd();
+		expect(api.isReaderInput()).toBe(false);
+	});
+
+	it("keeps an autoscroll the reader's after the click that ends it, until the settle", () => {
+		pointer("pointerdown", word(), { button: 1 });
+		pointer("pointerup", window);
+		pointer("pointerdown", document.body);
+		pointer("pointerup", window);
+		expect(api.isReaderInput()).toBe(true);
+		api.noteScrollEnd();
+		expect(api.isReaderInput()).toBe(false);
+	});
+
+	it("lets go after the window when no scroll followed the press", () => {
+		pointer("pointerdown", viewport(), { offsetX: 605 });
+		pointer("pointerup", window);
+		act(() => vi.advanceTimersByTime(2000));
+		expect(api.isReaderInput()).toBe(false);
+	});
+
+	it("does not count a plain click", () => {
+		pointer("pointerdown", word(), { clientX: 10, clientY: 10 });
+		pointer("pointerup", window);
+		expect(api.isReaderInput()).toBe(false);
+	});
+
+	it("does not hand a hold to the trailing window: compensation after a click stays held", () => {
+		holdLanded();
+		pointer("pointerdown", viewport(), { offsetX: 605 });
+		pointer("pointerup", window);
+		compensate(10);
+		expect(api.isPending()).toBe(true);
+	});
+});

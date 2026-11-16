@@ -62,6 +62,15 @@ describe("InviteLinkPage", () => {
 		expect(state.create).not.toHaveBeenCalled();
 	});
 
+	it("keeps the link field's touch hit area out of a space-y stack, whose margin its -my would cancel", async () => {
+		state.invite = { ...fresh, data: existing };
+		view = await render(<InviteLinkPage />);
+
+		const area = view.container.querySelector('[data-slot="input-hit-area"]');
+		expect(area?.querySelector('input[aria-label="Your invite link"]')).not.toBeNull();
+		expect(area?.parentElement?.className).not.toMatch(/space-y-/);
+	});
+
 	it("waits for the server instead of trusting a cached empty answer", async () => {
 		state.invite = { ...fresh, isFetchedAfterMount: false, isFetching: true };
 		view = await render(<InviteLinkPage />);

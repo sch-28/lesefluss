@@ -1,17 +1,16 @@
 import { type Page, test } from "@playwright/test";
 
 /**
- * Wipe IndexedDB + storage so each test starts from a clean library and no
- * leftover tanstack-query persistence. Must be called before the app boots
- * (i.e. before navigating into a route that opens the SQLite connection),
- * otherwise jeep-sqlite holds an open handle to the about-to-be-deleted DB.
+ * Wipe IndexedDB, OPFS and storage so each test starts from a clean library and
+ * no leftover tanstack-query persistence. Runs on a static file, before the app
+ * boots, so no database worker or jeep-sqlite holds the stores being deleted.
  */
 export async function resetStorage(page: Page) {
 	await test.step("setup: reset storage", () => wipe(page), { box: true });
 }
 
 async function wipe(page: Page) {
-	await page.goto("/");
+	await page.goto("/favicon.png");
 	await page.evaluate(async () => {
 		const dbs = await indexedDB.databases();
 		await Promise.all(
@@ -24,6 +23,8 @@ async function wipe(page: Page) {
 					}),
 			),
 		);
+		const opfs = await navigator.storage.getDirectory();
+		await opfs.removeEntry("lesefluss", { recursive: true }).catch(() => {});
 		localStorage.clear();
 		sessionStorage.clear();
 	});

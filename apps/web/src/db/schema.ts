@@ -8,6 +8,7 @@ import {
 	READING_GOAL_MODES,
 	READING_GOAL_STATUSES,
 	READING_MODES,
+	type WishlistKind,
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import {
@@ -55,6 +56,9 @@ export const syncBooks = pgTable(
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
 		finishedAt: timestamp("finished_at"), // first crossing of the finished threshold
+		// Start of the first real sitting, which is what puts a book on Reading
+		// (bookStatus() in @lesefluss/core). Earliest wins on merge.
+		firstSittingAt: timestamp("first_sitting_at"),
 		// When the book entered the library. Nullable: rows last written by a client
 		// that pre-dates the column have none, and a restoring client falls back to
 		// the row revision for those.
@@ -77,6 +81,12 @@ export const syncBooks = pgTable(
 		// Merged on the metadata revision but outside METADATA_FIELDS; see
 		// sync-book-upsert.ts.
 		hideFromProfile: boolean("hide_from_profile").notNull().default(false),
+		// Book-level series, unrelated to the serial `series_id`. Merged on its own
+		// revision, `series_updated_at`; see sync-book-upsert.ts. The revision is
+		// null on rows no client has sent a series for.
+		seriesName: text("series_name"),
+		seriesIndex: doublePrecision("series_index"),
+		seriesUpdatedAt: timestamp("series_updated_at"),
 		// Which source book this content came from: the row itself for an upload,
 		// the first uploader's row for a shared copy. Server-authoritative; a push
 		// never sets or changes it (see sync-book-upsert.ts). No FK to user: the
@@ -171,6 +181,8 @@ export const syncSettings = pgTable(
 		readerWordSpacing: real("reader_word_spacing").notNull().default(0),
 		readerParagraphSpacing: real("reader_paragraph_spacing").notNull().default(1.1),
 		showReadingTime: boolean("show_reading_time").notNull().default(true),
+		showLiveWpm: boolean("show_live_wpm").notNull().default(false),
+		speedWindow: text("speed_window").notNull().default("recent"),
 		readerActiveWordUnderline: boolean("reader_active_word_underline").notNull().default(true),
 		readerGlossaryUnderline: boolean("reader_glossary_underline").notNull().default(true),
 		defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
@@ -189,6 +201,10 @@ export const syncSettings = pgTable(
 		check(
 			"sync_settings_pagination_style_check",
 			sql`${table.paginationStyle} IN ('scroll', 'page')`,
+		),
+		check(
+			"sync_settings_speed_window_check",
+			sql`${table.speedWindow} IN ('recent', '30d', 'all')`,
 		),
 	],
 );
@@ -258,6 +274,8 @@ export const syncReadingSessions = pgTable(
 		endWord: integer("end_word").notNull(),
 		furthestWord: integer("furthest_word"),
 		wpmAvg: integer("wpm_avg"),
+		fontSize: integer("font_size"),
+		segmentWpm: jsonb("segment_wpm").$type<number[]>(),
 		deleted: boolean("deleted").notNull().default(false),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
@@ -289,6 +307,7 @@ export const syncReadingGoals = pgTable(
 		planStartWord: integer("plan_start_word").notNull(),
 		targetDate: text("target_date").notNull(),
 		dailyPercent: doublePrecision("daily_percent").notNull(),
+		dailyMinutes: doublePrecision("daily_minutes"),
 		carriedDaysMet: integer("carried_days_met").notNull().default(0),
 		completedAt: timestamp("completed_at"),
 		reminderTime: text("reminder_time"),
@@ -306,6 +325,42 @@ export const syncReadingGoals = pgTable(
 	],
 );
 
+/**
+ * sync_collections / sync_collection_books: manual collections and their
+ * memberships, each last-write-wins per row on `updated_at`. `deleted` is a row
+ * value on both, so a book removed and added again comes back by `updated_at`.
+ */
+export const syncCollections = pgTable(
+	"sync_collections",
+	{
+		userId: text("user_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		name: text("name").notNull(),
+		sortOrder: doublePrecision("sort_order").notNull(),
+		ordered: boolean("ordered").notNull().default(false),
+		seriesKey: text("series_key"),
+		view: text("view"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.collectionId] })],
+);
+
+export const syncCollectionBooks = pgTable(
+	"sync_collection_books",
+	{
+		userId: text("user_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		bookId: text("book_id").notNull(),
+		seriesIndex: doublePrecision("series_index"),
+		position: doublePrecision("position"),
+		deleted: boolean("deleted").notNull().default(false),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.collectionId, t.bookId] })],
+);
+
 export type SyncBook = typeof syncBooks.$inferSelect;
 export type NewSyncBook = typeof syncBooks.$inferInsert;
 export type SyncSeries = typeof syncSeries.$inferSelect;
@@ -320,6 +375,81 @@ export type SyncReadingSession = typeof syncReadingSessions.$inferSelect;
 export type NewSyncReadingSession = typeof syncReadingSessions.$inferInsert;
 export type SyncReadingGoal = typeof syncReadingGoals.$inferSelect;
 export type NewSyncReadingGoal = typeof syncReadingGoals.$inferInsert;
+/** sync_smart_shelves: saved filters, last-write-wins per row on `updated_at`. */
+export const syncSmartShelves = pgTable(
+	"sync_smart_shelves",
+	{
+		userId: text("user_id").notNull(),
+		shelfId: text("shelf_id").notNull(),
+		name: text("name").notNull(),
+		conditions: text("conditions").notNull(),
+		pinned: boolean("pinned").notNull().default(false),
+		sortOrder: doublePrecision("sort_order").notNull(),
+		view: text("view"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.shelfId] })],
+);
+
+export const syncBookmarks = pgTable(
+	"sync_bookmarks",
+	{
+		userId: text("user_id").notNull(),
+		bookmarkId: text("bookmark_id").notNull(),
+		bookId: text("book_id").notNull(),
+		word: integer("word").notNull(),
+		label: text("label"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.bookmarkId] })],
+);
+
+export type NewSyncBookmark = typeof syncBookmarks.$inferInsert;
+
+/** Wishlist items. `ref` is a catalog id or a series URL; see `SyncWishlistItemSchema`. */
+export const syncWishlist = pgTable(
+	"sync_wishlist",
+	{
+		userId: text("user_id").notNull(),
+		itemId: text("item_id").notNull(),
+		kind: text("kind").$type<WishlistKind>().notNull(),
+		ref: text("ref").notNull(),
+		title: text("title").notNull(),
+		author: text("author"),
+		coverUrl: text("cover_url"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.itemId] })],
+);
+
+export type NewSyncWishlistItem = typeof syncWishlist.$inferInsert;
+
+/** Speed test results; synced with reading stats. A tombstone is final. */
+export const syncSpeedTests = pgTable(
+	"sync_speed_tests",
+	{
+		userId: text("user_id").notNull(),
+		testId: text("test_id").notNull(),
+		readingWpm: integer("reading_wpm").notNull(),
+		rsvpWpm: integer("rsvp_wpm"),
+		passageId: text("passage_id").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.testId] })],
+);
+
+export type NewSyncSpeedTest = typeof syncSpeedTests.$inferInsert;
+
+export type NewSyncCollection = typeof syncCollections.$inferInsert;
+export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 
 /**
  * telemetry_events: anonymized diagnostics from clients (no account required).
@@ -367,6 +497,7 @@ export const socialProfile = pgTable(
 		showFinished: boolean("show_finished").notNull().default(true),
 		showStats: boolean("show_stats").notNull().default(true),
 		showHighlights: boolean("show_highlights").notNull().default(true),
+		showMilestones: boolean("show_milestones").notNull().default(true),
 		feedEnabled: boolean("feed_enabled").notNull().default(true),
 		shareLiveReading: boolean("share_live_reading").notNull().default(true),
 		/** The owner's IANA zone, for their own dates and "this year" stats; never shown to others. */
@@ -789,9 +920,9 @@ export const BUDDY_READ_MEMBER_STATES = ["active", "left", "removed"] as const;
 export const BUDDY_READ_INVITE_STATUSES = ["pending", "accepted", "declined", "cancelled"] as const;
 
 /**
- * A group reading one content origin. `host_id` is who created it; the
- * effective host is derived (this user while a current member, else the
- * earliest-joined current member), so account deletion needs no handover.
+ * A group reading one content origin. The effective host is derived (`host_id`
+ * while a current member, else the earliest-joined current member) and written
+ * back to `host_id`, so a host who leaves or deletes their account hands over.
  */
 export const buddyRead = pgTable(
 	"buddy_read",

@@ -62,6 +62,7 @@ const ContentsList: React.FC<ContentsListProps> = ({
 								"w-full border-border border-b px-5 py-3 text-left text-foreground text-sm transition-colors hover:bg-muted",
 								isOpen && "bg-primary/10 font-medium",
 							)}
+							style={ch.level ? { paddingLeft: `${1.25 + Math.min(ch.level, 4)}rem` } : undefined}
 						>
 							{ch.title}
 						</button>

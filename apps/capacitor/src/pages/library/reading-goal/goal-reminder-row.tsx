@@ -1,3 +1,4 @@
+import { InputHitArea } from "@lesefluss/ui/input";
 import { Switch } from "@lesefluss/ui/switch";
 import { useEffect, useState } from "react";
 import { getReminderPermission, requestReminderPermission } from "../../../services/goal-reminders";
@@ -58,17 +59,19 @@ export function GoalReminderRow({
 					Reminder
 				</label>
 				{value !== null && (
-					<input
-						type="time"
-						aria-label="Reminder time"
-						value={value}
-						onChange={(e) => {
-							if (!e.target.value) return;
-							setLastTime(e.target.value);
-							onChange(e.target.value);
-						}}
-						className="min-h-9 rounded-md border border-input bg-background px-2 text-foreground tabular-nums"
-					/>
+					<InputHitArea>
+						<input
+							type="time"
+							aria-label="Reminder time"
+							value={value}
+							onChange={(e) => {
+								if (!e.target.value) return;
+								setLastTime(e.target.value);
+								onChange(e.target.value);
+							}}
+							className="min-h-9 rounded-md border border-input bg-background px-2 text-foreground tabular-nums"
+						/>
+					</InputHitArea>
 				)}
 				<Switch
 					id="goal-reminder"
@@ -86,7 +89,7 @@ export function GoalReminderRow({
 					onClick={async () => {
 						if ((await ask()) && value === null) onChange(lastTime);
 					}}
-					className="self-start text-left text-[11px] text-muted-foreground underline underline-offset-2"
+					className="self-start text-left text-[0.6875rem] text-muted-foreground underline underline-offset-2"
 				>
 					{permission === "denied"
 						? "notifications blocked · system settings"

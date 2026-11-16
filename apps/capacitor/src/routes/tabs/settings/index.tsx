@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, type SpeedWindow } from "@lesefluss/core";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	Bell,
@@ -9,29 +9,31 @@ import {
 	Cog,
 	Cpu,
 	Download,
+	Gauge,
 	Globe,
 	Headphones,
 	Loader2,
 	Megaphone,
 	MessageCircle,
 	Scale,
+	ShieldCheck,
 	SlidersHorizontal,
 	Sparkles,
+	Target,
 	Users,
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
-import { ToggleRow } from "@/components/app-shell/toggle-row";
 import BLEIndicator from "@/components/ble-indicator";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { OnTheWebCard } from "@/components/web-limitations";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
-import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
 import { isPushSupported } from "@/services/push";
@@ -40,14 +42,20 @@ import {
 	type DeviceDiagnostics,
 	getDeviceDiagnostics,
 	isTelemetryEnabled,
-	setTelemetryEnabled,
 } from "@/services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
+import { openLink } from "@/utils/open-link";
 import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/")({
 	component: SettingsLanding,
 });
+
+const SPEED_SUBTITLES: Record<SpeedWindow, string> = {
+	recent: "Speed from your last 10h",
+	"30d": "Speed from the last 30 days",
+	all: "Speed from all your reading",
+};
 
 function SettingsLanding() {
 	const navigate = useNavigate();
@@ -55,7 +63,6 @@ function SettingsLanding() {
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
-	const [telemetry, setTelemetry] = useState(isTelemetryEnabled());
 	const [diagnostics, setDiagnostics] = useState<DeviceDiagnostics | null>(null);
 
 	useEffect(() => {
@@ -66,18 +73,13 @@ function SettingsLanding() {
 
 	const { paginationStyle } = useAppearanceSettings();
 
-	const toggleTelemetry = (value: boolean) => {
-		setTelemetryEnabled(value);
-		setTelemetry(value);
-	};
-
 	const isConnected = connectionState === BLEConnectionState.CONNECTED;
 	const isTransitioning =
 		connectionState === BLEConnectionState.CONNECTING ||
 		connectionState === BLEConnectionState.DISCONNECTING;
 
 	const rsvpSubtitle = settings
-		? `${settings.wpm} WPM · Comma ${settings.delayComma.toFixed(1)}x · Period ${settings.delayPeriod.toFixed(1)}x`
+		? `${settings.wpm} wpm · Comma ${settings.delayComma.toFixed(1)}× · Period ${settings.delayPeriod.toFixed(1)}×`
 		: "Loading...";
 	const themeLabel = THEMES.find((t) => t.value === theme)?.label ?? theme;
 	const readerSubtitle = settings
@@ -101,9 +103,9 @@ function SettingsLanding() {
 		if (diagnostics?.os) params.set("os", diagnostics.os);
 		if (diagnostics?.webview) params.set("wv", diagnostics.webview);
 		const base = IS_WEB ? "/feedback" : "https://lesefluss.app/feedback";
-		window.open(`${base}?${params.toString()}`, IS_WEB ? "_blank" : "_system");
+		openLink(`${base}?${params.toString()}`, { nativeTarget: "system" });
 	};
-	const openWebsite = () => window.open("https://lesefluss.app", "_system");
+	const openWebsite = () => openLink("https://lesefluss.app", { nativeTarget: "system" });
 	const replayOnboarding = () => navigate({ to: "/onboarding" });
 
 	const showDevicesAndSync = !IS_WEB || SYNC_ENABLED;
@@ -119,7 +121,7 @@ function SettingsLanding() {
 	return (
 		<div className="bg-background">
 			<TabHeader title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Reading">
 					<NavRow
 						icon={BookOpen}
@@ -128,6 +130,12 @@ function SettingsLanding() {
 						to="/tabs/settings/reader"
 					/>
 					<NavRow icon={Zap} title="RSVP" subtitle={rsvpSubtitle} to="/tabs/settings/rsvp" />
+					<NavRow
+						icon={Target}
+						title="Goals"
+						subtitle="Daily goals · Reminders"
+						to="/tabs/settings/goals"
+					/>
 					{IS_READ_ALOUD_SUPPORTED && (
 						<NavRow
 							icon={Headphones}
@@ -136,6 +144,15 @@ function SettingsLanding() {
 							to="/tabs/settings/read-aloud"
 						/>
 					)}
+					<NavRow
+						icon={Gauge}
+						title="Speed & estimates"
+						subtitle={SPEED_SUBTITLES[settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW]}
+						to="/tabs/settings/speed"
+					/>
+				</SettingsSection>
+
+				<SettingsSection title="Data">
 					<NavRow
 						icon={Download}
 						title="Export highlights"
@@ -177,12 +194,14 @@ function SettingsLanding() {
 					</SettingsSection>
 				)}
 
-				{SYNC_ENABLED && isLoggedIn && (
+				{SYNC_ENABLED && (
 					<SettingsSection title="Social">
 						<NavRow
 							icon={Users}
 							title="Social profile"
-							subtitle="Handle, avatar and who sees what"
+							subtitle={
+								isLoggedIn ? "Handle, avatar and who sees what" : "Sign in to read with friends"
+							}
 							to="/tabs/settings/social"
 						/>
 						{isPushSupported() && (
@@ -195,6 +214,24 @@ function SettingsLanding() {
 						)}
 					</SettingsSection>
 				)}
+
+				<SettingsSection title="Privacy">
+					{IS_WEB ? (
+						<NavRow
+							icon={ShieldCheck}
+							title="Diagnostics"
+							subtitle="Nothing is sent from the web app"
+							to="/tabs/settings/diagnostics"
+						/>
+					) : (
+						<NavRow
+							icon={ShieldCheck}
+							title="Anonymous diagnostics"
+							subtitle={isTelemetryEnabled() ? "On" : "Off"}
+							to="/tabs/settings/diagnostics"
+						/>
+					)}
+				</SettingsSection>
 
 				<SettingsSection title="About">
 					{!IS_WEB && (
@@ -224,18 +261,9 @@ function SettingsLanding() {
 						subtitle="Fonts bundled with the reader"
 						to="/tabs/settings/licenses"
 					/>
-					<DiagnosticsRow />
 				</SettingsSection>
 
-				<SettingsSection title="Privacy">
-					<ToggleRow
-						id="telemetry"
-						title="Anonymous diagnostics"
-						subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
-						checked={telemetry}
-						onCheckedChange={toggleTelemetry}
-					/>
-				</SettingsSection>
+				{IS_WEB && <OnTheWebCard />}
 			</div>
 		</div>
 	);

@@ -5,6 +5,7 @@ import { queries } from "../db/queries";
 import type { NewBook, NewSeries, Series } from "../db/schema";
 import { recordOwnRevision } from "../position-revisions";
 import { scheduleSyncPush } from "../sync";
+import { serverNow } from "../sync/server-clock";
 import type { ChapterFetchResult, ChapterRef, SeriesMetadata } from "./types";
 
 /**
@@ -96,9 +97,10 @@ export async function commitSeries(meta: SeriesMetadata, chapters: ChapterRef[])
  */
 export async function commitChapter(chapterId: string, result: ChapterFetchResult): Promise<void> {
 	const now = Date.now();
+	const revision = serverNow();
 	// lastRead moves the position's revision; this device made it, so the open
 	// chapter must not take it for a position from another device.
-	recordOwnRevision(chapterId, now);
+	recordOwnRevision(chapterId, revision);
 
 	switch (result.status) {
 		case "fetched": {
@@ -113,7 +115,7 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 					wordCount: wi.wordCount,
 					lastRead: now,
 				},
-				now,
+				revision,
 			);
 			await queries.setChapterContent(chapterId, result.content, {
 				wordIndexSerialized: JSON.stringify(wi.serialize()),
@@ -129,7 +131,7 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 					chapterError: null,
 					lastRead: now,
 				},
-				now,
+				revision,
 			);
 			scheduleSyncPush();
 			return;
@@ -143,7 +145,7 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 					chapterError: result.reason,
 					lastRead: now,
 				},
-				now,
+				revision,
 			);
 			return;
 		}

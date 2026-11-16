@@ -1,13 +1,26 @@
 import {
 	bookStatus,
-	measuredReadingSpeed,
+	computeSpeedModel,
+	deriveMilestones,
+	MIN_MODEL_ACTIVE_MS,
+	type Milestones,
+	type ProfileSpeeds,
 	type ProfileStats,
+	REAL_SITTING_MS,
 	readingDayKeys,
+	SPEED_WINDOWS,
+	type SpeedModel,
+	type SpeedWindow,
 	streakFromDays,
 } from "@lesefluss/core";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { DbExecutor } from "~/db";
-import { syncBooks, syncReadingSessions } from "~/db/schema";
+import { syncBooks, syncReadingSessions, syncSettings } from "~/db/schema";
+
+/** The owner's synced speed window; recent for an owner who never synced settings. */
+export function ownerWindow(stored: string | undefined): SpeedWindow {
+	return SPEED_WINDOWS.find((w) => w === stored) ?? "recent";
+}
 
 /** Start of the current calendar year in the owner's zone, UTC when none is known. */
 export function startOfYear(now: Date, timeZone: string | undefined): Date {
@@ -63,6 +76,16 @@ export function readingDaysOf(date: Date, timeZone: string | undefined): string[
 	return readingDayKeys(`${part("year")}-${part("month")}-${part("day")}`, Number(part("hour")));
 }
 
+/** Each mode's speed once it is the owner's own; a mode they don't read, or a stand-in, stays out. */
+export function profileSpeeds(model: SpeedModel): ProfileSpeeds {
+	const speeds: ProfileSpeeds = {};
+	if (model.modesUsed.reading && model.reading.source === "measured") {
+		speeds.reading = model.reading.wpm;
+	}
+	if (model.rsvp && model.rsvp.activeMs >= MIN_MODEL_ACTIVE_MS) speeds.rsvp = model.rsvp.wpm;
+	return speeds;
+}
+
 /**
  * Aggregate reading stats for one user as their profile shows them. Hidden and
  * deleted books stay out, including the sessions of hidden books. Time and
@@ -86,6 +109,7 @@ export async function profileStatsFor(
 			wordPosition: syncBooks.wordPosition,
 			status: syncBooks.status,
 			finishedAt: syncBooks.finishedAt,
+			firstSittingAt: syncBooks.firstSittingAt,
 		})
 		.from(syncBooks)
 		.where(visible);
@@ -96,7 +120,13 @@ export async function profileStatsFor(
 		const wordCount = b.wordCount ?? 0;
 		wordsRead += Math.min(b.wordPosition, wordCount > 0 ? wordCount : b.wordPosition);
 		const isFinished =
-			bookStatus({ wordCount, wordPosition: b.wordPosition, status: b.status }) === "finished";
+			bookStatus({
+				wordCount,
+				wordPosition: b.wordPosition,
+				status: b.status,
+				finishedAt: b.finishedAt,
+				firstSittingAt: b.firstSittingAt,
+			}) === "finished";
 		if (isFinished && b.finishedAt && b.finishedAt >= yearStart) booksFinishedThisYear++;
 	}
 
@@ -119,12 +149,21 @@ export async function profileStatsFor(
 			and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.deleted, false), visible),
 		);
 
+	const realSittings = sessions.filter((s) => s.durationMs >= REAL_SITTING_MS);
 	const readDays = new Set(
-		sessions
-			.filter((s) => s.durationMs > 0)
-			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
+		realSittings.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
+	// The owner's own window, so a friend sees the number the owner's chip shows.
+	const [owner] = await exec
+		.select({ speedWindow: syncSettings.speedWindow })
+		.from(syncSettings)
+		.where(eq(syncSettings.userId, userId))
+		.limit(1);
+	const model = computeSpeedModel(
+		sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
+		{ window: ownerWindow(owner?.speedWindow), now: now.getTime() },
+	);
 	const streak =
 		sessions.length > 0
 			? streakFromDays(readDays, openDays[openDays.length - 1] ?? "", openDays[0])
@@ -133,9 +172,82 @@ export async function profileStatsFor(
 	return {
 		booksFinishedThisYear,
 		wordsRead,
-		readingTimeMs: sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.durationMs, 0) : null,
-		readingSpeedWpm: sessions.length > 0 ? measuredReadingSpeed(sessions) : null,
+		readingTimeMs:
+			sessions.length > 0 ? realSittings.reduce((sum, s) => sum + s.durationMs, 0) : null,
+		readingSpeedWpm: model.pace.source === "measured" ? model.pace.wpm : null,
+		speeds: profileSpeeds(model),
 		currentStreakDays: streak?.current ?? null,
 		longestStreakDays: streak?.longest ?? null,
 	};
+}
+
+/**
+ * The owner's milestones as their profile shows them, from the same visible
+ * books and their sessions the stats use, so a hidden book earns nothing here.
+ */
+export async function profileMilestonesFor(
+	exec: DbExecutor,
+	userId: string,
+	options: { timeZone?: string } = {},
+): Promise<Milestones> {
+	const visible = and(
+		eq(syncBooks.userId, userId),
+		eq(syncBooks.deleted, false),
+		eq(syncBooks.hideFromProfile, false),
+	);
+	const [books, sessions] = await Promise.all([
+		exec
+			.select({
+				wordCount: syncBooks.wordCount,
+				wordPosition: syncBooks.wordPosition,
+				status: syncBooks.status,
+				finishedAt: syncBooks.finishedAt,
+				firstSittingAt: syncBooks.firstSittingAt,
+			})
+			.from(syncBooks)
+			// A serial chapter is a books row: counting each one would turn a web novel into dozens of books.
+			.where(and(visible, isNull(syncBooks.seriesId))),
+		exec
+			.select({
+				mode: syncReadingSessions.mode,
+				wordsRead: syncReadingSessions.wordsRead,
+				durationMs: syncReadingSessions.durationMs,
+				startedAt: syncReadingSessions.startedAt,
+			})
+			.from(syncReadingSessions)
+			.innerJoin(
+				syncBooks,
+				and(
+					eq(syncBooks.userId, syncReadingSessions.userId),
+					eq(syncBooks.bookId, syncReadingSessions.bookId),
+				),
+			)
+			.where(
+				and(
+					eq(syncReadingSessions.userId, userId),
+					eq(syncReadingSessions.deleted, false),
+					visible,
+				),
+			),
+	]);
+	const finishedAt = books
+		.filter(
+			(b) =>
+				b.finishedAt &&
+				bookStatus({
+					wordCount: b.wordCount ?? 0,
+					wordPosition: b.wordPosition,
+					status: b.status,
+					finishedAt: b.finishedAt,
+					firstSittingAt: b.firstSittingAt,
+				}) === "finished",
+		)
+		.map((b) => b.finishedAt?.getTime() ?? 0);
+	return deriveMilestones({
+		sessions: sessions
+			.filter((s) => s.durationMs >= REAL_SITTING_MS)
+			.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
+		finishedAt,
+		dayKeysOf: (at) => readingDaysOf(new Date(at), options.timeZone),
+	});
 }

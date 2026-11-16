@@ -6,7 +6,7 @@ test("auto-opened last book: back leaves the reader for the library", async ({ p
 	const title = await seedStrayAnchorBook(page);
 	await page.goto("/");
 	await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
-	await page.getByRole("button", { name: "Skip onboarding" }).click();
+	await page.getByRole("button", { name: "Skip setup" }).click();
 	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
 
 	// lastRead is only stamped by a real position save.
@@ -24,9 +24,19 @@ test("auto-opened last book: back leaves the reader for the library", async ({ p
 	await page.goto("/");
 	await page.waitForURL(/\/tabs\/reader\//, { timeout: 10_000 });
 
+	// Only "/" auto-opens. Back landing straight on the library, with "/" never
+	// shown, proves no second auto-open can follow, without waiting for one.
+	await page.evaluate(() =>
+		window.addEventListener(
+			"popstate",
+			() => sessionStorage.setItem("e2e-popped-to", location.pathname),
+			{ once: true },
+		),
+	);
 	await page.getByRole("button", { name: "Back" }).first().click();
-	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
-	// An auto-open that wrongly fires again would have navigated away by now.
-	await page.waitForTimeout(1000);
+	await expect
+		.poll(() => page.evaluate(() => sessionStorage.getItem("e2e-popped-to")))
+		.toBe("/tabs/library");
+	await expect(page.locator(`[data-book-title="${title}"]`).first()).toBeVisible();
 	await expect(page).toHaveURL(/\/tabs\/library/);
 });

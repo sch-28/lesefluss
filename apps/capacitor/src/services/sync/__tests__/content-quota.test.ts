@@ -37,8 +37,14 @@ vi.mock("../../db/queries", () => ({
 		getAllEntries: vi.fn(async () => []),
 		getSeriesForSync: vi.fn(async () => []),
 		getAllGoalsForSync: vi.fn(async () => []),
+		getAllCollectionsForSync: vi.fn(async () => []),
+		getAllCollectionBooksForSync: vi.fn(async () => []),
+		getAllSmartShelvesForSync: vi.fn(async () => []),
+		getAllBookmarksForSync: vi.fn(async () => []),
+		getAllWishlistForSync: vi.fn(async () => []),
 		completeFinishedGoals: vi.fn(async () => {}),
 		getReadingSessionsSince: vi.fn(async () => []),
+		getSpeedTests: vi.fn(async () => []),
 		getBookContent: vi.fn(async () => ({
 			content: "text",
 			coverImage: null,
@@ -90,6 +96,7 @@ function makeBook(id: string): Book {
 		addedAt: 0,
 		lastRead: null,
 		finishedAt: null,
+		firstSittingAt: null,
 		source: null,
 		catalogId: null,
 		sourceUrl: null,
@@ -109,6 +116,9 @@ function makeBook(id: string): Book {
 		originKey: null,
 		updatedAt: 0,
 		metadataUpdatedAt: 0,
+		seriesName: null,
+		seriesIndex: null,
+		seriesUpdatedAt: 0,
 	};
 }
 

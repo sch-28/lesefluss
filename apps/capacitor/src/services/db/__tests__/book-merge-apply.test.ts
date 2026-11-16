@@ -31,6 +31,14 @@ function row(): Row {
 		.get() as Row;
 }
 
+function seriesRow() {
+	return raw
+		.prepare(
+			"SELECT series_name, series_index, series_updated_at, metadata_updated_at FROM books WHERE id = 'b1'",
+		)
+		.get();
+}
+
 beforeEach(() => {
 	raw.exec("DELETE FROM books");
 	raw
@@ -123,6 +131,34 @@ describe("applyBookMerge", () => {
 		raw.exec("UPDATE books SET added_at = 300 WHERE id = 'b1'");
 		await applyBookMerge("b1", update, server.updatedAt);
 		expect(row().added_at).toBe(300);
+	});
+
+	it("stamps a series edit on its own revision, never the metadata one", async () => {
+		await updateBook("b1", { seriesName: "Dune", seriesIndex: 2 }, 3000);
+		expect(seriesRow()).toEqual({
+			series_name: "Dune",
+			series_index: 2,
+			series_updated_at: 3000,
+			metadata_updated_at: 1000,
+		});
+	});
+
+	it("adopts a newer series from another device", async () => {
+		const server = serverBook({ seriesName: "Dune", seriesIndex: 1.5, seriesUpdatedAt: 2000 });
+		await applyBookMerge("b1", await decideMerge(server), server.updatedAt);
+		expect(seriesRow()).toMatchObject({
+			series_name: "Dune",
+			series_index: 1.5,
+			series_updated_at: 2000,
+		});
+	});
+
+	it("keeps a series edited between the snapshot and the merge", async () => {
+		const server = serverBook({ seriesName: "Dune", seriesUpdatedAt: 2000 });
+		const update = await decideMerge(server);
+		await updateBook("b1", { seriesName: "Foundation" }, 3000);
+		await applyBookMerge("b1", update, server.updatedAt);
+		expect(seriesRow()).toMatchObject({ series_name: "Foundation", series_updated_at: 3000 });
 	});
 
 	it("refuses, in development, a field it has no stamp to guard with", async () => {

@@ -1,5 +1,6 @@
 import {
 	bookStatus,
+	type Milestones,
 	PROFILE_SECTIONS,
 	type ProfileBook,
 	type ProfileCover,
@@ -14,7 +15,7 @@ import { type DbExecutor, db } from "~/db";
 import { socialFriendship, socialProfile, syncBooks, syncSeries } from "~/db/schema";
 import { type CoverRef, signCoverToken } from "./cover-token";
 import { SocialError } from "./errors";
-import { dayOf, profileStatsFor } from "./profile-stats";
+import { dayOf, profileMilestonesFor, profileStatsFor } from "./profile-stats";
 import {
 	friendshipExists,
 	identityOf,
@@ -65,6 +66,7 @@ function loadShelfRows(exec: DbExecutor, ownerIds: string[]) {
 			status: syncBooks.status,
 			rating: syncBooks.rating,
 			finishedAt: syncBooks.finishedAt,
+			firstSittingAt: syncBooks.firstSittingAt,
 			catalogId: syncBooks.catalogId,
 			updatedAt: syncBooks.updatedAt,
 			hasCover: isNotNull(syncBooks.coverImage),
@@ -95,7 +97,7 @@ type ShelfRow = Awaited<ReturnType<typeof loadShelfRows>>[number];
  * rolled up per series. Articles, hidden and deleted books are out. Currently
  * reading comes most recently moved first.
  */
-function shelvesFromRows(
+export function shelvesFromRows(
 	rows: ShelfRow[],
 	ownerId: string,
 	viewerId: string,
@@ -107,7 +109,13 @@ function shelvesFromRows(
 
 	for (const row of rows) {
 		const wordCount = row.wordCount ?? 0;
-		const status = bookStatus({ wordCount, wordPosition: row.wordPosition, status: row.status });
+		const status = bookStatus({
+			wordCount,
+			wordPosition: row.wordPosition,
+			status: row.status,
+			finishedAt: row.finishedAt,
+			firstSittingAt: row.firstSittingAt,
+		});
 		if (row.seriesId) {
 			if (row.seriesTitle === null) continue;
 			const entry = series.get(row.seriesId) ?? {
@@ -180,7 +188,7 @@ function shelvesFromRows(
 				rating: entry.rating,
 				cover,
 			});
-		} else if (entry.isAnyReading || entry.wordPosition > 0) {
+		} else if (entry.isAnyReading) {
 			reading.push({
 				book: {
 					key: seriesId,
@@ -263,6 +271,20 @@ export type ProfileViewOptions = {
 };
 
 /**
+ * Whether a section reaches this viewer: the owner always sees all, others what the owner's toggle allows.
+ * Milestones are reading stats too, so turning stats off hides them whatever their own toggle says.
+ */
+export function isSectionShown(
+	profile: Partial<Record<(typeof PROFILE_SECTIONS)[ProfileSection], boolean>> | undefined,
+	section: ProfileSection,
+	isShowingAll: boolean,
+): boolean {
+	if (isShowingAll) return true;
+	const isOn = (s: ProfileSection) => profile?.[PROFILE_SECTIONS[s]] ?? true;
+	return isOn(section) && (section !== "milestones" || isOn("stats"));
+}
+
+/**
  * What `viewerId` may see of `targetId`. Everything that must not leak (a
  * stranger, a block either way, a banned or handle-less owner, no such user)
  * collapses into `not_found`. No separate block check is needed: a block
@@ -315,8 +337,7 @@ export async function resolveProfileView(
 	view.bio = profile?.bio ?? null;
 	view.friendCount = await friendCountOf(exec, targetId);
 
-	const isAllowed = (section: ProfileSection): boolean =>
-		isShowingAll || (profile?.[PROFILE_SECTIONS[section]] ?? true);
+	const isAllowed = (section: ProfileSection) => isSectionShown(profile, section, isShowingAll);
 	if (isAllowed("currentlyReading") || isAllowed("finished")) {
 		const shelves = await shelvesFor(exec, targetId, viewerId, ownerZone);
 		if (isAllowed("currentlyReading")) view.sections.currentlyReading = shelves.currentlyReading;
@@ -325,7 +346,30 @@ export async function resolveProfileView(
 	if (isAllowed("stats")) {
 		view.sections.stats = await profileStatsFor(exec, targetId, { timeZone: ownerZone, now });
 	}
+	if (isAllowed("milestones")) {
+		const milestones = await profileMilestonesFor(exec, targetId, { timeZone: ownerZone });
+		view.sections.milestones = isShowingAll
+			? milestones
+			: milestonesForFriends(milestones, ownerZone);
+	}
 	return view;
+}
+
+/**
+ * What friends see of the owner's milestones: the reached tiers by day. `next` carries the
+ * owner's exact totals and a reach time the hour they read, which the stats toggle may hide.
+ */
+export function milestonesForFriends(
+	milestones: Milestones,
+	timeZone: string | undefined,
+): Milestones {
+	return {
+		reached: milestones.reached.map((m) => {
+			const day = dayOf(new Date(m.reachedAt), timeZone);
+			return { ...m, reachedAt: day ? Date.parse(`${day}T12:00:00Z`) : m.reachedAt };
+		}),
+		next: [],
+	};
 }
 
 /** Whether `viewerId` may load `ref`'s cover right now: own book, or a live friendship between two visible users. */

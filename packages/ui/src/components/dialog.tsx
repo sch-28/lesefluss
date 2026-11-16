@@ -2,10 +2,24 @@ import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type * as React from "react";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-	return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+function Dialog({
+	open,
+	defaultOpen,
+	onOpenChange,
+	dismissible = true,
+	...props
+}: React.ComponentProps<typeof DialogPrimitive.Root> & {
+	/** False while the dialog must stay open: Android back is then swallowed. */
+	dismissible?: boolean;
+}) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false), dismissible);
+	return (
+		<DialogPrimitive.Root data-slot="dialog" open={isOpen} onOpenChange={setOpen} {...props} />
+	);
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
@@ -28,7 +42,7 @@ function DialogOverlay({
 		<DialogPrimitive.Overlay
 			data-slot="dialog-overlay"
 			className={cn(
-				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:[animation-duration:160ms] data-[state=open]:[animation-duration:200ms]",
+				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=open]:animate-in dark:bg-black/60 data-[state=closed]:[animation-duration:160ms] data-[state=open]:[animation-duration:200ms]",
 				className,
 			)}
 			{...props}

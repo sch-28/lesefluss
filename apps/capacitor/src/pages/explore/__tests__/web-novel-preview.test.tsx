@@ -18,15 +18,25 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 	providerLabel: (id: string) => (id === "royalroad" ? "Royal Road" : id),
 	chapterCountLabel: (n: number) => `${n} chapters`,
 }));
+const wishlist = vi.hoisted(() => ({ entry: null as unknown, toggle: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
+		useStatsSpeedModel: () => ({
+			data: {
+				pace: { wpm: 250, source: "measured" },
+				sittings: 3,
+				modesUsed: { reading: true, rsvp: false },
+			},
+		}),
+		useSettings: () => ({ data: { wpm: 400, defaultReaderMode: "scroll" } }),
 		useSeriesList: () => ({ data: seriesList.current }),
 		useImportSerialFromUrl: () => ({ mutateAsync: importMutate }),
+		useWishlistEntry: () => wishlist.entry,
+		useToggleWishlist: () => ({ mutate: wishlist.toggle, isPending: false }),
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 vi.mock("@tanstack/react-router", () => ({
 	useRouter: () => ({ navigate, history: { back: vi.fn() } }),
@@ -65,6 +75,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	previewCache.clear();
+	wishlist.entry = null;
 	vi.clearAllMocks();
 });
 
@@ -161,6 +172,21 @@ describe("WebNovelPreview", () => {
 		expect(view.queryButton(/Add to library/)).not.toBeNull();
 	});
 
+	it("shows a description's paragraphs apart, and a cold link's chapter count", async () => {
+		previewSerial.mockResolvedValueOnce({
+			...RESULT,
+			description: "First paragraph.\n\nSecond paragraph.",
+			chapterCount: 356,
+		});
+		view = await render(<WebNovelPreview search={search.current} />);
+		await flush();
+
+		const paragraphs = [...view.container.querySelectorAll("section p")].map((p) => p.textContent);
+		expect(paragraphs).toContain("First paragraph.");
+		expect(paragraphs).toContain("Second paragraph.");
+		expect(view.text()).toContain("356 chapters");
+	});
+
 	it("shows loading on a cold link until the provider answers", async () => {
 		previewSerial.mockImplementation(() => new Promise(() => undefined));
 		view = await render(<WebNovelPreview search={search.current} />);
@@ -216,5 +242,42 @@ describe("WebNovelPreview", () => {
 			params: { id: "s1" },
 		});
 		expect(importMutate).not.toHaveBeenCalled();
+	});
+
+	it("saves the series to the wishlist under its source URL", async () => {
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		await click(view.getButton("Add to wishlist"));
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			{
+				saved: true,
+				item: {
+					kind: "serial",
+					ref: URL_,
+					title: "Mother of Learning",
+					author: "nobody103",
+					coverUrl: "https://covers.test/mol.jpg",
+				},
+			},
+			expect.anything(),
+		);
+	});
+
+	it("offers no wishlist for a series already in the library", async () => {
+		seriesList.current = [{ id: "s1", sourceUrl: URL_ }];
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		expect(view.queryButton(/wishlist/)).toBeNull();
+	});
+	it("still takes a saved series off the wishlist once it is in the library", async () => {
+		seriesList.current = [{ id: "s1", sourceUrl: URL_ }];
+		wishlist.entry = { id: "w1" };
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		await click(view.getButton("Remove from wishlist"));
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
 	});
 });

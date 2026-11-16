@@ -10,15 +10,23 @@
  * alone — long-paragraph reading no longer triggers spurious idle flush.
  */
 import { App as CapacitorApp } from "@capacitor/app";
+import { hasOpenOverlay } from "@lesefluss/ui/overlay-back";
 import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
+import { sittingCarries } from "../../services/reading-sessions/carry";
 import { onSessionsDeleted } from "../../services/reading-sessions/deleted";
 import { persistRow } from "../../services/reading-sessions/persist";
+import {
+	closeVisit,
+	openVisit,
+	recordSitting,
+} from "../../services/reading-sessions/summary-store";
 import { deleteServerSession } from "../../services/sync";
 import { publishSessionTick } from "../../test-hooks/reader";
 import { log } from "../../utils/log";
+import { FOCAL_FONT_MULTIPLIER } from "./focal-font";
 import {
 	type DebugSnapshot,
 	POLL_MS,
@@ -42,8 +50,12 @@ type Args = {
 	getPosition: () => number;
 	/** RSVP dial setting (persisted as wpmAvg for RSVP sessions). */
 	wpmSetting?: number;
+	/** The reader's font size; an RSVP sitting stores its word size instead (see `TrackerOpts.getFontSize`). */
+	fontSize?: number;
 	/** See `TrackerOpts.onFurthestRead`. */
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
+	/** Reading goes on in another window (Quick RSVP): it counts while this tab is hidden. */
+	isPlayingElsewhere?: boolean;
 };
 
 type Return = {
@@ -54,6 +66,8 @@ type Return = {
 	/** Snapshot reader for the on-screen debug badge. Returns null when no
 	 *  tracker is mounted (book hasn't loaded yet). */
 	getDebugSnapshot: () => DebugSnapshot | null;
+	/** See `SessionTracker.getLiveRate`; null when no tracker is mounted. */
+	getLiveRate: () => number | null;
 	/** Ends the current sitting; the next reading activity opens a new one at
 	 *  the then-current position. */
 	endSession: () => void;
@@ -88,13 +102,17 @@ export function useReadingSession({
 	rsvpIsPlaying,
 	getPosition,
 	wpmSetting,
+	fontSize,
 	onFurthestRead,
+	isPlayingElsewhere = false,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
 	const getPositionRef = useRef(getPosition);
 	getPositionRef.current = getPosition;
 	const wpmRef = useRef(wpmSetting);
 	wpmRef.current = wpmSetting;
+	const fontSizeRef = useRef(fontSize);
+	fontSizeRef.current = fontSize;
 	const onFurthestReadRef = useRef(onFurthestRead);
 	onFurthestReadRef.current = onFurthestRead;
 
@@ -109,9 +127,20 @@ export function useReadingSession({
 			mode,
 			getPosition: () => getPositionRef.current(),
 			getWpmSetting: () => wpmRef.current ?? null,
+			// Bound to this tracker's mode: a mode switch re-renders with the new mode before the
+			// cleanup finalizes the old sitting.
+			getFontSize: () => {
+				const size = fontSizeRef.current;
+				if (size === undefined) return null;
+				return mode === "rsvp" ? size * FOCAL_FONT_MULTIPLIER : size;
+			},
 			persist: persistRow,
 			remove: removeRow,
 			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),
+			onFinalized: recordSitting,
+			carry: sittingCarries,
+			// RSVP keeps playing under its speed popover; its sittings follow playback instead.
+			isOverlayOpen: mode === "rsvp" ? undefined : hasOpenOverlay,
 		});
 		return () => {
 			trackerRef.current?.finalize();
@@ -119,17 +148,29 @@ export function useReadingSession({
 		};
 	}, [bookId, mode]);
 
+	// One visit per reader mount, not per (bookId, mode): switching modes keeps one summary.
+	useEffect(() => {
+		openVisit();
+		return closeVisit;
+	}, []);
+
 	// `isReading` && (RSVP not paused) → reading.
 	useEffect(() => {
 		const reading = isReading && (mode !== "rsvp" || rsvpIsPlaying !== false);
 		trackerRef.current?.setReading(reading);
 	}, [isReading, rsvpIsPlaying, mode]);
 
+	const isPlayingElsewhereRef = useRef(isPlayingElsewhere);
+	isPlayingElsewhereRef.current = isPlayingElsewhere;
+	const applyForegroundRef = useRef<() => void>(() => {});
+
 	// Lifecycle union: document visibility AND Capacitor App active.
 	useEffect(() => {
 		let docVisible = document.visibilityState !== "hidden";
 		let appActive = true;
-		const apply = () => trackerRef.current?.setForeground(docVisible && appActive);
+		const apply = () =>
+			trackerRef.current?.setForeground((docVisible && appActive) || isPlayingElsewhereRef.current);
+		applyForegroundRef.current = apply;
 		apply();
 
 		const onVis = () => {
@@ -151,6 +192,11 @@ export function useReadingSession({
 		};
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-applies the foreground on its change
+	useEffect(() => {
+		applyForegroundRef.current();
+	}, [isPlayingElsewhere]);
+
 	useEffect(() => onSessionsDeleted((ids) => trackerRef.current?.forgetDeleted(ids)), []);
 
 	// Periodic tick. Wall-clock-guarded against suspension inside the tracker.
@@ -164,11 +210,14 @@ export function useReadingSession({
 
 	const markActivity = useCallback(() => {
 		trackerRef.current?.markActivity();
+		if (isPlayingElsewhereRef.current) trackerRef.current?.tickIfDue();
 	}, []);
 
 	const getDebugSnapshot = useCallback(() => {
 		return trackerRef.current?.getDebugSnapshot() ?? null;
 	}, []);
+
+	const getLiveRate = useCallback(() => trackerRef.current?.getLiveRate() ?? null, []);
 
 	const endSession = useCallback(() => {
 		trackerRef.current?.finalize();
@@ -189,6 +238,7 @@ export function useReadingSession({
 	return {
 		markActivity,
 		getDebugSnapshot,
+		getLiveRate,
 		endSession,
 		rewindSession,
 		backfillSession,

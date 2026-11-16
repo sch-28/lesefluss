@@ -1,6 +1,7 @@
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Series } from "../db/schema";
+import { clearImportedFromWishlist } from "../wishlist";
 import { commitChapter, commitSeries, syncChapterList } from "./commit";
 import { detectScraper, scrapersById } from "./registry";
 import type { ChapterFetchResult, SearchResult } from "./types";
@@ -33,7 +34,9 @@ async function importSeries(url: string): Promise<Series> {
 	const meta = await scraper.fetchSeriesMetadata(url);
 	const chapters = await scraper.fetchChapterList(meta.tocUrl);
 	if (chapters.length === 0) throw new Error("NO_CHAPTERS");
-	return commitSeries(meta, chapters);
+	const series = await commitSeries(meta, chapters);
+	await clearImportedFromWishlist("serial", [url, series.sourceUrl]);
+	return series;
 }
 
 /**
@@ -53,7 +56,7 @@ export async function previewSerial(url: string): Promise<SearchResult> {
 		author: meta.author,
 		description: meta.description,
 		coverImage: meta.coverImage,
-		chapterCount: null,
+		chapterCount: meta.chapterCount ?? null,
 		sourceUrl: meta.sourceUrl,
 		provider: meta.provider,
 		details: meta.details,

@@ -1,5 +1,7 @@
+import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { expect, type Page, test } from "@playwright/test";
 import { PLAIN_BOOK_TITLE, plainBookFixture } from "./helpers/plain-book";
+import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
@@ -60,37 +62,36 @@ async function expectSavedAndReopensOn(page: Page, id: string, word: number) {
 	await expect.poll(() => reader.pageModeFirstVisibleWord(page), { timeout: 10_000 }).toBe(word);
 }
 
-for (const via of ["key", "tap"] as const) {
-	test(`a ${via} turn back across a chunk boundary saves the previous chunk's last page and reopens on it`, async ({
-		page,
-	}) => {
-		const { id, chunkStart } = await openAt(page, (start) => start);
+test("a key turn back across a chunk boundary saves the previous chunk's last page and reopens on it", async ({
+	page,
+}) => {
+	const { id, chunkStart } = await openAt(page, (start) => start);
 
-		await turn(page, "back", via);
+	await turn(page, "back", "key");
 
-		const words = await reader.pageModeVisibleWords(page);
-		expect(words, "the previous chunk's last page").toContain(chunkStart - 1);
-		await expectSavedAndReopensOn(page, id, words[0]);
-	});
+	const words = await reader.pageModeVisibleWords(page);
+	expect(words, "the previous chunk's last page").toContain(chunkStart - 1);
+	await expectSavedAndReopensOn(page, id, words[0]);
+});
 
-	test(`a ${via} turn forward across a chunk boundary saves the next chunk's first page and reopens on it`, async ({
-		page,
-	}) => {
-		const { id, chunkStart } = await openAt(page, (start) => start - 1);
+test("a tap turn forward across a chunk boundary saves the next chunk's first page and reopens on it", async ({
+	page,
+}) => {
+	const { id, chunkStart } = await openAt(page, (start) => start - 1);
 
-		await turn(page, "forward", via);
+	await turn(page, "forward", "tap");
 
-		expect(await reader.pageModeFirstVisibleWord(page)).toBe(chunkStart);
-		await expectSavedAndReopensOn(page, id, chunkStart);
-	});
-}
+	expect(await reader.pageModeFirstVisibleWord(page)).toBe(chunkStart);
+	await expectSavedAndReopensOn(page, id, chunkStart);
+});
 
 /**
- * At a fractional page width (a 411.43px phone) Chromium rounds a chunk's
- * scrollWidth up, past its last whole page. Counted as another page, that
- * leaves a blank one before the next chunk.
+ * A turn across the boundary uses the neighbouring chunk's measured width, which
+ * a layout change has to keep true. At a fractional page width (a 411.43px
+ * phone) Chromium rounds a chunk's scrollWidth up, past its last whole page;
+ * counted as another page, that leaves a blank one before the next chunk.
  */
-test("at a fractional page width a turn across a chunk boundary lands on the next chunk", async ({
+test("at a fractional page width and after a spacing change, turns across a chunk boundary land on the neighbouring chunk", async ({
 	page,
 }) => {
 	const { chunkStart } = await openAt(page, (start) => start - 1);
@@ -107,4 +108,19 @@ test("at a fractional page width a turn across a chunk boundary lands on the nex
 
 	await turn(page, "back", "key");
 	expect(await reader.pageModeVisibleWords(page)).toContain(chunkStart - 1);
+
+	await turn(page, "forward", "key");
+	await applyRemoteSettings(page, {
+		readerLetterSpacing: SETTING_CONSTRAINTS.READER_LETTER_SPACING.max,
+	});
+	await reader.expectWordVisibleInPage(page, chunkStart);
+	await reader.waitPositionQuiet(page);
+
+	await reader.blurFocusedControl(page);
+	await page.keyboard.press("ArrowLeft");
+	await expect
+		.poll(() => reader.pageModeVisibleWords(page), {
+			message: "the previous chunk's last word is on its last page",
+		})
+		.toContain(chunkStart - 1);
 });

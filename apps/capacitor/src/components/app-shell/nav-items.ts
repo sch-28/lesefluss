@@ -1,13 +1,13 @@
 import { useLocation } from "@tanstack/react-router";
-import { Compass, LibraryBig, Settings, Users } from "lucide-react";
-import { type ComponentType, type SVGProps, useEffect } from "react";
+import { BarChart3, Compass, LibraryBig, Settings, Users } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useRefetchSocialOnForeground } from "../../services/social/cache";
 import { useUnreadCount } from "../../services/social/inbox";
 import { SYNC_ENABLED } from "../../services/sync";
 
 export type NavTarget = {
-	to: "/tabs/library" | "/tabs/explore" | "/tabs/social" | "/tabs/settings";
+	to: "/tabs/library" | "/tabs/stats" | "/tabs/explore" | "/tabs/social" | "/tabs/settings";
 	label: string;
 	icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
@@ -17,36 +17,15 @@ export type NavBadge = number | "dot" | undefined;
 
 export const NAV_ITEMS: readonly NavTarget[] = [
 	{ to: "/tabs/library", label: "Library", icon: LibraryBig },
+	{ to: "/tabs/stats", label: "Stats", icon: BarChart3 },
 	{ to: "/tabs/explore", label: "Explore", icon: Compass },
 	{ to: "/tabs/social", label: "Social", icon: Users },
 	{ to: "/tabs/settings", label: "Settings", icon: Settings },
 ];
 
-const SIGNED_IN_HINT_KEY = "nav-signed-in";
-
-function readSignedInHint(): boolean {
-	try {
-		return localStorage.getItem(SIGNED_IN_HINT_KEY) === "true";
-	} catch {
-		return false;
-	}
-}
-
-/**
- * Social needs an account, so its tab only exists for a signed-in user. Until
- * the stored session is restored, the last known state decides, so the tab bar
- * does not change shape on every launch.
- */
+/** Without a sync server there is no account, so Social has nothing to show. Signed out it shows the sign-in pitch. */
 export function useNavItems(): readonly NavTarget[] {
-	const { isLoggedIn, isSessionResolved } = useSyncContext();
-	useEffect(() => {
-		if (!isSessionResolved) return;
-		try {
-			localStorage.setItem(SIGNED_IN_HINT_KEY, String(isLoggedIn));
-		} catch {}
-	}, [isLoggedIn, isSessionResolved]);
-	const isSignedIn = isSessionResolved ? isLoggedIn : readSignedInHint();
-	if (isSignedIn && SYNC_ENABLED) return NAV_ITEMS;
+	if (SYNC_ENABLED) return NAV_ITEMS;
 	return NAV_ITEMS.filter((item) => item.to !== "/tabs/social");
 }
 

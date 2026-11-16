@@ -54,6 +54,30 @@ describe.skipIf(!hasDb)("sync_reading_goals upsert (integration)", () => {
 		expect(await read("g1")).toMatchObject({ dailyPercent: 0.55, targetDate: "2026-03-10" });
 	});
 
+	test("a push from a client before minute goals keeps the stored minutes", async () => {
+		await upsertSyncGoals(db, userId, [
+			makeGoal({ goalId: "m1", mode: "pace", dailyPercent: 4.5, dailyMinutes: 20 }),
+		]);
+		const legacy = makeGoal({ goalId: "m1", mode: "pace", dailyPercent: 5, updatedAt: 2_000_000 });
+		delete legacy.dailyMinutes;
+		await upsertSyncGoals(db, userId, [legacy]);
+		expect(await read("m1")).toMatchObject({ dailyPercent: 5, dailyMinutes: 20 });
+		await upsertSyncGoals(db, userId, [
+			makeGoal({ goalId: "m1", dailyMinutes: null, updatedAt: 3_000_000 }),
+		]);
+		expect((await read("m1"))?.dailyMinutes).toBeNull();
+	});
+
+	test("a push from a client before minute goals that leaves pace drops the minutes", async () => {
+		await upsertSyncGoals(db, userId, [
+			makeGoal({ goalId: "m2", mode: "pace", dailyPercent: 4.5, dailyMinutes: 20 }),
+		]);
+		const legacy = makeGoal({ goalId: "m2", mode: "deadline", updatedAt: 2_000_000 });
+		delete legacy.dailyMinutes;
+		await upsertSyncGoals(db, userId, [legacy]);
+		expect(await read("m2")).toMatchObject({ mode: "deadline", dailyMinutes: null });
+	});
+
 	test("a newer write wins and an older one is ignored", async () => {
 		await upsertSyncGoals(db, userId, [
 			makeGoal({ targetDate: "2026-04-01", updatedAt: 2_000_000 }),

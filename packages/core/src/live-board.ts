@@ -5,8 +5,20 @@ import { READING_MODES, type ReadingMode } from "./reading-credit";
 export const LIVE_REPORT_INTERVAL_MS = 2_000;
 /** A reader silent this long no longer counts as reading now; its next report starts a new sitting. */
 export const LIVE_IDLE_MS = 30_000;
-/** Speed is noise before a sitting has run this long. */
+/** Speed is noise before a sitting has this much active time. */
 export const LIVE_MIN_SITTING_MS = 20_000;
+/**
+ * How long a reader may stay on one position and still be reading it, as the
+ * session tracker's soft idle allows a page or screen. An RSVP word lasts well
+ * under a report, so a still RSVP reader has paused. Longer stillness is a
+ * pause and stays out of live speed.
+ */
+export const LIVE_STILL_READING_MS: Record<ReadingMode, number> = {
+	scroll: 3 * 60_000,
+	page: 3 * 60_000,
+	rsvp: 3 * LIVE_REPORT_INTERVAL_MS,
+	listen: 0,
+};
 
 /** The client's clock when it sent the action; orders a stop against that client's reports. Optional for older builds. */
 const sentAtField = z.number().int().nonnegative().optional();

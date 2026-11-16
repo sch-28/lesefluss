@@ -1,21 +1,26 @@
-import type { MeasuredReadingMode } from "@lesefluss/core";
+import { bookPace, type MeasuredReadingMode, type Pace } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTheme } from "../../contexts/theme-context";
+import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { bucketSpeedSeries, type SpeedBucket } from "../../services/stats/aggregate";
 import { summariseBookReading } from "../../services/stats/book-summary";
+import { minuteGoalOf } from "../../services/stats/reading-goal";
 import { summariseSpeedBuckets } from "../../services/stats/summaries";
-import { formatDuration, formatRelative } from "../../utils/date-utils";
+import { averageDailyMinutes } from "../../services/stats/what-if";
+import { formatDuration, formatRelative, localDateKey } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
+import { canHaveGoal } from "./reading-goal/goal-model";
 
 import { AnimatedNumber } from "./stats/animated-number";
 import { evenTickIndices, formatDayTick } from "./stats/chart-axis";
 import { ChartTooltip } from "./stats/chart-tooltip";
 import { buildNivoTheme } from "./stats/nivo-theme";
+import { rsvpEstimateSpeed, WhatIfSpeed } from "./what-if-speed";
 
 const LINE_COLOR = "#c94b2a";
 const LINE_COLORS = [LINE_COLOR];
@@ -42,7 +47,7 @@ function SpeedTooltip({ bucket }: { bucket: SpeedBucket }) {
 	return (
 		<ChartTooltip>
 			<strong>{bucket.wpm}</strong> wpm
-			<div style={{ opacity: 0.6, fontSize: 11, marginTop: 2 }}>
+			<div style={{ opacity: 0.6, fontSize: "0.6875rem", marginTop: 2 }}>
 				{bucket.sessions === 1 ? "1 sitting" : `${bucket.sessions} sittings`} ·{" "}
 				{bucket.startedAt === bucket.endedAt
 					? formatDayTick(bucket.startedAt)
@@ -62,9 +67,71 @@ interface Props {
 	book: Book;
 }
 
+function wordsLeftOf(book: Book): number | null {
+	if (book.finishedAt !== null || book.wordCount <= 0) return null;
+	const left = book.wordCount - book.wordPosition;
+	return left > 0 ? left : null;
+}
+
+/**
+ * The what-if slider and RSVP hint of a book's reading-time card. The finish day
+ * uses a minute goal's daily minutes, else the reader's recent daily average.
+ */
+function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; wordsLeft: number }) {
+	const now = useLocalDayNow();
+	const { data: model } = queryHooks.useStatsSpeedModel();
+	const { data: settings } = queryHooks.useSettings();
+	const { data: plan } = queryHooks.useReadingGoalPlan(canHaveGoal(book) ? book.id : null);
+	const { data: daily } = queryHooks.useStatsDailyReading();
+	const today = localDateKey(now);
+	const minutesPerDay =
+		(plan ? minuteGoalOf(plan.goal) : null) ??
+		(daily ? averageDailyMinutes(daily.msByDay, today) : null);
+	const rsvp = rsvpEstimateSpeed(model?.rsvp?.wpm ?? null, settings?.wpm ?? null);
+
+	return (
+		<WhatIfSpeed
+			key={book.id}
+			wordsLeft={wordsLeft}
+			paceWpm={pace.wpm}
+			minutesPerDay={minutesPerDay}
+			today={today}
+			rsvp={rsvp && rsvp.wpm > pace.wpm ? rsvp : null}
+		/>
+	);
+}
+
+/**
+ * An unread book's length in time, at the reader's pace. A started book without
+ * sittings shows no card: its time left is in the Continue button only.
+ */
+function BookReadingTimeCard({ book }: Props) {
+	const { data: model } = queryHooks.useStatsSpeedModel();
+	const wordsLeft = wordsLeftOf(book);
+	if (wordsLeft === null || book.wordPosition > 0) return null;
+	const pace = bookPace(model, book.id);
+	const { minutesLeft, isPaceEstimated } = summariseBookReading(book, pace);
+
+	return (
+		<section className="book-detail-card mt-4" data-testid="book-reading-time">
+			<h2 className="book-detail-section-title">Reading time</h2>
+			<div className="mt-3">
+				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+					{formatReadingTime(minutesLeft ?? 0)}
+				</div>
+				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+					total{!isPaceEstimated && " · at your pace"}
+				</div>
+			</div>
+			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
+		</section>
+	);
+}
+
 export function BookStatsCard({ book }: Props) {
 	const { theme, isEinkMode } = useTheme();
 	const stats = queryHooks.useStatsBook(book.id);
+	const speedModel = queryHooks.useStatsSpeedModel();
 	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
@@ -104,10 +171,16 @@ export function BookStatsCard({ book }: Props) {
 		[buckets],
 	);
 
-	if (!data || data.sessionCount === 0) return null;
+	if (!data || data.sessionCount === 0) return <BookReadingTimeCard book={book} />;
 
-	const { totalPages, pagesIn, percent, isFinished, isPaceEstimated, minutesLeft } =
-		summariseBookReading(book, data.measuredWpm);
+	const pace = bookPace(speedModel.data, book.id);
+	const wordsLeft = wordsLeftOf(book);
+	const { totalPages, pagesIn, percent, isFinished, minutesLeft } = summariseBookReading(
+		book,
+		pace,
+	);
+	// A reset book keeps its sittings, and its Start reading button carries no time.
+	const restartMinutes = !isFinished && book.wordPosition <= 0 ? minutesLeft : null;
 
 	const showSparkline = buckets.length >= 2;
 
@@ -126,34 +199,30 @@ export function BookStatsCard({ book }: Props) {
 					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
 						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
 					</div>
-					<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-						time read · {data.sessionCount} {data.sessionCount === 1 ? "sitting" : "sittings"}
+					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+						time read
 					</div>
 				</div>
-				{isFinished ? (
+				{restartMinutes !== null && (
+					<div className="text-right">
+						<div className="font-semibold text-xl tabular-nums leading-none">
+							{formatReadingTime(restartMinutes)}
+						</div>
+						<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">total</div>
+					</div>
+				)}
+				{isFinished && (
 					<div className="text-right">
 						<div className="flex items-center justify-end gap-1.5 font-semibold text-emerald-500 text-xl leading-none">
 							<CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
 							Finished
 						</div>
 						{book.finishedAt != null && (
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								{formatRelative(book.finishedAt)}
 							</div>
 						)}
 					</div>
-				) : (
-					minutesLeft != null &&
-					minutesLeft > 0 && (
-						<div className="text-right">
-							<div className="font-semibold text-xl tabular-nums leading-none">
-								{formatReadingTime(minutesLeft)}
-							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-								left{isPaceEstimated ? " · estimated" : " · at your pace"}
-							</div>
-						</div>
-					)
 				)}
 			</div>
 
@@ -161,7 +230,7 @@ export function BookStatsCard({ book }: Props) {
 				<div className="mt-4">
 					<div className="h-1.5 overflow-hidden rounded-full bg-current/10">
 						<motion.div
-							className={`h-full rounded-full ${isFinished ? "bg-emerald-500" : "bg-current/50"}`}
+							className={`h-full rounded-full ${isFinished ? "bg-emerald-500" : "bg-primary"}`}
 							initial={{ width: 0 }}
 							animate={{ width: `${percent}%` }}
 							transition={{ duration: 0.6, ease: "easeOut" }}
@@ -180,22 +249,20 @@ export function BookStatsCard({ book }: Props) {
 				</div>
 			)}
 
-			<div className="mt-4 grid grid-cols-3 gap-3 border-current/10 border-t pt-3">
-				<Stat
-					value={
-						data.measuredWpm != null ? <AnimatedNumber value={data.measuredWpm} /> : <span>—</span>
-					}
-					label={data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"}
-				/>
-				<Stat
-					value={<span>{formatRelative(data.lastReadAt ?? Date.now())}</span>}
-					label="Last read"
-				/>
-				<Stat
-					value={<span>{data.firstReadAt != null ? formatRelative(data.firstReadAt) : "—"}</span>}
-					label="Started"
-				/>
-			</div>
+			{!isFinished && wordsLeft !== null && (
+				<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
+			)}
+
+			{data.measuredWpm != null && (
+				<div className="mt-4 border-current/10 border-t pt-3">
+					<Stat
+						value={<AnimatedNumber value={data.measuredWpm} />}
+						label={
+							data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"
+						}
+					/>
+				</div>
+			)}
 
 			{showSparkline && (
 				<div className="mt-4">
@@ -241,7 +308,7 @@ function Stat({ value, label }: { value: React.ReactNode; label: string }) {
 	return (
 		<div>
 			<div className="font-semibold text-lg tabular-nums tracking-tight">{value}</div>
-			<div className="mt-0.5 text-[10px] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-0.5 text-[0.625rem] uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }

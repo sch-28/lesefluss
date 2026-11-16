@@ -25,17 +25,19 @@ export function SocialGate({
 	children,
 	returnTo,
 	onClaimed,
+	signedOut,
 }: {
 	children: React.ReactNode;
 	/** App path (without the web basepath) to come back to after sign-in. */
 	returnTo: string;
 	onClaimed?: (profile: OwnSocialProfile) => void;
+	signedOut?: { title: string; message: string };
 }) {
 	const { isLoggedIn, isSessionResolved } = useSyncContext();
 	const profile = useOwnSocialProfile(isLoggedIn);
 
 	if (!isSessionResolved) return <Spinner />;
-	if (!isLoggedIn) return <SignedOutSocial returnTo={returnTo} />;
+	if (!isLoggedIn) return <SignedOutSocial returnTo={returnTo} {...signedOut} />;
 	if (profile.isPending) return <Spinner />;
 	if (profile.isError && !profile.data) {
 		return (

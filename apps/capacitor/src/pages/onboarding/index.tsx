@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { useBackHandler } from "../../hooks/use-back-handler";
 import { replayPendingLink } from "../../services/deep-links/use-deep-links";
 import { buddyReadExists } from "../../services/social/buddy-reads";
 import { type OnboardingFooter, OnboardingFooterContext } from "./footer-context";
@@ -15,6 +16,8 @@ import SpeedStep from "./steps/speed";
 import SyncStep from "./steps/sync";
 import ThemeStep from "./steps/theme";
 import WelcomeStep from "./steps/welcome";
+
+const SPEED_STEP = 2;
 
 const Onboarding: React.FC = () => {
 	const router = useRouter();
@@ -60,6 +63,10 @@ const Onboarding: React.FC = () => {
 	const secondary = footer?.secondary;
 	const anyDisabled = primary?.disabled || secondary?.disabled;
 
+	useBackHandler(step > 0, () => {
+		if (!anyDisabled) back();
+	});
+
 	return (
 		<OnboardingFooterContext.Provider value={ctxValue}>
 			<div className="flex h-[100dvh] flex-col bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-foreground">
@@ -78,13 +85,19 @@ const Onboarding: React.FC = () => {
 					) : (
 						<div />
 					)}
-					<Button variant="ghost" size="sm" onClick={finish} aria-label="Skip onboarding">
-						Skip
-					</Button>
+					{/* The last step's own "Not now" already finishes. */}
+					{step < totalSteps - 1 && (
+						<Button variant="ghost" size="sm" onClick={finish}>
+							Skip setup
+						</Button>
+					)}
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">
-					<div className="mx-auto my-auto w-full max-w-md">{stepNodes[step]}</div>
+					{/* The speed test changes height between its rounds; centred, it would jump. */}
+					<div className={cn("mx-auto w-full max-w-md", step === SPEED_STEP ? "pt-2" : "my-auto")}>
+						{stepNodes[step]}
+					</div>
 				</main>
 
 				<div className="border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
@@ -105,6 +118,7 @@ const Onboarding: React.FC = () => {
 						)}
 						<Button
 							size="lg"
+							variant={primary?.outline ? "outline" : "default"}
 							className="w-full"
 							onClick={primary?.onClick ?? next}
 							disabled={primary?.disabled}

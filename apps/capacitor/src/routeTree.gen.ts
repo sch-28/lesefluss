@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpeedTestRouteImport } from './routes/speed-test'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TabsStatsRouteImport } from './routes/tabs/stats'
 import { Route as TabsSocialIndexRouteImport } from './routes/tabs/social/index'
 import { Route as TabsSettingsIndexRouteImport } from './routes/tabs/settings/index'
 import { Route as TabsLibraryIndexRouteImport } from './routes/tabs/library/index'
@@ -20,17 +22,23 @@ import { Route as TabsSocialInboxRouteImport } from './routes/tabs/social/inbox'
 import { Route as TabsSocialBuddyReadsRouteImport } from './routes/tabs/social/buddy-reads'
 import { Route as TabsSocialBlockedRouteImport } from './routes/tabs/social/blocked'
 import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/sync'
+import { Route as TabsSettingsSpeedRouteImport } from './routes/tabs/settings/speed'
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
 import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsvp'
 import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
 import { Route as TabsSettingsReadAloudRouteImport } from './routes/tabs/settings/read-aloud'
 import { Route as TabsSettingsNotificationsRouteImport } from './routes/tabs/settings/notifications'
 import { Route as TabsSettingsLicensesRouteImport } from './routes/tabs/settings/licenses'
+import { Route as TabsSettingsGoalsRouteImport } from './routes/tabs/settings/goals'
 import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
+import { Route as TabsSettingsDiagnosticsRouteImport } from './routes/tabs/settings/diagnostics'
 import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/device'
 import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
+import { Route as TabsLibraryImportRouteImport } from './routes/tabs/library/import'
+import { Route as TabsLibraryAllSeriesRouteImport } from './routes/tabs/library/all-series'
+import { Route as TabsExploreWishlistRouteImport } from './routes/tabs/explore/wishlist'
 import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/web-novels'
 import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/explore/web-novel-preview'
 import { Route as TabsExploreTagsRouteImport } from './routes/tabs/explore/tags'
@@ -39,9 +47,18 @@ import { Route as TabsSocialInviteTokenRouteImport } from './routes/tabs/social/
 import { Route as TabsSocialBuddyReadIdRouteImport } from './routes/tabs/social/buddy-read.$id'
 import { Route as TabsSocialBuddyReadDiscussionIdRouteImport } from './routes/tabs/social/buddy-read-discussion.$id'
 import { Route as TabsLibrarySeriesIdRouteImport } from './routes/tabs/library/series.$id'
+import { Route as TabsLibraryCollectionsNewRouteImport } from './routes/tabs/library/collections.new'
 import { Route as TabsLibraryBookIdRouteImport } from './routes/tabs/library/book.$id'
 import { Route as TabsExploreBookCatalogIdRouteImport } from './routes/tabs/explore/book.$catalogId'
+import { Route as TabsLibraryCollectionsIdEditRouteImport } from './routes/tabs/library/collections.$id.edit'
+import { Route as TabsLibraryCollectionsIdAddRouteImport } from './routes/tabs/library/collections.$id.add'
+import { Route as TabsLibraryBookIdEditRouteImport } from './routes/tabs/library/book.$id_.edit'
 
+const SpeedTestRoute = SpeedTestRouteImport.update({
+  id: '/speed-test',
+  path: '/speed-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -50,6 +67,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsStatsRoute = TabsStatsRouteImport.update({
+  id: '/tabs/stats',
+  path: '/tabs/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSocialIndexRoute = TabsSocialIndexRouteImport.update({
@@ -97,6 +119,11 @@ const TabsSettingsSyncRoute = TabsSettingsSyncRouteImport.update({
   path: '/tabs/settings/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSettingsSpeedRoute = TabsSettingsSpeedRouteImport.update({
+  id: '/tabs/settings/speed',
+  path: '/tabs/settings/speed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSettingsSocialRoute = TabsSettingsSocialRouteImport.update({
   id: '/tabs/settings/social',
   path: '/tabs/settings/social',
@@ -128,6 +155,11 @@ const TabsSettingsLicensesRoute = TabsSettingsLicensesRouteImport.update({
   path: '/tabs/settings/licenses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSettingsGoalsRoute = TabsSettingsGoalsRouteImport.update({
+  id: '/tabs/settings/goals',
+  path: '/tabs/settings/goals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
   id: '/tabs/settings/general',
   path: '/tabs/settings/general',
@@ -136,6 +168,11 @@ const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
 const TabsSettingsExportRoute = TabsSettingsExportRouteImport.update({
   id: '/tabs/settings/export',
   path: '/tabs/settings/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSettingsDiagnosticsRoute = TabsSettingsDiagnosticsRouteImport.update({
+  id: '/tabs/settings/diagnostics',
+  path: '/tabs/settings/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSettingsDeviceRoute = TabsSettingsDeviceRouteImport.update({
@@ -151,6 +188,21 @@ const TabsReaderIdRoute = TabsReaderIdRouteImport.update({
 const TabsLibraryStatsRoute = TabsLibraryStatsRouteImport.update({
   id: '/tabs/library/stats',
   path: '/tabs/library/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsLibraryImportRoute = TabsLibraryImportRouteImport.update({
+  id: '/tabs/library/import',
+  path: '/tabs/library/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsLibraryAllSeriesRoute = TabsLibraryAllSeriesRouteImport.update({
+  id: '/tabs/library/all-series',
+  path: '/tabs/library/all-series',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsExploreWishlistRoute = TabsExploreWishlistRouteImport.update({
+  id: '/tabs/explore/wishlist',
+  path: '/tabs/explore/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsExploreWebNovelsRoute = TabsExploreWebNovelsRouteImport.update({
@@ -195,6 +247,12 @@ const TabsLibrarySeriesIdRoute = TabsLibrarySeriesIdRouteImport.update({
   path: '/tabs/library/series/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsLibraryCollectionsNewRoute =
+  TabsLibraryCollectionsNewRouteImport.update({
+    id: '/tabs/library/collections/new',
+    path: '/tabs/library/collections/new',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TabsLibraryBookIdRoute = TabsLibraryBookIdRouteImport.update({
   id: '/tabs/library/book/$id',
   path: '/tabs/library/book/$id',
@@ -206,24 +264,49 @@ const TabsExploreBookCatalogIdRoute =
     path: '/tabs/explore/book/$catalogId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const TabsLibraryCollectionsIdEditRoute =
+  TabsLibraryCollectionsIdEditRouteImport.update({
+    id: '/tabs/library/collections/$id/edit',
+    path: '/tabs/library/collections/$id/edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TabsLibraryCollectionsIdAddRoute =
+  TabsLibraryCollectionsIdAddRouteImport.update({
+    id: '/tabs/library/collections/$id/add',
+    path: '/tabs/library/collections/$id/add',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TabsLibraryBookIdEditRoute = TabsLibraryBookIdEditRouteImport.update({
+  id: '/tabs/library/book/$id_/edit',
+  path: '/tabs/library/book/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
+  '/tabs/stats': typeof TabsStatsRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
+  '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
   '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -235,29 +318,41 @@ export interface FileRoutesByFullPath {
   '/tabs/social/': typeof TabsSocialIndexRoute
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
+  '/tabs/library/collections/new': typeof TabsLibraryCollectionsNewRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
   '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
+  '/tabs/library/book/$id/edit': typeof TabsLibraryBookIdEditRoute
+  '/tabs/library/collections/$id/add': typeof TabsLibraryCollectionsIdAddRoute
+  '/tabs/library/collections/$id/edit': typeof TabsLibraryCollectionsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
+  '/tabs/stats': typeof TabsStatsRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
+  '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
   '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -269,30 +364,42 @@ export interface FileRoutesByTo {
   '/tabs/social': typeof TabsSocialIndexRoute
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
+  '/tabs/library/collections/new': typeof TabsLibraryCollectionsNewRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
   '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
+  '/tabs/library/book/$id/edit': typeof TabsLibraryBookIdEditRoute
+  '/tabs/library/collections/$id/add': typeof TabsLibraryCollectionsIdAddRoute
+  '/tabs/library/collections/$id/edit': typeof TabsLibraryCollectionsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
+  '/tabs/stats': typeof TabsStatsRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
+  '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
   '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -304,31 +411,43 @@ export interface FileRoutesById {
   '/tabs/social/': typeof TabsSocialIndexRoute
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
+  '/tabs/library/collections/new': typeof TabsLibraryCollectionsNewRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
   '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
+  '/tabs/library/book/$id_/edit': typeof TabsLibraryBookIdEditRoute
+  '/tabs/library/collections/$id/add': typeof TabsLibraryCollectionsIdAddRoute
+  '/tabs/library/collections/$id/edit': typeof TabsLibraryCollectionsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/onboarding'
+    | '/speed-test'
+    | '/tabs/stats'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
+    | '/tabs/library/all-series'
+    | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/goals'
     | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -340,29 +459,41 @@ export interface FileRouteTypes {
     | '/tabs/social/'
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
+    | '/tabs/library/collections/new'
     | '/tabs/library/series/$id'
     | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
+    | '/tabs/library/book/$id/edit'
+    | '/tabs/library/collections/$id/add'
+    | '/tabs/library/collections/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/onboarding'
+    | '/speed-test'
+    | '/tabs/stats'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
+    | '/tabs/library/all-series'
+    | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/goals'
     | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -374,29 +505,41 @@ export interface FileRouteTypes {
     | '/tabs/social'
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
+    | '/tabs/library/collections/new'
     | '/tabs/library/series/$id'
     | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
+    | '/tabs/library/book/$id/edit'
+    | '/tabs/library/collections/$id/add'
+    | '/tabs/library/collections/$id/edit'
   id:
     | '__root__'
     | '/'
     | '/onboarding'
+    | '/speed-test'
+    | '/tabs/stats'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
+    | '/tabs/library/all-series'
+    | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/goals'
     | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -408,30 +551,42 @@ export interface FileRouteTypes {
     | '/tabs/social/'
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
+    | '/tabs/library/collections/new'
     | '/tabs/library/series/$id'
     | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
+    | '/tabs/library/book/$id_/edit'
+    | '/tabs/library/collections/$id/add'
+    | '/tabs/library/collections/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OnboardingRoute: typeof OnboardingRoute
+  SpeedTestRoute: typeof SpeedTestRoute
+  TabsStatsRoute: typeof TabsStatsRoute
   TabsExploreTagsRoute: typeof TabsExploreTagsRoute
   TabsExploreWebNovelPreviewRoute: typeof TabsExploreWebNovelPreviewRoute
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
+  TabsExploreWishlistRoute: typeof TabsExploreWishlistRoute
+  TabsLibraryAllSeriesRoute: typeof TabsLibraryAllSeriesRoute
+  TabsLibraryImportRoute: typeof TabsLibraryImportRoute
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
   TabsReaderIdRoute: typeof TabsReaderIdRoute
   TabsSettingsDeviceRoute: typeof TabsSettingsDeviceRoute
+  TabsSettingsDiagnosticsRoute: typeof TabsSettingsDiagnosticsRoute
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
   TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
+  TabsSettingsGoalsRoute: typeof TabsSettingsGoalsRoute
   TabsSettingsLicensesRoute: typeof TabsSettingsLicensesRoute
   TabsSettingsNotificationsRoute: typeof TabsSettingsNotificationsRoute
   TabsSettingsReadAloudRoute: typeof TabsSettingsReadAloudRoute
   TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
   TabsSettingsRsvpRoute: typeof TabsSettingsRsvpRoute
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
+  TabsSettingsSpeedRoute: typeof TabsSettingsSpeedRoute
   TabsSettingsSyncRoute: typeof TabsSettingsSyncRoute
   TabsSocialBlockedRoute: typeof TabsSocialBlockedRoute
   TabsSocialBuddyReadsRoute: typeof TabsSocialBuddyReadsRoute
@@ -443,15 +598,26 @@ export interface RootRouteChildren {
   TabsSocialIndexRoute: typeof TabsSocialIndexRoute
   TabsExploreBookCatalogIdRoute: typeof TabsExploreBookCatalogIdRoute
   TabsLibraryBookIdRoute: typeof TabsLibraryBookIdRoute
+  TabsLibraryCollectionsNewRoute: typeof TabsLibraryCollectionsNewRoute
   TabsLibrarySeriesIdRoute: typeof TabsLibrarySeriesIdRoute
   TabsSocialBuddyReadDiscussionIdRoute: typeof TabsSocialBuddyReadDiscussionIdRoute
   TabsSocialBuddyReadIdRoute: typeof TabsSocialBuddyReadIdRoute
   TabsSocialInviteTokenRoute: typeof TabsSocialInviteTokenRoute
   TabsSocialProfileUserIdRoute: typeof TabsSocialProfileUserIdRoute
+  TabsLibraryBookIdEditRoute: typeof TabsLibraryBookIdEditRoute
+  TabsLibraryCollectionsIdAddRoute: typeof TabsLibraryCollectionsIdAddRoute
+  TabsLibraryCollectionsIdEditRoute: typeof TabsLibraryCollectionsIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/speed-test': {
+      id: '/speed-test'
+      path: '/speed-test'
+      fullPath: '/speed-test'
+      preLoaderRoute: typeof SpeedTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -464,6 +630,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/stats': {
+      id: '/tabs/stats'
+      path: '/tabs/stats'
+      fullPath: '/tabs/stats'
+      preLoaderRoute: typeof TabsStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/social/': {
@@ -529,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/speed': {
+      id: '/tabs/settings/speed'
+      path: '/tabs/settings/speed'
+      fullPath: '/tabs/settings/speed'
+      preLoaderRoute: typeof TabsSettingsSpeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/social': {
       id: '/tabs/settings/social'
       path: '/tabs/settings/social'
@@ -571,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsLicensesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/goals': {
+      id: '/tabs/settings/goals'
+      path: '/tabs/settings/goals'
+      fullPath: '/tabs/settings/goals'
+      preLoaderRoute: typeof TabsSettingsGoalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/general': {
       id: '/tabs/settings/general'
       path: '/tabs/settings/general'
@@ -583,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/settings/export'
       fullPath: '/tabs/settings/export'
       preLoaderRoute: typeof TabsSettingsExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/settings/diagnostics': {
+      id: '/tabs/settings/diagnostics'
+      path: '/tabs/settings/diagnostics'
+      fullPath: '/tabs/settings/diagnostics'
+      preLoaderRoute: typeof TabsSettingsDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/settings/device': {
@@ -604,6 +798,27 @@ declare module '@tanstack/react-router' {
       path: '/tabs/library/stats'
       fullPath: '/tabs/library/stats'
       preLoaderRoute: typeof TabsLibraryStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/library/import': {
+      id: '/tabs/library/import'
+      path: '/tabs/library/import'
+      fullPath: '/tabs/library/import'
+      preLoaderRoute: typeof TabsLibraryImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/library/all-series': {
+      id: '/tabs/library/all-series'
+      path: '/tabs/library/all-series'
+      fullPath: '/tabs/library/all-series'
+      preLoaderRoute: typeof TabsLibraryAllSeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/explore/wishlist': {
+      id: '/tabs/explore/wishlist'
+      path: '/tabs/explore/wishlist'
+      fullPath: '/tabs/explore/wishlist'
+      preLoaderRoute: typeof TabsExploreWishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/explore/web-novels': {
@@ -662,6 +877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsLibrarySeriesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/library/collections/new': {
+      id: '/tabs/library/collections/new'
+      path: '/tabs/library/collections/new'
+      fullPath: '/tabs/library/collections/new'
+      preLoaderRoute: typeof TabsLibraryCollectionsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/library/book/$id': {
       id: '/tabs/library/book/$id'
       path: '/tabs/library/book/$id'
@@ -676,26 +898,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsExploreBookCatalogIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/library/collections/$id/edit': {
+      id: '/tabs/library/collections/$id/edit'
+      path: '/tabs/library/collections/$id/edit'
+      fullPath: '/tabs/library/collections/$id/edit'
+      preLoaderRoute: typeof TabsLibraryCollectionsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/library/collections/$id/add': {
+      id: '/tabs/library/collections/$id/add'
+      path: '/tabs/library/collections/$id/add'
+      fullPath: '/tabs/library/collections/$id/add'
+      preLoaderRoute: typeof TabsLibraryCollectionsIdAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/library/book/$id_/edit': {
+      id: '/tabs/library/book/$id_/edit'
+      path: '/tabs/library/book/$id/edit'
+      fullPath: '/tabs/library/book/$id/edit'
+      preLoaderRoute: typeof TabsLibraryBookIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OnboardingRoute: OnboardingRoute,
+  SpeedTestRoute: SpeedTestRoute,
+  TabsStatsRoute: TabsStatsRoute,
   TabsExploreTagsRoute: TabsExploreTagsRoute,
   TabsExploreWebNovelPreviewRoute: TabsExploreWebNovelPreviewRoute,
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,
+  TabsExploreWishlistRoute: TabsExploreWishlistRoute,
+  TabsLibraryAllSeriesRoute: TabsLibraryAllSeriesRoute,
+  TabsLibraryImportRoute: TabsLibraryImportRoute,
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,
   TabsReaderIdRoute: TabsReaderIdRoute,
   TabsSettingsDeviceRoute: TabsSettingsDeviceRoute,
+  TabsSettingsDiagnosticsRoute: TabsSettingsDiagnosticsRoute,
   TabsSettingsExportRoute: TabsSettingsExportRoute,
   TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
+  TabsSettingsGoalsRoute: TabsSettingsGoalsRoute,
   TabsSettingsLicensesRoute: TabsSettingsLicensesRoute,
   TabsSettingsNotificationsRoute: TabsSettingsNotificationsRoute,
   TabsSettingsReadAloudRoute: TabsSettingsReadAloudRoute,
   TabsSettingsReaderRoute: TabsSettingsReaderRoute,
   TabsSettingsRsvpRoute: TabsSettingsRsvpRoute,
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,
+  TabsSettingsSpeedRoute: TabsSettingsSpeedRoute,
   TabsSettingsSyncRoute: TabsSettingsSyncRoute,
   TabsSocialBlockedRoute: TabsSocialBlockedRoute,
   TabsSocialBuddyReadsRoute: TabsSocialBuddyReadsRoute,
@@ -707,11 +958,15 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSocialIndexRoute: TabsSocialIndexRoute,
   TabsExploreBookCatalogIdRoute: TabsExploreBookCatalogIdRoute,
   TabsLibraryBookIdRoute: TabsLibraryBookIdRoute,
+  TabsLibraryCollectionsNewRoute: TabsLibraryCollectionsNewRoute,
   TabsLibrarySeriesIdRoute: TabsLibrarySeriesIdRoute,
   TabsSocialBuddyReadDiscussionIdRoute: TabsSocialBuddyReadDiscussionIdRoute,
   TabsSocialBuddyReadIdRoute: TabsSocialBuddyReadIdRoute,
   TabsSocialInviteTokenRoute: TabsSocialInviteTokenRoute,
   TabsSocialProfileUserIdRoute: TabsSocialProfileUserIdRoute,
+  TabsLibraryBookIdEditRoute: TabsLibraryBookIdEditRoute,
+  TabsLibraryCollectionsIdAddRoute: TabsLibraryCollectionsIdAddRoute,
+  TabsLibraryCollectionsIdEditRoute: TabsLibraryCollectionsIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

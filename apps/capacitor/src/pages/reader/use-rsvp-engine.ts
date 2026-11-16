@@ -40,14 +40,14 @@ const VOICE_MIN_DWELL_MS = 120;
 const VOICE_MAX_LAG_WORDS = 3;
 
 /** Runs `fn` once the next frame has painted; returns a cancel. */
-function afterNextPaint(fn: () => void): () => void {
+function afterNextPaint(win: Window, fn: () => void): () => void {
 	let timer: number | null = null;
-	const frame = requestAnimationFrame(() => {
-		timer = window.setTimeout(fn, 0);
+	const frame = win.requestAnimationFrame(() => {
+		timer = win.setTimeout(fn, 0);
 	});
 	return () => {
-		cancelAnimationFrame(frame);
-		if (timer !== null) clearTimeout(timer);
+		win.cancelAnimationFrame(frame);
+		if (timer !== null) win.clearTimeout(timer);
 	};
 }
 
@@ -65,6 +65,10 @@ interface Options {
 	 * `content`.
 	 */
 	bookWordIndex?: WordIndex | null;
+	/** The document whose hiding pauses playback: a pop-up's own, which stays visible over a hidden tab. */
+	visibilityDocument?: Document;
+	/** The window whose clock and frames drive playback: a pop-up's own, which a hidden tab doesn't throttle. */
+	timerWindow?: Window;
 }
 
 export function useRsvpEngine({
@@ -76,6 +80,8 @@ export function useRsvpEngine({
 	onLookup,
 	onWpmChange,
 	bookWordIndex,
+	visibilityDocument,
+	timerWindow,
 }: Options) {
 	// ── Rendered state ───────────────────────────────────────────────────
 	const [words, setWords] = useState<WordEntry[]>([]);
@@ -125,6 +131,8 @@ export function useRsvpEngine({
 	wordsRef.current = words;
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
+	const timersRef = useRef(timerWindow ?? window);
+	timersRef.current = timerWindow ?? window;
 
 	const cancelPendingSave = useCallback(() => {
 		cancelPendingSaveRef.current?.();
@@ -133,7 +141,7 @@ export function useRsvpEngine({
 
 	const stopCatchUp = useCallback(() => {
 		if (catchUpTimerRef.current !== null) {
-			clearTimeout(catchUpTimerRef.current);
+			timersRef.current.clearTimeout(catchUpTimerRef.current);
 			catchUpTimerRef.current = null;
 		}
 	}, []);
@@ -154,7 +162,7 @@ export function useRsvpEngine({
 			// stay near the word on screen rather than going back to the entry word.
 			if (import.meta.env.DEV) warnWordsChangedOnce();
 			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
+				timersRef.current.clearTimeout(timerRef.current);
 				timerRef.current = null;
 			}
 			cancelPendingSave();
@@ -207,7 +215,7 @@ export function useRsvpEngine({
 			if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
 				lastSaveRef.current = now;
 				cancelPendingSave();
-				cancelPendingSaveRef.current = afterNextPaint(() => {
+				cancelPendingSaveRef.current = afterNextPaint(timersRef.current, () => {
 					cancelPendingSaveRef.current = null;
 					onPositionChangeRef.current(idx);
 				});
@@ -232,7 +240,7 @@ export function useRsvpEngine({
 		const { delayMs, nextAcceleration } = calcDelay(chunk, s, accelRef.current);
 		accelRef.current = nextAcceleration;
 		if (isLastChunk) wordIndexRef.current = idx + 1;
-		timerRef.current = window.setTimeout(tick, delayMs);
+		timerRef.current = timersRef.current.setTimeout(tick, delayMs);
 	}, [cancelPendingSave]);
 
 	// ── Play / pause ─────────────────────────────────────────────────────
@@ -259,7 +267,7 @@ export function useRsvpEngine({
 			const entry = w[clamped];
 			if (!entry) return false;
 			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
+				timersRef.current.clearTimeout(timerRef.current);
 				timerRef.current = null;
 			}
 			cancelPendingSave();
@@ -295,7 +303,7 @@ export function useRsvpEngine({
 	const pause = useCallback(() => {
 		settleCatchUp();
 		if (timerRef.current !== null) {
-			clearTimeout(timerRef.current);
+			timersRef.current.clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
 		cancelPendingSave();
@@ -337,12 +345,12 @@ export function useRsvpEngine({
 		if (shown === null || target === null || shown >= target) return;
 		const wait = shownAtRef.current + VOICE_MIN_DWELL_MS - Date.now();
 		if (wait > 0) {
-			catchUpTimerRef.current = window.setTimeout(stepTowardVoice, wait);
+			catchUpTimerRef.current = timersRef.current.setTimeout(stepTowardVoice, wait);
 			return;
 		}
 		displayWord(shown + 1);
 		if (shown + 1 < target) {
-			catchUpTimerRef.current = window.setTimeout(stepTowardVoice, VOICE_MIN_DWELL_MS);
+			catchUpTimerRef.current = timersRef.current.setTimeout(stepTowardVoice, VOICE_MIN_DWELL_MS);
 		}
 	}, [displayWord]);
 
@@ -397,12 +405,13 @@ export function useRsvpEngine({
 			const target = e.target as HTMLElement;
 			if (
 				target.closest?.(
-					".rsvp-controls, .rsvp-dict-button, .rsvp-settings-button, .rsvp-context-word",
+					".rsvp-controls, .rsvp-dict-button, .rsvp-settings-button, .rsvp-voice-button, .rsvp-sleep-button, .rsvp-context-word",
 				)
 			)
 				return;
-			if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
-			longPressTimerRef.current = window.setTimeout(() => {
+			if (longPressTimerRef.current !== null)
+				timersRef.current.clearTimeout(longPressTimerRef.current);
+			longPressTimerRef.current = timersRef.current.setTimeout(() => {
 				longPressTimerRef.current = null;
 				lookupFocalWord();
 			}, LONG_PRESS_MS);
@@ -412,7 +421,7 @@ export function useRsvpEngine({
 
 	const cancelLongPress = useCallback(() => {
 		if (longPressTimerRef.current !== null) {
-			clearTimeout(longPressTimerRef.current);
+			timersRef.current.clearTimeout(longPressTimerRef.current);
 			longPressTimerRef.current = null;
 		}
 	}, []);
@@ -428,12 +437,13 @@ export function useRsvpEngine({
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {
+		const doc = visibilityDocument ?? document;
 		const handleVisibility = () => {
-			if (document.hidden && isPlaying) pause();
+			if (doc.hidden && isPlaying) pause();
 		};
-		document.addEventListener("visibilitychange", handleVisibility);
-		return () => document.removeEventListener("visibilitychange", handleVisibility);
-	}, [isPlaying, pause]);
+		doc.addEventListener("visibilitychange", handleVisibility);
+		return () => doc.removeEventListener("visibilitychange", handleVisibility);
+	}, [isPlaying, pause, visibilityDocument]);
 
 	// ── Flush position on teardown ───────────────────────────────────────
 	// Saves are throttled to every POSITION_SAVE_THROTTLE_MS during playback,
@@ -457,8 +467,9 @@ export function useRsvpEngine({
 	// ── Cleanup on unmount ───────────────────────────────────────────────
 	useEffect(() => {
 		return () => {
-			if (timerRef.current !== null) clearTimeout(timerRef.current);
-			if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+			if (timerRef.current !== null) timersRef.current.clearTimeout(timerRef.current);
+			if (longPressTimerRef.current !== null)
+				timersRef.current.clearTimeout(longPressTimerRef.current);
 			settleCatchUp();
 			stopCatchUp();
 			cancelPendingSave();
@@ -484,6 +495,7 @@ export function useRsvpEngine({
 		context,
 		// actions
 		togglePlayPause,
+		play,
 		pause,
 		jumpToWord,
 		showWord,

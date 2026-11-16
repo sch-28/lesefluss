@@ -93,34 +93,53 @@ for (const scale of SCALES) {
 			await resetStorage(page);
 			await page.goto("/");
 			await page.waitForURL(/\/onboarding/);
-			await expect(page.getByRole("button", { name: "Skip onboarding" })).toBeVisible();
+			await expect(page.getByRole("button", { name: "Skip setup" })).toBeVisible();
 			await expectFits(page, "onboarding");
 		});
 
 		test("the library, stats, explore and every settings page fit", async ({ page }) => {
 			await mockCatalog(page);
 			await seedBigBook(page);
-			for (const route of ["/tabs/library", "/tabs/library/stats"]) {
+			for (const route of ["/tabs/library", "/tabs/stats"]) {
 				await page.goto(route);
 				await expect(page.locator("nav").last()).toBeVisible();
 				expect((await zoomedSizes(page)).root, "the zoom took").toBe(`${16 * scale.factor}px`);
-				await expectFits(page, route);
+				await expectFits(page, route, undefined);
 			}
 			await page.goto("/tabs/explore");
 			await expect(page.getByText("Mock Author").first()).toBeVisible();
-			await expectFits(page, "/tabs/explore");
+			await expectFits(page, "/tabs/explore", undefined);
 			for (const sub of SETTINGS_PAGES) {
 				const route = `/tabs/settings/${sub}`;
 				await page.goto(route);
 				await expect(page.locator("header h1").first()).toBeVisible();
-				await expectFits(page, route);
+				await expectFits(page, route, undefined);
 			}
+		});
+
+		test("a toast sits above the tab bar's buttons, centred inside the screen", async ({
+			page,
+		}) => {
+			await seedBigBook(page);
+			const toast = page.locator('[data-testid="toast-card"]').first();
+			await expect(toast).toBeVisible();
+			const toastBox = await toast.boundingBox();
+			const tabBarBox = await page.locator("nav[data-toast-clear]").boundingBox();
+			expect(toastBox && tabBarBox, "toast and tab bar on screen").toBeTruthy();
+			if (!toastBox || !tabBarBox) return;
+			expect(toastBox.y + toastBox.height).toBeLessThanOrEqual(tabBarBox.y);
+			const width = page.viewportSize()?.width ?? 0;
+			expect(toastBox.x).toBeGreaterThanOrEqual(0);
+			expect(toastBox.x + toastBox.width).toBeLessThanOrEqual(width);
+			expect(Math.abs(toastBox.x + toastBox.width / 2 - width / 2)).toBeLessThanOrEqual(1);
 		});
 
 		test("the reader, its popover, sheets, selection toolbar, RSVP and the book page fit", async ({
 			page,
 		}) => {
 			await seedBigBook(page);
+			// The import's toast is for the library; over the reader text it would read as an overlap.
+			await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 			await openBookFromLibrary(page, BIG_BOOK_TITLE);
 			await reader.expectLoaded(page);
 			await reader.waitOpenSettled(page);
@@ -135,7 +154,7 @@ for (const scale of SCALES) {
 			await page.keyboard.press("Escape");
 			await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
-			await page.getByRole("button", { name: "Annotations" }).click();
+			await reader.openContents(page);
 			const sheet = '[data-slot="drawer-content"]';
 			await expect(page.locator(sheet)).toBeVisible();
 			await expectFits(page, "annotations", sheet);
@@ -154,9 +173,9 @@ for (const scale of SCALES) {
 			await expect(page.locator(".rsvp-display")).toBeHidden();
 
 			await page.getByRole("button", { name: "More actions" }).click();
-			await page.getByRole("menuitem", { name: "View book" }).click();
+			await page.getByRole("menuitem", { name: "Book details", exact: true }).click();
 			await page.waitForURL(/\/tabs\/library\/book\//);
-			await expectFits(page, "book page");
+			await expectFits(page, "book page", undefined);
 			await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();
 			await expect(page.getByRole("dialog")).toBeVisible();
 			await expectFits(page, "goal sheet", '[role="dialog"]');

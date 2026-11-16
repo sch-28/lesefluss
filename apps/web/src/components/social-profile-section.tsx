@@ -202,11 +202,13 @@ function ToggleRow({
 	id,
 	title,
 	checked,
+	disabled,
 	onCheckedChange,
 }: {
 	id: string;
 	title: string;
 	checked: boolean;
+	disabled?: boolean;
 	onCheckedChange: (v: boolean) => void;
 }) {
 	return (
@@ -214,7 +216,7 @@ function ToggleRow({
 			<label htmlFor={id} className="text-sm">
 				{title}
 			</label>
-			<Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+			<Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
 		</div>
 	);
 }
@@ -404,6 +406,13 @@ function ProfileEditor({ profile }: { profile: OwnSocialProfile }) {
 						title="Reading stats"
 						checked={profile.showStats}
 						onCheckedChange={(v) => save({ showStats: v })}
+					/>
+					<ToggleRow
+						id="social-show-milestones"
+						title="Milestones"
+						checked={profile.showMilestones}
+						disabled={!profile.showStats}
+						onCheckedChange={(v) => save({ showMilestones: v })}
 					/>
 					<ToggleRow
 						id="social-show-highlights"

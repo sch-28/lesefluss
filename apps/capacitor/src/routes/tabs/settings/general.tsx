@@ -11,6 +11,7 @@ import { StepperRow } from "@/components/settings/stepper-row";
 import { useTheme } from "@/contexts/theme-context";
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings";
 import { queryHooks } from "@/services/db/hooks";
+import { SUMMARY_SETTING_HINT } from "@/services/reading-sessions/summary-store";
 
 export const Route = createFileRoute("/tabs/settings/general")({
 	component: GeneralSettings,
@@ -27,7 +28,7 @@ function GeneralSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="General" icon={SlidersHorizontal} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Theme">
 					<SettingsRow stacked>
 						<ThemeCards value={storedTheme} onChange={setTheme} disabled={isEinkMode} />
@@ -50,8 +51,6 @@ function GeneralSettings() {
 						max={APP_FONT_SIZE.max}
 						step={APP_FONT_SIZE.step}
 						onChange={(v) => adjustAppFontSize(v - appFontSize)}
-						decLabel="A−"
-						incLabel="A+"
 					/>
 					<ToggleRow
 						id="eink-mode"
@@ -69,6 +68,16 @@ function GeneralSettings() {
 						subtitle="Skip the library and continue where you left off."
 						checked={settings?.autoOpenLastBook ?? DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK}
 						onCheckedChange={(v) => saveSettings({ autoOpenLastBook: v })}
+					/>
+				</SettingsSection>
+
+				<SettingsSection title="After reading">
+					<ToggleRow
+						id="show-session-summary"
+						title="Session summary"
+						subtitle={SUMMARY_SETTING_HINT}
+						checked={settings?.showSessionSummary ?? DEFAULT_SETTINGS.SHOW_SESSION_SUMMARY}
+						onCheckedChange={(v) => saveSettings({ showSessionSummary: v })}
 					/>
 				</SettingsSection>
 

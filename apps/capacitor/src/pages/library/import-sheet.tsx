@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import {
 	ClipboardList,
@@ -8,6 +7,8 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import type React from "react";
+import { batchPickerKind } from "../../services/book-import";
+import { BATCH_IMPORT_COPY } from "./batch-import/copy";
 
 interface ImportSheetProps {
 	isOpen: boolean;
@@ -35,10 +36,8 @@ const SOURCES: Source[] = [
 	{
 		key: "folder",
 		icon: FolderOpen,
-		// Browsers outside desktop ignore `webkitdirectory` and fall back to
-		// selecting several files, so the label has to match what actually opens.
-		title: Capacitor.isNativePlatform() ? "Import folder" : "Import multiple files",
-		subtitle: "Scan for books and pick what to keep",
+		title: BATCH_IMPORT_COPY[batchPickerKind()].menuTitle,
+		subtitle: BATCH_IMPORT_COPY[batchPickerKind()].menuSubtitle,
 	},
 	{
 		key: "clipboard",

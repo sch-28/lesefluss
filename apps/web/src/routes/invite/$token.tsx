@@ -1,4 +1,4 @@
-import type { InvitePreview, OwnSocialProfile } from "@lesefluss/core";
+import type { InvitePreview, OwnSocialProfile, SignedOutInvitePreview } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { useQuery } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ function Shell({
 	after,
 }: {
 	title: string;
-	owner?: InvitePreview["owner"];
+	owner?: SignedOutInvitePreview["owner"];
 	children?: React.ReactNode;
 	after?: React.ReactNode;
 }) {
@@ -119,7 +119,7 @@ function InvitePage() {
 	const initial = Route.useLoaderData();
 	const { token } = Route.useParams();
 	const isAndroid = useIsAndroid();
-	const [preview, setPreview] = React.useState<InvitePreview>(initial);
+	const [preview, setPreview] = React.useState<InvitePreview | SignedOutInvitePreview>(initial);
 	const [justAdded, setJustAdded] = React.useState(false);
 	const onDone = (p: InvitePreview) => {
 		setJustAdded(p.state === "already_friends");

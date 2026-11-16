@@ -1,6 +1,6 @@
-import type { SyncReadingSession, SyncResponse } from "@lesefluss/core";
+import type { SyncReadingSession, SyncResponse, SyncSpeedTest } from "@lesefluss/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReadingSession } from "../../db/schema";
+import type { ReadingSession, SpeedTestRow } from "../../db/schema";
 
 const preferenceStore = new Map<string, string>();
 
@@ -29,6 +29,9 @@ const upsertReadingSessions = vi.fn(async (_rows: ReadingSession[]) => {});
 const deleteReadingSessions = vi.fn(async (_ids: string[]) => {});
 const deleteAllReadingSessions = vi.fn(async () => {});
 const hardDeleteAllGoals = vi.fn(async () => {});
+const upsertSpeedTests = vi.fn(async (_rows: SpeedTestRow[]) => {});
+const hardDeleteSpeedTests = vi.fn(async (_ids: string[]) => {});
+const deleteAllSpeedTests = vi.fn(async () => {});
 vi.mock("../../db/queries", () => ({
 	queries: {
 		getBooksForSync: vi.fn(async () => []),
@@ -37,6 +40,21 @@ vi.mock("../../db/queries", () => ({
 		getAllEntries: vi.fn(async () => []),
 		getSeriesForSync: vi.fn(async () => []),
 		getReadingSessionsSince: vi.fn(async () => []),
+		getSpeedTests: vi.fn(
+			async (): Promise<SpeedTestRow[]> => [
+				{
+					id: "wiped",
+					readingWpm: 250,
+					rsvpWpm: null,
+					passageId: "canal-1",
+					createdAt: 1,
+					updatedAt: 1,
+				},
+			],
+		),
+		upsertSpeedTests: (rows: SpeedTestRow[]) => upsertSpeedTests(rows),
+		hardDeleteSpeedTests: (ids: string[]) => hardDeleteSpeedTests(ids),
+		deleteAllSpeedTests: () => deleteAllSpeedTests(),
 		upsertReadingSessions: (rows: ReadingSession[]) => upsertReadingSessions(rows),
 		deleteReadingSessions: (ids: string[]) => deleteReadingSessions(ids),
 		deleteAllReadingSessions: () => deleteAllReadingSessions(),
@@ -63,6 +81,16 @@ const live: SyncReadingSession = {
 	updatedAt: 61_000,
 };
 
+const speedTest: SyncSpeedTest = {
+	testId: "t1",
+	readingWpm: 260,
+	rsvpWpm: 390,
+	passageId: "canal-1",
+	deleted: false,
+	createdAt: 5_000,
+	updatedAt: 5_000,
+};
+
 let pullResponse: SyncResponse;
 const pulled: string[] = [];
 const posted: string[] = [];
@@ -83,6 +111,8 @@ vi.mock("../../authed-fetch", async (importOriginal) => ({
 }));
 
 const { pullSync, wipeAllReadingStats } = await import("../index");
+const { sittingCarries } = await import("../../reading-sessions/carry");
+const { localDateKey } = await import("../../../utils/date-utils");
 const { onSessionsDeleted } = await import("../../reading-sessions/deleted");
 const { getSessionTombstoneWatermark } = await import("../session");
 
@@ -96,6 +126,9 @@ beforeEach(() => {
 	deleteReadingSessions.mockClear();
 	deleteAllReadingSessions.mockClear();
 	hardDeleteAllGoals.mockClear();
+	upsertSpeedTests.mockClear();
+	hardDeleteSpeedTests.mockClear();
+	deleteAllSpeedTests.mockClear();
 	pullResponse = {
 		books: [],
 		settings: null,
@@ -106,6 +139,7 @@ beforeEach(() => {
 		deletedSessionIds: ["gone-1", "gone-2"],
 		deletedSessionIdsAsOf: 90_000,
 		contentBookIds: [],
+		speedTests: [speedTest, { ...speedTest, testId: "wiped", deleted: true }],
 	};
 });
 
@@ -160,19 +194,54 @@ describe("pulling session tombstones", () => {
 	});
 });
 
+describe("pulling speed tests", () => {
+	it("takes new tests and drops the tombstoned ones with stats sync on", async () => {
+		await pullSync();
+		expect(upsertSpeedTests.mock.calls[0]?.[0].map((row) => row.id)).toEqual(["t1"]);
+		expect(hardDeleteSpeedTests).toHaveBeenCalledWith(["wiped"]);
+	});
+
+	it("leaves them alone while stats sync is off", async () => {
+		settings.syncStats = false;
+		await pullSync();
+		expect(upsertSpeedTests).not.toHaveBeenCalled();
+		expect(hardDeleteSpeedTests).not.toHaveBeenCalled();
+	});
+});
+
+function stashBurst(bookId: string) {
+	const now = Date.now();
+	sittingCarries.stash({
+		id: "carry",
+		bookId,
+		dayKey: localDateKey(now),
+		startedAt: now - 30_000,
+		startPos: 0,
+		readSpans: [[0, 100]],
+		accumulatedActiveMs: 30_000,
+		modeActiveMs: { scroll: 30_000 },
+		rsvpDialWpm: null,
+		lastActivityAt: now,
+	});
+}
+
 describe("danger-zone stats wipe", () => {
 	it("tombstones on the server, then deletes local sessions and goals", async () => {
+		stashBurst("b1");
 		await wipeAllReadingStats();
 		expect(posted).toEqual(["/api/sync/wipe-sessions"]);
 		expect(deleteAllReadingSessions).toHaveBeenCalledOnce();
+		expect(sittingCarries.take("b1", Date.now())).toBeNull();
 		expect(hardDeleteAllGoals).toHaveBeenCalledOnce();
+		expect(deleteAllSpeedTests).toHaveBeenCalledOnce();
 	});
 
-	it("keeps local sessions and goals when the server wipe fails", async () => {
+	it("keeps local sessions, goals and speed tests when the server wipe fails", async () => {
 		failPosts = true;
 		await expect(wipeAllReadingStats()).rejects.toThrow();
 		expect(deleteAllReadingSessions).not.toHaveBeenCalled();
 		expect(hardDeleteAllGoals).not.toHaveBeenCalled();
+		expect(deleteAllSpeedTests).not.toHaveBeenCalled();
 	});
 
 	it("waits for a pull in flight, so its stale rows cannot land after the local delete", async () => {

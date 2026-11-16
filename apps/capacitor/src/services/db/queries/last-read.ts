@@ -17,7 +17,7 @@ export async function getLastReadBookId(): Promise<string | null> {
 		.orderBy(desc(books.lastRead))
 		.limit(1);
 
-	const lastEnded = max(readingSessions.endedAt);
+	const lastEnded = max(readingSessions.endedAt).as("last_ended");
 	const [chapter] = await db
 		.select({ id: books.id, at: lastEnded })
 		.from(readingSessions)

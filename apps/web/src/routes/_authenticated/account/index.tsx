@@ -1,5 +1,6 @@
+import { DELETE_ACCOUNT_REFUSAL_MESSAGES } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@lesefluss/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@lesefluss/ui/field";
 import { Input } from "@lesefluss/ui/input";
 import { Separator } from "@lesefluss/ui/separator";
 import type { AnyFieldApi } from "@tanstack/react-form";
@@ -200,6 +201,7 @@ function DangerZone() {
 
 	const [deleteState, setDeleteState] = React.useState<ConfirmState>("idle");
 	const [deleteInput, setDeleteInput] = React.useState("");
+	const [deletePassword, setDeletePassword] = React.useState("");
 	const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
 	async function handleClear() {
@@ -220,7 +222,14 @@ function DangerZone() {
 		setDeleteState("loading");
 		setDeleteError(null);
 		try {
-			await deleteAccount();
+			const result = await deleteAccount({
+				data: { confirm: "delete-account", password: deletePassword || undefined },
+			});
+			if (!result.success) {
+				setDeleteError(DELETE_ACCOUNT_REFUSAL_MESSAGES[result.reason]);
+				setDeleteState("confirming");
+				return;
+			}
 			// The user delete cascaded the session row, so drop the cached auth
 			// context before leaving to avoid re-entering an authenticated route.
 			await router.invalidate();
@@ -315,6 +324,19 @@ function DangerZone() {
 								placeholder="DELETE"
 								className="max-w-48"
 							/>
+							<Field className="max-w-64">
+								<FieldLabel htmlFor="delete-account-password">Password</FieldLabel>
+								<Input
+									id="delete-account-password"
+									type="password"
+									autoComplete="current-password"
+									value={deletePassword}
+									onChange={(e) => setDeletePassword(e.target.value)}
+								/>
+								<FieldDescription>
+									Signed up with Google or Discord? Leave it empty.
+								</FieldDescription>
+							</Field>
 							{deleteError && <p className="text-destructive text-sm">{deleteError}</p>}
 							<div className="flex gap-2">
 								<Button
@@ -331,6 +353,7 @@ function DangerZone() {
 									onClick={() => {
 										setDeleteState("idle");
 										setDeleteInput("");
+										setDeletePassword("");
 										setDeleteError(null);
 									}}
 								>

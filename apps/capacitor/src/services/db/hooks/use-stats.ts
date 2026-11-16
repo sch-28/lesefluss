@@ -1,8 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { DEFAULT_SETTINGS, type SpeedWindow } from "@lesefluss/core";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { startOfLocalDay } from "../../../utils/date-utils";
-import type { TrendPeriod } from "../../stats/aggregate";
+import { SPEED_DELTA_SPAN_MS } from "../../stats/speed-tab";
 import { queries } from "../queries";
+import type { SpeedTrendMode } from "../queries/stats";
 import { statsKeys } from "./query-keys";
+import { settingsHooks } from "./use-settings";
 
 function usePeriodTotals(start: number, end: number, enabled = true) {
 	return useQuery({
@@ -34,25 +37,67 @@ function useTopBooks(since: number, limit = 5) {
 	});
 }
 
-function useWpmTrend(period: TrendPeriod, now: number) {
+function useWpmTrend(window: SpeedWindow, mode: SpeedTrendMode, now: number) {
 	return useQuery({
-		queryKey: statsKeys.wpmTrend(period, startOfLocalDay(now)),
-		queryFn: () => queries.getWpmTrend({ period, now }),
+		queryKey: statsKeys.wpmTrend(window, mode, startOfLocalDay(now)),
+		queryFn: () => queries.getWpmTrend({ window, mode, now }),
 	});
 }
 
-function useReadingRates() {
+/** Every surface reads the window the reader picked on the Speed tab, so no two disagree. */
+function useSpeedModel() {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
 	return useQuery({
-		queryKey: statsKeys.readingRates,
-		queryFn: () => queries.getReadingRates(),
+		queryKey: statsKeys.speedModel(window),
+		// `now` only matters for the 30-day window, and a stats invalidation refetches it.
+		queryFn: () => queries.getSpeedModel({ window, now: Date.now() }),
+		// Waiting for the setting saves a cold start one scan under the wrong window.
+		enabled: settings.data !== undefined,
+		placeholderData: keepPreviousData,
 	});
 }
 
-function useMeasuredReadingSpeed() {
+/** The model as it stood before these sittings, so a sitting isn't compared with itself. */
+function useSpeedModelWithout(sessionIds: readonly string[]) {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
 	return useQuery({
-		queryKey: statsKeys.measuredSpeed,
-		queryFn: () => queries.getMeasuredReadingSpeed(),
+		queryKey: statsKeys.speedModelWithout(window, sessionIds),
+		queryFn: () => queries.getSpeedModel({ window, now: Date.now(), without: sessionIds }),
+		enabled: settings.data !== undefined,
 	});
+}
+
+/** The speed model as it stood `SPEED_DELTA_SPAN_MS` ago, so the delta compares one measure with itself. */
+function useSpeedModelEarlier() {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
+	const asOf = startOfLocalDay(Date.now()) - SPEED_DELTA_SPAN_MS;
+	return useQuery({
+		queryKey: statsKeys.speedModelAsOf(window, asOf),
+		queryFn: () => queries.getSpeedModel({ window, now: asOf, asOf }),
+		enabled: settings.data !== undefined,
+	});
+}
+
+function useSpeedInsights() {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
+	return useQuery({
+		queryKey: statsKeys.speedInsights(window),
+		queryFn: () => queries.getSpeedInsights({ window, now: Date.now() }),
+		enabled: settings.data !== undefined,
+		placeholderData: keepPreviousData,
+	});
+}
+
+function useMilestones() {
+	return useQuery({ queryKey: statsKeys.milestones, queryFn: () => queries.getMilestones() });
+}
+
+function useSpeedTab() {
+	return useQuery({ queryKey: statsKeys.speedTab, queryFn: () => queries.getSpeedTab() });
 }
 
 function useHourHistogram() {
@@ -109,7 +154,11 @@ export const statsHooks = {
 	useTopBooks,
 	useWpmTrend,
 	useHourHistogram,
-	useReadingRates,
-	useMeasuredReadingSpeed,
+	useSpeedModel,
+	useSpeedModelWithout,
+	useSpeedModelEarlier,
+	useSpeedInsights,
+	useMilestones,
+	useSpeedTab,
 	useBookStats,
 };

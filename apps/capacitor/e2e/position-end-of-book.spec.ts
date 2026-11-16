@@ -32,12 +32,6 @@ function oneParagraphFixture(): EpubFixture {
 	};
 }
 
-// Past the virtual list re-measuring rows after a long scroll.
-const SETTLE_MS = reader.LIST_SETTLE_MS;
-// Well past virtua's 150ms scroll-end debounce: long enough for any settle a
-// scroll would trigger to have run.
-const QUIET_MS = 1000;
-
 async function openSettled(page: Page, title: string): Promise<void> {
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);
@@ -101,7 +95,7 @@ async function wheelToEnd(page: Page): Promise<void> {
 /** Scroll to the end and tap the last paragraph, saving a word that can't reach the viewport top. */
 async function saveAtLastParagraph(page: Page): Promise<number> {
 	await wheelToEnd(page);
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 	const word = await reader.wordPositionOf(page, LAST_PARAGRAPH_MARKER);
 	const tapSave = reader.waitForNextSave(page);
 	await reader.wordSpan(page, LAST_PARAGRAPH_MARKER).click();
@@ -144,7 +138,7 @@ test("a page-sized figure after the last paragraph does not move the saved posit
 	await expect(page.locator('.reader-figure img[alt="Endpiece"]')).toBeInViewport();
 	// Back up just enough to tap the last paragraph without an auto-scroll.
 	await reader.wheel(page, -400);
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 	const word = await reader.wordPositionOf(page, LAST_PARAGRAPH_MARKER);
 	const tapSave = reader.waitForNextSave(page);
 	await reader.wordSpan(page, LAST_PARAGRAPH_MARKER).click();
@@ -154,7 +148,7 @@ test("a page-sized figure after the last paragraph does not move the saved posit
 	// With the figure filling the bottom of the view the saved word can sit
 	// above the cutoff: neither the settle nor the tick may replace it.
 	await wheelToEnd(page);
-	await page.waitForTimeout(QUIET_MS);
+	await reader.waitPositionQuiet(page);
 	await expectSavedAfterLeaving(page, title, word);
 });
 
@@ -194,7 +188,7 @@ test("a 1px clamp followed by the keyboard opening near the end keeps the saved 
 		await page.setViewportSize({ width: viewport.width, height: viewport.height - 370 });
 	});
 	await page.setViewportSize(viewport);
-	await page.waitForTimeout(QUIET_MS);
+	await reader.waitPositionQuiet(page);
 
 	await expectSavedAfterLeaving(page, title, saved);
 });
@@ -263,12 +257,12 @@ test("scrolling back saves the earlier position, also when leaving mid-scroll", 
 
 	// Each step leaves the reader, whose flush writes the current word if it moved.
 	await reader.wheel(page, 2500);
-	await page.waitForTimeout(QUIET_MS);
+	await reader.waitPositionQuiet(page);
 	const ahead = (await leaveReader(page)) ?? 0;
 
 	await openSettled(page, title);
 	await reader.wheel(page, -800);
-	await page.waitForTimeout(QUIET_MS);
+	await reader.waitPositionQuiet(page);
 	const back = (await leaveReader(page)) ?? Number.POSITIVE_INFINITY;
 	expect(back).toBeLessThan(ahead);
 

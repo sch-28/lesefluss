@@ -15,6 +15,7 @@ import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]j
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
+import { Route as ResetPasswordIndexRouteImport } from './routes/reset-password/index'
 import { Route as ReportIndexRouteImport } from './routes/report/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
@@ -42,6 +43,7 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
+import { Route as ApiSyncDeleteSessionsRouteImport } from './routes/api/sync/delete-sessions'
 import { Route as ApiSyncDeleteSessionRouteImport } from './routes/api/sync/delete-session'
 import { Route as ApiSocialUnblockRouteImport } from './routes/api/social/unblock'
 import { Route as ApiSocialSharesForBookRouteImport } from './routes/api/social/shares-for-book'
@@ -56,6 +58,7 @@ import { Route as ApiSocialLiveStreamRouteImport } from './routes/api/social/liv
 import { Route as ApiSocialLiveRouteImport } from './routes/api/social/live'
 import { Route as ApiSocialInviteRevokeRouteImport } from './routes/api/social/invite-revoke'
 import { Route as ApiSocialInviteRedeemRouteImport } from './routes/api/social/invite-redeem'
+import { Route as ApiSocialInvitePreviewSignedOutRouteImport } from './routes/api/social/invite-preview-signed-out'
 import { Route as ApiSocialInvitePreviewRouteImport } from './routes/api/social/invite-preview'
 import { Route as ApiSocialInviteRouteImport } from './routes/api/social/invite'
 import { Route as ApiSocialInboxUnreadCountRouteImport } from './routes/api/social/inbox-unread-count'
@@ -97,6 +100,7 @@ import { Route as ApiPushRegisterRouteImport } from './routes/api/push/register'
 import { Route as ApiPushPreferencesRouteImport } from './routes/api/push/preferences'
 import { Route as ApiImportArticleRouteImport } from './routes/api/import/article'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account/delete'
 import { Route as AuthenticatedAdminNoticesRouteImport } from './routes/_authenticated/admin/notices'
 import { Route as ApiSocialCoverImageTokenRouteImport } from './routes/api/social/cover-image/$token'
 import { Route as ApiSocialAvatarImageIdRouteImport } from './routes/api/social/avatar-image/$id'
@@ -128,6 +132,11 @@ const IndexRoute = IndexRouteImport.update({
 const TermsIndexRoute = TermsIndexRouteImport.update({
   id: '/terms/',
   path: '/terms/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordIndexRoute = ResetPasswordIndexRouteImport.update({
+  id: '/reset-password/',
+  path: '/reset-password/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportIndexRoute = ReportIndexRouteImport.update({
@@ -268,6 +277,11 @@ const ApiSyncWipeSessionsRoute = ApiSyncWipeSessionsRouteImport.update({
   path: '/wipe-sessions',
   getParentRoute: () => ApiSyncRoute,
 } as any)
+const ApiSyncDeleteSessionsRoute = ApiSyncDeleteSessionsRouteImport.update({
+  id: '/delete-sessions',
+  path: '/delete-sessions',
+  getParentRoute: () => ApiSyncRoute,
+} as any)
 const ApiSyncDeleteSessionRoute = ApiSyncDeleteSessionRouteImport.update({
   id: '/delete-session',
   path: '/delete-session',
@@ -338,6 +352,12 @@ const ApiSocialInviteRedeemRoute = ApiSocialInviteRedeemRouteImport.update({
   path: '/api/social/invite-redeem',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialInvitePreviewSignedOutRoute =
+  ApiSocialInvitePreviewSignedOutRouteImport.update({
+    id: '/api/social/invite-preview-signed-out',
+    path: '/api/social/invite-preview-signed-out',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSocialInvitePreviewRoute = ApiSocialInvitePreviewRouteImport.update({
   id: '/api/social/invite-preview',
   path: '/api/social/invite-preview',
@@ -563,6 +583,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminNoticesRoute =
   AuthenticatedAdminNoticesRouteImport.update({
     id: '/admin/notices',
@@ -609,8 +634,10 @@ export interface FileRoutesByFullPath {
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/report/': typeof ReportIndexRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
   '/api/push/preferences': typeof ApiPushPreferencesRoute
@@ -652,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -666,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
+  '/api/sync/delete-sessions': typeof ApiSyncDeleteSessionsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -701,8 +730,10 @@ export interface FileRoutesByTo {
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
   '/report': typeof ReportIndexRoute
+  '/reset-password': typeof ResetPasswordIndexRoute
   '/terms': typeof TermsIndexRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
   '/api/push/preferences': typeof ApiPushPreferencesRoute
@@ -744,6 +775,7 @@ export interface FileRoutesByTo {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -758,6 +790,7 @@ export interface FileRoutesByTo {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
+  '/api/sync/delete-sessions': typeof ApiSyncDeleteSessionsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -795,8 +828,10 @@ export interface FileRoutesById {
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/report/': typeof ReportIndexRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
   '/api/push/preferences': typeof ApiPushPreferencesRoute
@@ -838,6 +873,7 @@ export interface FileRoutesById {
   '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
   '/api/social/invite': typeof ApiSocialInviteRoute
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-preview-signed-out': typeof ApiSocialInvitePreviewSignedOutRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
   '/api/social/live': typeof ApiSocialLiveRoute
@@ -852,6 +888,7 @@ export interface FileRoutesById {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
+  '/api/sync/delete-sessions': typeof ApiSyncDeleteSessionsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -889,8 +926,10 @@ export interface FileRouteTypes {
     | '/order/'
     | '/privacy/'
     | '/report/'
+    | '/reset-password/'
     | '/terms/'
     | '/admin/notices'
+    | '/api/account/delete'
     | '/api/auth/$'
     | '/api/import/article'
     | '/api/push/preferences'
@@ -932,6 +971,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -946,6 +986,7 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
+    | '/api/sync/delete-sessions'
     | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
@@ -981,8 +1022,10 @@ export interface FileRouteTypes {
     | '/order'
     | '/privacy'
     | '/report'
+    | '/reset-password'
     | '/terms'
     | '/admin/notices'
+    | '/api/account/delete'
     | '/api/auth/$'
     | '/api/import/article'
     | '/api/push/preferences'
@@ -1024,6 +1067,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -1038,6 +1082,7 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
+    | '/api/sync/delete-sessions'
     | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
@@ -1074,8 +1119,10 @@ export interface FileRouteTypes {
     | '/order/'
     | '/privacy/'
     | '/report/'
+    | '/reset-password/'
     | '/terms/'
     | '/_authenticated/admin/notices'
+    | '/api/account/delete'
     | '/api/auth/$'
     | '/api/import/article'
     | '/api/push/preferences'
@@ -1117,6 +1164,7 @@ export interface FileRouteTypes {
     | '/api/social/inbox-unread-count'
     | '/api/social/invite'
     | '/api/social/invite-preview'
+    | '/api/social/invite-preview-signed-out'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
     | '/api/social/live'
@@ -1131,6 +1179,7 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
+    | '/api/sync/delete-sessions'
     | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
@@ -1168,7 +1217,9 @@ export interface RootRouteChildren {
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
   ReportIndexRoute: typeof ReportIndexRoute
+  ResetPasswordIndexRoute: typeof ResetPasswordIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiImportArticleRoute: typeof ApiImportArticleRoute
   ApiPushPreferencesRoute: typeof ApiPushPreferencesRoute
@@ -1210,6 +1261,7 @@ export interface RootRouteChildren {
   ApiSocialInboxUnreadCountRoute: typeof ApiSocialInboxUnreadCountRoute
   ApiSocialInviteRoute: typeof ApiSocialInviteRoute
   ApiSocialInvitePreviewRoute: typeof ApiSocialInvitePreviewRoute
+  ApiSocialInvitePreviewSignedOutRoute: typeof ApiSocialInvitePreviewSignedOutRoute
   ApiSocialInviteRedeemRoute: typeof ApiSocialInviteRedeemRoute
   ApiSocialInviteRevokeRoute: typeof ApiSocialInviteRevokeRoute
   ApiSocialLiveRoute: typeof ApiSocialLiveRoute
@@ -1269,6 +1321,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms/'
       preLoaderRoute: typeof TermsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/': {
+      id: '/reset-password/'
+      path: '/reset-password'
+      fullPath: '/reset-password/'
+      preLoaderRoute: typeof ResetPasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/report/': {
@@ -1460,6 +1519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncWipeSessionsRouteImport
       parentRoute: typeof ApiSyncRoute
     }
+    '/api/sync/delete-sessions': {
+      id: '/api/sync/delete-sessions'
+      path: '/delete-sessions'
+      fullPath: '/api/sync/delete-sessions'
+      preLoaderRoute: typeof ApiSyncDeleteSessionsRouteImport
+      parentRoute: typeof ApiSyncRoute
+    }
     '/api/sync/delete-session': {
       id: '/api/sync/delete-session'
       path: '/delete-session'
@@ -1556,6 +1622,13 @@ declare module '@tanstack/react-router' {
       path: '/api/social/invite-redeem'
       fullPath: '/api/social/invite-redeem'
       preLoaderRoute: typeof ApiSocialInviteRedeemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite-preview-signed-out': {
+      id: '/api/social/invite-preview-signed-out'
+      path: '/api/social/invite-preview-signed-out'
+      fullPath: '/api/social/invite-preview-signed-out'
+      preLoaderRoute: typeof ApiSocialInvitePreviewSignedOutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/social/invite-preview': {
@@ -1845,6 +1918,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/notices': {
       id: '/_authenticated/admin/notices'
       path: '/admin/notices'
@@ -1888,11 +1968,13 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface ApiSyncRouteChildren {
   ApiSyncDeleteSessionRoute: typeof ApiSyncDeleteSessionRoute
+  ApiSyncDeleteSessionsRoute: typeof ApiSyncDeleteSessionsRoute
   ApiSyncWipeSessionsRoute: typeof ApiSyncWipeSessionsRoute
 }
 
 const ApiSyncRouteChildren: ApiSyncRouteChildren = {
   ApiSyncDeleteSessionRoute: ApiSyncDeleteSessionRoute,
+  ApiSyncDeleteSessionsRoute: ApiSyncDeleteSessionsRoute,
   ApiSyncWipeSessionsRoute: ApiSyncWipeSessionsRoute,
 }
 
@@ -1928,7 +2010,9 @@ const rootRouteChildren: RootRouteChildren = {
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
   ReportIndexRoute: ReportIndexRoute,
+  ResetPasswordIndexRoute: ResetPasswordIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiImportArticleRoute: ApiImportArticleRoute,
   ApiPushPreferencesRoute: ApiPushPreferencesRoute,
@@ -1972,6 +2056,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialInboxUnreadCountRoute: ApiSocialInboxUnreadCountRoute,
   ApiSocialInviteRoute: ApiSocialInviteRoute,
   ApiSocialInvitePreviewRoute: ApiSocialInvitePreviewRoute,
+  ApiSocialInvitePreviewSignedOutRoute: ApiSocialInvitePreviewSignedOutRoute,
   ApiSocialInviteRedeemRoute: ApiSocialInviteRedeemRoute,
   ApiSocialInviteRevokeRoute: ApiSocialInviteRevokeRoute,
   ApiSocialLiveRoute: ApiSocialLiveRoute,

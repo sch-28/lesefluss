@@ -5,7 +5,6 @@
  * are cached by react-query so the same word won't re-fetch.
  */
 
-import { Browser } from "@capacitor/browser";
 import type { DictionaryEntry, DictionarySense } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
@@ -14,6 +13,7 @@ import { Bookmark, Loader2, Search } from "lucide-react";
 import type React from "react";
 import { lookupWord } from "../../services/dictionary/client";
 import { dictionaryKeys } from "../../services/dictionary/query-keys";
+import { openLink } from "../../utils/open-link";
 
 export interface DictionaryModalProps {
 	/** Original casing, as the word appears in the book. */
@@ -171,7 +171,7 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({
 								<button
 									type="button"
 									className="m-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[11px] text-muted-foreground"
-									onClick={() => void Browser.open({ url: data.attribution.url })}
+									onClick={() => openLink(data.attribution.url)}
 								>
 									{data.attribution.source} &middot; {data.attribution.license}
 								</button>

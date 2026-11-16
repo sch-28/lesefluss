@@ -65,35 +65,35 @@ body.dark .rsvp-action-sheet .action-sheet-button[disabled] {
 
 /* ── Sepia theme: mirror of dark overrides ── */
 
-body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
+body.theme-sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
 	background: #b29f6f;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
+body.theme-sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
 	background: transparent;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-cancel {
+body.theme-sepia .rsvp-action-sheet .action-sheet-cancel {
 	--button-background: #b29f6f;
 	color: #3a2e1e;
 	background: #b29f6f;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-title {
+body.theme-sepia .rsvp-action-sheet .action-sheet-title {
 	color: #8a7a63;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button {
+body.theme-sepia .rsvp-action-sheet .action-sheet-button {
 	color: #3a2e1e;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-destructive {
+body.theme-sepia .rsvp-action-sheet .action-sheet-destructive {
 	color: #b04030;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
+body.theme-sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	color: #a89878;
 }
 
@@ -487,16 +487,21 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	flex-direction: column;
 	align-items: center;
 	gap: 1px;
-	font-size: 0.72rem;
+	max-width: 100%;
+	font-size: 0.78rem;
 	color: var(--reader-progress-label, #555555);
 	text-align: center;
 	user-select: none;
 }
 
+.reader-progress-live-wpm {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .reader-progress-chapter-time {
-	font-size: 0.62rem;
-	opacity: 0.65;
-	max-width: 160px;
+	font-size: 0.72rem;
+	max-width: min(100%, 22rem);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -612,7 +617,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-controls,
 .rsvp-playpause,
 .rsvp-dict-button,
-.rsvp-settings-button {
+.rsvp-settings-button,
+.rsvp-voice-button,
+.rsvp-sleep-button {
 	pointer-events: auto;
 }
 
@@ -688,10 +695,12 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 /* ── RSVP controls (visible when paused) ── */
 
+/* Above the labelled corner pills, which are too wide to sit beside it on a phone. */
 .rsvp-controls {
 	position: absolute;
 	left: 50%;
-	bottom: 24px;
+	bottom: 80px;
+	max-width: calc(100% - 32px);
 	transform: translateX(-50%);
 	display: flex;
 	flex-direction: column;
@@ -704,6 +713,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	color: var(--reader-text);
 	z-index: 10;
+}
+
+.rsvp-controls:has(~ .rsvp-voice-button) {
+	bottom: 136px;
 }
 
 .rsvp-controls-row {
@@ -738,30 +751,13 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 .rsvp-wpm-stepper {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px;
 	padding-top: 4px;
 	border-top: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
 	width: 100%;
 	justify-content: center;
-}
-
-.rsvp-wpm-btn {
-	background: transparent;
-	border: none;
-	color: var(--reader-text);
-	font-size: 1.25rem;
-	font-weight: 600;
-	width: 40px;
-	height: 40px;
-	border-radius: 8px;
-	cursor: pointer;
-	line-height: 1;
-	padding: 0;
-}
-
-.rsvp-wpm-btn:active {
-	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
 }
 
 .rsvp-wpm-value {
@@ -849,7 +845,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	letter-spacing: 0.02em;
 	opacity: 0.7;
 	pointer-events: none;
-	transition: opacity 300ms ease;
+	transition:
+		opacity 300ms ease,
+		transform 300ms ease;
 }
 
 .rsvp-speed-chip--ramping {
@@ -928,22 +926,26 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	color: var(--reader-text);
 }
 
-/* ── RSVP dictionary button (paused, bottom-right) ── */
+/* ── RSVP corner buttons (paused): icon and label ── */
 
 .rsvp-dict-button,
-.rsvp-settings-button {
+.rsvp-settings-button,
+.rsvp-voice-button,
+.rsvp-sleep-button {
 	position: absolute;
 	bottom: 24px;
-	width: 44px;
+	min-width: 44px;
 	height: 44px;
-	border-radius: 50%;
+	padding: 0 14px 0 12px;
+	gap: 6px;
+	border-radius: 22px;
 	background: var(--reader-bg);
 	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
 	color: var(--reader-text);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 1.25rem;
+	font-size: 0.8125rem;
 	cursor: pointer;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	z-index: 10;
@@ -957,8 +959,25 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	left: 16px;
 }
 
+/* Read-aloud extras stack above the settings and dictionary buttons. */
+.rsvp-voice-button {
+	left: 16px;
+	bottom: 80px;
+}
+
+.rsvp-sleep-button {
+	right: 16px;
+	bottom: 80px;
+}
+
+.rsvp-sleep-button--on {
+	color: var(--primary);
+}
+
 .rsvp-dict-button:active,
-.rsvp-settings-button:active {
+.rsvp-settings-button:active,
+.rsvp-voice-button:active,
+.rsvp-sleep-button:active {
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
 }
 
@@ -1297,13 +1316,6 @@ html.eink .reading-ruler-band {
 
 /* ─── Appearance Popover ─────────────────────────────────────────────────── */
 
-.appearance-popover-content {
-	padding: 14px 12px;
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-}
-
 .ap-section {
 	display: flex;
 	flex-direction: column;
@@ -1360,23 +1372,6 @@ html.eink .reading-ruler-band {
 	color: var(--muted-foreground);
 	min-width: 36px;
 	text-align: right;
-}
-
-/* 44px targets; a selected item reads at a glance (bg-accent alone is under
- * 3:1 against its neighbours in the light and dark themes). */
-.appearance-popover-content [data-slot="toggle-group-item"] {
-	min-height: 44px;
-	/* Labels wrap rather than spill out of their button at a large font scale.
-	 * !important: the item's own utilities sit in a higher layer. */
-	height: auto !important;
-	white-space: normal !important;
-}
-
-/* !important: this file is in the legacy layer, under the item's own
- * shadow-none utility, and an important declaration reverses that order. */
-.appearance-popover-content [data-slot="toggle-group-item"][data-state="on"] {
-	box-shadow: inset 0 0 0 2px var(--primary) !important;
-	font-weight: 600 !important;
 }
 
 .ap-row-buttons {
@@ -1507,20 +1502,20 @@ body.dark .local-storage-notice__dismiss {
 	color: #666666;
 }
 
-body.sepia .local-storage-notice {
+body.theme-sepia .local-storage-notice {
 	background: #b29f6f;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .local-storage-notice__text {
+body.theme-sepia .local-storage-notice__text {
 	color: #3a2e1e;
 }
 
-body.sepia .local-storage-notice__link {
+body.theme-sepia .local-storage-notice__link {
 	color: #3a2e1e;
 }
 
-body.sepia .local-storage-notice__dismiss {
+body.theme-sepia .local-storage-notice__dismiss {
 	color: #8a7a63;
 }
 
@@ -1591,21 +1586,21 @@ body.sepia .local-storage-notice__dismiss {
 		color: var(--foreground);
 	}
 
-	body.sepia .desktop-sidebar {
+	body.theme-sepia .desktop-sidebar {
 		background: var(--background);
 		border-right-color: var(--border);
 	}
 
-	body.sepia .desktop-sidebar-item:hover {
+	body.theme-sepia .desktop-sidebar-item:hover {
 		background: #b29f6f;
 	}
 
-	body.sepia .desktop-sidebar-toggle {
+	body.theme-sepia .desktop-sidebar-toggle {
 		background: var(--background);
 		border-color: var(--border);
 	}
 
-	body.sepia .desktop-sidebar-toggle:hover {
+	body.theme-sepia .desktop-sidebar-toggle:hover {
 		background: #b29f6f;
 		color: var(--foreground);
 	}
@@ -1661,7 +1656,7 @@ body.dark .cover-image-shimmer {
 	background-size: 200% 100%;
 }
 
-body.sepia .cover-image-shimmer {
+body.theme-sepia .cover-image-shimmer {
 	background: linear-gradient(100deg, #b29f6f 10%, #e3d6ba 40%, #b29f6f 70%);
 	background-size: 200% 100%;
 }
@@ -1688,30 +1683,27 @@ body.dark .pagination-ellipsis {
 	color: #666;
 }
 
-body.sepia .pagination-btn {
+body.theme-sepia .pagination-btn {
 	background: #b29f6f;
 	border-color: #8a7760;
 }
 
-body.sepia .pagination-btn:hover:not(:disabled):not(.active) {
+body.theme-sepia .pagination-btn:hover:not(:disabled):not(.active) {
 	background: #a08d5f;
 	border-color: #b8a785;
 }
 
-body.sepia .pagination-btn.active {
+body.theme-sepia .pagination-btn.active {
 	background: #3a2e1e;
 	border-color: #3a2e1e;
 	color: #c4b081;
 }
 
-body.sepia .pagination-ellipsis {
+body.theme-sepia .pagination-ellipsis {
 	color: #8a7a63;
 }
 
 /* ── Explore: genre tiles ── */
-
-@media (min-width: 640px) {
-}
 
 body.dark .explore-genre-tile {
 	background: #242424;
@@ -1763,7 +1755,9 @@ body.dark .explore-hero-arrow:hover {
 	flex-direction: column;
 	gap: 0.75rem;
 	padding: 1rem 1.15rem;
-	background: #fafafa;
+	/* A variable so CollapsibleProse's fade inside the card matches it. */
+	--detail-card-bg: #fafafa;
+	background: var(--detail-card-bg);
 	border: 1px solid #e8e8e8;
 	border-radius: 10px;
 }
@@ -1774,7 +1768,7 @@ body.dark .explore-hero-arrow:hover {
 	font-weight: 600;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: #888;
+	color: var(--muted-foreground);
 }
 
 body.dark .book-detail-cover {
@@ -1791,19 +1785,20 @@ body.dark .book-detail-stat-active {
 	color: #e4e4e4;
 }
 
-body.dark .book-detail-eyebrow,
-body.dark .book-detail-section-title {
+body.dark .book-detail-eyebrow {
 	color: #888;
 }
 
 body.dark .book-detail-card {
-	background: #1a1a1a;
+	--detail-card-bg: #1a1a1a;
 	border-color: #2a2a2a;
 }
 
-/* The dark greys above fall under AAA on high contrast's black. */
-body.high-contrast .book-detail-card {
-	background: var(--card);
+/* The dark greys above fall under AAA on high contrast's black; the light card is a white
+   patch on sepia's paper. */
+body.high-contrast .book-detail-card,
+body.theme-sepia .book-detail-card {
+	--detail-card-bg: var(--card);
 	border-color: var(--border);
 }
 body.high-contrast .book-detail-eyebrow,
@@ -1817,14 +1812,6 @@ body.dark .book-detail-subject {
 	background: #242424;
 	border-color: #333;
 	color: #ccc;
-}
-
-body.dark .book-detail-description {
-	color: #e4e4e4;
-}
-
-body.dark .book-detail-description a {
-	color: #e4e4e4;
 }
 
 body.dark .book-detail-summary {
@@ -1874,11 +1861,6 @@ body.dark .chapter-row:hover {
 /* ── Sync step ── */
 
 /* ── Footer: progress dots + nav buttons ── */
-
-/* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
-/* Separate block so it comes after .app-brand's display:flex definition. */
-@media (min-width: 1081px) {
-}
 
 /* ─── What's New dialog ───────────────────────────────────────────────────── */
 
@@ -2049,6 +2031,23 @@ body.dark .chapter-row:hover {
 	height: 7px;
 }
 
+.reader-bookmark-tick {
+	position: absolute;
+	top: 3px;
+	transform: translateX(-50%);
+	width: 2px;
+	height: 10px;
+	border-radius: 1px;
+	background: var(--reader-progress-fill, #000000);
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.reader-progress-bar--collapsed .reader-bookmark-tick {
+	top: -4px;
+	height: 7px;
+}
+
 /* Sits above the expanded progress bar (content ~52px + safe area). */
 .reader-browse-bar {
 	position: absolute;
@@ -2120,6 +2119,16 @@ body.dark .chapter-row:hover {
 	content: "";
 	position: absolute;
 	inset: -10px;
+}
+
+/* Their own hit areas: drop the coarse-pointer box from tokens.css, whose size and
+   translate would otherwise combine with the inset and shift the area off the dot. */
+.ap-step-btn::before,
+.reader-buddy-marker::before,
+.reader-discussion-tick::before {
+	width: auto;
+	height: auto;
+	transform: none;
 }
 
 .reader-discussion-marker {
@@ -2236,6 +2245,11 @@ body.dark .chapter-row:hover {
 		stroke 700ms ease-out;
 }
 
-.reader-goal-chip--met .reader-goal-ring {
-	stroke: var(--goal-met);
+.rsvp-speed-chip--flash {
+	color: var(--reader-text);
+	opacity: 1;
+	transform: scale(1.15);
+	transition:
+		transform 120ms ease-out,
+		opacity 120ms ease-out;
 }

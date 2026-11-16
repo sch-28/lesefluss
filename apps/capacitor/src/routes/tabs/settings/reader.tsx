@@ -8,11 +8,9 @@ import { ModeCards, PAGINATION_STYLE_OPTIONS } from "@/components/rsvp-pickers";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { StepperRow } from "@/components/settings/stepper-row";
+import { TextSpacingRows } from "@/components/settings/text-spacing-rows";
 import {
-	DEFAULT_TEXT_SPACING,
 	PAGE_TURN_REDUCE_MOTION_HINT,
-	percentOfFont,
-	spacingLabel,
 	useAppearanceSettings,
 } from "@/hooks/use-appearance-settings";
 import ReaderPreview from "@/pages/settings/reader-preview";
@@ -22,15 +20,8 @@ export const Route = createFileRoute("/tabs/settings/reader")({
 	component: ReaderSettings,
 });
 
-const {
-	READER_FONT_SIZE,
-	READER_LINE_SPACING,
-	READER_MARGIN,
-	READER_LETTER_SPACING,
-	READER_WORD_SPACING,
-	READER_PARAGRAPH_SPACING,
-	READER_RULER_LINES,
-} = SETTING_CONSTRAINTS;
+const { READER_FONT_SIZE, READER_LINE_SPACING, READER_MARGIN, READER_RULER_LINES } =
+	SETTING_CONSTRAINTS;
 
 function ReaderSettings() {
 	const {
@@ -41,11 +32,9 @@ function ReaderSettings() {
 		readingRuler,
 		lineSpacing,
 		margin,
-		letterSpacing,
-		wordSpacing,
-		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
+		showLiveWpm,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
@@ -55,10 +44,6 @@ function ReaderSettings() {
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
-		adjustLetterSpacing,
-		adjustWordSpacing,
-		adjustParagraphSpacing,
-		resetTextSpacing,
 		setFontFamily,
 		setBold,
 		setTextAlign,
@@ -66,6 +51,7 @@ function ReaderSettings() {
 		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
+		setShowLiveWpm,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
@@ -104,8 +90,6 @@ function ReaderSettings() {
 						max={READER_FONT_SIZE.max}
 						step={READER_FONT_SIZE.step}
 						onChange={(v) => adjustFontSize(v - fontSize)}
-						decLabel="A−"
-						incLabel="A+"
 					/>
 					<StepperRow
 						label="Line spacing"
@@ -116,44 +100,7 @@ function ReaderSettings() {
 						step={READER_LINE_SPACING.step}
 						onChange={(v) => adjustLineSpacing(v - lineSpacing)}
 					/>
-					<StepperRow
-						label="Letter spacing"
-						value={letterSpacing}
-						display={spacingLabel(letterSpacing, DEFAULT_TEXT_SPACING.letter, percentOfFont)}
-						min={READER_LETTER_SPACING.min}
-						max={READER_LETTER_SPACING.max}
-						step={READER_LETTER_SPACING.step}
-						onChange={(v) => adjustLetterSpacing(v - letterSpacing)}
-					/>
-					<StepperRow
-						label="Word spacing"
-						value={wordSpacing}
-						display={spacingLabel(wordSpacing, DEFAULT_TEXT_SPACING.word, percentOfFont)}
-						min={READER_WORD_SPACING.min}
-						max={READER_WORD_SPACING.max}
-						step={READER_WORD_SPACING.step}
-						onChange={(v) => adjustWordSpacing(v - wordSpacing)}
-					/>
-					<StepperRow
-						label="Paragraph spacing"
-						value={paragraphSpacing}
-						display={spacingLabel(paragraphSpacing, DEFAULT_TEXT_SPACING.paragraph, (v) =>
-							v.toFixed(1),
-						)}
-						min={READER_PARAGRAPH_SPACING.min}
-						max={READER_PARAGRAPH_SPACING.max}
-						step={READER_PARAGRAPH_SPACING.step}
-						onChange={(v) => adjustParagraphSpacing(v - paragraphSpacing)}
-					/>
-					<div className="mt-2 flex">
-						<button
-							type="button"
-							className="min-h-11 px-1 text-muted-foreground text-sm underline"
-							onClick={resetTextSpacing}
-						>
-							Reset spacing
-						</button>
-					</div>
+					<TextSpacingRows />
 					<StepperRow
 						label="Margins"
 						value={margin}
@@ -212,6 +159,13 @@ function ReaderSettings() {
 						title="Show time remaining"
 						checked={showReadingTime}
 						onCheckedChange={setShowReadingTime}
+					/>
+					<ToggleRow
+						id="show-live-wpm"
+						title="Show live speed"
+						subtitle="Words per minute of this sitting, in scroll and page mode."
+						checked={showLiveWpm}
+						onCheckedChange={setShowLiveWpm}
 					/>
 					<ToggleRow
 						id="show-active-word"

@@ -1,0 +1,152 @@
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CollectionWithCount } from "../../../services/db/queries/collections";
+import { click, type Rendered, render } from "../../../test/render";
+
+const removeCollection = vi.fn();
+const moveCollection = vi.fn();
+const setCollectionView = vi.fn();
+const navigate = vi.fn();
+
+vi.mock("@tanstack/react-router", () => ({
+	useNavigate: () => navigate,
+	useLocation: () => ({ pathname: "/tabs/library", search: {} }),
+}));
+vi.mock("../../../services/db/hooks", () => ({
+	queryHooks: {
+		useMoveCollection: () => ({ mutate: moveCollection }),
+		useDeleteCollection: () => ({ mutate: removeCollection }),
+		useSetCollectionView: () => ({ mutate: setCollectionView }),
+	},
+}));
+vi.mock(
+	"@lesefluss/ui/drawer",
+	async () => (await import("../../../test/overlay-mocks")).drawerModule,
+);
+vi.mock("../../confirm-dialog", async () => {
+	const { MockOverlay } = await import("../../../test/overlay-mocks");
+	return {
+		ConfirmDialog: (p: {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			description?: string;
+		}) => (
+			<MockOverlay open={p.open} onOpenChange={p.onOpenChange}>
+				{p.description}
+			</MockOverlay>
+		),
+	};
+});
+
+const { CollectionActions, CollectionMenuButton } = await import("../collection-actions");
+
+const fantasy: CollectionWithCount = {
+	id: "c1",
+	name: "Fantasy",
+	sortOrder: 1,
+	ordered: false,
+	seriesKey: null,
+	view: null,
+	deleted: false,
+	createdAt: 1,
+	updatedAt: 1,
+	bookCount: 2,
+};
+
+let view: Rendered | undefined;
+beforeEach(() => vi.clearAllMocks());
+afterEach(() => {
+	view?.unmount();
+	view = undefined;
+});
+
+describe("CollectionActions", () => {
+	it("closes the menu, then the delete confirm, on the Android back press", async () => {
+		const onClose = vi.fn();
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={onClose} />,
+		);
+		expect(consumeBackPress()).toBe(true);
+		expect(onClose).toHaveBeenCalledTimes(1);
+
+		await click(view.getButton("Delete collection"));
+		expect(view.text()).toContain("Its books stay in your library.");
+		await act(async () => {
+			expect(consumeBackPress()).toBe(true);
+		});
+		expect(view.text()).not.toContain("Its books stay in your library.");
+		expect(removeCollection).not.toHaveBeenCalled();
+	});
+
+	it("opens the collection page to edit, with no name sheet of its own", async () => {
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={vi.fn()} />,
+		);
+		expect(view.queryButton("Rename")).toBeNull();
+		await click(view.getButton("Edit collection"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/$id/edit",
+			params: { id: "c1" },
+		});
+	});
+
+	it("moves past the series the list hides, beside the next visible collection", async () => {
+		const series = { ...fantasy, id: "s1", seriesKey: "dune", ordered: true };
+		const scifi = { ...fantasy, id: "c2", name: "Sci-fi" };
+		view = await render(
+			<CollectionActions
+				collection={fantasy}
+				collections={[fantasy, scifi]}
+				allCollections={[fantasy, series, scifi]}
+				onClose={vi.fn()}
+			/>,
+		);
+		await click(view.getButton("Move down"));
+		expect(moveCollection).toHaveBeenCalledWith({ id: "c1", toIndex: 2 });
+	});
+
+	it("offers Reset view only once the collection has its own view", async () => {
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={vi.fn()} />,
+		);
+		expect(view.queryButton("Reset view")).toBeNull();
+		view.unmount();
+		const shaped = { ...fantasy, view: '{"v":1,"groupBy":"author"}' };
+		view = await render(
+			<CollectionActions collection={shaped} collections={[shaped]} onClose={vi.fn()} />,
+		);
+		await click(view.getButton("Reset view"));
+		expect(setCollectionView).toHaveBeenCalledWith({ id: "c1", view: null });
+	});
+
+	it("leaves the back press to the router while nothing is open", async () => {
+		view = await render(<CollectionActions collection={null} collections={[]} onClose={vi.fn()} />);
+		expect(consumeBackPress()).toBe(false);
+	});
+});
+
+describe("CollectionMenuButton", () => {
+	it("opens the open collection's menu in one tap and its edit page in a second", async () => {
+		const scifi = { ...fantasy, id: "c2", name: "Sci-fi" };
+		const series = { ...fantasy, id: "s1", name: "Dune", seriesKey: "dune", ordered: true };
+		view = await render(
+			<CollectionMenuButton collection={fantasy} allCollections={[fantasy, series, scifi]} />,
+		);
+		expect(view.queryButton("Edit collection")).toBeNull();
+		await click(view.getButton("Fantasy options"));
+		await click(view.getButton("Move down"));
+		expect(moveCollection).toHaveBeenCalledWith({ id: "c1", toIndex: 2 });
+		view.unmount();
+
+		view = await render(
+			<CollectionMenuButton collection={series} allCollections={[fantasy, series]} />,
+		);
+		await click(view.getButton("Dune options"));
+		await click(view.getButton("Edit series"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/$id/edit",
+			params: { id: "s1" },
+		});
+	});
+});

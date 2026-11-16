@@ -1,15 +1,7 @@
-import { Button } from "@lesefluss/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuTrigger,
-} from "@lesefluss/ui/dropdown-menu";
-import { cn } from "@lesefluss/ui/utils";
-import { ChevronDown, Plus, Tag, X } from "lucide-react";
+import { FilterChip as ToggleChip } from "@lesefluss/ui/filter-chip";
+import { Moon, Plus, Tag, X } from "lucide-react";
 import type React from "react";
-import { useRef, useState } from "react";
+import { FilterChip } from "../../components/filter-chip";
 import {
 	CATALOG_SOURCE_LABELS,
 	type CatalogGenre,
@@ -17,8 +9,8 @@ import {
 	type CatalogSource,
 	type CatalogTagCount,
 } from "../../services/catalog/client";
+import { languageLabel } from "../../utils/language-label";
 import { canAddTag, type ExploreSearch, effectiveSort, parseTags } from "./explore-search";
-import { languageLabel } from "./language-label";
 import { LENGTH_BUCKETS, type LengthBucket, lengthLabel } from "./length";
 
 const SORT_LABELS: Record<CatalogSort, string> = {
@@ -41,86 +33,6 @@ const SOURCES: readonly CatalogSource[] = ["standard_ebooks", "gutenberg"];
 
 const ANY = "any";
 type Any = typeof ANY;
-
-type FilterChipProps<T extends string> = {
-	label: string;
-	isActive: boolean;
-	value: T;
-	options: readonly { value: T; label: string; count?: number }[];
-	onSelect: (value: T) => void;
-	onClear?: () => void;
-};
-
-/**
- * On touch, opens on click instead of Radix's pointerdown: a swipe across the
- * scrolling chip row would otherwise open a menu and kill the scroll. Mouse
- * keeps Radix's own handling, so the two never toggle the same press twice.
- */
-function FilterChip<T extends string>({
-	label,
-	isActive,
-	value,
-	options,
-	onSelect,
-	onClear,
-}: FilterChipProps<T>) {
-	const [isOpen, setOpen] = useState(false);
-	const pointerTypeRef = useRef<string>("mouse");
-	return (
-		<div className="flex shrink-0 items-center">
-			<DropdownMenu open={isOpen} onOpenChange={setOpen}>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant={isActive ? "default" : "outline"}
-						size="sm"
-						className={cn("gap-1", isActive && onClear && "rounded-r-none pr-2")}
-						onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
-							pointerTypeRef.current = e.pointerType;
-							if (e.pointerType !== "mouse") e.preventDefault();
-						}}
-						onClick={() => {
-							if (pointerTypeRef.current !== "mouse") setOpen((open) => !open);
-						}}
-					>
-						{label}
-						<ChevronDown className="size-3.5" />
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="max-h-80 min-w-48 overflow-y-auto">
-					<DropdownMenuRadioGroup
-						value={value}
-						onValueChange={(v) => {
-							const option = options.find((o) => o.value === v);
-							if (option) onSelect(option.value);
-						}}
-					>
-						{options.map((o) => (
-							<DropdownMenuRadioItem key={o.value} value={o.value} className="gap-4">
-								<span className="flex-1 whitespace-nowrap">{o.label}</span>
-								{o.count !== undefined && (
-									<span className="whitespace-nowrap text-muted-foreground text-xs tabular-nums">
-										{o.count.toLocaleString()}
-									</span>
-								)}
-							</DropdownMenuRadioItem>
-						))}
-					</DropdownMenuRadioGroup>
-				</DropdownMenuContent>
-			</DropdownMenu>
-			{isActive && onClear && (
-				<Button
-					variant="default"
-					size="sm"
-					className="rounded-l-none border-primary-foreground/20 border-l px-2"
-					onClick={onClear}
-					aria-label={`Remove ${label} filter`}
-				>
-					<X className="size-3.5" />
-				</Button>
-			)}
-		</div>
-	);
-}
 
 type Props = {
 	search: ExploreSearch;
@@ -149,7 +61,7 @@ const FilterRow: React.FC<Props> = ({
 }) => {
 	const sort = effectiveSort(search);
 	const activeTags = parseTags(search.tags);
-	const genreLabel = genres?.find((g) => g.id === search.genre)?.label ?? search.genre;
+	const genreLabel = genres?.find((g) => g.id === search.genre)?.label;
 	const visibleFacets = canAddTag(search) ? facets : undefined;
 
 	const sortOptions = SORTS.filter((s) => s !== "relevance" || search.q).map((value) => ({
@@ -200,9 +112,18 @@ const FilterRow: React.FC<Props> = ({
 					isActive={!!search.length}
 					value={search.length ?? ANY}
 					options={lengthOptions}
-					onSelect={(v) => onChange({ length: v === ANY ? undefined : v })}
+					onSelect={(v) => onChange({ length: v === ANY ? undefined : v, fits: undefined })}
 					onClear={() => onChange({ length: undefined })}
 				/>
+				<ToggleChip
+					selected={!!search.fits}
+					onClick={() =>
+						onChange(search.fits ? { fits: undefined } : { fits: "tonight", length: undefined })
+					}
+				>
+					<Moon className="size-3.5" />
+					Fits tonight
+				</ToggleChip>
 				<FilterChip
 					label={languageLabel(lang)}
 					isActive={false}
@@ -219,50 +140,47 @@ const FilterRow: React.FC<Props> = ({
 					onClear={() => onChange({ source: undefined })}
 				/>
 				{search.author && (
-					<Button
-						variant="default"
-						size="sm"
-						className="shrink-0 gap-1"
+					<ToggleChip
+						selected
+						action
 						onClick={() => onChange({ author: undefined })}
 						aria-label={`Remove author filter ${search.author}`}
 					>
 						By {search.author}
 						<X className="size-3.5" />
-					</Button>
+					</ToggleChip>
 				)}
-				<Button variant="outline" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
+				<ToggleChip selected={false} action onClick={onBrowseTags}>
 					<Tag className="size-3.5" />
 					Tags
-				</Button>
+				</ToggleChip>
 			</div>
 			{(activeTags.length > 0 || (visibleFacets && visibleFacets.length > 0)) && (
 				<div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid="tag-row">
 					{activeTags.map((id) => (
-						<Button
+						<ToggleChip
 							key={id}
-							variant="secondary"
-							size="sm"
-							className="shrink-0 gap-1"
+							selected
+							action
 							onClick={() => onRemoveTag(id)}
 							aria-label={`Remove tag ${tagLabels.get(id) ?? id}`}
 						>
 							{tagLabels.get(id) ?? id}
 							<X className="size-3.5" />
-						</Button>
+						</ToggleChip>
 					))}
 					{visibleFacets?.map((f) => (
-						<Button
+						<ToggleChip
 							key={f.id}
-							variant="ghost"
-							size="sm"
-							className="shrink-0 gap-1 border border-border border-dashed"
+							selected={false}
+							action
+							count={f.count}
 							onClick={() => onAddTag(f.id)}
 							aria-label={`Add tag ${f.label}`}
 						>
 							<Plus className="size-3.5" />
 							{f.label}
-							<span className="text-muted-foreground">{f.count}</span>
-						</Button>
+						</ToggleChip>
 					))}
 				</div>
 			)}

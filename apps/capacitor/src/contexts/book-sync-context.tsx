@@ -112,6 +112,16 @@ interface Props {
 	children: ReactNode;
 }
 
+// App and device tokenize independently; their word counts drift by a small
+// fraction (firmware Latin8 normalization, our TS approximation table, etc.).
+// Scaling word positions proportionally between the two streams keeps the
+// on-screen position visually aligned to within rounding error, without
+// either side needing a byte-perfect tokenizer mirror.
+function scaleWord(word: number, fromCount: number, toCount: number): number {
+	if (fromCount <= 0 || toCount <= 0 || fromCount === toCount) return word;
+	return Math.round((word * toCount) / fromCount);
+}
+
 export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	const { isConnected, onConnected, connectedDescriptorId, connectedDevice } = useBLE();
 	const { snapshot: deviceLibrarySnapshot, refresh: refreshDeviceLibrary } = useDeviceLibrary();
@@ -154,33 +164,23 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	// Position sync
 	// ------------------------------------------------------------------
 
-	// App and device tokenize independently; their word counts drift by a small
-	// fraction (firmware Latin8 normalization, our TS approximation table, etc.).
-	// Scaling word positions proportionally between the two streams keeps the
-	// on-screen position visually aligned to within rounding error, without
-	// either side needing a byte-perfect tokenizer mirror.
-	const scaleWord = (word: number, fromCount: number, toCount: number): number => {
-		if (fromCount <= 0 || toCount <= 0 || fromCount === toCount) return word;
-		return Math.round((word * toCount) / fromCount);
-	};
-
-	const lookupDeviceWordCount = (hash: string): number | null => {
-		if (deviceLibrarySnapshot.kind !== "multi") return null;
-		const entry = deviceLibrarySnapshot.library.find((e) => e.hash === hash);
-		return entry?.words ?? null;
-	};
-
-	const scaleForBook = (
-		bookWordCount: number,
-		hash: string,
-		word: number,
-		direction: "toDevice" | "toApp",
-	): number => {
-		const deviceCount = lookupDeviceWordCount(hash) ?? bookWordCount;
-		return direction === "toDevice"
-			? scaleWord(word, bookWordCount, deviceCount)
-			: scaleWord(word, deviceCount, bookWordCount);
-	};
+	const scaleForBook = useCallback(
+		(
+			bookWordCount: number,
+			hash: string,
+			word: number,
+			direction: "toDevice" | "toApp",
+		): number => {
+			const deviceCount =
+				(deviceLibrarySnapshot.kind === "multi"
+					? deviceLibrarySnapshot.library.find((e) => e.hash === hash)?.words
+					: null) ?? bookWordCount;
+			return direction === "toDevice"
+				? scaleWord(word, bookWordCount, deviceCount)
+				: scaleWord(word, deviceCount, bookWordCount);
+		},
+		[deviceLibrarySnapshot],
+	);
 
 	// Snapshot of the device library read through a ref so applyDevicePosition's
 	// identity stays stable across library refreshes. Without this the notify
@@ -278,6 +278,8 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					`multibook: device ahead (deviceWord=${devicePosRaw} appWord=${devicePosAsApp} > ${appPos}), saved`,
 				);
 				notifyDevicePosition(matchedBook.id, devicePosAsApp, write.updatedAt);
+				// The device records no sessions, so its progress is the only sign of a real sitting.
+				await queries.markFirstSitting(matchedBook.id, write.lastRead);
 			} else if (appPos > devicePosAsApp + ECHO_TOLERANCE) {
 				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 				const scaledOut = scale(matchedBook.wordCount, deviceHash, appPos, "toDevice");
@@ -293,7 +295,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				);
 			}
 		},
-		[connectedDescriptorId, connectedDevice?.deviceId, scaleWord, notifyDevicePosition],
+		[connectedDescriptorId, connectedDevice?.deviceId, notifyDevicePosition],
 	);
 
 	const syncPosition = useCallback(async () => {
@@ -398,6 +400,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					await queries.updateBook(confirmedBookId, write);
 					log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
 					notifyDevicePosition(confirmedBookId, word, write.updatedAt);
+					await queries.markFirstSitting(confirmedBookId, write.lastRead);
 				}
 			}
 		}

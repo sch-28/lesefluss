@@ -29,7 +29,7 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 250, source: "measured" }, sittings: 3 } }),
 		usePopularSerials: () => ({
 			data: { results: [owned, fresh], failedProviders: [], challengeProviders: [] },
 			isLoading: false,
@@ -45,7 +45,13 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: vi.fn(), info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: vi.fn(),
+		info: vi.fn(),
+	},
 }));
 vi.mock("../../../components/cloudflare-challenge", () => ({ CloudflareChallenge: () => null }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
@@ -66,14 +72,14 @@ describe.each(["grid", "list"] as const)("web-novel cards (%s)", (viewMode) => {
 		view = await render(<WebNovelSearchPanel query="" viewMode={viewMode} onPick={vi.fn()} />);
 		const [ownedCard, freshCard] = cards();
 		if (viewMode === "grid") {
-			const badge = freshCard?.querySelector('[data-testid="cover-length-badge"]');
-			expect(badge?.textContent).toContain("~2h 12m");
+			const badge = freshCard?.querySelector('[data-testid="card-length"]');
+			expect(badge?.textContent).toContain("2h 12m");
 			expect(badge?.querySelector(".sr-only")?.textContent).toBe(
 				"About 2 hours 12 minutes to read",
 			);
-			expect(ownedCard?.querySelector('[data-testid="cover-length-badge"]')).toBeNull();
+			expect(ownedCard?.querySelector('[data-testid="card-length"]')).toBeNull();
 		} else {
-			expect(freshCard?.textContent).toContain("~132 pages · 2h 12m");
+			expect(freshCard?.textContent).toContain("132 pages · 2h 12m");
 		}
 		expect(freshCard?.textContent).not.toContain("chapters");
 		expect(ownedCard?.textContent).toContain("42 chapters");

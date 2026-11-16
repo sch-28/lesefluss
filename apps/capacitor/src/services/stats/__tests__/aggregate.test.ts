@@ -1,8 +1,8 @@
 import {
+	computeSpeedModel,
 	isPlausibleRate,
 	MAX_PLAUSIBLE_WPM,
 	MIN_MEASURABLE_MS,
-	summariseReadingRates,
 } from "@lesefluss/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -13,6 +13,7 @@ import {
 	trendBucketsFor,
 	type WpmSession,
 	weekStartsFor,
+	windowTrendBuckets,
 } from "../aggregate";
 
 const ORIGINAL_TZ = process.env.TZ;
@@ -45,7 +46,7 @@ describe.each([
 ])("summariseStreak in %s", (tz) => {
 	useTimezone(tz);
 
-	it("counts a day with a single short sitting", () => {
+	it("counts a day from any positive-duration row it is given", () => {
 		const day = at(2026, 5, 10);
 		const result = summariseStreak([{ startedAt: day, durationMs: 20_000 }], day + minutes(60));
 		expect(result.current).toBe(1);
@@ -66,6 +67,17 @@ describe.each([
 		// At 03:00 on the 11th a sitting would still count for the 10th.
 		expect(summariseStreak(rows, at(2026, 5, 11, 3)).current).toBe(1);
 		expect(summariseStreak(rows, at(2026, 5, 11, 5)).current).toBe(0);
+	});
+
+	// Day keys and hours taken in UTC would split this one local day into two
+	// reading days in Auckland and New York (and in Berlin via the 04:00 cutoff).
+	it("counts two sittings on one local day near both ends as one day", () => {
+		const rows = [at(2026, 5, 10, 4) + minutes(30), at(2026, 5, 10, 23) + minutes(30)].map(
+			(startedAt) => ({ startedAt, durationMs: minutes(20) }),
+		);
+		const result = summariseStreak(rows, at(2026, 5, 10, 23) + minutes(55));
+		expect(result.current).toBe(1);
+		expect(result.longest).toBe(1);
 	});
 
 	it("counts consecutive local days as one streak", () => {
@@ -238,15 +250,15 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 		expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 	});
 
-	it("weights each session by words read", () => {
+	it("divides all words by all active time", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [
-			// 9000 words over 90 minutes is 100 wpm; 1000 words in 1 minute is 1000.
+			// 10,000 words over 91 minutes: the one-minute burst barely moves it.
 			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 9000, durationMs: minutes(90) },
 			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 1000, durationMs: minutes(1) },
 		];
 		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
-		expect(series.measured.at(-1)?.avgWpm).toBe(190);
+		expect(series.measured.at(-1)?.avgWpm).toBe(110);
 	});
 
 	it("leaves listening out of the measured speed", () => {
@@ -309,8 +321,8 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 			],
 			trendBucketsFor("30d", now),
 		);
-		// 100 wpm over 1000 words and 300 wpm over 3000 words, words-weighted.
-		expect(series.averages.measured).toBe(250);
+		// 4000 words over 20 minutes.
+		expect(series.averages.measured).toBe(200);
 	});
 });
 
@@ -374,6 +386,37 @@ describe.each(["Europe/Berlin", "America/New_York"])("trendBucketsFor in %s", (t
 	});
 });
 
+describe("windowTrendBuckets", () => {
+	const now = at(2026, 5, 20);
+
+	it("plots a recent window as days while it reaches back under a month", () => {
+		expect(windowTrendBuckets("recent", at(2026, 5, 17), now).starts).toHaveLength(7);
+		expect(windowTrendBuckets("recent", at(2026, 5, 1), now).starts).toHaveLength(30);
+	});
+
+	it("plots a recent window that reaches back further like all time", () => {
+		const old = at(2025, 1, 10);
+		expect(windowTrendBuckets("recent", old, now)).toEqual(windowTrendBuckets("all", old, now));
+	});
+
+	it("keeps a sitting at an earlier hour on the window's first day", () => {
+		const morning = new Date(2026, 5, 20, 8).getTime();
+		const weekAgoLater = new Date(2026, 5, 13, 10).getTime();
+		expect(windowTrendBuckets("recent", weekAgoLater, morning).starts[0]).toBeLessThanOrEqual(
+			weekAgoLater,
+		);
+		const monthAgoLater = morning - 30 * 24 * 3_600_000 + 3_600_000;
+		expect(windowTrendBuckets("30d", monthAgoLater, morning).starts[0]).toBeLessThanOrEqual(
+			monthAgoLater,
+		);
+	});
+
+	it("gives 30 days one bucket per day, and copes with no sittings", () => {
+		expect(windowTrendBuckets("30d", undefined, now).starts).toHaveLength(30);
+		expect(windowTrendBuckets("all", undefined, now).starts.length).toBeGreaterThan(0);
+	});
+});
+
 describe("implausible sittings", () => {
 	const now = at(2026, 4, 20);
 
@@ -401,12 +444,16 @@ describe("implausible sittings", () => {
 		expect(withJump.averages.measured).toBe(300);
 	});
 
-	it("keeps a position jump out of the per-mode rates", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: real.words, durationMs: real.durationMs },
-			{ mode: "scroll", wpmAvg: null, wordsRead: jump.words, durationMs: jump.durationMs },
-		]);
-		expect(rates.scrollWpm).toBe(300);
+	it("keeps a position jump out of the speed model", () => {
+		const model = computeSpeedModel(
+			[real, jump].map((r) => ({ ...r, wordsRead: r.words })),
+			{ now },
+		);
+		expect(model.reading.scroll?.wpm).toBe(300);
+		// The trend's average and the model agree on the same rows.
+		expect(buildWpmTrend([real, jump], trendBucketsFor("30d", now)).averages.measured).toBe(
+			model.reading.wpm,
+		);
 	});
 
 	it("accepts a fast but human rate", () => {

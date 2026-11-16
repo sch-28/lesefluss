@@ -1,7 +1,7 @@
-import type { SQLiteDBConnection } from "@capacitor-community/sqlite";
 // Vite handles JSON imports natively
 import journal from "../../../drizzle/meta/_journal.json";
 import { log } from "../../utils/log";
+import type { DbDriver } from "./driver";
 
 // import.meta.glob with eager + raw gives us { "./0000_initial.sql": "CREATE TABLE..." }
 // The path is relative to THIS file's location (src/services/db/) - 3 levels up to reach drizzle/
@@ -33,32 +33,28 @@ export class SchemaTooNewError extends Error {
  * to touch this file when adding new migrations - just run
  * `pnpm drizzle-kit generate` and the new entry + .sql file appear automatically.
  */
-export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
-	// transaction: false - avoid the auto-commit wrapper on this DDL statement
-	await conn.execute(
+export async function runMigrations(driver: DbDriver): Promise<void> {
+	await driver.execute(
 		`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			tag TEXT NOT NULL UNIQUE,
 			applied_at INTEGER NOT NULL
 		)`,
-		false,
 	);
 
 	// Refuse to run if the DB has migrations this bundle doesn't know about.
 	// Catches downgrades and Android Auto-Backup restores from a newer build.
 	const knownTags = new Set(journal.entries.map((e) => e.tag));
-	const appliedRes = await conn.query("SELECT tag FROM __drizzle_migrations");
-	const unknownTags = (appliedRes.values ?? [])
-		.map((r) => r.tag as string)
-		.filter((tag) => !knownTags.has(tag));
+	const applied = await driver.query("SELECT tag FROM __drizzle_migrations");
+	const unknownTags = applied.map((r) => r.tag as string).filter((tag) => !knownTags.has(tag));
 	if (unknownTags.length > 0) throw new SchemaTooNewError(unknownTags);
 
 	for (const entry of journal.entries) {
 		// Already applied?
-		const result = await conn.query("SELECT id FROM __drizzle_migrations WHERE tag = ?", [
+		const result = await driver.query("SELECT id FROM __drizzle_migrations WHERE tag = ?", [
 			entry.tag,
 		]);
-		if (result.values && result.values.length > 0) continue;
+		if (result.length > 0) continue;
 
 		// Resolve the SQL content from the glob map
 		const key = `../../../drizzle/${entry.tag}.sql`;
@@ -71,11 +67,7 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		// Wrap every migration in a transaction for atomicity.
-		// IMPORTANT: pass transaction=false to every execute()/run() call inside -
-		// those methods default to transaction=true and auto-commit their own transaction,
-		// which conflicts with the outer beginTransaction().
-		await conn.beginTransaction();
+		await driver.begin();
 		try {
 			for (const stmt of statements) {
 				// SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS.
@@ -83,8 +75,8 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 				const addColMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? ADD COLUMN [`"]?(\w+)[`"]?/i);
 				if (addColMatch) {
 					const [, table, column] = addColMatch;
-					const colCheck = await conn.query(`PRAGMA table_info(${table})`);
-					const exists = colCheck.values?.some((r) => r.name === column);
+					const colCheck = await driver.query(`PRAGMA table_info(${table})`);
+					const exists = colCheck.some((r) => r.name === column);
 					if (exists) continue;
 				}
 
@@ -93,27 +85,26 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 				const renameMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? RENAME TO [`"]?(\w+)[`"]?/i);
 				if (renameMatch) {
 					const [, fromTable] = renameMatch;
-					const tableCheck = await conn.query(
+					const tableCheck = await driver.query(
 						"SELECT name FROM sqlite_master WHERE type='table' AND name=?",
 						[fromTable],
 					);
-					if ((tableCheck.values?.length ?? 0) === 0) continue;
+					if (tableCheck.length === 0) continue;
 				}
 
-				await conn.execute(stmt, false);
+				await driver.execute(stmt);
 			}
 
-			await conn.run(
-				"INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)",
-				[entry.tag, Date.now()],
-				false,
-			);
+			await driver.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
+				entry.tag,
+				Date.now(),
+			]);
 
-			await conn.commitTransaction();
+			await driver.commit();
 			log("db", `Applied migration: ${entry.tag}`);
 		} catch (err) {
 			try {
-				await conn.rollbackTransaction();
+				await driver.rollback();
 			} catch {
 				// Rollback may fail if the transaction was already closed - ignore
 			}

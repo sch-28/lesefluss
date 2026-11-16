@@ -12,12 +12,14 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 	},
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
 const { default: CatalogResults } = await import("../catalog-results");

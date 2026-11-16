@@ -1,7 +1,7 @@
 /**
  * Hand-picked canonical IDs, returned by `/landing` in this exact order
- * (filtered by requested language). Mix Gutenberg + Standard Ebooks so the
- * shelf shows the best-available edition of each title.
+ * (filtered by requested language). One edition per title, the Standard Ebooks
+ * one where it exists: a Gutenberg copy next to it lists the title twice.
  */
 export const CLASSIC_IDS: readonly string[] = [
 	"se:mary-shelley/frankenstein",
@@ -34,10 +34,4 @@ export const CLASSIC_IDS: readonly string[] = [
 	"se:james-joyce/a-portrait-of-the-artist-as-a-young-man",
 	"se:kate-chopin/the-awakening",
 	"se:louisa-may-alcott/little-women",
-	"gutenberg:1342",
-	"gutenberg:11",
-	"gutenberg:84",
-	"gutenberg:1661",
-	"gutenberg:2701",
-	"gutenberg:98",
 ];

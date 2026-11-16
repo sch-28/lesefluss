@@ -49,12 +49,14 @@ export const DEFAULT_SETTINGS = {
 	READER_RULER_LINES: 1, // lines the ruler band covers (1–3); kept while the ruler is off
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
-	READER_LETTER_SPACING: 0, // em added between letters (0–0.2)
-	READER_WORD_SPACING: 0, // em added between words (0–0.48)
+	READER_LETTER_SPACING: 0, // em added between letters (-0.04–0.2)
+	READER_WORD_SPACING: 0, // em added between words (-0.04–0.48)
 	READER_PARAGRAPH_SPACING: 1.1, // em between paragraphs (0.5–2.9)
 	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
 	READER_GLOSSARY_UNDERLINE: true, // underline words that match a glossary entry label
 	SHOW_READING_TIME: true, // show time remaining in progress bar
+	SHOW_LIVE_WPM: false, // show the sitting's live wpm in the progress bar (scroll and page)
+	SPEED_WINDOW: "recent", // 'recent' | '30d' | 'all' - sittings the speed model reads
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	PAGINATION_STYLE: "scroll", // 'scroll' | 'page' - layout for the standard (non-RSVP) reader
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS = {
 	LAST_SEEN_CHANGELOG_DATE: "", // ISO date of newest changelog entry user has seen ('' = never)
 	PAGE_TURN_ANIMATION: true, // slide between pages in page mode (off suits e-ink); device-local
 	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
+	SHOW_SESSION_SUMMARY: true, // summary sheet after a real sitting (1 min or more); device-local
 	EINK_MODE: false, // static, high-contrast UI with instant page turns for e-ink screens; device-local
 	VOLUME_KEY_INVERT: false, // volume up turns forward instead of down; device-local
 	// Read aloud (device-local: voices belong to the phone's speech engine)
@@ -70,13 +73,14 @@ export const DEFAULT_SETTINGS = {
 	TTS_REWIND_WORDS: 8, // words repeated after an interruption
 	TTS_VOICES: "{}", // JSON: primary language → chosen voice name
 	TTS_FOLLOW: true, // keep the spoken word in view
+	RSVP_AUDIO: false, // RSVP plays with the voice instead of the timer
 } as const;
 
 /**
  * Setting constraints matching ESP32 config
  */
 export const SETTING_CONSTRAINTS = {
-	WPM: { min: 100, max: 1000, step: 50 },
+	WPM: { min: 100, max: 1000, step: 25 },
 	DELAY_COMMA: { min: 1.0, max: 5.0, step: 0.1 },
 	DELAY_PERIOD: { min: 1.0, max: 5.0, step: 0.1 },
 	ACCEL_START: { min: 1.0, max: 5.0, step: 0.1 },
@@ -90,8 +94,8 @@ export const SETTING_CONSTRAINTS = {
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
 	// Grids put WCAG 1.4.12's text spacing (0.12 / 0.16 / 2 em) exactly on a step.
-	READER_LETTER_SPACING: { min: 0, max: 0.2, step: 0.04 },
-	READER_WORD_SPACING: { min: 0, max: 0.48, step: 0.04 },
+	READER_LETTER_SPACING: { min: -0.04, max: 0.2, step: 0.04 },
+	READER_WORD_SPACING: { min: -0.04, max: 0.48, step: 0.04 },
 	READER_PARAGRAPH_SPACING: { min: 0.5, max: 2.9, step: 0.3 },
 	READER_RULER_LINES: { min: 1, max: 3, step: 1 },
 	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },
@@ -127,6 +131,8 @@ export const SYNCED_SETTING_KEYS = [
 	"readerWordSpacing",
 	"readerParagraphSpacing",
 	"showReadingTime",
+	"showLiveWpm",
+	"speedWindow",
 	"readerActiveWordUnderline",
 	"readerGlossaryUnderline",
 	"defaultReaderMode",

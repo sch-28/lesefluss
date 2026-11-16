@@ -3,28 +3,41 @@ import {
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
+	type SyncBookmark,
+	type SyncCollection,
+	type SyncCollectionBook,
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPush,
 	SyncPushSchema,
+	type SyncPushStamps,
 	type SyncReadingGoal,
 	type SyncReadingSession,
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
+	type SyncSmartShelf,
+	type SyncSpeedTest,
+	type SyncWishlistItem,
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { type DbExecutor, db } from "~/db";
 import {
 	syncBookCopy,
+	syncBookmarks,
 	syncBooks,
+	syncCollectionBooks,
+	syncCollections,
 	syncGlossaryEntries,
 	syncHighlights,
 	syncReadingGoals,
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncSmartShelves,
+	syncSpeedTests,
+	syncWishlist,
 } from "~/db/schema";
 import {
 	contentQuotaBytes,
@@ -39,9 +52,14 @@ import { type BookOrigin, originKey } from "~/lib/origin";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
-import { upsertSyncBooks } from "~/lib/sync-book-upsert";
+import { upsertSyncBooks, withFirstSittings } from "~/lib/sync-book-upsert";
+import { tombstoneBookmarksOfDeletedBooks, upsertSyncBookmarks } from "~/lib/sync-bookmark-upsert";
+import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-collection-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
+import { upsertSyncSmartShelves } from "~/lib/sync-smart-shelf-upsert";
+import { upsertSyncSpeedTests } from "~/lib/sync-speed-test-upsert";
+import { upsertSyncWishlist } from "~/lib/sync-wishlist-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -149,6 +167,7 @@ async function getUserSyncData(
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
 		finishedAt: syncBooks.finishedAt,
+		firstSittingAt: syncBooks.firstSittingAt,
 		addedAt: syncBooks.addedAt,
 		seriesId: syncBooks.seriesId,
 		chapterIndex: syncBooks.chapterIndex,
@@ -161,6 +180,9 @@ async function getUserSyncData(
 		review: syncBooks.review,
 		tags: syncBooks.tags,
 		hideFromProfile: syncBooks.hideFromProfile,
+		seriesName: syncBooks.seriesName,
+		seriesIndex: syncBooks.seriesIndex,
+		seriesUpdatedAt: syncBooks.seriesUpdatedAt,
 		originUserId: syncBooks.originUserId,
 		originBookId: syncBooks.originBookId,
 		deleted: syncBooks.deleted,
@@ -179,6 +201,12 @@ async function getUserSyncData(
 		readingSessionRows,
 		deletedSessionRows,
 		goalRows,
+		collectionRows,
+		collectionBookRows,
+		smartShelfRows,
+		bookmarkRows,
+		wishlistRows,
+		speedTestRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -206,6 +234,12 @@ async function getUserSyncData(
 						),
 					),
 		db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, userId)),
+		db.select().from(syncCollections).where(eq(syncCollections.userId, userId)),
+		db.select().from(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId)),
+		db.select().from(syncSmartShelves).where(eq(syncSmartShelves.userId, userId)),
+		db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
+		db.select().from(syncWishlist).where(eq(syncWishlist.userId, userId)),
+		db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -255,6 +289,7 @@ async function getUserSyncData(
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
 				finishedAt: b.finishedAt ? toMs(b.finishedAt) : null,
+				firstSittingAt: b.firstSittingAt ? toMs(b.firstSittingAt) : null,
 				addedAt: b.addedAt ? toMs(b.addedAt) : null,
 				seriesId: b.seriesId,
 				chapterIndex: b.chapterIndex,
@@ -269,6 +304,9 @@ async function getUserSyncData(
 				review: b.review,
 				tags: b.tags,
 				hideFromProfile: b.hideFromProfile,
+				seriesName: b.seriesName,
+				seriesIndex: b.seriesIndex,
+				seriesUpdatedAt: b.seriesUpdatedAt ? toMs(b.seriesUpdatedAt) : null,
 				originKey: originKey(b),
 				deleted: b.deleted,
 				...(content
@@ -353,6 +391,8 @@ async function getUserSyncData(
 					endWord: r.endWord,
 					furthestWord: r.furthestWord,
 					wpmAvg: r.wpmAvg,
+					fontSize: r.fontSize,
+					segmentWpm: r.segmentWpm,
 					updatedAt: toMs(r.updatedAt),
 				}) as SyncReadingSession,
 		),
@@ -374,12 +414,84 @@ async function getUserSyncData(
 				planStartWord: g.planStartWord,
 				targetDate: g.targetDate,
 				dailyPercent: g.dailyPercent,
+				dailyMinutes: g.dailyMinutes,
 				carriedDaysMet: g.carriedDaysMet,
 				completedAt: g.completedAt ? toMs(g.completedAt) : null,
 				reminderTime: g.reminderTime,
 				deleted: g.deleted,
 				createdAt: toMs(g.createdAt),
 				updatedAt: toMs(g.updatedAt),
+			}),
+		),
+		collections: collectionRows.map(
+			(c): SyncCollection => ({
+				collectionId: c.collectionId,
+				name: c.name,
+				sortOrder: c.sortOrder,
+				ordered: c.ordered,
+				seriesKey: c.seriesKey,
+				view: c.view,
+				deleted: c.deleted,
+				createdAt: toMs(c.createdAt),
+				updatedAt: toMs(c.updatedAt),
+			}),
+		),
+		collectionBooks: collectionBookRows.map(
+			(m): SyncCollectionBook => ({
+				collectionId: m.collectionId,
+				bookId: m.bookId,
+				seriesIndex: m.seriesIndex,
+				position: m.position,
+				deleted: m.deleted,
+				updatedAt: toMs(m.updatedAt),
+			}),
+		),
+		smartShelves: smartShelfRows.map(
+			(s): SyncSmartShelf => ({
+				shelfId: s.shelfId,
+				name: s.name,
+				conditions: s.conditions,
+				pinned: s.pinned,
+				sortOrder: s.sortOrder,
+				view: s.view,
+				deleted: s.deleted,
+				createdAt: toMs(s.createdAt),
+				updatedAt: toMs(s.updatedAt),
+			}),
+		),
+		bookmarks: bookmarkRows.map(
+			(b): SyncBookmark => ({
+				bookmarkId: b.bookmarkId,
+				bookId: b.bookId,
+				word: b.word,
+				label: b.label,
+				deleted: b.deleted,
+				createdAt: toMs(b.createdAt),
+				updatedAt: toMs(b.updatedAt),
+			}),
+		),
+		wishlist: wishlistRows.map(
+			(w): SyncWishlistItem => ({
+				itemId: w.itemId,
+				kind: w.kind,
+				ref: w.ref,
+				title: w.title,
+				author: w.author,
+				coverUrl: w.coverUrl,
+				deleted: w.deleted,
+				createdAt: toMs(w.createdAt),
+				updatedAt: toMs(w.updatedAt),
+			}),
+		),
+		speedTests: speedTestRows.map(
+			(t): SyncSpeedTest => ({
+				testId: t.testId,
+				readingWpm: t.readingWpm,
+				rsvpWpm: t.rsvpWpm,
+				passageId: t.passageId,
+				deleted: t.deleted,
+				createdAt: toMs(t.createdAt),
+				updatedAt: toMs(t.updatedAt),
 			}),
 		),
 	};
@@ -411,7 +523,7 @@ export const Route = createFileRoute("/api/sync")({
 					haveIds,
 					Number.isSafeInteger(since) && since >= 0 ? since : null,
 				);
-				return Response.json(data);
+				return Response.json({ ...data, serverTime: Date.now() } satisfies SyncResponse);
 			},
 
 			// -----------------------------------------------------------------
@@ -435,7 +547,7 @@ export const Route = createFileRoute("/api/sync")({
 
 				const payload: SyncPush = parsed.data;
 
-				const quotaFit = await db.transaction(async (tx) => {
+				const { fitted: quotaFit, stamps } = await db.transaction(async (tx) => {
 					// First, so a share accepted meanwhile cannot land a live copy of an
 					// origin between the duplicate check below and the upsert.
 					await lockContentQuota(tx, userId);
@@ -460,7 +572,9 @@ export const Route = createFileRoute("/api/sync")({
 						userId,
 						await withoutDuplicateOrigins(tx, userId, pushedBooks, origins),
 					);
-					const books = fitted.books;
+					// Before the upsert, so a first sitting in this push is already a
+					// want-to-reading transition for the feed.
+					const books = withFirstSittings(fitted.books, payload.readingSessions);
 					const highlights = payload.highlights.filter((h) => !takenDown.has(h.bookId));
 					const glossaryEntries = payload.glossaryEntries.filter(
 						(e) => e.bookId === null || e.bookId === undefined || !takenDown.has(e.bookId),
@@ -472,7 +586,7 @@ export const Route = createFileRoute("/api/sync")({
 					// it entirely, and `bookInsertValues` has to turn that into a default to
 					// build a row; merging those defaults would erase what an up-to-date
 					// device wrote the first time an older one pushed a newer position.
-					await upsertSyncBooks(tx, userId, books, origins);
+					const clampedBooks = await upsertSyncBooks(tx, userId, books, origins);
 
 					// --- Series: batched upsert ---
 					if (payload.series && payload.series.length > 0) {
@@ -531,9 +645,9 @@ export const Route = createFileRoute("/api/sync")({
 					}
 
 					// --- Settings: upsert ---
-					if (payload.settings) {
-						await upsertSyncSettings(tx, userId, payload.settings);
-					}
+					const clampedSettings = payload.settings
+						? await upsertSyncSettings(tx, userId, payload.settings)
+						: null;
 
 					// --- Highlights: batched upsert + tombstone missing ---
 					if (highlights.length > 0) {
@@ -667,6 +781,8 @@ export const Route = createFileRoute("/api/sync")({
 									endWord: r.endWord,
 									furthestWord: r.furthestWord ?? null,
 									wpmAvg: r.wpmAvg,
+									fontSize: r.fontSize ?? null,
+									segmentWpm: r.segmentWpm ?? null,
 									updatedAt: toDate(r.updatedAt),
 								})),
 							)
@@ -684,6 +800,8 @@ export const Route = createFileRoute("/api/sync")({
 									wpmAvg: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.wpm_avg ELSE sync_reading_sessions.wpm_avg END`,
 									// An older client sends no furthest word; keep one a newer client stored.
 									furthestWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.furthest_word, sync_reading_sessions.furthest_word) ELSE sync_reading_sessions.furthest_word END`,
+									fontSize: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.font_size, sync_reading_sessions.font_size) ELSE sync_reading_sessions.font_size END`,
+									segmentWpm: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.segment_wpm, sync_reading_sessions.segment_wpm) ELSE sync_reading_sessions.segment_wpm END`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
 								},
 								setWhere: sql`sync_reading_sessions.deleted = false`,
@@ -697,8 +815,48 @@ export const Route = createFileRoute("/api/sync")({
 							payload.readingGoals.filter((g) => !takenDown.has(g.bookId)),
 						);
 					}
-					return fitted;
+					// Absent from clients that pre-date collections: nothing to merge.
+					if (payload.collections) {
+						await upsertSyncCollections(tx, userId, payload.collections);
+					}
+					if (payload.collectionBooks) {
+						await upsertSyncCollectionBooks(tx, userId, payload.collectionBooks);
+					}
+					if (payload.smartShelves) {
+						await upsertSyncSmartShelves(tx, userId, payload.smartShelves);
+					}
+					// Absent from clients that pre-date bookmarks: nothing to merge.
+					if (payload.bookmarks) {
+						await upsertSyncBookmarks(
+							tx,
+							userId,
+							payload.bookmarks.filter((b) => !takenDown.has(b.bookId)),
+						);
+					}
+					// After the book and series upserts, so a book deleted in this push
+					// (by any client version) takes its bookmarks along.
+					if (
+						payload.bookmarks?.length ||
+						payload.books.some((b) => b.deleted) ||
+						payload.series.some((s) => s.deleted)
+					) {
+						await tombstoneBookmarksOfDeletedBooks(tx, userId);
+					}
+					// Absent from clients that pre-date the wishlist: nothing to merge.
+					if (payload.wishlist) {
+						await upsertSyncWishlist(tx, userId, payload.wishlist);
+					}
+					// Absent from older clients and with stats sync off: nothing to merge.
+					if (payload.speedTests) {
+						await upsertSyncSpeedTests(tx, userId, payload.speedTests);
+					}
+					const stamps: SyncPushStamps = {
+						books: clampedBooks,
+						settingsUpdatedAt: clampedSettings,
+					};
+					return { fitted, stamps };
 				});
+				const hasClamped = stamps.books.length > 0 || stamps.settingsUpdatedAt !== null;
 
 				try {
 					await settleBuddyReads(
@@ -712,13 +870,16 @@ export const Route = createFileRoute("/api/sync")({
 				// Everything else in the push is committed; the 413 only reports the
 				// content that did not fit, so the client stops re-uploading it.
 				if (quotaFit.rejected.size > 0) {
-					return contentQuotaExceededResponse(quotaFit.quota, quotaFit.rejected);
+					return contentQuotaExceededResponse(
+						quotaFit.quota,
+						quotaFit.rejected,
+						hasClamped ? stamps : undefined,
+					);
 				}
 
-				// No body: the client pulls with GET and discards whatever POST returns,
-				// so building a full merged snapshot here is a wasted query and a wasted
-				// download on every push.
-				return new Response(null, { status: 204 });
+				// No merged snapshot: the client pulls with GET, so building one here is
+				// a wasted query and a wasted download on every push.
+				return hasClamped ? Response.json(stamps) : new Response(null, { status: 204 });
 			},
 		},
 	},

@@ -126,6 +126,8 @@ export class ListenRecorder {
 			endWord: wordPos(last.endWord),
 			furthestWord: wordsRead > 0 ? wordPos(furthest) : null,
 			wpmAvg: null,
+			fontSize: null,
+			segmentWpm: null,
 			updatedAt: now,
 		};
 	}

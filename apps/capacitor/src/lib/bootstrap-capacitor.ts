@@ -11,6 +11,8 @@ export async function bootstrapCapacitor() {
 	} catch (err) {
 		console.warn("[bootstrap] status bar setup failed", err);
 	}
+	// setResizeMode is iOS-only; Android rejects it with "not implemented".
+	if (Capacitor.getPlatform() !== "ios") return;
 	try {
 		await Keyboard.setResizeMode({ mode: KeyboardResize.Native });
 	} catch (err) {

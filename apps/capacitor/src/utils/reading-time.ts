@@ -1,3 +1,5 @@
+import { estimateMinutes } from "@lesefluss/core";
+
 export function formatReadingTime(minutes: number): string {
 	if (minutes < 1) return "< 1 min";
 	if (minutes < 60) return `${Math.round(minutes)} min`;
@@ -15,22 +17,6 @@ export function formatReadingTime(minutes: number): string {
  * property of the book, so it has to be independent of the device.
  */
 export const WORDS_PER_PAGE = 250;
-
-/** Fallback when a reader has no measured history yet. Rough, and labelled as
- *  such wherever it is shown. */
-export const AVERAGE_READER_WPM = 225;
-
-/**
- * The pace length estimates use: the reader's measured speed, else the
- * typical one. One rule for library stats and Explore so they can't disagree.
- */
-export type ReadingPace = { wpm: number; isMeasured: boolean };
-
-export function readingPace(measuredWpm: number | null | undefined): ReadingPace {
-	return measuredWpm && measuredWpm > 0
-		? { wpm: measuredWpm, isMeasured: true }
-		: { wpm: AVERAGE_READER_WPM, isMeasured: false };
-}
 
 export function estimatePages(wordCount: number): number {
 	return Math.max(1, Math.ceil(wordCount / WORDS_PER_PAGE));
@@ -50,7 +36,19 @@ export function percentLabel(value: number): string {
 	return (Math.round(value * 10) / 10).toFixed(1);
 }
 
-/** "~10 min", "~1h 5m", or "< 1 min". */
+/** "10 min", "1h 5m", or "< 1 min". Never "~": an estimate says so only in a popover. */
 export function minutesLabel(minutes: number): string {
-	return minutes < 1 ? "< 1 min" : `~${formatReadingTime(minutes)}`;
+	return formatReadingTime(minutes);
+}
+
+/**
+ * Minutes left in a book at a pace, or null when the book is finished or its
+ * length is unknown. The one rule book detail, cards and rows use.
+ */
+export function estimateMinutesLeft(
+	book: { wordCount: number; wordPosition: number; finishedAt: number | null },
+	wpm: number,
+): number | null {
+	if (book.finishedAt !== null || book.wordCount <= 0) return null;
+	return estimateMinutes(book.wordCount - book.wordPosition, wpm);
 }

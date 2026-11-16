@@ -119,7 +119,7 @@ describe("buildImportedBookRow language precedence", () => {
 		expect(row.language).toBe("en-GB");
 	});
 
-	// The confirm sheet clears a field to null. That is a correction like any
+	// The Add book page clears a field to null. That is a correction like any
 	// other and must not fall back to what the file happened to declare.
 	it("respects the reader deliberately clearing the language", () => {
 		const row = buildImportedBookRow(
@@ -144,5 +144,30 @@ describe("buildImportedBookRow language precedence", () => {
 			stamps,
 		);
 		expect(row.language).toHaveLength(35);
+	});
+
+	it("takes the file's series and stamps it with the import", () => {
+		const row = buildImportedBookRow(
+			{ ...payload, seriesName: "Foundation", seriesIndex: 2.5 },
+			{},
+			makeOverrides(),
+			stamps,
+		);
+		expect(row).toMatchObject({
+			seriesName: "Foundation",
+			seriesIndex: 2.5,
+			seriesUpdatedAt: 1000,
+		});
+	});
+
+	it("leaves the series empty and unrevised for a file without one", () => {
+		const row = buildImportedBookRow(payload, {}, undefined, stamps);
+		expect(row).toMatchObject({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 0 });
+	});
+
+	it("always stores the file's series as the hint, even when the Add book page was shown", () => {
+		const fromFile = { ...payload, seriesName: "Foundation", seriesIndex: 2 };
+		const row = buildImportedBookRow(fromFile, {}, makeOverrides(), stamps);
+		expect(row).toMatchObject({ seriesName: "Foundation", seriesIndex: 2, seriesUpdatedAt: 1000 });
 	});
 });

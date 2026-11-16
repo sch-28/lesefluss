@@ -41,6 +41,8 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		readerWordSpacing: 0.16,
 		readerParagraphSpacing: 1.6,
 		showReadingTime: true,
+		showLiveWpm: true,
+		speedWindow: "30d",
 		readerActiveWordUnderline: false,
 		readerGlossaryUnderline: true,
 		defaultReaderMode: "scroll",
@@ -81,6 +83,22 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		const { readerGlossaryUnderline: _, ...older } = full;
 		await upsertSyncSettings(db, userId, parsed({ ...older, readerTheme: "contrast" }));
 		expect(await read()).toMatchObject({ readerGlossaryUnderline: true, readerTheme: "dark" });
+	});
+
+	test("the live wpm toggle round-trips, and a client that predates it stores it off", async () => {
+		const { showLiveWpm: _, ...older } = full;
+		await upsertSyncSettings(db, userId, parsed(older));
+		expect(await read()).toMatchObject({ showLiveWpm: false });
+		await upsertSyncSettings(db, userId, parsed({ ...full, updatedAt: 2_000_000 }));
+		expect(await read()).toMatchObject({ showLiveWpm: true });
+	});
+
+	test("the speed window round-trips, and a client that predates it stores recent", async () => {
+		const { speedWindow: _, ...older } = full;
+		await upsertSyncSettings(db, userId, parsed(older));
+		expect(await read()).toMatchObject({ speedWindow: "recent" });
+		await upsertSyncSettings(db, userId, parsed({ ...full, updatedAt: 2_000_000 }));
+		expect(await read()).toMatchObject({ speedWindow: "30d" });
 	});
 
 	test("a push from a client that predates text spacing keeps the spacing another device set", async () => {

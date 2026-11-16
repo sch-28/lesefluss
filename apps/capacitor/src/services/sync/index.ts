@@ -1,7 +1,12 @@
 import { Preferences } from "@capacitor/preferences";
 import {
 	type ContentQuotaExceeded,
+	DELETE_ACCOUNT_REFUSAL_MESSAGES,
+	DELETE_SESSIONS_BATCH_MAX,
+	type DeleteAccountRefusal,
+	type DeleteAccountRequest,
 	DeletedSessionIdsSchema,
+	isDeleteAccountRefusal,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
 	MAX_SYNCED_COVER_CHARS,
@@ -12,6 +17,8 @@ import {
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
+	type SyncPushStamps,
+	SyncPushStampsSchema,
 	type SyncReadingGoal,
 	SyncReadingGoalSchema,
 	type SyncReadingSession,
@@ -25,6 +32,7 @@ import {
 import { exposeRemoteSettingsApply } from "../../test-hooks/sync";
 import { log } from "../../utils/log";
 import { AuthedFetchError, type AuthedFetchOptions, authedFetch } from "../authed-fetch";
+import { normalizeIncomingCover } from "../covers/shrink-legacy-covers";
 import {
 	bookKeys,
 	glossaryKeys,
@@ -46,14 +54,18 @@ import type {
 	Settings,
 } from "../db/schema";
 import { requestReminderSync } from "../goal-reminders";
-import { reportMissedPosition } from "../position-revisions";
+import { reportLoweredRevision, reportMissedPosition } from "../position-revisions";
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
+import { sittingCarries } from "../reading-sessions/carry";
 import { notifySessionsDeleted } from "../reading-sessions/deleted";
+import { scheduleSeriesReconcile } from "../series-collections";
 import { reportEvent } from "../telemetry";
 import { SYNC_URL } from "./auth-client";
 import { buildBookMergeUpdate } from "./book-merge";
+import { buildBookmarkMerge, pushableBookmarks } from "./bookmark-sync";
 import { type NotBackedUpBook, reportBooksNotBackedUp } from "./cloud-storage";
+import { buildCollectionMerge, pushableCollections } from "./collection-sync";
 import {
 	forgetReported,
 	getQuotaBlock,
@@ -61,6 +73,7 @@ import {
 	reconcileQuotaBlock,
 	recordQuotaRejection,
 } from "./content-quota";
+import { recordServerTime } from "./server-clock";
 import {
 	addServerContentIds,
 	getServerContentIds,
@@ -79,6 +92,9 @@ import {
 	SYNC_ENABLED,
 	setSessionTombstoneWatermark,
 } from "./session";
+import { buildSmartShelfMerge, pushableSmartShelves } from "./smart-shelf-sync";
+import { buildSpeedTestMerge, pushableSpeedTests } from "./speed-test-sync";
+import { buildWishlistMerge, pushableWishlist } from "./wishlist-sync";
 
 export { openBrowserSignIn } from "./browser-sign-in";
 export {
@@ -96,7 +112,9 @@ export {
 	pollDeviceToken,
 	requestDeviceCode,
 } from "./device-sign-in";
+export { PasswordResetError, requestPasswordReset } from "./password-reset";
 export { PasswordSignInError, signInWithPassword } from "./password-sign-in";
+export { loadServerClockOffset } from "./server-clock";
 export {
 	adoptSyncIdentity,
 	beginAuthLoginHandoff,
@@ -112,6 +130,7 @@ export {
 	SYNC_ENABLED,
 } from "./session";
 export { SIGN_IN_FAILED_MESSAGE } from "./sign-in-copy";
+export { webSignInHref } from "./web-sign-in";
 
 const PENDING_SIGN_OUT_KEY = "sync_pending_sign_out";
 
@@ -203,16 +222,99 @@ async function signOutPendingSessions(): Promise<void> {
  * POST the push. A quota 413 is not a failure: the server committed everything
  * but the listed books' content, so its body is returned for the caller to act on.
  */
-async function postPush(body: string): Promise<ContentQuotaExceeded | null> {
+async function postPush(body: string): Promise<{
+	quotaRejection: ContentQuotaExceeded | null;
+	stamps: SyncPushStamps | null;
+}> {
 	try {
-		await authedFetch("/api/sync", { method: "POST", body });
-		return null;
+		const res = await authedFetch("/api/sync", { method: "POST", body });
+		// 204 when no stamp was clamped, and from servers that pre-date stamps.
+		return {
+			quotaRejection: null,
+			stamps: res.status === 200 ? readPushStamps(await res.json()) : null,
+		};
 	} catch (err) {
 		if (err instanceof AuthedFetchError && err.status === 413 && isContentQuotaExceeded(err.body)) {
-			return err.body;
+			return { quotaRejection: err.body, stamps: readPushStamps(err.body.stamps) };
 		}
 		throw toSyncError(err);
 	}
+}
+
+function readPushStamps(body: unknown): SyncPushStamps | null {
+	if (body === undefined) return null;
+	const parsed = SyncPushStampsSchema.safeParse(body);
+	if (parsed.success) return parsed.data;
+	log.error("sync", "push: unreadable stamps in the server's answer", parsed.error.issues);
+	return null;
+}
+
+/**
+ * Takes the stamps the server clamped a push to, so a clock running ahead stops
+ * hiding newer rows from other devices behind its own future stamps. Each stamp
+ * moves only while it is still the one pushed: a save made during the push keeps
+ * its own, and the next push clamps that one.
+ */
+async function adoptPushStamps(payload: SyncPayload, stamps: SyncPushStamps): Promise<void> {
+	const pushedBooks = new Map(payload.books.map((book) => [book.bookId, book]));
+	for (const stored of stamps.books) {
+		const pushed = pushedBooks.get(stored.bookId);
+		if (!pushed) continue;
+		await queries.adoptBookStamps(stored.bookId, pushed, stored);
+		adoptCachedBookStamps(stored.bookId, pushed, stored);
+		if (stored.updatedAt < pushed.updatedAt) {
+			reportLoweredRevision(stored.bookId, pushed.updatedAt, stored.updatedAt);
+		}
+	}
+	if (payload.settings && stamps.settingsUpdatedAt !== null) {
+		await queries.adoptSettingsStamp(payload.settings.updatedAt, stamps.settingsUpdatedAt);
+	}
+}
+
+/**
+ * The cached rows get the same compare-and-set as the DB: patched, not
+ * invalidated, because a reader opened from the library seeds from the cached
+ * row on its first render, before any refetch lands.
+ */
+function adoptCachedBookStamps(
+	bookId: string,
+	pushed: Pick<SyncBook, "updatedAt" | "metadataUpdatedAt" | "seriesUpdatedAt">,
+	stored: SyncPushStamps["books"][number],
+): void {
+	const lower = (book: Book): Book => {
+		if (book.id !== bookId) return book;
+		const updatedAt =
+			book.updatedAt === pushed.updatedAt && stored.updatedAt < pushed.updatedAt
+				? stored.updatedAt
+				: book.updatedAt;
+		const metadataUpdatedAt =
+			pushed.metadataUpdatedAt != null &&
+			book.metadataUpdatedAt === pushed.metadataUpdatedAt &&
+			stored.metadataUpdatedAt < pushed.metadataUpdatedAt
+				? stored.metadataUpdatedAt
+				: book.metadataUpdatedAt;
+		const seriesUpdatedAt =
+			pushed.seriesUpdatedAt != null &&
+			stored.seriesUpdatedAt !== undefined &&
+			book.seriesUpdatedAt === pushed.seriesUpdatedAt &&
+			stored.seriesUpdatedAt < pushed.seriesUpdatedAt
+				? stored.seriesUpdatedAt
+				: book.seriesUpdatedAt;
+		if (
+			updatedAt === book.updatedAt &&
+			metadataUpdatedAt === book.metadataUpdatedAt &&
+			seriesUpdatedAt === book.seriesUpdatedAt
+		)
+			return book;
+		return { ...book, updatedAt, metadataUpdatedAt, seriesUpdatedAt };
+	};
+	queryClient.setQueryData<Book | undefined>(bookKeys.detail(bookId), (book) =>
+		book ? lower(book) : book,
+	);
+	queryClient.setQueryData<{ books: Book[]; covers: Map<string, string> }>(bookKeys.all, (list) =>
+		list ? { ...list, books: list.books.map(lower) } : list,
+	);
+	queryClient.setQueryData<Book[]>(bookKeys.allIncludingChapters, (books) => books?.map(lower));
 }
 
 async function syncFetch(path: string, options?: AuthedFetchOptions): Promise<Response> {
@@ -229,6 +331,44 @@ function toSyncError(err: unknown): unknown {
 		: err;
 }
 
+/** The server refused the deletion (wrong or missing password, stale sign-in); nothing was deleted. */
+export class AccountDeletionRefusedError extends Error {
+	constructor(readonly reason: DeleteAccountRefusal) {
+		super(DELETE_ACCOUNT_REFUSAL_MESSAGES[reason]);
+		this.name = "AccountDeletionRefusedError";
+	}
+}
+
+/**
+ * Deletes the signed-in account and everything the server holds for it, then
+ * drops the local session. Under the sync lock so no push runs with the dead
+ * token and gets a 401 that reads as an expired session.
+ * Throws AccountDeletionRefusedError when the server does not accept `password`.
+ */
+export async function deleteAccount(password: string): Promise<void> {
+	await withSyncLock(async () => {
+		const body: DeleteAccountRequest = {
+			confirm: "delete-account",
+			password: password || undefined,
+		};
+		try {
+			await authedFetch("/api/account/delete", { method: "POST", body: JSON.stringify(body) });
+		} catch (err) {
+			const reason =
+				err instanceof AuthedFetchError &&
+				(err.status === 429 ? "rate_limited" : err.status === 403 && refusalReason(err.body));
+			if (reason) throw new AccountDeletionRefusedError(reason);
+			throw toSyncError(err);
+		}
+		await clearToken();
+	});
+}
+
+function refusalReason(body: unknown): DeleteAccountRefusal | null {
+	const reason = (body as { reason?: unknown } | null)?.reason;
+	return isDeleteAccountRefusal(reason) ? reason : null;
+}
+
 /**
  * Tombstone every reading session for the current user on the server, which
  * every other device then drops on its next pull. A dedicated endpoint rather
@@ -241,7 +381,7 @@ export async function wipeServerSessions(): Promise<void> {
 }
 
 /**
- * "Delete reading stats": tombstones every session and goal on the server, then
+ * "Delete reading stats": tombstones every session, goal and speed test on the server, then
  * drops the local rows. Under the sync lock, so a pull already holding a response
  * from before the wipe cannot write the rows back. The push watermark stays:
  * nothing local is left to resend, and later sessions sort above it anyway.
@@ -250,7 +390,9 @@ export async function wipeAllReadingStats(): Promise<void> {
 	await withSyncLock(async () => {
 		await wipeServerSessions();
 		await queries.deleteAllReadingSessions();
+		sittingCarries.clear();
 		await queries.hardDeleteAllGoals();
+		await queries.deleteAllSpeedTests();
 	});
 	requestReminderSync();
 }
@@ -258,10 +400,61 @@ export async function wipeAllReadingStats(): Promise<void> {
 /** Tombstone a single reading session on the server. `wipeServerSessions` for one row. */
 export async function deleteServerSession(sessionId: string): Promise<void> {
 	if (!(await isSyncReady())) return;
+	await postDeleteSession(sessionId);
+}
+
+async function postDeleteSession(sessionId: string): Promise<void> {
 	await syncFetch("/api/sync/delete-session", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ sessionId }),
+	});
+}
+
+/**
+ * Tombstone many reading sessions on the server, in batches it accepts. A server
+ * older than the batch endpoint gets the ids one by one.
+ */
+export async function deleteServerSessions(sessionIds: readonly string[]): Promise<void> {
+	if (sessionIds.length === 0 || !(await isSyncReady())) return;
+	for (let i = 0; i < sessionIds.length; i += DELETE_SESSIONS_BATCH_MAX) {
+		const batch = sessionIds.slice(i, i + DELETE_SESSIONS_BATCH_MAX);
+		try {
+			await authedFetch("/api/sync/delete-sessions", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ sessionIds: batch }),
+			});
+		} catch (err) {
+			if (!mayBeMissingRoute(err)) throw toSyncError(err);
+			// No sync-ready check per id: a sign-out mid-loop must throw, not skip ids that then get deleted locally.
+			for (const id of sessionIds.slice(i)) await postDeleteSession(id);
+			return;
+		}
+	}
+}
+
+/**
+ * A route the server lacks answers 404, but without CORS headers, so the native
+ * app's cross-origin fetch sees only a TypeError. Offline looks the same; the
+ * one-by-one fallback then fails on its first call.
+ */
+function mayBeMissingRoute(err: unknown): boolean {
+	return (err instanceof AuthedFetchError && err.status === 404) || err instanceof TypeError;
+}
+
+/**
+ * Delete reading sessions here and on the server, server first: a local-only
+ * delete would come back on the next pull. Under the sync lock, so a pull that
+ * fetched before the tombstones existed cannot write the rows back.
+ */
+export async function deleteReadingSessionsEverywhere(ids: readonly string[]): Promise<void> {
+	if (ids.length === 0) return;
+	await withSyncLock(async () => {
+		await deleteServerSessions(ids);
+		// Before the delete, as on pull: an open sitting must move to a new id first.
+		notifySessionsDeleted(ids);
+		await queries.deleteReadingSessions([...ids]);
 	});
 }
 
@@ -314,6 +507,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 			: {}),
 		finishedAt: book.finishedAt,
 		addedAt: book.addedAt,
+		firstSittingAt: book.firstSittingAt,
 		// A tombstone carries no reader-written text, same rule as content above:
 		// a deleted book's private notes have no business outliving it on a server.
 		...(book.deleted
@@ -326,8 +520,11 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 					review: book.review,
 					tags: book.tags,
 					hideFromProfile: book.hideFromProfile,
+					seriesName: book.seriesName,
+					seriesIndex: book.seriesIndex,
 				}),
 		metadataUpdatedAt: book.metadataUpdatedAt,
+		seriesUpdatedAt: book.seriesUpdatedAt,
 		updatedAt: book.updatedAt,
 	};
 }
@@ -405,6 +602,8 @@ function sessionToSync(s: ReadingSession): SyncReadingSession {
 		endWord: s.endWord,
 		furthestWord: s.furthestWord,
 		wpmAvg: s.wpmAvg,
+		fontSize: s.fontSize,
+		segmentWpm: s.segmentWpm,
 		updatedAt: s.updatedAt,
 	};
 }
@@ -435,6 +634,7 @@ export function goalToSync(g: ReadingGoal): SyncReadingGoal {
 		planStartWord: g.planStartWord,
 		targetDate: g.targetDate,
 		dailyPercent: g.dailyPercent,
+		dailyMinutes: g.dailyMinutes ?? null,
 		carriedDaysMet: g.carriedDaysMet,
 		completedAt: g.completedAt,
 		reminderTime: g.reminderTime,
@@ -456,6 +656,8 @@ function goalFromSync(g: SyncReadingGoal): ReadingGoal {
 		planStartWord: wordPos(g.planStartWord),
 		targetDate: g.targetDate,
 		dailyPercent: g.dailyPercent,
+		// A server row from before it dropped minutes on a legacy switch off pace can still carry them.
+		dailyMinutes: g.mode === "pace" ? (g.dailyMinutes ?? null) : null,
 		carriedDaysMet: g.carriedDaysMet,
 		completedAt: g.completedAt,
 		reminderTime: g.reminderTime,
@@ -574,6 +776,7 @@ function buildBookRowFromServer(
 		metadataUpdatedAt: serverBook.metadataUpdatedAt ?? serverBook.updatedAt,
 		lastRead: seededLastRead(serverBook),
 		finishedAt: serverBook.finishedAt ?? null,
+		firstSittingAt: serverBook.firstSittingAt ?? null,
 		description: serverBook.description ?? null,
 		language: serverBook.language ?? null,
 		status: serverBook.status ?? null,
@@ -581,6 +784,9 @@ function buildBookRowFromServer(
 		review: serverBook.review ?? null,
 		tags: serverBook.tags ?? null,
 		hideFromProfile: serverBook.hideFromProfile ?? false,
+		seriesName: serverBook.seriesName ?? null,
+		seriesIndex: serverBook.seriesIndex ?? null,
+		seriesUpdatedAt: serverBook.seriesUpdatedAt ?? 0,
 		originKey: serverBook.originKey ?? null,
 		source: serverBook.source ?? null,
 		catalogId: serverBook.catalogId ?? null,
@@ -618,10 +824,16 @@ export async function pullSync(): Promise<Set<string>> {
 		log("sync", `pull request haveCount=${localBooks.length} haveHeaderBytes=${haveHeader.length}`);
 
 		const tombstonesSince = await getSessionTombstoneWatermark();
+		const sentAt = Date.now();
 		const res = await syncFetch(`/api/sync?sessionTombstonesSince=${tombstonesSince}`, {
 			headers: { "X-Sync-Have": haveHeader },
 		});
+		const receivedAt = Date.now();
 		const data: SyncResponse = await res.json();
+		// Older servers send no serverTime; the offset then stays as it was.
+		if (typeof data.serverTime === "number") {
+			recordServerTime({ serverTime: data.serverTime, sentAt, receivedAt });
+		}
 
 		// The server tells us outright which books it stores content for. Older
 		// servers omit the field; fall back to inferring it per book below.
@@ -669,11 +881,12 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 
 			if (!local) {
+				const coverImage = await normalizeIncomingCover(serverSeries.coverImage);
 				await queries.addSeries({
 					id: serverSeries.seriesId,
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage,
 					description: serverSeries.description,
 					sourceUrl: serverSeries.sourceUrl,
 					tocUrl: serverSeries.tocUrl,
@@ -687,7 +900,7 @@ export async function pullSync(): Promise<Set<string>> {
 					id: serverSeries.seriesId,
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage,
 					description: serverSeries.description,
 					sourceUrl: serverSeries.sourceUrl,
 					tocUrl: serverSeries.tocUrl,
@@ -708,7 +921,7 @@ export async function pullSync(): Promise<Set<string>> {
 				await queries.updateSeries(serverSeries.seriesId, {
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage: await normalizeIncomingCover(serverSeries.coverImage),
 					description: serverSeries.description,
 					tocUrl: serverSeries.tocUrl,
 					lastCheckedAt: serverSeries.lastCheckedAt,
@@ -778,7 +991,7 @@ export async function pullSync(): Promise<Set<string>> {
 						await queries.addServerBookWithContent(
 							row,
 							serverBook.content ?? "",
-							serverBook.coverImage,
+							await normalizeIncomingCover(serverBook.coverImage),
 							serverBook.chapters ?? null,
 							serverBook.linkRanges ?? null,
 						);
@@ -807,6 +1020,15 @@ export async function pullSync(): Promise<Set<string>> {
 					Date.now(),
 					{ isDeviceLocal: true },
 				);
+				changed = true;
+			}
+
+			// Same as the finish above: a fact, merged earliest-wins on its own.
+			if (
+				serverBook.firstSittingAt != null &&
+				(local.firstSittingAt == null || serverBook.firstSittingAt < local.firstSittingAt)
+			) {
+				await queries.markFirstSitting(serverBook.bookId, serverBook.firstSittingAt);
 				changed = true;
 			}
 
@@ -990,6 +1212,8 @@ export async function pullSync(): Promise<Set<string>> {
 					endWord: wordPos(row.endWord),
 					furthestWord: row.furthestWord == null ? null : wordPos(row.furthestWord),
 					wpmAvg: row.wpmAvg,
+					fontSize: row.fontSize ?? null,
+					segmentWpm: row.segmentWpm ?? null,
 					updatedAt: row.updatedAt,
 				});
 			}
@@ -1007,14 +1231,24 @@ export async function pullSync(): Promise<Set<string>> {
 				if (deletedIds.length > 0) changed = true;
 				await setSessionTombstoneWatermark(data.deletedSessionIdsAsOf);
 			}
+			// Absent from an older server: leave local speed tests alone.
+			if (data.speedTests) {
+				const merge = buildSpeedTestMerge(await queries.getSpeedTests(), data.speedTests);
+				if (merge.rejected > 0) {
+					log("sync", `pull: skipped ${merge.rejected} malformed speed test(s)`);
+				}
+				if (merge.upserts.length > 0) await queries.upsertSpeedTests(merge.upserts);
+				if (merge.deletes.length > 0) await queries.hardDeleteSpeedTests(merge.deletes);
+				if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
+			}
 		}
 
+		const liveBookIds = new Set(
+			[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
+		);
 		// Goals are plans, not stats: they sync with stats sync off too.
 		// Absent from an older server: leave local goals alone.
 		if (data.readingGoals) {
-			const liveBookIds = new Set(
-				[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
-			);
 			const merge = buildGoalMerge(
 				await queries.getAllGoalsForSync(),
 				data.readingGoals,
@@ -1028,6 +1262,63 @@ export async function pullSync(): Promise<Set<string>> {
 				changed = true;
 			}
 		}
+		// Absent from an older server: leave local bookmarks alone.
+		if (data.bookmarks) {
+			const merge = buildBookmarkMerge(
+				await queries.getAllBookmarksForSync(),
+				data.bookmarks,
+				liveBookIds,
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed bookmark(s)`);
+			}
+			if (merge.upserts.length > 0) await queries.upsertBookmarks(merge.upserts);
+			if (merge.deletes.length > 0) await queries.hardDeleteBookmarks(merge.deletes);
+			if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
+		}
+		// Absent from an older server: leave the local wishlist alone.
+		if (data.wishlist) {
+			const merge = buildWishlistMerge(await queries.getAllWishlistForSync(), data.wishlist);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed wishlist item(s)`);
+			}
+			if (merge.upserts.length > 0) await queries.upsertWishlist(merge.upserts);
+			if (merge.deletes.length > 0) await queries.hardDeleteWishlist(merge.deletes);
+			if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
+		}
+		// Absent from an older server: leave local collections alone.
+		if (data.collections || data.collectionBooks) {
+			const [localCollections, localCollectionBooks] = await Promise.all([
+				queries.getAllCollectionsForSync(),
+				queries.getAllCollectionBooksForSync(),
+			]);
+			const merge = buildCollectionMerge(
+				{ collections: localCollections, collectionBooks: localCollectionBooks },
+				{ collections: data.collections ?? [], collectionBooks: data.collectionBooks ?? [] },
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed collection row(s)`);
+			}
+			if (merge.collections.length > 0) await queries.upsertCollections(merge.collections);
+			if (merge.collectionBooks.length > 0) {
+				await queries.upsertCollectionBooks(merge.collectionBooks);
+			}
+			if (merge.collections.length > 0 || merge.collectionBooks.length > 0) changed = true;
+		}
+		// Absent from an older server: leave local shelves alone.
+		if (data.smartShelves) {
+			const merge = buildSmartShelfMerge(
+				await queries.getAllSmartShelvesForSync(),
+				data.smartShelves,
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed smart shelf row(s)`);
+			}
+			if (merge.shelves.length > 0) {
+				await queries.upsertSmartShelves(merge.shelves);
+				changed = true;
+			}
+		}
 		// Positions may have moved past the finish on another device or a reader.
 		await queries.completeFinishedGoals();
 
@@ -1037,11 +1328,7 @@ export async function pullSync(): Promise<Set<string>> {
 		// Persist so a debounced push that runs before the next pull still knows what
 		// the server holds. Without this every push re-uploads the whole library.
 		await setServerContentIds(serverHasContent);
-		await reconcileQuotaBlock(
-			data.contentQuota,
-			serverHasContent,
-			new Set([...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id)),
-		);
+		await reconcileQuotaBlock(data.contentQuota, serverHasContent, liveBookIds);
 		queryClient.invalidateQueries({ queryKey: syncKeys.all });
 
 		// Invalidate React Query cache so UI reflects pulled changes
@@ -1054,6 +1341,8 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: statsKeys.all });
 			// Not left to the invalidation alone: a query nobody is watching emits nothing more.
 			requestReminderSync();
+			// Pulled hints or collections can complete a series this device had only one book of.
+			void scheduleSeriesReconcile();
 		}
 
 		log("sync", "pull complete");
@@ -1186,16 +1475,35 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		// defaults; pushing it would overwrite what the account holds.
 		const hasAdoptedSettings = await hasAdoptedServerSettings();
 
-		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows, goals] =
-			await Promise.all([
-				queries.getBooksForSync(),
-				queries.getSettings(),
-				queries.getAllHighlights(),
-				queries.getAllEntries(),
-				queries.getSeriesForSync(),
-				queries.getReadingSessionsSince(sessionWatermark),
-				queries.getAllGoalsForSync(),
-			]);
+		const [
+			books,
+			settings,
+			highlights,
+			glossaryEntries,
+			seriesRows,
+			readingSessionsRows,
+			goals,
+			collectionRows,
+			collectionBookRows,
+			smartShelfRows,
+			bookmarkRows,
+			wishlistRows,
+			speedTestRows,
+		] = await Promise.all([
+			queries.getBooksForSync(),
+			queries.getSettings(),
+			queries.getAllHighlights(),
+			queries.getAllEntries(),
+			queries.getSeriesForSync(),
+			queries.getReadingSessionsSince(sessionWatermark),
+			queries.getAllGoalsForSync(),
+			queries.getAllCollectionsForSync(),
+			queries.getAllCollectionBooksForSync(),
+			queries.getAllSmartShelvesForSync(),
+			queries.getAllBookmarksForSync(),
+			queries.getAllWishlistForSync(),
+			queries.getSpeedTests(),
+		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
 		// push payload — they will be recreated on any device via useChapterListSync.
@@ -1250,6 +1558,33 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${goalsForPush.rejected} malformed goal(s)`);
 		}
 
+		const collectionsForPush = pushableCollections({
+			collections: collectionRows,
+			collectionBooks: collectionBookRows,
+		});
+		if (collectionsForPush.rejected > 0) {
+			log("sync", `push: dropped ${collectionsForPush.rejected} malformed collection row(s)`);
+		}
+
+		const shelvesForPush = pushableSmartShelves(smartShelfRows);
+		if (shelvesForPush.rejected > 0) {
+			log("sync", `push: dropped ${shelvesForPush.rejected} malformed smart shelf row(s)`);
+		}
+
+		const bookmarksForPush = pushableBookmarks(bookmarkRows, pushedBookIds);
+		if (bookmarksForPush.rejected > 0) {
+			log("sync", `push: dropped ${bookmarksForPush.rejected} malformed bookmark(s)`);
+		}
+
+		const speedTestsForPush = pushableSpeedTests(speedTestRows);
+		if (speedTestsForPush.rejected > 0) {
+			log("sync", `push: dropped ${speedTestsForPush.rejected} malformed speed test(s)`);
+		}
+		const wishlistForPush = pushableWishlist(wishlistRows);
+		if (wishlistForPush.rejected > 0) {
+			log("sync", `push: dropped ${wishlistForPush.rejected} malformed wishlist item(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1264,6 +1599,13 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			series: seriesRows.map(seriesToSync),
 			readingSessions: settings.syncStats ? sessionsForPush : [],
 			readingGoals: goalsForPush.pushable,
+			collections: collectionsForPush.collections,
+			collectionBooks: collectionsForPush.collectionBooks,
+			smartShelves: shelvesForPush.shelves,
+			bookmarks: bookmarksForPush.bookmarks,
+			wishlist: wishlistForPush.wishlist,
+			// Omitted with stats sync off, so the server keeps what it holds.
+			speedTests: settings.syncStats ? speedTestsForPush.speedTests : undefined,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1283,10 +1625,16 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bookmarks=${bookmarksForPush.bookmarks.length} wishlist=${wishlistForPush.wishlist.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
-		const quotaRejection = await postPush(body);
+		const { quotaRejection, stamps } = await postPush(body);
+		// The server has committed: a failed adopt must not skip the bookkeeping below.
+		if (stamps) {
+			await adoptPushStamps(payload, stamps).catch((err) =>
+				log.error("sync", "push: could not adopt the server's stamps", err),
+			);
+		}
 		if (quotaRejection) {
 			for (const id of quotaRejection.rejectedContentBookIds) uploadedContentIds.delete(id);
 			const unreported = new Set(await recordQuotaRejection(quotaRejection));

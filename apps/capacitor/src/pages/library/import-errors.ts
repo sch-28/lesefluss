@@ -14,6 +14,7 @@ export const ERROR_TOASTS: Record<string, { msg: string; color: "warning" | "dan
 	TOO_LARGE: { msg: "Page too large to import", color: "warning" },
 	FILE_TOO_LARGE: { msg: "File too large to import", color: "warning" },
 	FILE_READ_FAILED: { msg: "Couldn't read this file", color: "warning" },
+	FILE_EMPTY: { msg: "This file has no text to read", color: "warning" },
 	PDF_ENCRYPTED: { msg: "Password-protected PDFs aren't supported", color: "warning" },
 	PDF_NO_TEXT: { msg: "This PDF has no selectable text", color: "warning" },
 	EPUB_INVALID: { msg: "This EPUB file is corrupted or unsupported", color: "warning" },

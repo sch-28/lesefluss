@@ -1,6 +1,7 @@
 import { importBookFromBlob } from "../book-import";
 import { queries } from "../db/queries";
 import type { Book } from "../db/schema";
+import { clearImportedFromWishlist } from "../wishlist";
 import {
 	type CatalogBook,
 	type CatalogSource,
@@ -56,7 +57,10 @@ async function runImport(
 ): Promise<CatalogImportResult> {
 	// Idempotency: short-circuit if we already have this catalog book locally.
 	const existing = await queries.getBookByCatalogId(catalogId);
-	if (existing) return { book: existing, existed: true };
+	if (existing) {
+		await clearImportedFromWishlist("catalog", [catalogId]);
+		return { book: existing, existed: true };
+	}
 
 	const meta = await getCatalogBook(catalogId);
 	if (!meta.epubUrl) throw new Error("This book is not available as a free EPUB.");
@@ -72,5 +76,6 @@ async function runImport(
 		{ source: normaliseSource(meta.source), catalogId: meta.id, language: meta.language },
 	);
 
+	await clearImportedFromWishlist("catalog", [catalogId, meta.id]);
 	return { book, existed: false };
 }

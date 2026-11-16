@@ -10,9 +10,19 @@ import { reader } from "./page-objects/reader";
  * would keep making its word "newest" and win over a later read elsewhere.
  */
 
-// A flush's DB write is async; one that was going to happen has committed by then.
-// The save-request count is checked as well, so a slow write can't pass for none.
-const FLUSH_MS = 500;
+/**
+ * A flush asks for its save in the event's own task, so the request count is decided
+ * once the event is dispatched; this waits for those requests' async writes to land.
+ */
+const waitSavesDrained = (page: Page) =>
+	expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					(window.__lesefluss_e2e_saveRequests ?? 0) - (window.__lesefluss_e2e_saveFinished ?? 0),
+			),
+		)
+		.toBe(0);
 
 async function setVisibility(page: Page, state: "hidden" | "visible") {
 	await page.evaluate((state) => {
@@ -32,11 +42,11 @@ const syncPushRequestCount = (page: Page) =>
 async function backgroundRepeatedly(page: Page) {
 	for (let i = 0; i < 3; i++) {
 		await setVisibility(page, "hidden");
-		await page.waitForTimeout(FLUSH_MS);
+		await waitSavesDrained(page);
 		await setVisibility(page, "visible");
 	}
 	await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
-	await page.waitForTimeout(FLUSH_MS);
+	await waitSavesDrained(page);
 }
 
 /** Opens the big book and scrolls with the wheel until a position is saved; returns the book id. */
@@ -106,10 +116,10 @@ test("RSVP paused on a saved word, then backgrounded and left, rewrites nothing"
 	const pushes = await syncPushRequestCount(page);
 	await reader.toggleRsvp(page);
 	await expect(page.locator(".rsvp-display")).toHaveCount(0);
-	await page.waitForTimeout(FLUSH_MS);
+	// The pause saved without a push; leaving RSVP is what sends it.
+	await expect.poll(() => syncPushRequestCount(page)).toBeGreaterThan(pushes);
+	await waitSavesDrained(page);
 
 	expect(await reader.saveRequestCount(page)).toBe(requests);
 	expect(await reader.savedRow(page, id)).toEqual(paused);
-	// The pause saved without a push; leaving RSVP is what sends it.
-	expect(await syncPushRequestCount(page)).toBeGreaterThan(pushes);
 });

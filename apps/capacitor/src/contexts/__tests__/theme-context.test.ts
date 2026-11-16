@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { focalLetterColorFor, isDarkTheme, storedThemeFor, themeClasses } from "../theme-context";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+	applyAppearance,
+	applyThemeColor,
+	focalLetterColorFor,
+	isDarkTheme,
+	storedThemeFor,
+	themeClasses,
+	themeColorFor,
+} from "../theme-context";
 
 describe("storedThemeFor", () => {
 	it("reads a theme from a newer app version as dark", () => {
@@ -15,7 +23,16 @@ describe("storedThemeFor", () => {
 describe("high contrast counts as dark", () => {
 	it("puts the dark class next to its own", () => {
 		expect(themeClasses("high-contrast")).toEqual(["dark", "high-contrast"]);
-		expect(themeClasses("sepia")).toEqual(["sepia"]);
+		expect(themeClasses("sepia")).toEqual(["theme-sepia"]);
+	});
+
+	it("never puts the bare sepia class on the page, which Tailwind turns into a filter", () => {
+		document.documentElement.classList.add("sepia");
+		applyAppearance("sepia", 16, false);
+		expect(document.documentElement.classList.contains("sepia")).toBe(false);
+		expect(document.body.classList.contains("theme-sepia")).toBe(true);
+		applyAppearance("light", 16, false);
+		expect(document.body.classList.contains("theme-sepia")).toBe(false);
 	});
 
 	it("is dark for charts", () => {
@@ -31,5 +48,33 @@ describe("focalLetterColorFor", () => {
 		expect(focalLetterColorFor("#448AFF", "high-contrast")).toBe("#82b1ff");
 		expect(focalLetterColorFor("#ffcc00", "high-contrast")).toBe("#ffcc00");
 		expect(focalLetterColorFor("#ff0000", "dark")).toBe("#ff0000");
+	});
+});
+
+describe("theme color", () => {
+	afterEach(() => {
+		document.head.querySelector('meta[name="theme-color"]')?.remove();
+	});
+
+	it("follows the theme, and e-ink paints white", () => {
+		expect(themeColorFor("dark", false)).toBe("#0c0d0e");
+		expect(themeColorFor("sepia", false)).toBe("#c4b081");
+		expect(themeColorFor("dark", true)).toBe("#ffffff");
+	});
+
+	it("rewrites the theme-color meta when the theme changes", () => {
+		const meta = document.createElement("meta");
+		meta.name = "theme-color";
+		meta.content = "#fdfcfb";
+		document.head.append(meta);
+		applyAppearance("high-contrast", 16, false);
+		expect(meta.content).toBe("#000000");
+		applyAppearance("sepia", 16, true);
+		expect(meta.content).toBe("#ffffff");
+	});
+
+	it("does nothing without the meta, as in the Android build", () => {
+		expect(() => applyThemeColor("#000000")).not.toThrow();
+		expect(document.head.querySelector('meta[name="theme-color"]')).toBeNull();
 	});
 });

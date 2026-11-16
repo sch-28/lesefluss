@@ -2,7 +2,7 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
-import { CoverLengthBadge, InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
 import type { LengthLabels } from "./length";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
 	/** Omit to hide quick add (in library, no EPUB, or not offered here). */
 	onQuickAdd?: () => void;
 	isAdding?: boolean;
-	/** From `describeLength`; its reading time sits in the cover's top-right corner. */
+	/** From `describeLength`; its reading time sits under the title. */
 	lengthLabels?: LengthLabels | null;
 };
 
@@ -39,26 +39,25 @@ const ResultCard: React.FC<Props> = ({
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={cover} alt={result.title} />
-					{lengthLabels && <CoverLengthBadge labels={lengthLabels} />}
-					{isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
 				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+						className="min-h-[2lh] overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 					>
 						{result.title}
 					</div>
-					{result.author && (
-						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+					<div className={onQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
+						<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 							{result.author}
 						</div>
-					)}
+						<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
+					</div>
 				</div>
 			</button>
 			{onQuickAdd && (
-				<QuickAddOverlay title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
+				<QuickAddBesideMeta title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
 			)}
 		</div>
 	);

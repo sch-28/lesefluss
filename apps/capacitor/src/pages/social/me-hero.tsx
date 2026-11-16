@@ -5,7 +5,7 @@ import { ChevronRight, Flame } from "lucide-react";
 import type React from "react";
 import CoverImage from "@/components/cover-image";
 import { CoverBackdrop } from "@/components/social/cover-backdrop";
-import { ProgressBar, progressRing, useCurrentBook } from "@/components/social/social-ui";
+import { ProgressBar, useCurrentBook } from "@/components/social/social-ui";
 import { queryHooks } from "@/services/db/hooks";
 import { useBuddyReads } from "@/services/social/buddy-reads";
 
@@ -39,19 +39,12 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 			<CoverBackdrop src={book?.coverSrc ?? null} />
 			<div className="relative px-[18px] pt-5 pb-4">
 				<div className="flex items-center gap-3.5">
-					<div
-						className="size-[74px] shrink-0 rounded-full p-1"
-						style={{ background: progressRing(book?.percent ?? 0) }}
-					>
-						<div className="size-full rounded-full bg-card p-[3px]">
-							<SocialAvatar
-								name={me.name}
-								avatarUrl={me.avatarUrl}
-								size="lg"
-								className="size-full text-xl"
-							/>
-						</div>
-					</div>
+					<SocialAvatar
+						name={me.name}
+						avatarUrl={me.avatarUrl}
+						size="lg"
+						className="size-[74px] shrink-0 text-xl"
+					/>
 					<div className="min-w-0 flex-1">
 						<div className="truncate font-bold text-[21px] tracking-tight">{me.name}</div>
 						<div className="mt-0.5 truncate text-[13px] text-muted-foreground">

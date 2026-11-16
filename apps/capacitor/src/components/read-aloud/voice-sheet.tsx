@@ -3,7 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Check, Download, Settings2, Volume2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { type ReadAloudSpeech, ttsEngine } from "../../services/tts";
+import { HAS_SYSTEM_VOICE_SETTINGS, type ReadAloudSpeech, ttsEngine } from "../../services/tts";
 import { useTtsVoices } from "../../services/tts/use-voices";
 import { voiceLabels, voiceLanguageKey, voicesForLanguage } from "../../services/tts/voices";
 
@@ -56,7 +56,7 @@ export const VoiceSheet: React.FC<Props> = ({
 				type="button"
 				onClick={() => onSelect(voice)}
 				className={cn(
-					"flex min-w-0 flex-1 items-center gap-3 px-5 py-3 text-left text-sm transition-colors hover:bg-muted",
+					"flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-muted",
 					selected === voice && "font-medium",
 				)}
 			>
@@ -80,8 +80,8 @@ export const VoiceSheet: React.FC<Props> = ({
 	return (
 		<Drawer open={open} onOpenChange={onOpenChange}>
 			<DrawerContent className={className}>
-				<DrawerHeader className="border-border border-b">
-					<DrawerTitle className="text-center">Voice · {languageLabel}</DrawerTitle>
+				<DrawerHeader>
+					<DrawerTitle>Voice · {languageLabel}</DrawerTitle>
 				</DrawerHeader>
 				<div className="max-h-[60vh] overflow-y-auto">
 					<ul className="flex flex-col">
@@ -104,35 +104,39 @@ export const VoiceSheet: React.FC<Props> = ({
 						<button
 							type="button"
 							onClick={() => setIsShowingOnline((shown) => !shown)}
-							className="w-full px-5 py-3 text-left text-muted-foreground text-sm hover:bg-muted"
+							className="w-full px-4 py-3 text-left text-muted-foreground text-sm hover:bg-muted"
 						>
 							{isShowingOnline ? "Hide online voices" : `Show online voices (${onlineCount})`}
 						</button>
 					)}
 					{!isPending && listed.length === 0 && (
-						<p className="px-5 py-4 text-muted-foreground text-sm">
-							No voice for this language yet. Download one below.
+						<p className="px-4 py-4 text-muted-foreground text-sm">
+							{HAS_SYSTEM_VOICE_SETTINGS
+								? "No voice for this language yet. Download one below."
+								: "Your browser has no voice for this language."}
 						</p>
 					)}
 				</div>
-				<div className="flex flex-col p-2">
-					<button
-						type="button"
-						onClick={() => void ttsEngine.installVoiceData()}
-						className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
-					>
-						<Download className="size-5 shrink-0" />
-						Download voices
-					</button>
-					<button
-						type="button"
-						onClick={() => void ttsEngine.openSystemSettings()}
-						className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
-					>
-						<Settings2 className="size-5 shrink-0" />
-						System speech settings
-					</button>
-				</div>
+				{HAS_SYSTEM_VOICE_SETTINGS && (
+					<div className="flex flex-col p-2">
+						<button
+							type="button"
+							onClick={() => void ttsEngine.installVoiceData()}
+							className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
+						>
+							<Download className="size-5 shrink-0" />
+							Download voices
+						</button>
+						<button
+							type="button"
+							onClick={() => void ttsEngine.openSystemSettings()}
+							className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
+						>
+							<Settings2 className="size-5 shrink-0" />
+							System speech settings
+						</button>
+					</div>
+				)}
 			</DrawerContent>
 		</Drawer>
 	);

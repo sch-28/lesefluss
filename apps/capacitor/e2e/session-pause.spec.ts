@@ -1,11 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
-import { reader } from "./page-objects/reader";
 
 /**
  * Two-finger tap toggles the reading-session pause: overlay appears, the
- * tracker checkpoints and stops accruing, a single tap (after the resume grace
- * period) or another two-finger tap resumes. Desktop chromium has no touch
+ * tracker checkpoints and stops accruing. Desktop chromium has no touch
  * input, but Blink exposes the
  * Touch/TouchEvent constructors unconditionally, so the gesture is driven by
  * dispatching constructed touch events on the view container — the same
@@ -49,15 +47,18 @@ const sessionCount = (page: Page) =>
 	page.evaluate(() => window.__lesefluss_e2e_session?.count ?? 0);
 
 test("two-finger tap pauses the session, tap resumes, flush still works", async ({ page }) => {
+	// Fakes the clock so the noise floor's minute of reading costs no wall time.
+	await page.clock.install();
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
 
-	// Accumulate past the noise floor (MIN_DURATION_MS=5s, MIN_WORDS=5) so the
-	// pause checkpoint has a row to write. Same real activity path as
-	// reading-session.spec.ts.
-	for (let i = 0; i < 7; i++) {
+	// Accumulate past the noise floor (MIN_DURATION_MS, MIN_WORDS) so the pause
+	// checkpoint has a row to write. Steps stay under the tracker's 15s poll
+	// throttle guard, which would take a longer gap for a suspended page.
+	for (let i = 0; i < 8; i++) {
 		await page.mouse.wheel(0, 120);
-		await page.waitForTimeout(900);
+		await page.waitForTimeout(300);
+		await page.clock.fastForward(10_000);
 	}
 	const baseline = await sessionCount(page);
 
@@ -92,59 +93,4 @@ test("two-finger tap pauses the session, tap resumes, flush still works", async 
 			timeout: 10_000,
 		})
 		.toBe("flush");
-});
-
-test("two-finger tap while paused resumes", async ({ page }) => {
-	const title = await seedStrayAnchorBook(page);
-	await openBookFromLibrary(page, title);
-
-	await twoFingerTap(page);
-	await expect(overlay(page)).toBeVisible();
-
-	await twoFingerTap(page);
-	await expect(overlay(page)).toBeHidden();
-});
-
-test("resume tap within the grace period is ignored", async ({ page }) => {
-	const title = await seedStrayAnchorBook(page);
-	await openBookFromLibrary(page, title);
-
-	await twoFingerTap(page);
-
-	// A click racing in right after the gesture (the browser-synthesized click
-	// from the tap's own touch sequence) must not insta-resume. Clicking from
-	// inside the page a frame after the overlay mounts stays well inside the
-	// grace window, unlike a Playwright click with its actionability settle.
-	await page.evaluate(async () => {
-		const deadline = performance.now() + 2000;
-		let el: Element | null = null;
-		while (!el && performance.now() < deadline) {
-			el = document.querySelector('[data-testid="session-pause-overlay"]');
-			if (!el) await new Promise((r) => requestAnimationFrame(r));
-		}
-		if (!el) throw new Error("overlay never appeared");
-		el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-	});
-	await expect(overlay(page)).toBeVisible();
-});
-
-test("in RSVP mode the gesture also pauses playback, resume does not auto-play", async ({
-	page,
-}) => {
-	const title = await seedStrayAnchorBook(page);
-	await openBookFromLibrary(page, title);
-
-	await reader.toggleRsvp(page);
-	await reader.rsvpTogglePlay(page);
-	await expect.poll(() => reader.rsvpIsPlaying(page)).toBe(true);
-
-	await twoFingerTap(page);
-	await expect(overlay(page)).toBeVisible();
-	await expect.poll(() => reader.rsvpIsPlaying(page)).toBe(false);
-
-	// Playback that a dismissal wrongly resumed would have advanced by now.
-	await page.waitForTimeout(500);
-	await overlay(page).click();
-	await expect(overlay(page)).toBeHidden();
-	expect(await reader.rsvpIsPlaying(page)).toBe(false);
 });

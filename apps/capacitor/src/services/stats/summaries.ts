@@ -6,8 +6,9 @@
  * and separate from the components: a string is far easier to assert than a
  * rendered chart.
  */
+
+import { AVERAGE_READER_WPM } from "@lesefluss/core";
 import { formatDuration } from "../../utils/date-utils";
-import { AVERAGE_READER_WPM } from "../../utils/reading-time";
 import type { SpeedBucket, WpmTrend } from "./aggregate";
 import type { CalendarDay } from "./calendar";
 

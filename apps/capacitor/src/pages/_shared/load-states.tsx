@@ -81,12 +81,16 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 	);
 };
 
-export const EmptyState: React.FC<{ children: React.ReactNode; className?: string }> = ({
-	children,
-	className,
-}) => (
+export const EmptyState: React.FC<{
+	children: React.ReactNode;
+	className?: string;
+	icon?: React.ComponentType<{ className?: string }>;
+	/** A way to fill the empty view, under the text. */
+	action?: React.ReactNode;
+}> = ({ children, className, icon: Icon = Frown, action }) => (
 	<div className={cn("flex flex-col items-center justify-center gap-3 p-8 text-center", className)}>
-		<Frown className="size-8 text-muted-foreground" />
+		<Icon className="size-8 text-muted-foreground" />
 		<p className="m-0 text-muted-foreground">{children}</p>
+		{action}
 	</div>
 );

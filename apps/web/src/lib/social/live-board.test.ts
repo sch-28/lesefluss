@@ -17,6 +17,7 @@ function readAt(
 	user: string,
 	opts: {
 		from?: number;
+		start?: number;
 		seconds: number;
 		wpm: number;
 		mode?: "rsvp" | "scroll" | "listen";
@@ -24,35 +25,107 @@ function readAt(
 	},
 ) {
 	let pos = opts.from ?? 0;
+	const start = opts.start ?? T0;
 	for (let t = 0; t <= opts.seconds; t += 2) {
 		b.report(
 			READ,
 			user,
 			{ position: Math.round(pos), mode: opts.mode ?? "scroll", dialWpm: opts.dial ?? null },
 			10_000,
-			T0 + t * SEC,
+			start + t * SEC,
 		);
 		pos += (opts.wpm * 2) / 60;
 	}
-	return T0 + opts.seconds * SEC;
+	return start + opts.seconds * SEC;
 }
+
+/** An open reader keeps reporting while paused: the same position every 2 s. */
+function pauseFor(
+	b: LiveBoard,
+	user: string,
+	opts: { start: number; seconds: number; mode?: "rsvp" | "scroll" | "page"; dial?: number },
+) {
+	const position = b.members(READ).find((m) => m.userId === user)?.wordPosition ?? 0;
+	for (let t = 2; t <= opts.seconds; t += 2) {
+		b.report(
+			READ,
+			user,
+			{ position, mode: opts.mode ?? "scroll", dialWpm: opts.dial ?? null },
+			10_000,
+			opts.start + t * SEC,
+		);
+	}
+	return { end: opts.start + opts.seconds * SEC, position };
+}
+
+const within5Percent = (actual: number | null | undefined, expected: number | null | undefined) => {
+	expect(actual).not.toBeNull();
+	expect(expected).not.toBeNull();
+	expect(Math.abs((actual ?? 0) - (expected ?? 0))).toBeLessThanOrEqual((expected ?? 0) * 0.05);
+};
 
 describe("live board", () => {
 	test("shows an honest reader's speed once the sitting has run long enough", () => {
 		const { board: b } = board();
 		b.report(READ, "ann", { position: 0, mode: "scroll", dialWpm: null }, 10_000, T0);
-		expect(b.members(READ, T0 + 5 * SEC)[0]?.wpm).toBeNull();
-		const end = readAt(b, "ann", { seconds: 60, wpm: 250 });
-		const [ann] = b.members(READ, end);
+		expect(b.members(READ)[0]?.wpm).toBeNull();
+		readAt(b, "ann", { seconds: 60, wpm: 250 });
+		const [ann] = b.members(READ);
 		expect(ann?.wpm).toBeGreaterThan(200);
 		expect(ann?.wpm).toBeLessThanOrEqual(250);
 		expect(ann?.wordPosition).toBeGreaterThan(200);
 	});
 
+	test("a five-minute pause neither lowers the speed nor counts once reading resumes", () => {
+		const { board: b } = board();
+		const read = readAt(b, "ann", { seconds: 60, wpm: 250 });
+		const before = b.members(READ)[0]?.wpm;
+		const { end: paused, position } = pauseFor(b, "ann", { start: read, seconds: 300 });
+		within5Percent(b.members(READ)[0]?.wpm, before);
+		readAt(b, "ann", { from: position, start: paused, seconds: 60, wpm: 250 });
+		within5Percent(b.members(READ)[0]?.wpm, before);
+	});
+
+	test("a paused RSVP reader keeps their speed", () => {
+		const { board: b } = board();
+		const read = readAt(b, "ann", { seconds: 60, wpm: 300, mode: "rsvp", dial: 400 });
+		const before = b.members(READ)[0]?.wpm;
+		const { end: paused, position } = pauseFor(b, "ann", {
+			start: read,
+			seconds: 20,
+			mode: "rsvp",
+			dial: 400,
+		});
+		within5Percent(b.members(READ)[0]?.wpm, before);
+		readAt(b, "ann", {
+			from: position,
+			start: paused,
+			seconds: 30,
+			wpm: 300,
+			mode: "rsvp",
+			dial: 400,
+		});
+		within5Percent(b.members(READ)[0]?.wpm, before);
+	});
+
+	test("time spent on one page counts as reading it", () => {
+		const { board: b } = board();
+		let now = T0;
+		let position = 0;
+		b.report(READ, "ann", { position, mode: "page", dialWpm: null }, 10_000, now);
+		// A 250-word page a minute, the position moving only on the turn.
+		for (let turn = 0; turn < 4; turn++) {
+			now = pauseFor(b, "ann", { start: now, seconds: 60, mode: "page" }).end;
+			position += 250;
+			b.report(READ, "ann", { position, mode: "page", dialWpm: null }, 10_000, now);
+		}
+		within5Percent(b.members(READ)[0]?.wpm, 250);
+	});
+
 	test("a listener shows as listening, never with a speed", () => {
 		const { board: b } = board();
-		const end = readAt(b, "ann", { seconds: 60, wpm: 170, mode: "listen" });
-		const [ann] = b.members(READ, end);
+		readAt(b, "ann", { seconds: 60, wpm: 170, mode: "listen" });
+		const [ann] = b.members(READ);
 		expect(ann?.isListening).toBe(true);
 		expect(ann?.wpm).toBeNull();
 		expect(ann?.wordPosition).toBeGreaterThan(100);
@@ -70,7 +143,7 @@ describe("live board", () => {
 		};
 		report("listen", 170, 120);
 		report("scroll", 100, 60);
-		const [ann] = b.members(READ, t);
+		const [ann] = b.members(READ);
 		expect(ann?.isListening).toBe(false);
 		expect(ann?.wpm).toBeLessThanOrEqual(110);
 	});
@@ -80,11 +153,11 @@ describe("live board", () => {
 		b.report(READ, "ann", { position: 0, mode: "scroll", dialWpm: null }, 10_000, T0);
 		b.report(READ, "ann", { position: 9_000, mode: "scroll", dialWpm: null }, 10_000, T0 + 2 * SEC);
 		b.report(READ, "ann", { position: 100, mode: "scroll", dialWpm: null }, 10_000, T0 + 4 * SEC);
-		const scroll = b.members(READ, T0 + 30 * SEC)[0]?.wpm ?? 0;
+		const scroll = b.members(READ)[0]?.wpm ?? 0;
 		expect(scroll).toBeLessThanOrEqual(SANE_WPM_CEILING);
 
-		const end = readAt(b, "bo", { seconds: 60, wpm: 5_000, mode: "rsvp", dial: 9_999 });
-		const bo = b.members(READ, end).find((m) => m.userId === "bo");
+		readAt(b, "bo", { seconds: 60, wpm: 5_000, mode: "rsvp", dial: 9_999 });
+		const bo = b.members(READ).find((m) => m.userId === "bo");
 		expect(bo?.wpm).toBeLessThanOrEqual(MAX_PLAUSIBLE_WPM);
 	});
 
@@ -99,7 +172,7 @@ describe("live board", () => {
 			T0 + 28 * SEC,
 		);
 		// At most the capped refill (10 s at 800 wpm) is credited.
-		const credited = (b.members(READ, T0 + 28 * SEC)[0]?.wpm ?? 0) * (28 / 60);
+		const credited = (b.members(READ)[0]?.wpm ?? 0) * (28 / 60);
 		expect(credited).toBeLessThanOrEqual((SANE_WPM_CEILING * 10) / 60 + 1);
 	});
 
@@ -107,15 +180,16 @@ describe("live board", () => {
 		const { board: b, changes } = board();
 		const end = readAt(b, "ann", { seconds: 60, wpm: 300 });
 		b.tick(end + LIVE_IDLE_MS - SEC);
-		expect(b.members(READ, end)).toHaveLength(1);
+		expect(b.members(READ)).toHaveLength(1);
 		b.tick(end + LIVE_IDLE_MS + SEC);
-		expect(b.members(READ, end)).toHaveLength(0);
+		expect(b.members(READ)).toHaveLength(0);
 		expect(b.readIds()).toEqual([]);
 		expect(changes.at(-1)).toBe(READ);
 
 		const later = end + LIVE_IDLE_MS + 5 * SEC;
 		b.report(READ, "ann", { position: 400, mode: "scroll", dialWpm: null }, 10_000, later);
-		expect(b.members(READ, later + 25 * SEC)[0]?.wpm).toBe(0);
+		// The old sitting's minute of reading would already show a speed.
+		expect(b.members(READ)[0]?.wpm).toBeNull();
 	});
 
 	test("a stop sent before the latest report is ignored; a later one or one without a time applies", () => {
@@ -128,13 +202,13 @@ describe("live board", () => {
 		});
 		b.report(READ, "ann", at(5_000), 10_000, T0);
 		b.stop(READ, "ann", 4_000);
-		expect(b.members(READ, T0)).toHaveLength(1);
+		expect(b.members(READ)).toHaveLength(1);
 		b.stop(READ, "ann", 6_000);
-		expect(b.members(READ, T0)).toHaveLength(0);
+		expect(b.members(READ)).toHaveLength(0);
 
 		b.report(READ, "ann", at(7_000), 10_000, T0);
 		b.stop(READ, "ann");
-		expect(b.members(READ, T0)).toHaveLength(0);
+		expect(b.members(READ)).toHaveLength(0);
 	});
 
 	test("stop ends reading now at once, for one read or everywhere", () => {
@@ -142,9 +216,9 @@ describe("live board", () => {
 		b.report(READ, "ann", { position: 0, mode: "scroll", dialWpm: null }, 10_000, T0);
 		b.report("read-2", "ann", { position: 0, mode: "scroll", dialWpm: null }, 10_000, T0);
 		b.stop(READ, "ann");
-		expect(b.members(READ, T0)).toHaveLength(0);
-		expect(b.members("read-2", T0)).toHaveLength(1);
+		expect(b.members(READ)).toHaveLength(0);
+		expect(b.members("read-2")).toHaveLength(1);
 		b.stopEverywhere("ann");
-		expect(b.members("read-2", T0)).toHaveLength(0);
+		expect(b.members("read-2")).toHaveLength(0);
 	});
 });

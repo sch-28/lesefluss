@@ -6,6 +6,7 @@ export type FeedBookState = {
 	wordPosition: number;
 	wordCount: number | null;
 	finishedAt: Date | null;
+	firstSittingAt: Date | null;
 	deleted: boolean;
 	seriesId: string | null;
 	source: string | null;
@@ -20,6 +21,8 @@ function derivedStatus(book: FeedBookState) {
 		status: book.status,
 		wordPosition: book.wordPosition,
 		wordCount: book.wordCount ?? 0,
+		finishedAt: book.finishedAt,
+		firstSittingAt: book.firstSittingAt,
 	});
 }
 

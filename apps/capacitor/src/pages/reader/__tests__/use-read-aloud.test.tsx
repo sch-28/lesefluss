@@ -23,7 +23,7 @@ class FakeSession {
 	release = () => {};
 	skip = async () => {};
 	setSpeech = async () => {};
-	setSleepTimer = async () => {};
+	readonly setSleepTimer = vi.fn(async (_timer: unknown) => {});
 	currentWord = async () => this.position;
 }
 
@@ -286,5 +286,26 @@ describe("useReadAloud, paused without a move", () => {
 
 		expect(paused.resume).toHaveBeenCalled();
 		expect(sessions).toHaveLength(1);
+	});
+});
+
+describe("useReadAloud, sleep timer chosen before listening", () => {
+	const settle = () => act(async () => {});
+
+	it("applies to the session that starts next", async () => {
+		view = await render(<Probe />);
+		act(() => hook?.setSleepTimer({ minutes: 15 }));
+		act(() => hook?.toggle());
+		await settle();
+		expect(session().setSleepTimer).toHaveBeenCalledWith({ durationMs: 15 * 60_000 });
+	});
+
+	it("is dropped when listening is turned off first", async () => {
+		view = await render(<Probe />);
+		act(() => hook?.setSleepTimer("chapterEnd"));
+		act(() => hook?.stop());
+		act(() => hook?.toggle());
+		await settle();
+		expect(session().setSleepTimer).not.toHaveBeenCalled();
 	});
 });

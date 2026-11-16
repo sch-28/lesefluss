@@ -12,7 +12,7 @@ export function ChartTooltip({ children }: { children: ReactNode }) {
 				borderRadius: 8,
 				padding: "8px 10px",
 				boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
-				fontSize: 12,
+				fontSize: "0.75rem",
 				// Nivo positions the tooltip absolutely, so near the plot edge the box
 				// is offered whatever width is left and breaks after every word.
 				whiteSpace: "nowrap",

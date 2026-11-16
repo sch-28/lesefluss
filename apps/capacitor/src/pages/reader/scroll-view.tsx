@@ -466,8 +466,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			jumpCleanupRef.current?.();
 			jumpCleanupRef.current = null;
 		},
-		// The open's or a jump's suppressed scroll end may still be due; the reader's
-		// scroll would take its place and go unsaved.
+		// The open's, a jump's or a follow's suppressed scroll end may still be due; the
+		// reader's scroll would take its place and go unsaved.
 		onReaderInput: () => {
 			suppressNextScrollEndRef.current = false;
 			suppressScrollHighlightClearRef.current = false;
@@ -687,6 +687,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				const container = containerRef.current;
 				// Let a re-anchor land on the spoken word first; the next word follows from there.
 				if (!list || !container || anchorHold.isSettling()) return false;
+				// The reader is moving the list (a drag, an autoscroll): its settle decides (LESE-60).
+				if (anchorHold.isReaderInput()) return false;
 				const span = findFollowSpan(container, wordIdx);
 				if (!span) {
 					jumpTo(wordIdx, { highlight: false, smooth: true });
@@ -784,7 +786,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	);
 
 	// ── Scroll end - find top-of-container word + save position ──────────
-	const handleScrollEnd = useCallback(() => {
+	const settleScroll = useCallback(() => {
 		isScrollingRef.current = false;
 		// Recorded on every scroll end, including the ignored ones below, so the
 		// next comparison is against where the view last came to rest.
@@ -817,6 +819,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					Math.abs(offset - prevOffset) >= MIN_SETTLE_SCROLL_PX;
 		onPositionSettle(top.word, isScrolledToEnd(), hasMoved);
 	}, [onPositionSettle, isScrolledToEnd, anchorHold]);
+
+	const handleScrollEnd = useCallback(() => {
+		try {
+			settleScroll();
+		} finally {
+			anchorHold.noteScrollEnd();
+		}
+	}, [settleScroll, anchorHold]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't

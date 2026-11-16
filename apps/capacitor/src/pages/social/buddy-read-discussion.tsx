@@ -20,6 +20,7 @@ import {
 } from "@/services/social/buddy-read-discussion";
 import { useBuddyRead } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
+import { CommentTargetPicker } from "./comment-target-picker";
 import { chapterAnchorOptions, discussionChapterIndex } from "./discussion-chapters";
 import { OfflineNotice, Spinner, StaleNotice } from "./social-gate";
 
@@ -110,20 +111,18 @@ export function DiscussionPanel({ id }: { id: string }) {
 			</div>
 			{isComposing ? (
 				<div className="mt-3 rounded-xl border border-current/10 bg-card p-3">
-					<select
-						aria-label="What the comment is about"
+					<CommentTargetPicker
 						value={target}
 						disabled={isOffline}
-						onChange={(e) => setTarget(e.target.value)}
-						className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
-					>
-						<option value="position">At my current position</option>
-						{chapterAnchorOptions(chapters).map((c) => (
-							<option key={c.value} value={c.value}>
-								About the chapter "{c.title}"
-							</option>
-						))}
-					</select>
+						onChange={setTarget}
+						options={[
+							{ value: "position", label: "At my current position" },
+							...chapterAnchorOptions(chapters).map((c) => ({
+								value: c.value,
+								label: `About the chapter "${c.title}"`,
+							})),
+						]}
+					/>
 					<CommentDraft
 						autoFocus
 						placeholder={

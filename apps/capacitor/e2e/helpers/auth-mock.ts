@@ -33,16 +33,8 @@ export async function mockSessionAndSync(page: Page) {
 	);
 }
 
-export async function mockPasswordSignIn(page: Page, status = 200) {
+export async function mockPasswordSignIn(page: Page) {
 	await page.route("**/api/auth/sign-in/email", async (route) => {
-		if (status !== 200) {
-			await route.fulfill({
-				status,
-				contentType: "application/json",
-				body: JSON.stringify({ code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email" }),
-			});
-			return;
-		}
 		const body = route.request().postDataJSON() as { email: string };
 		await route.fulfill({
 			status: 200,
@@ -54,14 +46,8 @@ export async function mockPasswordSignIn(page: Page, status = 200) {
 
 export const MOCK_USER_CODE = "ABCD2345";
 
-/**
- * Device-link endpoints: one code, then `pendingPolls` pending answers before
- * the terminal one (approved by default, or an error code such as expired_token).
- */
-export async function mockDeviceSignIn(
-	page: Page,
-	{ pendingPolls = 1, outcome = "approved" }: { pendingPolls?: number; outcome?: string } = {},
-) {
+/** Device-link endpoints: one code, then `pendingPolls` pending answers before the approval. */
+export async function mockDeviceSignIn(page: Page, { pendingPolls = 1 } = {}) {
 	await page.route("**/api/auth/device/code", (route) =>
 		route.fulfill({
 			status: 200,
@@ -86,17 +72,10 @@ export async function mockDeviceSignIn(
 				body: JSON.stringify({ error: "authorization_pending" }),
 			});
 		}
-		if (outcome === "approved") {
-			return route.fulfill({
-				status: 200,
-				contentType: "application/json",
-				body: JSON.stringify({ access_token: MOCK_SESSION_TOKEN, token_type: "Bearer" }),
-			});
-		}
 		return route.fulfill({
-			status: 400,
+			status: 200,
 			contentType: "application/json",
-			body: JSON.stringify({ error: outcome }),
+			body: JSON.stringify({ access_token: MOCK_SESSION_TOKEN, token_type: "Bearer" }),
 		});
 	});
 }

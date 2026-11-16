@@ -14,6 +14,8 @@ export type ReadingGoalStatus = (typeof READING_GOAL_STATUSES)[number];
 /** Smallest and largest daily target a reader can set, in percent of the book. */
 export const MIN_GOAL_DAILY_PERCENT = 0.1;
 export const MAX_GOAL_DAILY_PERCENT = 100;
+export const MIN_GOAL_DAILY_MINUTES = 1;
+export const MAX_GOAL_DAILY_MINUTES = 1440;
 
 /** A reminder's local time of day, "HH:MM" on a 24-hour clock. */
 export const REMINDER_TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;

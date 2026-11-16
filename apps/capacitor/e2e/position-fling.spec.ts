@@ -17,9 +17,9 @@ const STALL_FRAME_MS = 200;
 // Past the momentum's end, any correction and the settle that follows.
 const IDLE_MS = 3000;
 
-test("a fling that stalls mid-momentum saves where it really ends, without pulling back", async ({
-	framedPage,
-}) => {
+test("a fling that stalls mid-momentum saves where it really ends, without pulling back", {
+	tag: ["@lowfps"],
+}, async ({ framedPage }) => {
 	test.setTimeout(120_000);
 	const { page, setFrameMs } = await framedPage({ viewport: PHONE, hasTouch: true });
 	const title = await seedFixture(page, bigBookFixture({ paragraphCount: 200 }), "big.epub");

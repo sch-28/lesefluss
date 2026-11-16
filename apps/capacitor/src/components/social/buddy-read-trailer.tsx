@@ -80,13 +80,17 @@ function NoteOverlay({ tick }: { tick: number }) {
  */
 export function BuddyReadTrailer({
 	self,
+	isDemoBook = false,
 	className,
 }: {
 	/** The signed-in reader's own avatar; signed out, "You" shows as initials. */
 	self?: { name: string; avatarUrl: string | null };
+	/** Shows a made-up book instead of the reader's own, e.g. on a screen anyone with a link can open. */
+	isDemoBook?: boolean;
 	className?: string;
 }) {
-	const book = useCurrentBook();
+	const currentBook = useCurrentBook();
+	const book = isDemoBook ? null : currentBook;
 	const ref = useRef<HTMLDivElement>(null);
 	const isInView = useInView(ref, { amount: 0.4 });
 	const isForeground = useIsForeground();

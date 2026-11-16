@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogLandingResponse, CatalogSearchResult } from "../../../services/catalog/client";
+import { expectListsHoldOnlyItems } from "../../../test/list-items";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
 const getLanding = vi.hoisted(() => vi.fn());
@@ -16,7 +17,7 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 		useSeriesList: () => ({ data: [] }),
 		useImportSerialFromUrl: () => ({ mutateAsync: vi.fn() }),
@@ -29,7 +30,9 @@ vi.mock("../../../services/serial-scrapers", () => ({
 	chapterCountLabel: (n: number) => `${n} chapters`,
 	normalizeSeriesUrl: (u: string) => u,
 }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("../web-novels-section", () => ({ default: () => <div>Providers</div> }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
@@ -112,6 +115,7 @@ describe("Explore landing", () => {
 
 	it("shows recently added, trending web novels and every shelf with See all", async () => {
 		getLanding.mockResolvedValue(LANDING);
+		getRandomShelf.mockResolvedValue({ results: LANDING.most_read });
 		const onBrowse = vi.fn();
 		view = await renderLanding(onBrowse);
 		await flush();
@@ -132,6 +136,8 @@ describe("Explore landing", () => {
 			expect(onBrowse).toHaveBeenLastCalledWith(search);
 		}
 		expect(sectionTitled("Trending web novels")).toBeDefined();
+		// Trending web novels and the five catalog shelves
+		expectListsHoldOnlyItems(view.container, 6);
 	});
 
 	it("keeps the rest of the landing when one shelf failed on the server", async () => {
@@ -151,6 +157,52 @@ describe("Explore landing", () => {
 		expect(view.text()).toContain("Browse by tag");
 		expect(view.text()).toContain("Cradle");
 		expect(view.text()).toContain("Providers");
+	});
+
+	it("shows one connection message with Retry when the catalog can't be reached", async () => {
+		getLanding.mockRejectedValue(new TypeError("Failed to fetch"));
+		getRandomShelf.mockRejectedValue(new TypeError("Failed to fetch"));
+		popular.current = { isError: true, error: new TypeError("Failed to fetch"), refetch: vi.fn() };
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div>Personal shelves</div>}
+			/>,
+		);
+		await flush();
+		expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+		expect(view.text()).toContain("Couldn't connect");
+		expect(view.text()).toContain("Personal shelves");
+		expect(view.text()).not.toContain("Providers");
+
+		getLanding.mockResolvedValue(LANDING);
+		getRandomShelf.mockResolvedValue({ results: [] });
+		popular.current = { isSuccess: true, data: { results: [] }, refetch: vi.fn() };
+		const retry = [...view.container.querySelectorAll("button")].find(
+			(b) => b.textContent === "Retry",
+		);
+		await click(retry as HTMLButtonElement);
+		await flush();
+		expect(view.container.querySelector('[role="alert"]')).toBeNull();
+		expect(view.text()).toContain("Fresh Arrival");
+	});
+
+	it("shows only the offline message while the device is offline", async () => {
+		getLanding.mockResolvedValue(LANDING);
+		const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+		try {
+			view = await renderLanding();
+			await flush();
+			expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+			expect(view.text()).toContain("You're offline");
+			expect(view.text()).not.toContain("Fresh Arrival");
+		} finally {
+			onLine.mockRestore();
+		}
 	});
 
 	it("puts web novels right under the hero and personal shelves, before catalog shelves", async () => {
@@ -186,6 +238,46 @@ describe("Explore landing", () => {
 		expect(sectionTitled("Trending web novels")?.textContent).toContain("Something went wrong");
 		expect(view.text()).toContain("Providers");
 		expect(view.text()).toContain("Fresh Arrival");
+	});
+
+	it("keeps the catalog shelf skeletons below the personal shelves, in their own slot", async () => {
+		getLanding.mockImplementation(() => new Promise(() => undefined));
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div data-testid="personal">Personal shelves</div>}
+			/>,
+		);
+		const personal = view.container.querySelector('[data-testid="personal"]');
+		const statuses = [...view.container.querySelectorAll('[role="status"]')];
+		const before = statuses.filter(
+			(el) => personal && el.compareDocumentPosition(personal) & Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(before).toHaveLength(1);
+	});
+
+	it("shows the personal shelves and everything below them only once the library is read", async () => {
+		getLanding.mockResolvedValue(LANDING);
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div data-testid="personal">Personal shelves</div>}
+				isPersonalPending
+			/>,
+		);
+		await flush();
+		expect(view.container.querySelector('[data-testid="personal"]')).toBeNull();
+		expect(view.text()).toContain("Pride and Prejudice");
+		expect(view.text()).not.toContain("Fresh Arrival");
+		expect(sectionTitled("Trending web novels")).toBeUndefined();
 	});
 
 	it("shows skeletons, not a spinner, while loading", async () => {

@@ -1,19 +1,23 @@
-import { BarChart3, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { PageHeader } from "../../components/app-shell/page-header";
+import { TabHeader } from "../../components/app-shell/tab-header";
+import { ReservedCard } from "../../components/reserved-card";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
-import { SessionTable } from "./session-table";
 import { Activity } from "./stats/activity";
 import { CurrentlyReading } from "./stats/currently-reading";
 import { EmptyState } from "./stats/empty-state";
 import { FinishedShelf } from "./stats/finished-shelf";
-import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
 import { RecordsCard } from "./stats/records-card";
+import { SessionsTab } from "./stats/sessions-tab";
+import { SpeedTab } from "./stats/speed-tab/speed-tab";
+import { isStatsTab, STATS_TAB_LABELS, STATS_TABS, type StatsSearch } from "./stats/stats-search";
+import { TodayGoalCard } from "./stats/today-goal-card";
 import { TopBooks } from "./stats/top-books";
-import { WpmTrend } from "./stats/wpm-trend";
 
 const Stats: React.FC = () => {
 	// Locked rather than live: query keys derive from it, and a ticking value
@@ -25,64 +29,81 @@ const Stats: React.FC = () => {
 	const [period, setPeriod] = useState<Period>("all");
 	const range = useMemo(() => periodWindow(period, now), [period, now]);
 
-	const sessionCount = queryHooks.useReadingSessionCount();
+	const search = useSearch({ from: "/tabs/stats" });
+	const navigate = useNavigate();
+	const tab = search.tab ?? "overview";
+	const setSearch = (next: StatsSearch) =>
+		navigate({ to: "/tabs/stats", search: next, replace: true });
 
-	const streak = queryHooks.useStatsStreak();
+	const sessionCount = queryHooks.useReadingSessionCount();
 
 	const hasSessions = (sessionCount.data ?? 0) > 0;
 	const isInitialLoading = sessionCount.isLoading;
 
-	const currentStreak = streak.data?.current ?? 0;
-	const longestStreak = streak.data?.longest ?? 0;
-	const freezesBanked = streak.data?.freezesBanked ?? 0;
-
 	return (
 		<div className="bg-background text-foreground">
-			<PageHeader title="Reading stats" icon={BarChart3} />
-			{isInitialLoading ? (
-				<div className="flex min-h-[60vh] items-center justify-center">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
-				</div>
-			) : !hasSessions ? (
-				<EmptyState />
-			) : (
-				<>
-					<Hero
-						currentStreak={currentStreak}
-						longestStreak={longestStreak}
-						freezesBanked={freezesBanked}
+			<TabHeader title="Stats" icon={BarChart3} />
+			<div className="mx-auto w-full max-w-3xl">
+				<Tabs
+					value={tab}
+					onValueChange={(v) => {
+						if (isStatsTab(v)) setSearch(v === "overview" ? {} : { tab: v });
+					}}
+					className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background px-4 py-2"
+				>
+					{/* Wraps: at a large system font the three labels are wider than a phone. */}
+					<TabsList className="min-h-11 w-full flex-wrap group-data-[orientation=horizontal]/tabs:h-auto">
+						{STATS_TABS.map((t) => (
+							<TabsTrigger key={t} value={t} className="min-h-[calc(2.75rem-7px)]">
+								{STATS_TAB_LABELS[t]}
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+				{tab === "sessions" ? (
+					<SessionsTab
+						now={now}
+						bookId={search.book}
+						onBookChange={(book) => setSearch({ tab: "sessions", book })}
 					/>
-
-					{/* Period control sits with the sections it drives. */}
-					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
-
-					<CurrentlyReading />
-
-					{/* All-time, but placed here rather than with Activity: records are
-					    the shareable centerpiece, and they belong in the first screen. */}
-					<RecordsCard />
-
-					<FinishedShelf />
-
-					{/* At all time this is the finished shelf re-sorted: on real data the
-					    top five by time read were the same five books. It only says
-					    something new when scoped to a window, where it also surfaces
-					    books still in progress. */}
-					{period !== "all" && <TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />}
-
-					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
-
-					<Activity />
-
-					<div className="px-4">
-						<SessionTable mode="global" />
+				) : tab === "speed" ? (
+					<SpeedTab now={now} />
+				) : isInitialLoading ? (
+					<ReservedCard isPending height="60vh" />
+				) : !hasSessions ? (
+					<div className="pt-2">
+						<TodayGoalCard />
+						<EmptyState />
 					</div>
-					<p className="mt-4 px-4 pb-6 text-[11px] text-muted-foreground">
-						Only reading in this app is tracked. Time spent on a book you uploaded to a device isn't
-						counted here.
-					</p>
-				</>
-			)}
+				) : (
+					<div className="pt-2">
+						<TodayGoalCard />
+
+						<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
+
+						{/* At all time this is the finished shelf re-sorted: on real data the
+							   top five by time read were the same five books. It only says
+							   something new when scoped to a window, where it also surfaces
+							   books still in progress. */}
+						{period !== "all" && (
+							<TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />
+						)}
+
+						<Activity />
+
+						<CurrentlyReading />
+
+						<RecordsCard />
+
+						<FinishedShelf />
+
+						<p className="px-4 py-6 text-muted-foreground text-xs">
+							Only reading in this app is tracked. Time spent on a book you uploaded to a device
+							isn't counted here.
+						</p>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 };

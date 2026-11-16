@@ -54,9 +54,9 @@ export function BookBuddyRead({
 			: null;
 	const others = (detail.data?.participants ?? []).filter((p) => !p.isSelf);
 	return (
-		<section className="rounded-lg border border-border bg-card p-4 text-card-foreground">
-			<div className="mb-2 flex items-center justify-between gap-3">
-				<h2 className="m-0 font-semibold text-base">
+		<section className="book-detail-card">
+			<div className="flex items-center justify-between gap-3">
+				<h2 className="book-detail-section-title">
 					{read.status === "finished" ? "Buddy read · finished" : "Buddy read"}
 				</h2>
 				<Button asChild size="sm" variant="ghost">

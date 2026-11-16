@@ -10,6 +10,7 @@
  */
 import type { SQLInputValue } from "node:sqlite";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDuration } from "../../../utils/date-utils";
 import { createTestDb } from "./test-db";
 
 const { db, raw, close } = createTestDb();
@@ -20,8 +21,19 @@ vi.mock("../index", () => ({
 }));
 afterAll(close);
 
-const { getBookStats, getCurrentlyReading, getFinishedBooks, getPeriodTotals, getTopBooks } =
-	await import("../queries/stats");
+const {
+	getBookStats,
+	getCurrentlyReading,
+	getDailyReading,
+	getFinishedBooks,
+	getHourHistogram,
+	getMilestones,
+	getPeriodTotals,
+	getReadingRecords,
+	getSpeedTab,
+	getStreak,
+	getTopBooks,
+} = await import("../queries/stats");
 
 const BOOK_ID = "b1";
 const MINUTE = 60_000;
@@ -39,6 +51,7 @@ function insertBook(overrides: Partial<Record<string, unknown>> = {}) {
 		added_at: 0,
 		deleted: 0,
 		series_id: null,
+		first_sitting_at: 1,
 		...overrides,
 	};
 	const keys = Object.keys(row);
@@ -88,8 +101,8 @@ function insertSession(opts: {
 
 /** 10 minutes, 3000 words: an ordinary 300 wpm sitting. */
 const HONEST = { durationMs: 10 * MINUTE, wordsRead: 3000 };
-/** 27 seconds, 22488 words: a position jump, taken from the real device DB. */
-const JUMP = { durationMs: 27_000, wordsRead: 22_488 };
+/** 22488 words in about a minute: a position jump, from the real device DB (stretched past the 1-min bar). */
+const JUMP = { durationMs: 70_000, wordsRead: 22_488 };
 
 beforeEach(() => {
 	raw.exec("DELETE FROM reading_sessions");
@@ -124,6 +137,16 @@ describe("getBookStats", () => {
 		expect(s.lastReadAt).toBe(9000);
 	});
 
+	it("leaves out sittings under a minute, as the book's session list does", async () => {
+		insertBook();
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 30_000, wordsRead: 150 });
+
+		const s = await getBookStats(BOOK_ID);
+		expect(s.totalDurationMs).toBe(HONEST.durationMs);
+		expect(s.sessionCount).toBe(1);
+	});
+
 	it("has no first sitting when the book was never read", async () => {
 		insertBook();
 		const s = await getBookStats(BOOK_ID);
@@ -152,8 +175,21 @@ describe("getPeriodTotals", () => {
 
 		const totals = await getPeriodTotals(0, 10_000);
 		expect(totals.words).toBe(HONEST.wordsRead + 22_488);
-		// 10min + 1.5min, rounded. Truncating would give 11.
-		expect(totals.minutes).toBe(12);
+		// 10min + 1.5min, floored as Stats › Sessions floors its total; rounding gave 12.
+		expect(totals.minutes).toBe(11);
+		expect(formatDuration(totals.minutes * MINUTE)).toBe(
+			formatDuration(HONEST.durationMs + 90_000),
+		);
+	});
+
+	it("leaves out sittings under a minute, as Stats › Sessions does", async () => {
+		insertBook();
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 59_000, wordsRead: 200 });
+
+		const totals = await getPeriodTotals(0, 10_000);
+		expect(totals.words).toBe(HONEST.wordsRead);
+		expect(totals.minutes).toBe(10);
 	});
 
 	it("excludes sittings on either side of the window", async () => {
@@ -203,6 +239,23 @@ describe("getCurrentlyReading", () => {
 		insertBook({ id: "reading", word_position: 900 });
 
 		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["reading"]);
+	});
+
+	// One definition of "reading": the shelf status, not "has any position".
+	it("lists the Reading shelf: no Want to read or Dropped book, a long book before 1%", async () => {
+		insertBook({ id: "dropped", word_position: 900, status: "dropped", last_read: 4 });
+		insertBook({ id: "want", word_position: 900, status: "want", last_read: 3 });
+		insertBook({ id: "manual", word_position: 0, status: "reading", last_read: 2 });
+		insertBook({ id: "long", word_position: 200, word_count: 1_200_000, last_read: 1 });
+
+		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["manual", "long"]);
+	});
+
+	it("leaves out a book only glanced at: a saved position but no real sitting", async () => {
+		insertBook({ id: "glanced", word_position: 900, last_read: 2, first_sitting_at: null });
+		insertBook({ id: "read", word_position: 900, last_read: 1 });
+
+		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["read"]);
 	});
 
 	it("reports progress as a clamped percentage", async () => {
@@ -268,5 +321,91 @@ describe("getTopBooks", () => {
 		insertSession({ startedAt: 1000, ...HONEST });
 
 		expect(await getTopBooks({ since: 0 })).toEqual([]);
+	});
+
+	it("leaves out sittings under a minute, as Stats › Sessions does", async () => {
+		insertBook();
+		insertBook({ id: "glanced" });
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 30_000, wordsRead: 150 });
+		insertSession({ startedAt: 3000, bookId: "glanced", durationMs: 30_000, wordsRead: 150 });
+
+		const works = await getTopBooks({ since: 0 });
+		expect(works.map((w) => w.workId)).toEqual([BOOK_ID]);
+		expect(works[0]?.durationMs).toBe(HONEST.durationMs);
+	});
+});
+
+describe("sittings under a minute", () => {
+	const SHORT = { durationMs: 30_000, wordsRead: 150 };
+
+	it("do not count toward the streak", async () => {
+		// Midday, so the late-night rule cannot count the sitting toward yesterday too.
+		const now = new Date(2026, 4, 10, 12).getTime();
+		vi.useFakeTimers({ toFake: ["Date"], now });
+		try {
+			insertBook();
+			insertSession({ startedAt: now - 5 * MINUTE, ...SHORT });
+			expect((await getStreak()).current).toBe(0);
+
+			insertSession({ startedAt: now - 20 * MINUTE, ...HONEST });
+			expect((await getStreak()).current).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("do not show on the streak calendar", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+		insertSession({ startedAt: day - 2 * 24 * 60 * MINUTE, ...SHORT });
+
+		const { msByDay, readDays } = await getDailyReading();
+		expect([...msByDay]).toEqual([["2026-05-10", HONEST.durationMs]]);
+		expect(readDays).toEqual(new Set(["2026-05-10"]));
+	});
+	it("do not count toward milestones", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+		insertSession({ startedAt: day - 24 * 60 * MINUTE, ...SHORT });
+
+		const { next } = await getMilestones();
+		expect(next.find((m) => m.kind === "words")?.current).toBe(HONEST.wordsRead);
+		expect(next.find((m) => m.kind === "streak")?.current).toBe(1);
+	});
+
+	it("do not set the best day", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+
+		const { bestDay } = await getReadingRecords();
+		expect(bestDay?.durationMs).toBe(HONEST.durationMs);
+	});
+
+	it("still count toward the fastest book, so the Overview and the Speed tab agree", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, durationMs: 30_000, wordsRead: 200 });
+
+		const { fastestBook } = await getReadingRecords();
+		expect(fastestBook).not.toBeNull();
+		expect(fastestBook).toEqual((await getSpeedTab()).records.fastestBook);
+	});
+
+	it("do not show in the reading hours", async () => {
+		insertBook();
+		insertSession({ startedAt: new Date(2026, 4, 10, 9).getTime(), ...HONEST });
+		insertSession({ startedAt: new Date(2026, 4, 10, 15).getTime(), ...SHORT });
+
+		const hours = await getHourHistogram();
+		expect(hours[9]).toBe(10);
+		expect(hours[15]).toBe(0);
 	});
 });

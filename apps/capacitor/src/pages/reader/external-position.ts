@@ -49,3 +49,23 @@ export function decideExternalPosition(
 export function clampWord(word: number, wordCount: number): number {
 	return Math.min(Math.max(word, 0), Math.max(wordCount - 1, 0));
 }
+
+export type ReaderRevisions = { base: number; decided: number; lastLanded: number };
+
+/**
+ * The row's revision went down from `from` to `to` (a push took the server's
+ * clamped stamp). Follows only while the reader's writes still build on `from`:
+ * a write after it is newer than the push and keeps its own revision.
+ */
+export function followLoweredRevision(
+	revs: ReaderRevisions,
+	from: number,
+	to: number,
+): ReaderRevisions {
+	if (revs.base !== from) return revs;
+	return {
+		base: to,
+		decided: Math.min(revs.decided, to),
+		lastLanded: Math.min(revs.lastLanded, to),
+	};
+}

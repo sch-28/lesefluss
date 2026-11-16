@@ -144,6 +144,40 @@ export function textSpacingFor(
 	};
 }
 
+export type SpacingPreset = "compact" | "normal" | "airy";
+
+type SpacingValues = TextSpacing & { line: number };
+
+/** Normal is the defaults; every value sits on its setting's step grid. */
+export const SPACING_PRESETS: Record<SpacingPreset, SpacingValues> = {
+	compact: { line: 1.5, letter: 0, word: 0, paragraph: 0.8 },
+	normal: {
+		line: DEFAULT_SETTINGS.READER_LINE_SPACING,
+		letter: DEFAULT_TEXT_SPACING.letter,
+		word: DEFAULT_TEXT_SPACING.word,
+		paragraph: DEFAULT_TEXT_SPACING.paragraph,
+	},
+	airy: { line: 2.1, letter: 0.04, word: 0.08, paragraph: 1.4 },
+};
+
+/** The preset the current spacing matches, or null once any value was fine-tuned in Settings. */
+export function spacingPresetOf(current: SpacingValues): SpacingPreset | null {
+	for (const [name, preset] of Object.entries(SPACING_PRESETS) as [
+		SpacingPreset,
+		SpacingValues,
+	][]) {
+		if (
+			preset.line === current.line &&
+			preset.letter === current.letter &&
+			preset.word === current.word &&
+			preset.paragraph === current.paragraph
+		) {
+			return name;
+		}
+	}
+	return null;
+}
+
 /** A spacing's value column: "Default" when it renders as without the setting. */
 export function spacingLabel(value: number, fallback: number, format: (v: number) => string) {
 	return value === fallback ? "Default" : format(value);
@@ -156,8 +190,8 @@ export function spacingLabel(value: number, fallback: number, format: (v: number
  */
 export function textSpacingVars(spacing: TextSpacing): React.CSSProperties {
 	return {
-		...(spacing.letter > 0 && { "--reader-letter-spacing": `${spacing.letter}em` }),
-		...(spacing.word > 0 && { "--reader-word-spacing": `${spacing.word}em` }),
+		...(spacing.letter !== 0 && { "--reader-letter-spacing": `${spacing.letter}em` }),
+		...(spacing.word !== 0 && { "--reader-word-spacing": `${spacing.word}em` }),
 		"--reader-paragraph-spacing": `${spacing.paragraph}em`,
 	} as React.CSSProperties;
 }
@@ -270,6 +304,7 @@ export function useAppearanceSettings() {
 	const textAlign = textAlignFor(settings?.readerTextAlign);
 	const readingRuler = readingRulerFor(settings);
 	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
+	const showLiveWpm = settings?.showLiveWpm ?? DEFAULT_SETTINGS.SHOW_LIVE_WPM;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
@@ -375,6 +410,17 @@ export function useAppearanceSettings() {
 		});
 	};
 
+	// One save, so sync and the reflow see one change.
+	const applySpacingPreset = (preset: SpacingPreset) => {
+		const v = SPACING_PRESETS[preset];
+		mutate({
+			readerLineSpacing: v.line,
+			readerLetterSpacing: v.letter,
+			readerWordSpacing: v.word,
+			readerParagraphSpacing: v.paragraph,
+		});
+	};
+
 	const setFontFamily = (v: string) => {
 		if (v !== settings?.readerFontFamily) mutate({ readerFontFamily: v });
 	};
@@ -401,6 +447,10 @@ export function useAppearanceSettings() {
 
 	const setShowReadingTime = (v: boolean) => {
 		mutate({ showReadingTime: v });
+	};
+
+	const setShowLiveWpm = (v: boolean) => {
+		mutate({ showLiveWpm: v });
 	};
 
 	const setShowActiveWordUnderline = (v: boolean) => {
@@ -441,6 +491,7 @@ export function useAppearanceSettings() {
 		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
+		showLiveWpm,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
@@ -456,6 +507,7 @@ export function useAppearanceSettings() {
 		adjustWordSpacing,
 		adjustParagraphSpacing,
 		resetTextSpacing,
+		applySpacingPreset,
 		setFontFamily,
 		setBold,
 		setTextAlign,
@@ -463,6 +515,7 @@ export function useAppearanceSettings() {
 		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
+		setShowLiveWpm,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,

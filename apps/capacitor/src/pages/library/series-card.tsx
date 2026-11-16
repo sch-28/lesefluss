@@ -10,58 +10,94 @@
  */
 
 import type React from "react";
+import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
-import { chapterCountLabel } from "../../services/serial-scrapers";
+import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
+import type { SeriesChapterLength } from "../../services/stats/what-if";
+import { type CardFieldId, CardFieldSlot, DEFAULT_CARD_FIELDS } from "./card-fields";
+import { SeriesCardTime } from "./series-reading-time";
 import { useLongPress } from "./use-long-press";
 
 interface SeriesCardProps {
 	series: Series;
 	chapterCount: number | undefined;
+	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
+	/** The book cards' fields; a serial fills author and time left, the others take no line. */
+	fields?: readonly CardFieldId[];
 }
 
-const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, onMenu }) => {
+const SeriesCard: React.FC<SeriesCardProps> = ({
+	series,
+	chapterCount,
+	chapterLengths,
+	onOpen,
+	onMenu,
+	fields = DEFAULT_CARD_FIELDS.grid,
+}) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
+	const id = useId();
+	const chaptersId = `${id}-chapters`;
+	const detailsId = `${id}-details`;
+	const hasChapterBadge = chapterCount !== undefined;
 
 	return (
-		<div
-			className="flex select-none flex-col active:opacity-70"
+		<button
+			type="button"
+			aria-label={series.title}
+			// The details wrapper always renders; its lines come and go with the data.
+			aria-describedby={hasChapterBadge ? `${chaptersId} ${detailsId}` : detailsId}
+			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			{...handlers}
 		>
 			{/* Cover */}
-			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
+			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
 					fallback={
-						<span className="font-semibold text-[#bbb] text-[0.6rem] uppercase tracking-wide">
-							{series.provider}
+						<span className="px-1 text-center font-semibold text-[0.6rem] text-muted-foreground">
+							{providerLabel(series.provider)}
 						</span>
 					}
 				/>
 				{/* Chapter-count badge */}
-				{chapterCount !== undefined && (
-					<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
-						{chapterCountLabel(chapterCount, { short: true })}
+				{hasChapterBadge && (
+					<span
+						id={chaptersId}
+						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white"
+					>
+						{chapterCountLabel(chapterCount)}
 					</span>
 				)}
 			</div>
 
-			{/* Title / author */}
-			<div className="px-0.5 pt-1">
-				<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+			<div className="px-0.5 pt-2">
+				<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 					{series.title}
 				</div>
-				{series.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]">
-						{series.author}
-					</div>
-				)}
+				<div id={detailsId}>
+					{fields.map((field) =>
+						field === "progress" ? null : (
+							<CardFieldSlot key={field} surface="grid" field={field}>
+								{field === "author" && series.author && (
+									<span className="truncate text-muted-foreground">{series.author}</span>
+								)}
+								{field === "timeLeft" && (
+									<SeriesCardTime
+										chapters={chapterLengths}
+										className="truncate text-muted-foreground tabular-nums"
+									/>
+								)}
+							</CardFieldSlot>
+						),
+					)}
+				</div>
 			</div>
-		</div>
+		</button>
 	);
 };
 

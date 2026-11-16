@@ -20,7 +20,7 @@ import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
 import TextCover from "./text-cover";
 import { useReadingSpeed } from "./use-reading-speed";
 import { useWebNovelImport } from "./use-web-novel-import";
-import { WebNovelCard } from "./web-novel-card";
+import { WebNovelCard, webNovelCardExtraLines } from "./web-novel-card";
 import { chapterFallback, webNovelLength } from "./web-novel-facts";
 
 interface Props {
@@ -73,7 +73,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	}
 
 	if (isLoading || isFetching || (!data && !isError)) {
-		return <PanelSkeleton viewMode={viewMode} />;
+		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 
 	if (isError || !data) return <ErrorState error={error} onRetry={refetch} />;
@@ -83,7 +83,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	if (results.length === 0 && failedProviders.length > 0 && challengeProviders.length === 0) {
 		return (
 			<ErrorState
-				message={`No results. Some providers were unavailable (${failedProviders.join(", ")}).`}
+				message={`No results. Some providers were unavailable (${providerLabels(failedProviders)}).`}
 				onRetry={refetch}
 			/>
 		);
@@ -98,11 +98,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 			{challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={challengeProviders} onResolved={refetch} />
 			)}
-			{failedProviders.length > 0 && (
-				<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300">
-					Some providers unavailable: {failedProviders.join(", ")}
-				</div>
-			)}
+			<UnavailableProviders providers={failedProviders} />
 			{results.length > 0 && (
 				<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
 			)}
@@ -119,7 +115,7 @@ const PagedSearch: React.FC<{
 	onPick: (result: SearchResult) => void;
 }> = ({ query, provider, status, viewMode, onPick }) => {
 	const pages = queryHooks.useSearchSerialPages(query, { provider, status, enabled: true });
-	if (pages.isPending) return <PanelSkeleton viewMode={viewMode} />;
+	if (pages.isPending) return <PanelSkeleton viewMode={viewMode} showProvider={false} />;
 	if (pages.isError && !pages.data) {
 		return <ErrorState error={pages.error} onRetry={() => pages.refetch()} />;
 	}
@@ -188,7 +184,7 @@ const PopularShelf: React.FC<{
 	);
 
 	if (isLoading || isFetching || (!data && !isError)) {
-		return <PanelSkeleton viewMode={viewMode} />;
+		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 	if (isError || !data) {
 		return <ErrorState error={error} message="Failed to load popular series." onRetry={refetch} />;
@@ -201,7 +197,7 @@ const PopularShelf: React.FC<{
 	) {
 		return (
 			<ErrorState
-				message={`Failed to load popular series (${data.failedProviders.join(", ")}).`}
+				message={`Failed to load popular series (${providerLabels(data.failedProviders)}).`}
 				onRetry={refetch}
 			/>
 		);
@@ -214,6 +210,7 @@ const PopularShelf: React.FC<{
 			{data.challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={data.challengeProviders} onResolved={refetch} />
 			)}
+			<UnavailableProviders providers={data.failedProviders} />
 			{data.results.length > 0 && (
 				<ResultsLayout
 					results={data.results}
@@ -225,6 +222,15 @@ const PopularShelf: React.FC<{
 		</div>
 	);
 };
+
+const providerLabels = (providers: ProviderId[]) => providers.map(providerLabel).join(", ");
+
+const UnavailableProviders: React.FC<{ providers: ProviderId[] }> = ({ providers }) =>
+	providers.length > 0 ? (
+		<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300">
+			Some providers unavailable: {providerLabels(providers)}
+		</div>
+	) : null;
 
 const ResultsLayout: React.FC<{
 	results: SearchResult[];
@@ -315,6 +321,14 @@ const ResultListItem: React.FC<{
 	);
 };
 
-const PanelSkeleton: React.FC<{ viewMode: ViewMode }> = ({ viewMode }) => (
-	<CardGridSkeleton layout={viewMode} count={viewMode === "grid" ? 12 : 6} className="pt-3" />
+const PanelSkeleton: React.FC<{ viewMode: ViewMode; showProvider: boolean }> = ({
+	viewMode,
+	showProvider,
+}) => (
+	<CardGridSkeleton
+		layout={viewMode}
+		count={viewMode === "grid" ? 12 : 6}
+		extraLines={webNovelCardExtraLines(showProvider)}
+		className="pt-3"
+	/>
 );

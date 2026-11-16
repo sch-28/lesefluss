@@ -8,6 +8,13 @@ import { deleteUserAccount } from "./account-deletion";
 import { auth } from "./auth";
 import { catalogFetch } from "./catalog";
 import { tombstoneBook } from "./moderation/takedown";
+import { tombstoneBookmarksOfDeletedBooks } from "./sync-bookmark-upsert";
+import {
+	countPurgeableTombstones,
+	purgeBookTombstones,
+	TombstoneScopeSchema,
+} from "./sync-tombstone-purge";
+import { tombstoneCountsInScope } from "./tombstone-counts";
 
 export const requireAdminSession = createServerOnlyFn(async () => {
 	const request = getRequest();
@@ -41,8 +48,7 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersWithBooksResult,
 		highlightsResult,
 		sessionsResult,
-		bookTombstonesResult,
-		bookTombstonesByUserResult,
+		purgeableTombstonesByUser,
 		seriesResult,
 		seriesTombstonesResult,
 		seriesTombstonesByUserResult,
@@ -64,15 +70,7 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 			.where(eq(syncBooks.deleted, false)),
 		db.select({ count: count() }).from(syncHighlights).where(eq(syncHighlights.deleted, false)),
 		db.select({ count: count() }).from(session).where(gt(session.expiresAt, now)),
-		db
-			.select({ count: count() })
-			.from(syncBooks)
-			.where(and(eq(syncBooks.deleted, true), standaloneBookOnly)),
-		db
-			.select({ userId: syncBooks.userId, count: count() })
-			.from(syncBooks)
-			.where(and(eq(syncBooks.deleted, true), standaloneBookOnly))
-			.groupBy(syncBooks.userId),
+		countPurgeableTombstones(db),
 		db.select({ count: count() }).from(syncSeries).where(eq(syncSeries.deleted, false)),
 		db.select({ count: count() }).from(syncSeries).where(eq(syncSeries.deleted, true)),
 		db
@@ -88,11 +86,8 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersLast30d: usersLast30dResult[0]?.count ?? 0,
 		bookTotal: booksResult[0]?.count ?? 0,
 		seriesTotal: seriesResult[0]?.count ?? 0,
-		bookTombstoneTotal: bookTombstonesResult[0]?.count ?? 0,
-		bookTombstonesByUser: bookTombstonesByUserResult.map((r) => ({
-			userId: r.userId,
-			count: r.count,
-		})),
+		bookTombstoneTotal: tombstoneCountsInScope(purgeableTombstonesByUser, "all").books,
+		purgeableTombstonesByUser,
 		seriesTombstoneTotal: seriesTombstonesResult[0]?.count ?? 0,
 		seriesTombstonesByUser: seriesTombstonesByUserResult.map((r) => ({
 			userId: r.userId,
@@ -279,6 +274,7 @@ export const deleteAdminSeries = createServerFn({ method: "POST" })
 						eq(syncBooks.deleted, false),
 					),
 				);
+			await tombstoneBookmarksOfDeletedBooks(tx, data.userId);
 			return updated;
 		});
 		if (result.length === 0) throw new Response("Series not found", { status: 404 });
@@ -286,43 +282,17 @@ export const deleteAdminSeries = createServerFn({ method: "POST" })
 	});
 
 /**
- * Hard-delete tombstoned `sync_books` rows (and tombstoned `sync_highlights`
- * in the same scope). Optionally constrained to a single user. The server
+ * Hard-delete tombstoned standalone `sync_books`, `sync_highlights` and
+ * `sync_bookmarks` rows. Optionally constrained to a single user. The server
  * keeps tombstones forever so offline devices can still learn about deletions
  * on next pull. This admin action lets the operator reclaim space when they
  * know it's safe (e.g. all of the user's devices have caught up). (TASK-102)
  */
 export const hardDeleteAdminTombstones = createServerFn({ method: "POST" })
-	.inputValidator((data: { userId?: string }) => data)
+	.inputValidator((data: { userId?: string }) => TombstoneScopeSchema.parse(data))
 	.handler(async ({ data }) => {
 		await requireAdminSession();
-		const userScope = data.userId;
-		// Standalone-only: matches the rows visible in the admin Books table so
-		// the cleanup count stays accurate. Chapter tombstones are owned by their
-		// parent series (cleaned up via deleteAdminSeries).
-		const result = await db.transaction(async (tx) => {
-			const removedBooks = await tx
-				.delete(syncBooks)
-				.where(
-					userScope
-						? and(eq(syncBooks.deleted, true), eq(syncBooks.userId, userScope), standaloneBookOnly)
-						: and(eq(syncBooks.deleted, true), standaloneBookOnly),
-				)
-				.returning({ bookId: syncBooks.bookId });
-			const removedHighlights = await tx
-				.delete(syncHighlights)
-				.where(
-					userScope
-						? and(eq(syncHighlights.deleted, true), eq(syncHighlights.userId, userScope))
-						: eq(syncHighlights.deleted, true),
-				)
-				.returning({ highlightId: syncHighlights.highlightId });
-			return {
-				booksRemoved: removedBooks.length,
-				highlightsRemoved: removedHighlights.length,
-			};
-		});
-		return result;
+		return db.transaction((tx) => purgeBookTombstones(tx, data.userId));
 	});
 
 /**

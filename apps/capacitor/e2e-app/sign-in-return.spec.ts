@@ -15,7 +15,8 @@ test("signing in from onboarding returns to the /app library, not the website pr
 	await page.getByRole("button", { name: "Get started" }).click();
 	const syncStep = page.getByRole("heading", { name: "Sync across devices?" });
 	for (let i = 0; i < 8 && !(await syncStep.isVisible()); i++) {
-		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		// The reading speed step has no Continue until its test is done.
+		await page.getByRole("button", { name: /^(Continue|Skip this step)$/ }).click();
 	}
 	await expect(syncStep).toBeVisible();
 
@@ -31,12 +32,11 @@ test("signing in from onboarding returns to the /app library, not the website pr
 	await page.waitForURL(/\/app\/tabs\/library/);
 });
 
-test("the signed-out social tab signs in and comes back to the social tab", async ({ page }) => {
+test("signing in from sync settings returns to sync settings", async ({ page }) => {
 	await resetAppStorage(page);
-	await page.goto("/app/tabs/social");
-	await page.getByRole("button", { name: "Sign in to get started" }).click();
-	await page.waitForURL(/\/login\?redirect=/);
+	await page.goto("/app/tabs/settings/sync");
+	await page.getByRole("link", { name: "Sign in", exact: true }).click();
+	await page.waitForURL(/\/login\?redirect=%2Fapp%2Ftabs%2Fsettings%2Fsync/);
 	await submitLogin(page, "fay");
-	await page.waitForURL(/\/app\/tabs\/social$/);
-	await expect(page.getByRole("button", { name: "Pick your handle" })).toBeVisible();
+	await page.waitForURL(/\/app\/tabs\/settings\/sync$/);
 });

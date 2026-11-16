@@ -15,6 +15,7 @@ afterAll(close);
 
 const goals = await import("../queries/reading-goals");
 const { deleteBook, hardDeleteBook, updateBook } = await import("../queries/books");
+const { getSettings } = await import("../queries/settings");
 
 const NOW = new Date(2026, 2, 1, 12).getTime();
 
@@ -77,6 +78,19 @@ describe("createGoal", () => {
 		expect(await goals.getActiveGoal("aaaaaaaa")).toEqual(goal);
 	});
 
+	it("stores a minute goal's minutes and keeps them through a replan", async () => {
+		const goal = await goals.createGoal(
+			book("aaaaaaaa"),
+			{ mode: "pace", dailyPercent: 4.5, dailyMinutes: 20 },
+			NOW,
+		);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBe(20);
+		await goals.replanGoalById(goal.id, { dailyPercent: 6 }, NOW);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBe(20);
+		await goals.replanGoalById(goal.id, { mode: "deadline", targetDate: "2026-03-20" }, NOW);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBeNull();
+	});
+
 	it("keeps at most one active goal per book", async () => {
 		const first = await goals.createGoal(book("aaaaaaaa"), { mode: "pace", dailyPercent: 1 }, NOW);
 		const second = await goals.createGoal(
@@ -133,6 +147,26 @@ describe("goal lifecycle", () => {
 		await goals.deleteGoal(goal.id, NOW + 3);
 		expect(await goals.getGoalsForBook("aaaaaaaa")).toEqual([]);
 		expect(rows()[0]).toMatchObject({ deleted: 1, updatedAt: NOW + 3 });
+	});
+
+	it("restores a removed goal as it was, even after a pull dropped its tombstone", async () => {
+		const goal = await goals.createGoal(
+			book("aaaaaaaa"),
+			{ mode: "deadline", targetDate: "2026-03-10" },
+			NOW,
+		);
+		await goals.deleteGoal(goal.id, NOW + 1);
+		await goals.restoreGoal(goal, NOW + 2);
+		expect(await goals.getActiveGoal("aaaaaaaa")).toMatchObject({
+			id: goal.id,
+			targetDate: "2026-03-10",
+			updatedAt: NOW + 2,
+		});
+
+		await goals.deleteGoal(goal.id, NOW + 3);
+		await goals.hardDeleteGoals([goal.id]);
+		await goals.restoreGoal(goal, NOW + 4);
+		expect(rows()).toMatchObject([{ id: goal.id, deleted: 0, updatedAt: NOW + 4 }]);
 	});
 });
 
@@ -325,8 +359,9 @@ describe("getReadingGoalPlan", () => {
 				"scroll",
 				NOW + 60_000,
 				NOW + 120_000,
-				60_000,
-				200,
+				// 30 minutes: a book's own speed counts from there.
+				1_800_000,
+				6000,
 				0,
 				200,
 				null,
@@ -338,8 +373,60 @@ describe("getReadingGoalPlan", () => {
 		expect(result?.goal.id).toBe(goal.id);
 		if (result?.plan.kind !== "plan") throw new Error("expected a plan");
 		expect(result.plan.progressToday.words).toBe(200);
-		expect(result.plan.pace).toEqual({ wpm: 200, isMeasured: true });
+		expect(result.plan.pace).toEqual({ wpm: 200, source: "book" });
 		expect(result.plan.dailyTarget.minutes).toBeCloseTo(0.5);
+	});
+
+	it("paces a book without its own speed by the window the reader picked", async () => {
+		insertBook("bbbbbbbb");
+		const insert = raw.prepare(
+			`INSERT INTO reading_sessions
+			 (id, book_id, mode, started_at, ended_at, duration_ms, words_read, start_word, end_word, wpm_avg, updated_at)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		);
+		const DAY = 86_400_000;
+		const HOUR = 3_600_000;
+		insert.run(
+			"old",
+			"bbbbbbbb",
+			"scroll",
+			NOW - 40 * DAY,
+			NOW - 40 * DAY + HOUR,
+			HOUR,
+			12_000,
+			0,
+			12_000,
+			null,
+			NOW,
+		);
+		insert.run(
+			"new",
+			"bbbbbbbb",
+			"scroll",
+			NOW - 3 * DAY,
+			NOW - 3 * DAY + HOUR,
+			HOUR,
+			18_000,
+			0,
+			18_000,
+			null,
+			NOW,
+		);
+		await goals.createGoal(book("aaaaaaaa"), { mode: "deadline", targetDate: "2026-03-10" }, NOW);
+		await getSettings();
+
+		const paceOf = async () => {
+			const result = await goals.getReadingGoalPlan("aaaaaaaa", NOW + 1);
+			if (result?.plan.kind !== "plan") throw new Error("expected a plan");
+			return result.plan.pace;
+		};
+		try {
+			expect(await paceOf()).toEqual({ wpm: 250, source: "measured" });
+			raw.exec("UPDATE settings SET speed_window = '30d'");
+			expect(await paceOf()).toEqual({ wpm: 300, source: "measured" });
+		} finally {
+			raw.exec("UPDATE settings SET speed_window = 'recent'");
+		}
 	});
 
 	it("switches mode through replanGoalById", async () => {

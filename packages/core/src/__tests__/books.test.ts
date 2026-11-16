@@ -1,37 +1,107 @@
 import { describe, expect, it } from "vitest";
 import {
 	bookStatus,
+	displayAuthor,
 	FINISHED_PERCENT_THRESHOLD,
 	nextRating,
 	RATING_MAX,
 	RATING_STARS,
 	ratingStars,
 	readingProgress,
+	statusAfterRealSitting,
 } from "../books";
+
+const SAT = { firstSittingAt: 1000 };
 
 describe("bookStatus", () => {
 	it("derives from progress when no status is stored", () => {
-		expect(bookStatus({ wordCount: 100, wordPosition: 0 })).toBe("want");
-		expect(bookStatus({ wordCount: 100, wordPosition: 50 })).toBe("reading");
-		expect(bookStatus({ wordCount: 100, wordPosition: FINISHED_PERCENT_THRESHOLD })).toBe(
+		expect(bookStatus({ wordCount: 100, wordPosition: 0, ...SAT })).toBe("want");
+		expect(bookStatus({ wordCount: 100, wordPosition: 50, ...SAT })).toBe("reading");
+		expect(
+			bookStatus({
+				wordCount: 100,
+				wordPosition: FINISHED_PERCENT_THRESHOLD,
+				firstSittingAt: null,
+			}),
+		).toBe("finished");
+	});
+
+	it("keeps a book with a saved position but no real sitting on Want to read", () => {
+		expect(bookStatus({ wordCount: 100, wordPosition: 50, firstSittingAt: null })).toBe("want");
+		expect(bookStatus({ wordCount: 100, wordPosition: 50, firstSittingAt: undefined })).toBe(
+			"want",
+		);
+	});
+
+	it("takes a reset book off Reading even though its first sitting stays recorded", () => {
+		expect(bookStatus({ wordCount: 100, wordPosition: 0, ...SAT })).toBe("want");
+	});
+
+	it("counts a long book as reading before its progress rounds up to 1%", () => {
+		expect(bookStatus({ wordCount: 1_200_000, wordPosition: 2_000, ...SAT })).toBe("reading");
+	});
+
+	it("keeps a book that once crossed the finished threshold finished through a reread", () => {
+		expect(bookStatus({ wordCount: 100, wordPosition: 10, finishedAt: 5000, ...SAT })).toBe(
 			"finished",
+		);
+		expect(bookStatus({ wordCount: 100, wordPosition: 10, finishedAt: null, ...SAT })).toBe(
+			"reading",
 		);
 	});
 
 	it("treats a book with no word count as unstarted", () => {
-		expect(bookStatus({ wordCount: 0, wordPosition: 0 })).toBe("want");
+		expect(bookStatus({ wordCount: 0, wordPosition: 0, ...SAT })).toBe("want");
 	});
 
 	// The whole point of the column: a decision the reader made outranks whatever
 	// the reading position implies, and keeps outranking it.
 	it("keeps a stored status regardless of progress", () => {
-		expect(bookStatus({ wordCount: 100, wordPosition: 100, status: "dropped" })).toBe("dropped");
-		expect(bookStatus({ wordCount: 100, wordPosition: 0, status: "finished" })).toBe("finished");
+		expect(bookStatus({ wordCount: 100, wordPosition: 100, status: "dropped", ...SAT })).toBe(
+			"dropped",
+		);
+		expect(
+			bookStatus({ wordCount: 100, wordPosition: 0, status: "finished", firstSittingAt: null }),
+		).toBe("finished");
+		expect(
+			bookStatus({ wordCount: 100, wordPosition: 0, status: "reading", firstSittingAt: null }),
+		).toBe("reading");
 	});
 
 	it("falls back to derivation for an unrecognised stored value", () => {
-		expect(bookStatus({ wordCount: 100, wordPosition: 50, status: "abandoned" })).toBe("reading");
-		expect(bookStatus({ wordCount: 100, wordPosition: 50, status: null })).toBe("reading");
+		expect(bookStatus({ wordCount: 100, wordPosition: 50, status: "abandoned", ...SAT })).toBe(
+			"reading",
+		);
+		expect(bookStatus({ wordCount: 100, wordPosition: 50, status: null, ...SAT })).toBe("reading");
+	});
+});
+
+describe("statusAfterRealSitting", () => {
+	it("returns Want to read and Dropped to automatic, which the sitting's marker reads as Reading", () => {
+		for (const status of ["want", "dropped"] as const) {
+			expect(statusAfterRealSitting({ status })).toBeNull();
+			expect(
+				bookStatus({
+					wordCount: 100,
+					wordPosition: 10,
+					status: statusAfterRealSitting({ status }),
+					...SAT,
+				}),
+			).toBe("reading");
+		}
+	});
+
+	it("sets Reading on a book once finished and set aside, where automatic would say Finished", () => {
+		for (const status of ["want", "dropped"] as const) {
+			const book = { wordCount: 100, wordPosition: 10, status, finishedAt: 1, ...SAT };
+			expect(bookStatus({ ...book, status: statusAfterRealSitting(book) })).toBe("reading");
+		}
+	});
+
+	it("leaves Finished, manual Reading and automatic alone", () => {
+		expect(statusAfterRealSitting({ status: "finished", finishedAt: 1 })).toBeUndefined();
+		expect(statusAfterRealSitting({ status: "reading" })).toBeUndefined();
+		expect(statusAfterRealSitting({ status: null, finishedAt: 1 })).toBeUndefined();
 	});
 });
 
@@ -85,5 +155,27 @@ describe("readingProgress", () => {
 
 	it("reports zero when the word count is unknown", () => {
 		expect(readingProgress({ wordCount: 0, wordPosition: 42 })).toBe(0);
+	});
+});
+
+describe("displayAuthor", () => {
+	it("turns a catalogue's Last, First around", () => {
+		expect(displayAuthor("Kristoff, Jay")).toBe("Jay Kristoff");
+		expect(displayAuthor("Le Guin, Ursula K.")).toBe("Ursula K. Le Guin");
+		expect(displayAuthor("van Gogh, Vincent")).toBe("Vincent van Gogh");
+	});
+
+	it("leaves First Last, suffixes and lists of full names as they are", () => {
+		expect(displayAuthor("Jay Kristoff")).toBe("Jay Kristoff");
+		expect(displayAuthor("Martin Luther King, Jr.")).toBe("Martin Luther King, Jr.");
+		expect(displayAuthor("Jay Kristoff, Amie Kaufman")).toBe("Jay Kristoff, Amie Kaufman");
+		expect(displayAuthor("Tolkien, J. R. R., Tolkien, Christopher")).toBe(
+			"Tolkien, J. R. R., Tolkien, Christopher",
+		);
+	});
+
+	it("turns each name of a list around", () => {
+		expect(displayAuthor("Kaufman, Amie & Kristoff, Jay")).toBe("Amie Kaufman & Jay Kristoff");
+		expect(displayAuthor("Pratchett, Terry; Gaiman, Neil")).toBe("Terry Pratchett; Neil Gaiman");
 	});
 });

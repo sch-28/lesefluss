@@ -7,19 +7,18 @@ type LongPressHandlers = {
 	onTouchEnd: () => void;
 	onTouchCancel: () => void;
 	onTouchMove: () => void;
-	onClick: () => void;
+	onClick: (e: React.MouseEvent) => void;
 	onContextMenu: (e: React.MouseEvent) => void;
 };
 
 interface Options {
-	onTap: () => void;
+	/** The click, so a caller can read Shift / Ctrl / Cmd. */
+	onTap: (e: React.MouseEvent) => void;
+	/** Right-click, and a long press unless `onLongPress` is given. */
 	onMenu: () => void;
+	onLongPress?: () => void;
 	durationMs?: number;
-	/**
-	 * Long press only. False leaves taps working but stops a hold from opening
-	 * the menu, which is what selection mode wants: a press that lands on a card
-	 * should pick it, not offer to edit it.
-	 */
+	/** False: taps still work, but a hold and a right-click do nothing. */
 	enabled?: boolean;
 }
 
@@ -28,7 +27,7 @@ interface Options {
  * handlers to spread onto the root element.
  *
  *   Short tap   (< durationMs) → onTap
- *   Long press  (≥ durationMs) → onMenu
+ *   Long press  (≥ durationMs) → onLongPress, else onMenu
  *
  * Touch devices synthesize a click after touchend, so the synthetic click
  * fires `onTap` for both touch and mouse. The touch handlers only drive the
@@ -45,10 +44,12 @@ export function useLongPress({
 	onMenu,
 	durationMs = DEFAULT_LONG_PRESS_MS,
 	enabled = true,
+	onLongPress,
 }: Options): LongPressHandlers {
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const firedRef = useRef(false);
-	const latchedTapRef = useRef<(() => void) | null>(null);
+	const latchedTapRef = useRef<Options["onTap"] | null>(null);
+	const touchingRef = useRef(false);
 
 	const cancelTimer = useCallback(() => {
 		if (timerRef.current) {
@@ -60,6 +61,7 @@ export function useLongPress({
 	const onTouchStart = useCallback(
 		(e: React.TouchEvent) => {
 			if (e.touches.length !== 1) return;
+			touchingRef.current = true;
 			// `firedRef` stays false when disabled, so the click the browser
 			// synthesises after touchend still reaches `onTap`: a long hold in
 			// selection mode toggles the card on release rather than doing nothing.
@@ -72,38 +74,48 @@ export function useLongPress({
 			if (!enabled) return;
 			timerRef.current = setTimeout(() => {
 				firedRef.current = true;
-				onMenu();
+				(onLongPress ?? onMenu)();
 			}, durationMs);
 		},
-		[onMenu, onTap, durationMs, enabled],
+		[onMenu, onLongPress, onTap, durationMs, enabled],
 	);
 
-	const onClick = useCallback(() => {
-		cancelTimer();
-		const latched = latchedTapRef.current;
-		latchedTapRef.current = null;
-		if (firedRef.current) {
-			firedRef.current = false;
-			return;
-		}
-		// No latch means a mouse click that never went through touchstart.
-		(latched ?? onTap)();
-	}, [cancelTimer, onTap]);
+	const onClick = useCallback(
+		(e: React.MouseEvent) => {
+			cancelTimer();
+			const latched = latchedTapRef.current;
+			latchedTapRef.current = null;
+			if (firedRef.current) {
+				firedRef.current = false;
+				return;
+			}
+			// No latch means a mouse click that never went through touchstart.
+			(latched ?? onTap)(e);
+		},
+		[cancelTimer, onTap],
+	);
 
 	const onContextMenu = useCallback(
 		(e: React.MouseEvent) => {
 			// Suppressed even when disabled, or a desktop right-click would raise the
 			// browser's own menu over the grid.
 			e.preventDefault();
-			if (enabled) onMenu();
+			// Android fires contextmenu for a held finger too; the timer owns touch,
+			// or a long press meant to select would also open the menu.
+			if (enabled && !touchingRef.current) onMenu();
 		},
 		[onMenu, enabled],
 	);
 
+	const endTouch = useCallback(() => {
+		touchingRef.current = false;
+		cancelTimer();
+	}, [cancelTimer]);
+
 	return {
 		onTouchStart,
-		onTouchEnd: cancelTimer,
-		onTouchCancel: cancelTimer,
+		onTouchEnd: endTouch,
+		onTouchCancel: endTouch,
 		onTouchMove: cancelTimer,
 		onClick,
 		onContextMenu,

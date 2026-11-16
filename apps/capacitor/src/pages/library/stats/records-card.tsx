@@ -1,44 +1,55 @@
-import { motion } from "framer-motion";
+import { isSkimmedSitting, skimCutoffs } from "@lesefluss/core";
+import { ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
+import { queries } from "../../../services/db/queries";
 import { formatDuration, formatRelative } from "../../../utils/date-utils";
+import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "./section-header";
+import { SessionDetailSheet } from "./session-detail-sheet";
+import { useSessionDelete } from "./session-list";
+import { filterSessions } from "./sessions-model";
+
+/** Three record rows in their card, the usual loaded state. */
+const RECORDS_HEIGHT = 3 * STAT_ROW_HEIGHT + 2;
 
 /** Rename avoids shadowing the global `Record` type in this file. */
 interface PersonalBest {
 	label: string;
 	value: string;
 	detail: string;
+	onOpen?: () => void;
 }
 
 /** All-time personal bests. Nothing here is period-scoped: a record that reset
- *  every week would not be a record. */
+ *  every week would not be a record. Speed records live on the Speed tab only. */
 export function RecordsCard() {
 	const records = queryHooks.useStatsRecords();
 	const data = records.data;
-	if (!data) return null;
+	const [openSessionId, setOpenSessionId] = useState<string | null>(null);
+	// Stays mounted after the first tap: a delete's undo window lives in the sheet's hook.
+	const [sheetMounted, setSheetMounted] = useState(false);
 
 	const items: PersonalBest[] = [];
-	if (data.longestSitting) {
+	if (data?.longestSitting) {
 		items.push({
 			label: "Longest sitting",
 			value: formatDuration(data.longestSitting.durationMs),
 			detail: `${data.longestSitting.title} · ${formatRelative(data.longestSitting.at)}`,
+			onOpen: () => {
+				setSheetMounted(true);
+				setOpenSessionId(data.longestSitting?.sessionId ?? null);
+			},
 		});
 	}
-	if (data.bestDay) {
+	if (data?.bestDay) {
 		items.push({
 			label: "Best day",
 			value: formatDuration(data.bestDay.durationMs),
 			detail: formatRelative(data.bestDay.dayStart),
 		});
 	}
-	if (data.fastestBook) {
-		items.push({
-			label: "Fastest read",
-			value: `${data.fastestBook.wpm} wpm`,
-			detail: data.fastestBook.title,
-		});
-	}
-	if (data.longestBookFinished) {
+	if (data?.longestBookFinished) {
 		items.push({
 			label: "Longest finished",
 			value: formatWordCount(data.longestBookFinished.words),
@@ -46,37 +57,46 @@ export function RecordsCard() {
 		});
 	}
 
-	if (items.length === 0) return null;
+	if (data && items.length === 0) return null;
 
 	return (
-		<motion.section
-			initial={{ opacity: 0, y: 12 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true, amount: 0.25 }}
-			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
-		>
-			<header className="mb-3">
-				<h2 className="font-semibold text-lg">Records</h2>
-				<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">all time</p>
-			</header>
-			<div className="grid grid-cols-2 gap-2.5">
-				{items.map((record) => (
-					<div
-						key={record.label}
-						className="rounded-xl border border-current/10 bg-card p-3 text-card-foreground"
-					>
-						<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">
-							{record.value}
-						</div>
-						<div className="mt-1.5 text-[10px] uppercase tracking-wider opacity-60">
-							{record.label}
-						</div>
-						<div className="mt-1 line-clamp-1 text-[11px] opacity-50">{record.detail}</div>
-					</div>
-				))}
-			</div>
-		</motion.section>
+		<StatsSection title="Records" aside="All time" data-testid="stats-records">
+			<ReservedCard isPending={!data} height={RECORDS_HEIGHT}>
+				<StatCard>
+					{items.map((record) => {
+						const row = (
+							<StatRow
+								key={record.label}
+								label={record.label}
+								value={record.value}
+								detail={record.detail}
+								action={
+									record.onOpen && (
+										<ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+									)
+								}
+							/>
+						);
+						return record.onOpen ? (
+							<button
+								key={record.label}
+								type="button"
+								onClick={record.onOpen}
+								className="block w-full text-left hover:opacity-80 [&:last-child>div]:border-b-0"
+								data-testid="record-longest-sitting"
+							>
+								{row}
+							</button>
+						) : (
+							row
+						);
+					})}
+				</StatCard>
+			</ReservedCard>
+			{sheetMounted && (
+				<RecordSessionSheet sessionId={openSessionId} onClose={() => setOpenSessionId(null)} />
+			)}
+		</StatsSection>
 	);
 }
 
@@ -84,4 +104,39 @@ export function RecordsCard() {
  *  "0k words". */
 function formatWordCount(words: number): string {
 	return words < 1000 ? `${words} words` : `${Math.round(words / 1000)}k words`;
+}
+
+/** The record's sitting in the same sheet Stats › Sessions opens, loaded only once tapped. */
+function RecordSessionSheet({
+	sessionId,
+	onClose,
+}: {
+	sessionId: string | null;
+	onClose: () => void;
+}) {
+	const sessions = queryHooks.useAllReadingSessions();
+	const session = (sessionId && sessions.data?.find((s) => s.id === sessionId)) || null;
+	const { data: book } = queryHooks.useBook(session?.bookId ?? "");
+	const books = useMemo(() => new Map(book ? [[book.id, book]] : []), [book]);
+	const { hidden, requestDelete, dialog } = useSessionDelete({
+		books,
+		streakRows: () => queries.getAllReadingSessions(),
+		onStart: onClose,
+	});
+	const skimCutoff = useMemo(
+		() => skimCutoffs(filterSessions(sessions.data ?? [], { mode: "all", hidden })),
+		[sessions.data, hidden],
+	);
+	return (
+		<>
+			<SessionDetailSheet
+				session={session && !hidden.has(session.id) ? session : null}
+				book={book ?? null}
+				isSkimmed={session !== null && isSkimmedSitting(session, skimCutoff)}
+				onClose={onClose}
+				onDelete={(s) => requestDelete([s])}
+			/>
+			{dialog}
+		</>
+	);
 }

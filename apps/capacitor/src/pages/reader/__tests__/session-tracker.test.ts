@@ -6,13 +6,26 @@ import {
 	type SessionRow,
 } from "../../../services/reading-sessions/rules";
 import { log } from "../../../utils/log";
-import { HEARTBEAT_MS, POLL_MS, SessionTracker, SOFT_IDLE_MS } from "../session-tracker";
+import {
+	HEARTBEAT_MS,
+	LIVE_RATE_MIN_ACTIVE_MS,
+	LIVE_RATE_MIN_WORDS,
+	POLL_MS,
+	SessionTracker,
+	SOFT_IDLE_MS,
+} from "../session-tracker";
+
+// Most cases here are about tracking mechanics over short sittings; the real
+// one-minute floor has its own test.
+const TEST_FLOOR_MS = 5_000;
 
 function setup(opts?: {
 	mode?: "scroll" | "page" | "rsvp";
 	wpm?: number | null;
 	initialPos?: number;
+	minDurationMs?: number;
 }) {
+	let isOverlayOpen = false;
 	let clock = 1_000_000; // arbitrary epoch ms
 	let position = opts?.initialPos ?? 0;
 	let wpm: number | null = opts?.wpm === undefined ? 250 : opts.wpm;
@@ -20,6 +33,7 @@ function setup(opts?: {
 	const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
 	const furthest: Array<[id: string, word: number | null]> = [];
 	const removed: string[] = [];
+	const finalized: SessionRow[] = [];
 
 	const tracker = new SessionTracker({
 		bookId: "book1",
@@ -29,6 +43,9 @@ function setup(opts?: {
 		persist: (row, kind) => persisted.push({ row, kind }),
 		onFurthestRead: (id, word) => furthest.push([id, word]),
 		remove: (id) => removed.push(id),
+		onFinalized: (row) => finalized.push(row),
+		minDurationMs: opts?.minDurationMs ?? TEST_FLOOR_MS,
+		isOverlayOpen: () => isOverlayOpen,
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
 	});
@@ -38,6 +55,7 @@ function setup(opts?: {
 		persisted,
 		furthest,
 		removed,
+		finalized,
 		advance(ms: number) {
 			clock += ms;
 		},
@@ -52,6 +70,9 @@ function setup(opts?: {
 		},
 		setWpm(value: number | null) {
 			wpm = value;
+		},
+		setOverlayOpen(value: boolean) {
+			isOverlayOpen = value;
 		},
 		get clock() {
 			return clock;
@@ -79,13 +100,89 @@ describe("SessionTracker", () => {
 		expect(env.persisted[0]!.row.bookId).toBe("book1");
 	});
 
+	it("records nothing for a visit spent in menus, reflow moves and taps included", () => {
+		const env = setup({ minDurationMs: MIN_DURATION_MS });
+		env.tracker.setReading(true);
+		env.setOverlayOpen(true);
+		for (let t = 0; t < 90_000; t += POLL_MS) {
+			env.advance(POLL_MS);
+			// An Appearance change reflows the page and nudges the reading word.
+			env.movePosition(t % 2 === 0 ? 33 : -30);
+			env.tracker.markActivity();
+			env.tracker.tick();
+		}
+		env.setOverlayOpen(false);
+		env.tracker.finalize();
+		expect(env.persisted).toHaveLength(0);
+	});
+
+	it("leaves menu time and reflow out of a sitting read around it", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.setOverlayOpen(true);
+		for (let t = 0; t < 60_000; t += POLL_MS) {
+			env.advance(POLL_MS);
+			env.movePosition(30);
+			env.tracker.markActivity();
+			env.tracker.tick();
+		}
+		env.setOverlayOpen(false);
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(40);
+		expect(env.persisted.at(-1)!.row.durationMs).toBe(2 * POLL_MS);
+	});
+
+	it("hands only a sitting's closing row to onFinalized", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(30_000);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.setForeground(false);
+		env.tracker.setForeground(true);
+		expect(env.finalized).toHaveLength(0);
+		env.advance(10_000);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		env.tracker.finalize();
+		expect(env.finalized).toHaveLength(1);
+		expect(env.finalized[0]).toEqual(env.persisted.at(-1)!.row);
+	});
+
 	it("drops session below MIN_DURATION", () => {
 		const env = setup();
 		env.tracker.setReading(true);
-		env.advance(MIN_DURATION_MS - 1);
+		env.advance(TEST_FLOOR_MS - 1);
 		env.movePosition(20);
 		env.tracker.finalize();
 		expect(env.persisted).toHaveLength(0);
+	});
+
+	// A real sitting is a minute of reading: opening a book and glancing at it records nothing.
+	it("writes nothing for a sitting under a minute at the real floor, and a row past it", () => {
+		const short = setup({ minDurationMs: MIN_DURATION_MS });
+		short.tracker.setReading(true);
+		short.advance(50_000);
+		short.movePosition(40);
+		short.tracker.tick();
+		short.tracker.finalize();
+		expect(MIN_DURATION_MS).toBe(60_000);
+		expect(short.persisted).toHaveLength(0);
+
+		const real = setup({ minDurationMs: MIN_DURATION_MS });
+		real.tracker.setReading(true);
+		real.advance(61_000);
+		real.movePosition(40);
+		real.tracker.tick();
+		real.tracker.finalize();
+		expect(real.persisted.at(-1)?.kind).toBe("flush");
 	});
 
 	it("drops session below MIN_WORDS", () => {
@@ -1088,5 +1185,59 @@ describe("SessionTracker when its row is deleted elsewhere", () => {
 		expect(state.sessionId).not.toBe(id);
 		expect(state.activeSinceMs).toBeNull();
 		expect(state.accumulatedActiveMs).toBe(0);
+	});
+});
+
+describe("SessionTracker live rate", () => {
+	function readFor(env: ReturnType<typeof setup>, ms: number, wordsPerPoll: number) {
+		for (let t = 0; t < ms; t += POLL_MS) {
+			env.advance(POLL_MS);
+			env.movePosition(wordsPerPoll);
+			env.tracker.tick();
+		}
+	}
+
+	it("is null without a sitting", () => {
+		expect(setup().tracker.getLiveRate()).toBeNull();
+	});
+
+	it("is null until the sitting has run long enough", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, LIVE_RATE_MIN_ACTIVE_MS - POLL_MS, 20);
+		expect(env.tracker.getLiveRate()).toBeNull();
+		readFor(env, POLL_MS, 20);
+		expect(env.tracker.getLiveRate()).toBe(240);
+	});
+
+	it("is null until enough words are read", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(LIVE_RATE_MIN_ACTIVE_MS * 2);
+		env.movePosition(LIVE_RATE_MIN_WORDS - 1);
+		env.tracker.markActivity();
+		env.tracker.tick();
+		expect(env.tracker.getLiveRate()).toBeNull();
+	});
+
+	it("matches the wpm the sitting's row records", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, 95_000, 17);
+		env.advance(2_500);
+		const live = env.tracker.getLiveRate();
+		env.tracker.finalize();
+		expect(live).not.toBeNull();
+		expect(live).toBe(env.persisted.at(-1)!.row.wpmAvg);
+	});
+
+	it("stops counting while the sitting is paused", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, 60_000, 20);
+		const before = env.tracker.getLiveRate();
+		env.tracker.setForeground(false);
+		env.advance(10 * 60_000 - 1);
+		expect(env.tracker.getLiveRate()).toBe(before);
 	});
 });

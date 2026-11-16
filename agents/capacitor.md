@@ -35,16 +35,17 @@ WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 - Vite `base: "/app/"` - all asset paths prefixed
 - React Router basename `/app` - client routes become `/app/tabs/library` etc.
 - Cookie-based auth instead of Bearer token (same-domain session)
-- WASM path set to `/app/assets` for jeep-sqlite
+- WASM path set to `/app/assets` for the jeep-sqlite fallback
 - BLE/device UI hidden, file import uses HTML5 File API
+- With `WEB_BUILD`, two vite plugins in `vite.config.ts` emit the app manifest and `sw.js` (the template `src/service-worker/sw.js` plus the precache list of every built file with its sha256 revision); `services/app-update` registers the worker and drives the update bar. The Android build has neither.
 
 Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 
-On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch until upstream saves with one put; `e2e-app/local-store-unload.spec.ts` guards it.
+On the web, the SQLite database lives on OPFS: SQLite WASM with the `opfs-sahpool` VFS in a module worker (`services/db/driver/web/`), pool directory `/lesefluss/sahpool`. The first start moves an old jeep-sqlite store from IndexedDB over (confirm-then-delete; the `opfs-active` marker under `/lesefluss` says OPFS is the store), and a browser without OPFS or a failed move runs on the legacy store: jeep-sqlite in IndexedDB, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch while the legacy store exists; `e2e-app/local-store-unload.spec.ts` guards it.
 
 ## E2E tests
 
-- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend.
+- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend. It and `pnpm e2e:lowfps` run in their own network namespace with no way out (`scripts/e2e-isolated.sh`; it says so on stderr when it falls back to the host), so a host network change cannot abort module loads and no test can reach the internet. `pnpm exec playwright test` and `pnpm e2e:ui` run on the host, where `E2E_PORT` and `E2E_REUSE` matter.
 - **`pnpm e2e:app`** (`playwright.app.config.ts`, `e2e-app/`): the web build as users get it at `/app`, against the production `apps/web` server on port 3417.
 - **`pnpm e2e:perf`** (`playwright.perf.config.ts`, `e2e/perf/`): reader render cost, a baseline production build against `dist/`, both served by `vite preview` (ports 3511/3512) and alternated. `scripts/perf-baseline.sh [ref]` builds the baseline into `.perf/` (the working tree with the reader's render-path files taken from `ref`); `node e2e/perf/compare.mjs` prints the medians.
   - `e2e-app/support/serve.mjs` does the setup. It creates a throwaway Postgres database (`lesefluss_e2e_app_<timestamp>`), runs `drizzle-kit migrate` and seeds verified test accounts (`e2e-app/support/users.mjs`). It then builds the embed and the website the way the Dockerfile does and runs `.output/server/index.mjs`. The database is dropped once the server stops, and leftovers from killed runs are dropped at the next start.
@@ -52,14 +53,20 @@ On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which re
   - **Needs:** a local Postgres, taken from `E2E_APP_PG_URL` or the server in `apps/web/.env`'s `DATABASE_URL`; only a new database on it is touched.
   - **`E2E_APP_REUSE_BUILD=1`** skips the build (about 15 s) when `apps/web/.output` and `public/app` exist. Only use it when nothing under `apps/` changed.
   - **Covers:**
-    - the selection toolbar (Escape, margin click, resize);
-    - signing in from onboarding and from the social tab, and returning to `/app`;
+    - the selection toolbar (margin click, resize);
+    - signing in from onboarding and returning to `/app`;
     - an invite link redeemed through the web app;
     - the live board dropping a closed tab;
     - the website's activity toggles;
-    - `/app` assets loading without 404s at phone and desktop sizes;
-    - the local database surviving an unload mid-save.
-  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
+    - `/app` assets loading without 404s;
+    - the local database surviving an unload mid-save;
+    - a tab on the previous build recovering from a deleted chunk with one reload (`stale-chunk.spec.ts`);
+    - the local database on every engine (`db-browsers.spec.ts`): it opens, saves and reads back after a reload, on the store each engine must use.
+  - **Browser matrix:** `db-browsers.spec.ts` also runs in the `firefox` project (`pnpm exec playwright install firefox` once) and, on request, in `webkit`.
+    - Playwright's WebKit build has no `navigator.storage`, so it covers the no-OPFS fallback (the legacy store); OPFS on Safari is checked on a real iPhone (LESE-20.6).
+    - **`pnpm e2e:app:webkit`** (`scripts/e2e-app-webkit.sh`) runs the `webkit` project where the host can't launch WebKit (missing Ubuntu libraries): it starts Playwright's run-server in the official image matching `@playwright/test`, with the repo mounted read-only and `--network host`, and points the project at it through `E2E_WEBKIT_WS`. The image is pulled once: `docker pull mcr.microsoft.com/playwright:v1.60.0-noble` (keep the tag in step with `@playwright/test`). Extra arguments go to `playwright test`, e.g. `pnpm e2e:app:webkit db-browsers`. `E2E_WEBKIT=1` instead launches a locally installed WebKit.
+  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium firefox`.
+- **`pnpm e2e:dbscale`** (`e2e/db-scale.spec.ts`, tag `@dbscale`, skipped by `pnpm e2e`): renderer memory and position-save time with one book and with ~200 MB of stored images, on the OPFS store and on the legacy store. It prints one `db-scale {...}` line per store and asserts no timings; the numbers from LESE-121.6 are on that ticket.
 
 ## File Structure
 
@@ -118,10 +125,10 @@ src/
       auth-client.ts          # Better Auth client configured with VITE_SYNC_URL
       index.ts                # pullSync, pushSync, scheduleSyncPush, signIn/signUp/signOut, token mgmt
     db/
-      index.ts              # Barrel - initDb(), db, sqliteConnection
+      index.ts              # Barrel - initDb(), db, resetAppData()
       adapter.ts            # Drizzle sqlite-proxy adapter + sanitizeParams
       migrations.ts         # Migration runner (reads drizzle/ journal + SQL files)
-      web-setup.ts          # jeep-sqlite web bootstrap (no-op on native)
+      driver/               # DbDriver: native plugin, OPFS worker (web), legacy jeep-sqlite fallback
       schema.ts             # Drizzle table definitions
       queries/              # Raw async query functions (import as `queries` object)
         highlights.ts       # getHighlightsByBook, getAllHighlights, addHighlight, updateHighlight, deleteHighlight, deleteHighlightsByBook
@@ -199,7 +206,7 @@ await ble.transferBook(content, "book.txt", onProgress);
 - Capacitor-only sources stay local: file picker via `@capawesome/capacitor-file-picker`, clipboard via `@capacitor/clipboard`, and Android share intent plugin glue.
 - `commit.ts` stays local because it writes SQLite and saves original files to `Directory.Data/books/{id}.ext` via `@capacitor/filesystem` on native.
 - URL imports pass the app's `CATALOG_URL` into the shared URL source; PDF imports pass the Vite `pdf.worker.mjs?worker` loader into the shared PDF parser.
-- **Covers.** Every cover goes through `normalizeCover` / `normalizeCoverDataUrl` (`packages/book-import/src/utils/cover-image.ts`): the EPUB parser on extraction, the PDF parser via `encodeCover` on its page-1 render, and `commitBook` / `commitSeries` as the last gate. Longest side capped at `COVER_MAX_SIDE` (600 px), WebP where the platform encodes it (Android WebView, Chrome), JPEG otherwise (Safari), PNG for a transparent source without WebP; quality steps down until the cover fits `COVER_BUDGET_BYTES` (30 KiB). A WebP/JPEG/PNG cover already within 600 px counts as final (even over budget, so probe, parse and commit never re-encode it twice); a remote URL (web-novel covers), anything the runtime cannot decode (SVG, Node) and anything whose header is unreadable or declares more than `MAX_DECODE_PIXELS` is kept as-is. Covers imported earlier are not shrunk (TASK-100 follow-up).
+- **Covers.** Every cover goes through `normalizeCover` / `normalizeCoverDataUrl` (`packages/book-import/src/utils/cover-image.ts`): the EPUB parser on extraction, the PDF parser via `encodeCover` on its page-1 render, and `commitBook` / `commitSeries` as the last gate. Longest side capped at `COVER_MAX_SIDE` (600 px), WebP where the platform encodes it (Android WebView, Chrome), JPEG otherwise (Safari), PNG for a transparent source without WebP; quality steps down until the cover fits `COVER_BUDGET_BYTES` (30 KiB). A WebP/JPEG/PNG cover already within 600 px counts as final (even over budget, so probe, parse and commit never re-encode it twice); a remote URL (web-novel covers), anything the runtime cannot decode (SVG, Node) and anything whose header is unreadable or declares more than `MAX_DECODE_PIXELS` is kept as-is. Covers stored before this normalization are shrunk once per device by a background pass after startup (`startCoverShrink` in `src/services/covers/shrink-legacy-covers.ts`): it writes the cover column only (sync stamps untouched), waits on the web legacy store, keeps covers it cannot shrink and is marked done in Preferences only after a full pass. Covers of books and series arriving through a pull go through `normalizeIncomingCover` before they are stored.
 - Original `.epub` / `.pdf` files are saved on native only; TXT/HTML/MD content is stored as plain text in `book_content`.
 - **Body images (EPUB only).**
   - Parse: `extractParagraphsWithLinks` also returns the `<img>` / `<picture>` / `<figure>` / SVG `<image>` elements it meets, each with a char offset but contributing no characters, so `content` is byte-identical to what it was before images were captured (figure captions are still dropped for the same reason). The EPUB parser loads each distinct image once from the archive (`key` = resolved archive path), skips images it cannot load or over the per-image and per-book caps with a warning, and emits `BookPayload.images` plus `BookPayload.imageAnchors` (byte offset of the first text after the image; the content byte length for a trailing image). An image-only page (a map) anchors at the start of the next section with text. Kindle emits every image twice; identical src at the same anchor collapses to one.
@@ -373,7 +380,7 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 
 **Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var (points to `https://lesefluss.app`) and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
 
-**Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot. `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
+**Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot; a 200 answer carries the stamps the server clamped, which the client adopts (`adoptBookStamps`, `adoptSettingsStamp`, the cached React Query book rows via `adoptCachedBookStamps`, and an open reader follows via `onLoweredRevision`). The pull's `serverTime` gives the device its clock offset (`services/sync/server-clock.ts`, kept in Preferences); book position and metadata stamps and the settings stamp use it (`serverNow`, `nextPositionRevision`), so an offline edit from a clock running ahead is not stamped in the future. Setting the clock back drops the offset until the next pull. `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
 
 **Auto-push:** All DB mutation hooks (`useImportBook`, `useDeleteBook`, `useSaveSettings`, `useAddHighlight`, `useUpdateHighlight`, `useDeleteHighlight`) call `scheduleSyncPush()` on success - debounced 2s POST (5s for settings to absorb rapid slider changes).
 
@@ -381,7 +388,7 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 
 **Concurrency:** `withSyncLock()` uses a promise-chain queue to prevent concurrent pull/push from racing.
 
-**What syncs:** books (metadata, position, and full content/cover/chapters for cross-device restore - content only pushed once per book), settings (syncable fields only, not device-specific like BLE/brightness), highlights and glossary entries (server tombstones deletions), reading goals (always: they are plans, not stats), reading sessions (only while `syncStats` is on). Sessions push incrementally against a watermark, so a deletion never travels as an omission: `/api/sync/delete-session` and `/api/sync/wipe-sessions` tombstone server rows, and each pull sends `sessionTombstonesSince` and gets back the ids deleted since (`deletedSessionIds` + `deletedSessionIdsAsOf`), which it hard-deletes locally. A push never revives a tombstoned session. When the cloud storage quota refuses book content (413), the book is kept on a local block (`services/sync/content-quota.ts`) with its size and not re-uploaded until a pull reports enough free space for it; a background push that refuses books the user has not been told about raises one warning toast naming them, while a manual "Sync now" reports every still-blocked book. Settings → Cloud Sync shows usage and the not-backed-up books, and book detail marks them.
+**What syncs:** books (metadata, position, and full content/cover/chapters for cross-device restore - content only pushed once per book), settings (syncable fields only, not device-specific like BLE/brightness), highlights and glossary entries (server tombstones deletions), reading goals (always: they are plans, not stats), reading sessions (only while `syncStats` is on). Sessions push incrementally against a watermark, so a deletion never travels as an omission: `/api/sync/delete-session`, `/api/sync/delete-sessions` (up to 500 ids a call; against a server without it the client falls back to one call per id) and `/api/sync/wipe-sessions` tombstone server rows, and each pull sends `sessionTombstonesSince` and gets back the ids deleted since (`deletedSessionIds` + `deletedSessionIdsAsOf`), which it hard-deletes locally. A push never revives a tombstoned session. When the cloud storage quota refuses book content (413), the book is kept on a local block (`services/sync/content-quota.ts`) with its size and not re-uploaded until a pull reports enough free space for it; a background push that refuses books the user has not been told about raises one warning toast naming them, while a manual "Sync now" reports every still-blocked book. Settings → Cloud Sync shows usage and the not-backed-up books, and book detail marks them.
 
 **UI:** Settings → Cloud Sync sub-page (`settings/sync.tsx`). Sign in/up form when logged out; email, last synced, sync now, cloud storage usage with the not-backed-up books, sign out when logged in.
 
@@ -405,3 +412,4 @@ className={isActive ? "sidebar-item active" : "sidebar-item"}
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal
 - **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages, export, changelog, onboarding, and the website feedback form
 - **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32
+- **Toasts:** only through `components/toast.tsx`, shown bottom-center above every visible `[data-toast-clear]` element (`components/toast-offset.ts`); mark any new fixed bottom bar or button with `data-toast-clear`

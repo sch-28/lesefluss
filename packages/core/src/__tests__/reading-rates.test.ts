@@ -1,85 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
 	isMeasurableSitting,
-	measuredReadingSpeed,
-	type RateSession,
+	isSkimmedSitting,
 	rollUpWorks,
-	summariseReadingRates,
+	SKIM_MAX_READING_WPM,
+	skimCutoffs,
+	speedSittings,
 } from "../reading-rates";
 
 const minutes = (n: number) => n * 60_000;
-
-describe("summariseReadingRates", () => {
-	function rsvp(overrides: Partial<RateSession> = {}): RateSession {
-		return {
-			mode: "rsvp",
-			wpmAvg: 400,
-			wordsRead: 2600,
-			durationMs: minutes(10),
-			...overrides,
-		};
-	}
-
-	// The engine spends time on punctuation pauses and the accel ramp, so
-	// estimating from the dial alone runs short by roughly this much.
-	it("reports delivered as a fraction of the dial", () => {
-		const rates = summariseReadingRates([rsvp()]);
-		expect(rates.rsvpDeliveredRatio).toBeCloseTo(260 / 400, 5);
-	});
-
-	// Both halves must come from the same rows. Counting a dial-less session's
-	// words as delivered while excluding it from the target divides one
-	// population by another.
-	it("ignores rsvp sessions with no recorded dial", () => {
-		const withDial = summariseReadingRates([rsvp()]);
-		const withExtra = summariseReadingRates([
-			rsvp(),
-			rsvp({ wpmAvg: null, wordsRead: 9000, durationMs: minutes(10) }),
-		]);
-		expect(withExtra.rsvpDeliveredRatio).toBe(withDial.rsvpDeliveredRatio);
-	});
-
-	it("has no ratio without rsvp history", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: 240, wordsRead: 2400, durationMs: minutes(10) },
-		]);
-		expect(rates.rsvpDeliveredRatio).toBeNull();
-		expect(rates.scrollWpm).toBe(240);
-	});
-
-	it("keeps scroll and page apart", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 3000, durationMs: minutes(10) },
-			{ mode: "page", wpmAvg: null, wordsRead: 1000, durationMs: minutes(10) },
-		]);
-		expect(rates.scrollWpm).toBe(300);
-		expect(rates.pageWpm).toBe(100);
-	});
-
-	// One glanced-at paragraph should not move an estimate built from hours.
-	it("weights by words, not by session", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 30_000, durationMs: minutes(100) },
-			{ mode: "scroll", wpmAvg: null, wordsRead: 20, durationMs: minutes(2) },
-		]);
-		expect(rates.scrollWpm).toBe(294);
-	});
-
-	it("ignores sittings too short to measure", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 5, durationMs: 500 },
-		]);
-		expect(rates.scrollWpm).toBeNull();
-	});
-
-	it("returns nulls for no history at all", () => {
-		expect(summariseReadingRates([])).toEqual({
-			rsvpDeliveredRatio: null,
-			scrollWpm: null,
-			pageWpm: null,
-		});
-	});
-});
 
 describe("rollUpWorks", () => {
 	function book(overrides: Partial<Parameters<typeof rollUpWorks>[0][number]> = {}) {
@@ -150,41 +79,6 @@ describe("rollUpWorks", () => {
 	});
 });
 
-describe("measuredReadingSpeed", () => {
-	const scroll = (wordsRead: number, durationMs: number) =>
-		({ mode: "scroll", wordsRead, durationMs }) as const;
-
-	it("is words over active time across plausible sittings, any reading mode", () => {
-		expect(
-			measuredReadingSpeed([
-				scroll(3000, minutes(10)),
-				{ ...scroll(1000, minutes(10)), mode: "rsvp" },
-			]),
-		).toBe(200);
-	});
-
-	it("drops position jumps and unmeasurable sittings", () => {
-		expect(
-			measuredReadingSpeed([scroll(3000, minutes(10)), scroll(22_488, 27_000), scroll(5, 500)]),
-		).toBe(300);
-	});
-
-	it("ignores listening, which moves at the voice's pace", () => {
-		expect(
-			measuredReadingSpeed([
-				scroll(3000, minutes(10)),
-				{ ...scroll(1700, minutes(10)), mode: "listen" },
-			]),
-		).toBe(300);
-		expect(measuredReadingSpeed([{ ...scroll(1700, minutes(10)), mode: "listen" }])).toBeNull();
-	});
-
-	it("is null with nothing to measure", () => {
-		expect(measuredReadingSpeed([])).toBeNull();
-		expect(measuredReadingSpeed([scroll(22_488, 27_000)])).toBeNull();
-	});
-});
-
 describe("isMeasurableSitting", () => {
 	const sitting = { wordsRead: 1700, durationMs: minutes(10) };
 
@@ -192,5 +86,57 @@ describe("isMeasurableSitting", () => {
 		expect(isMeasurableSitting({ ...sitting, mode: "scroll" })).toBe(true);
 		expect(isMeasurableSitting({ ...sitting, mode: "rsvp" })).toBe(true);
 		expect(isMeasurableSitting({ ...sitting, mode: "listen" })).toBe(false);
+	});
+});
+
+describe("skimmed sittings", () => {
+	const MIN = 60_000;
+	const sitting = (mode: "scroll" | "page" | "rsvp" | "listen", wpm: number) => ({
+		mode,
+		wordsRead: wpm * 10,
+		durationMs: 10 * MIN,
+	});
+
+	it("caps scroll and page at 600 wpm while there is no median yet", () => {
+		const rows = [sitting("scroll", 250), sitting("page", 620)];
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.reading).toBe(SKIM_MAX_READING_WPM);
+		expect(isSkimmedSitting(rows[1], cutoff)).toBe(true);
+		expect(isSkimmedSitting(rows[0], cutoff)).toBe(false);
+	});
+
+	it("skims a sitting over 1.6x the reader's own median", () => {
+		const rows = [200, 210, 220, 230, 240, 400].map((wpm) => sitting("scroll", wpm));
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.reading).toBeCloseTo(225 * 1.6);
+		expect(speedSittings(rows).map((r) => r.wordsRead / 10)).toEqual([200, 210, 220, 230, 240]);
+	});
+
+	it("does not hold RSVP to the reading cap, nor skim it before it has a median", () => {
+		const rows = [sitting("scroll", 250), sitting("rsvp", 900)];
+		expect(isSkimmedSitting(rows[1], skimCutoffs(rows))).toBe(false);
+		expect(speedSittings(rows)).toHaveLength(2);
+	});
+
+	it("skims an RSVP sitting over 1.6x the reader's own RSVP median", () => {
+		const rows = [400, 420, 450, 480, 500, 1200].map((wpm) => sitting("rsvp", wpm));
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.rsvp).toBeCloseTo(465 * 1.6);
+		expect(isSkimmedSitting(rows[5], cutoff)).toBe(true);
+		expect(speedSittings(rows).map((r) => r.wordsRead / 10)).toEqual([400, 420, 450, 480, 500]);
+	});
+
+	it("judges scroll against reading sittings only, never against RSVP's faster pace", () => {
+		const rows = [
+			...[200, 210, 220, 230, 240].map((wpm) => sitting("scroll", wpm)),
+			...[500, 520, 540, 560, 580].map((wpm) => sitting("rsvp", wpm)),
+		];
+		const cutoff = skimCutoffs(rows);
+		expect(isSkimmedSitting(sitting("scroll", 400), cutoff)).toBe(true);
+		expect(isSkimmedSitting(sitting("rsvp", 600), cutoff)).toBe(false);
+	});
+
+	it("leaves listening and implausible rows out of speed as before", () => {
+		expect(speedSittings([sitting("listen", 200), sitting("scroll", 3000)])).toEqual([]);
 	});
 });

@@ -40,6 +40,17 @@ describe("planReminders", () => {
 		});
 	});
 
+	it("names a minute goal's minutes", () => {
+		const goal = makeGoal({
+			reminderTime: "20:00",
+			mode: "pace",
+			dailyPercent: 20,
+			dailyMinutes: 20,
+		});
+		const plan = makePlan({ goal, position: 0, now: at(1, 9) });
+		expect(planReminders([{ goal, plan, title: "Dune" }], at(1, 9))[0]?.body).toBe("today 20 min");
+	});
+
 	it("skips today once its target is met, but keeps the next days", () => {
 		const goal = makeGoal({ reminderTime: "20:00" });
 		const plan = makePlan({ goal, position: 120, sessions: [session(1, 0, 120)], now: at(1, 21) });

@@ -1,4 +1,4 @@
-import { isFinishedPosition, measuredReadingSpeed } from "@lesefluss/core";
+import { bookPace, isFinishedPosition } from "@lesefluss/core";
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { randomHexId } from "../../../utils/random-id";
 import {
@@ -14,7 +14,8 @@ import {
 import { db } from "../index";
 import { type Book, books, type ReadingGoal, readingGoals, readingSessions } from "../schema";
 import { getBook, isFinishedSql } from "./books";
-import { getMeasuredReadingSpeed } from "./stats";
+import { getSettings } from "./settings";
+import { getSpeedModel } from "./stats";
 
 const UPSERT_CHUNK_SIZE = 200;
 
@@ -126,6 +127,15 @@ export async function deleteGoal(id: string, now: number = Date.now()): Promise<
 }
 
 /**
+ * Undo for deleteGoal. Writes the whole row back because a sync pull inside the
+ * undo window may already have hard-deleted the tombstone.
+ */
+export async function restoreGoal(goal: ReadingGoal, now: number = Date.now()): Promise<void> {
+	await upsertGoals([{ ...goal, deleted: false, updatedAt: now }]);
+	await resolveActiveGoalConflicts(now);
+}
+
+/**
  * Complete every active goal whose book crossed the finished threshold, the
  * same rule that stamps `books.finished_at`. One statement for the whole
  * library, so it is cheap to run on every goal read and after a sync pull,
@@ -191,6 +201,7 @@ const EXCLUDED_GOAL_COLUMNS = {
 	planStartWord: sql`excluded.plan_start_word`,
 	targetDate: sql`excluded.target_date`,
 	dailyPercent: sql`excluded.daily_percent`,
+	dailyMinutes: sql`excluded.daily_minutes`,
 	carriedDaysMet: sql`excluded.carried_days_met`,
 	completedAt: sql`excluded.completed_at`,
 	reminderTime: sql`excluded.reminder_time`,
@@ -212,7 +223,7 @@ export async function hardDeleteGoals(ids: string[]): Promise<void> {
 	}
 }
 
-/** What the plan needs from this book's sessions, plus what measures its speed. */
+/** What the plan needs from this book's sessions. */
 async function getGoalSessions(bookId: string) {
 	return db
 		.select({
@@ -230,18 +241,12 @@ async function getGoalSessions(bookId: string) {
 }
 
 async function loadPlanInput(goal: ReadingGoal, book: Book, now: number): Promise<GoalPlanInput> {
-	const [sessions, global] = await Promise.all([
+	const [sessions, { speedWindow }] = await Promise.all([
 		getGoalSessions(goal.bookId),
-		getMeasuredReadingSpeed(),
+		getSettings(),
 	]);
-	return {
-		goal,
-		book,
-		sessions,
-		bookWpm: measuredReadingSpeed(sessions),
-		globalWpm: global.wpm,
-		now,
-	};
+	const model = await getSpeedModel({ window: speedWindow, now });
+	return { goal, book, sessions, pace: bookPace(model, goal.bookId), now };
 }
 
 /**
@@ -275,6 +280,22 @@ export async function getReadingGoalPlan(
 			: null);
 	if (!goal) return null;
 	return { goal, plan: planReadingGoal(await loadPlanInput(goal, book, now)) };
+}
+
+/** Every active goal with its plan, for today's total across books. */
+export async function getActiveGoalPlans(
+	now: number = Date.now(),
+): Promise<{ goal: ReadingGoal; plan: ReadingGoalPlanResult }[]> {
+	await completeFinishedGoals(now);
+	const goals = await db.select().from(readingGoals).where(isLive);
+	const plans = await Promise.all(
+		goals.map(async (goal) => {
+			const book = await getBook(goal.bookId);
+			if (!book) return null;
+			return { goal, plan: planReadingGoal(await loadPlanInput(goal, book, now)) };
+		}),
+	);
+	return plans.filter((p) => p !== null);
 }
 
 /** Change mode, target date or daily percent; the plan restarts from today (see `replanGoal`). */

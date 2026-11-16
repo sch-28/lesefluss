@@ -15,6 +15,7 @@ function goal(overrides: Partial<ReadingGoal> = {}): ReadingGoal {
 		planStartWord: wordPos(0),
 		targetDate: "2026-03-10",
 		dailyPercent: 10,
+		dailyMinutes: null,
 		carriedDaysMet: 0,
 		completedAt: null,
 		reminderTime: null,
@@ -53,6 +54,27 @@ describe("goal sync round trip", () => {
 		const legacy: Record<string, unknown> = { ...goalToSync(local) };
 		delete legacy.reminderTime;
 		expect(buildGoalMerge([], [legacy], BOOKS)).toMatchObject({ upserts: [], rejected: 1 });
+	});
+
+	it("carries a minute goal's minutes, and reads a goal without them as a percent goal", () => {
+		const local = goal({ mode: "pace", dailyPercent: 4.5, dailyMinutes: 20 });
+		const payload = SyncPayloadSchema.parse({
+			books: [],
+			settings: null,
+			highlights: [],
+			readingGoals: [goalToSync(local)],
+		});
+		expect(buildGoalMerge([], payload.readingGoals ?? [], BOOKS).upserts).toEqual([local]);
+		const legacy: Record<string, unknown> = { ...goalToSync(local) };
+		delete legacy.dailyMinutes;
+		expect(buildGoalMerge([], [legacy], BOOKS).upserts[0]?.dailyMinutes).toBeNull();
+		const bad = { ...goalToSync(local), dailyMinutes: 0 };
+		expect(buildGoalMerge([], [bad], BOOKS)).toMatchObject({ upserts: [], rejected: 1 });
+	});
+
+	it("drops minutes pulled on a goal that is no longer a pace goal", () => {
+		const stale = { ...goalToSync(goal({ mode: "deadline" })), dailyMinutes: 20 };
+		expect(buildGoalMerge([], [stale], BOOKS).upserts[0]?.dailyMinutes).toBeNull();
 	});
 
 	it("leaves goals out of a payload from a client that pre-dates them", () => {

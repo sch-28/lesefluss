@@ -7,12 +7,12 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
+import { pushBackHandler } from "@lesefluss/ui/overlay-back";
 import { Progress } from "@lesefluss/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@lesefluss/ui/sheet";
 import { AlertTriangle, CheckCircle2, CircleSlash, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect } from "react";
-import { pushBackHandler } from "../../../services/overlay-back";
 import { useWakeLock } from "../../reader/use-wake-lock";
 import CandidateCard from "./candidate-card";
 import { candidateKey } from "./candidates";
@@ -22,10 +22,16 @@ type Props = {
 	isOpen: boolean;
 	existingTitles: ReadonlySet<string>;
 	onClose: () => void;
+	targetCollectionId?: string;
 };
 
-const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) => {
-	const folder = useFolderImport(existingTitles, onClose);
+const BatchImportSheet: React.FC<Props> = ({
+	isOpen,
+	existingTitles,
+	onClose,
+	targetCollectionId,
+}) => {
+	const folder = useFolderImport(existingTitles, onClose, targetCollectionId);
 	const { phase, start } = folder;
 
 	// The picker opens as soon as the sheet does: a scan is the only thing this
@@ -40,7 +46,7 @@ const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) 
 	useWakeLock(phase === "importing", "batch-import");
 
 	// Back closes the sheet rather than navigating the library behind it, the
-	// same contract the import confirm sheet uses. A run in progress ignores it.
+	// same contract the Add book page uses. A run in progress ignores it.
 	useEffect(() => {
 		if (!isOpen) return;
 		return pushBackHandler(() => {
@@ -76,11 +82,11 @@ const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) 
 				<SheetHeader className="border-border border-b">
 					<div className="flex items-center justify-between">
 						<SheetTitle>
-							{phase === "scanning" && "Scanning folder…"}
+							{phase === "scanning" && folder.copy.scanning}
 							{phase === "review" && `${folder.candidates.length} books found`}
 							{phase === "importing" && "Importing…"}
 							{phase === "done" && "Import finished"}
-							{phase === "idle" && "Import folder"}
+							{phase === "idle" && folder.copy.sheetTitle}
 						</SheetTitle>
 						{/* Hidden mid-run: leaving would strand a partially written batch. */}
 						{!isBusy && (
@@ -175,12 +181,14 @@ const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) 
 						<div className="border-border border-t p-4">
 							<Button
 								className="w-full"
-								disabled={folder.selectedCount === 0}
+								disabled={folder.selectedCount === 0 || folder.pendingProbes > 0}
 								onClick={folder.beginImport}
 							>
-								{folder.selectedCount === 0
-									? "Nothing selected"
-									: `Import ${folder.selectedCount} ${folder.selectedCount === 1 ? "book" : "books"}`}
+								{folder.pendingProbes > 0
+									? "Checking files…"
+									: folder.selectedCount === 0
+										? "Nothing selected"
+										: `Import ${folder.selectedCount} ${folder.selectedCount === 1 ? "book" : "books"}`}
 							</Button>
 						</div>
 					</>

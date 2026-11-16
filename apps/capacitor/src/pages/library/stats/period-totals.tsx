@@ -1,9 +1,19 @@
-import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
+import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
-import { isPeriod, type Period, type PeriodWindow } from "./period";
+import { PERIODS, type Period, type PeriodWindow } from "./period";
+import { StatsSection } from "./section-header";
+
+const PERIOD_CHIP_LABELS: Record<Period, string> = {
+	today: "Today",
+	"7d": "7 days",
+	"30d": "30 days",
+	all: "All time",
+};
 
 interface Props {
 	/** Page-level locked "now" so query keys stay stable across renders. */
@@ -13,12 +23,34 @@ interface Props {
 	onPeriodChange: (period: Period) => void;
 }
 
+export function PeriodTabs({
+	period,
+	onPeriodChange,
+	className,
+}: {
+	period: Period;
+	onPeriodChange: (period: Period) => void;
+	className?: string;
+}) {
+	return (
+		<SegmentedControl
+			aria-label="Totals for"
+			data-testid="period-control"
+			className={className}
+			value={period}
+			onValueChange={onPeriodChange}
+			options={PERIODS.map((p) => ({ value: p, label: PERIOD_CHIP_LABELS[p] }))}
+		/>
+	);
+}
+
 export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props) {
 	const showPrev = period !== "all";
 
 	const totals = queryHooks.useStatsPeriodTotals(win.start, now);
 	const prev = queryHooks.useStatsClosedPeriodTotals(win.prevStart, win.prevEnd, showPrev);
 
+	const isPending = totals.isPending;
 	const data = totals.data ?? { minutes: 0, words: 0, booksFinished: 0 };
 	const prevData = showPrev ? prev.data : undefined;
 
@@ -34,23 +66,11 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 				booksFinished: delta(data.booksFinished, prevData.booksFinished),
 			}
 		: { minutes: null, words: null, booksFinished: null };
+	const showFinished = isPending || data.booksFinished > 0;
 
 	return (
-		<section className="mb-8 px-4">
-			<Tabs
-				value={period}
-				onValueChange={(v) => {
-					if (isPeriod(v)) onPeriodChange(v);
-				}}
-				className="mb-5"
-			>
-				<TabsList className="w-full">
-					<TabsTrigger value="today">Today</TabsTrigger>
-					<TabsTrigger value="7d">7d</TabsTrigger>
-					<TabsTrigger value="30d">30d</TabsTrigger>
-					<TabsTrigger value="all">All</TabsTrigger>
-				</TabsList>
-			</Tabs>
+		<StatsSection title="Totals" data-testid="stats-totals">
+			<PeriodTabs period={period} onPeriodChange={onPeriodChange} className="mb-3" />
 
 			<AnimatePresence mode="wait">
 				<motion.div
@@ -59,7 +79,10 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -8 }}
 					transition={{ duration: 0.25 }}
-					className="grid grid-cols-3 gap-3"
+					className={cn(
+						"grid gap-3 rounded-[14px] border border-border bg-card p-4 text-card-foreground",
+						showFinished ? "grid-cols-3" : "grid-cols-2",
+					)}
 				>
 					<Stat
 						label="Time"
@@ -67,17 +90,27 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 						format={(v) => formatDuration(v * 60_000)}
 						delta={deltas.minutes}
 						period={period}
+						isPending={isPending}
 					/>
-					<Stat label="Words" value={data.words} delta={deltas.words} period={period} />
 					<Stat
-						label="Finished"
-						value={data.booksFinished}
-						delta={deltas.booksFinished}
+						label="Words"
+						value={data.words}
+						delta={deltas.words}
 						period={period}
+						isPending={isPending}
 					/>
+					{showFinished && (
+						<Stat
+							label="Finished"
+							value={data.booksFinished}
+							delta={deltas.booksFinished}
+							period={period}
+							isPending={isPending}
+						/>
+					)}
 				</motion.div>
 			</AnimatePresence>
-		</section>
+		</StatsSection>
 	);
 }
 
@@ -87,26 +120,29 @@ function Stat({
 	format,
 	delta,
 	period,
+	isPending,
 }: {
 	label: string;
 	value: number;
 	format?: (value: number) => string;
 	delta: number | null;
 	period: Period;
+	isPending: boolean;
 }) {
 	return (
 		<div className="text-center">
-			<div className="font-bold text-3xl tabular-nums tracking-tight">
-				<AnimatedNumber value={value} format={format} />
+			<div className="flex h-7 items-center justify-center font-semibold text-[1.375rem] tabular-nums">
+				{isPending ? (
+					<Loader2 aria-label="Loading" className="size-5 animate-spin text-muted-foreground" />
+				) : (
+					<AnimatedNumber value={value} format={format} />
+				)}
 			</div>
-			<div className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
-			{period !== "all" && delta != null && (
-				<div
-					className={`mt-1 font-medium text-[10px] ${
-						delta >= 0 ? "text-emerald-500" : "text-rose-500"
-					}`}
-				>
-					{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
+			<div className="mt-1 text-[0.8125rem] text-muted-foreground">{label}</div>
+			{/* The line stays while the previous period loads, so the grid keeps its height. */}
+			{period !== "all" && (
+				<div className="mt-1 h-[15px] font-medium text-[0.625rem] text-muted-foreground">
+					{delta != null && `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}%`}
 				</div>
 			)}
 		</div>

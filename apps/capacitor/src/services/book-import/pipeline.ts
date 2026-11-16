@@ -6,7 +6,7 @@
  * `batch.ts` can both build on it without the barrel importing its own consumer.
  */
 
-import type { ImportPipelineOptions, RawInput } from "@lesefluss/book-import";
+import type { BookPayload, ImportPipelineOptions, RawInput } from "@lesefluss/book-import";
 import { runImportPipeline } from "@lesefluss/book-import";
 import type { Book } from "../db/schema";
 import { commitBook } from "./commit";
@@ -24,7 +24,13 @@ export async function parse(
 	onProgress?: (pct: number) => void,
 ): Promise<StagedImport> {
 	const payload = await runImportPipeline(input, pipelineOptions, onProgress);
+	assertReadable(payload);
 	return { payload, extras };
+}
+
+/** A book with neither text nor images leaves the reader on its skeleton for good. */
+export function assertReadable(payload: Pick<BookPayload, "content" | "images">): void {
+	if (!payload.content.trim() && !payload.images?.length) throw new Error("FILE_EMPTY");
 }
 
 export async function parseAndCommit(

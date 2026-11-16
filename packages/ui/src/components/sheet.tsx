@@ -2,10 +2,19 @@ import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 import type * as React from "react";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { SHEET_HEADER_CLASS, SHEET_SUBTITLE_CLASS, SHEET_TITLE_CLASS } from "./sheet-header";
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-	return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+function Sheet({
+	open,
+	defaultOpen,
+	onOpenChange,
+	...props
+}: React.ComponentProps<typeof SheetPrimitive.Root>) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false));
+	return <SheetPrimitive.Root data-slot="sheet" open={isOpen} onOpenChange={setOpen} {...props} />;
 }
 
 function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
@@ -28,7 +37,7 @@ function SheetOverlay({
 		<SheetPrimitive.Overlay
 			data-slot="sheet-overlay"
 			className={cn(
-				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:[animation-duration:200ms] data-[state=closed]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)] data-[state=open]:[animation-duration:240ms] data-[state=open]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
+				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=open]:animate-in dark:bg-black/60 data-[state=closed]:[animation-duration:200ms] data-[state=closed]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)] data-[state=open]:[animation-duration:240ms] data-[state=open]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
 				className,
 			)}
 			{...props}
@@ -71,7 +80,7 @@ function SheetContent({
 					isTop &&
 						"data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top inset-x-0 top-0 rounded-b-2xl pt-[var(--safe-top)]",
 					isBottom &&
-						"data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl pb-[var(--safe-bottom)]",
+						"data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl pb-[var(--safe-bottom)] md:bottom-6 md:mx-auto md:w-full md:max-w-xl md:rounded-2xl md:ring-1 md:ring-foreground/10",
 					className,
 				)}
 				{...props}
@@ -83,8 +92,8 @@ function SheetContent({
 				)}
 				{children}
 				{showCloseButton && (
-					<SheetPrimitive.Close className="absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/50">
-						<XIcon className="size-4" />
+					<SheetPrimitive.Close className="absolute top-1 right-1 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/50">
+						<XIcon className="size-5" />
 						<span className="sr-only">Close</span>
 					</SheetPrimitive.Close>
 				)}
@@ -97,7 +106,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="sheet-header"
-			className={cn("flex flex-col gap-1 px-5 pt-3 pb-2", className)}
+			className={cn(SHEET_HEADER_CLASS, "pt-3", className)}
 			{...props}
 		/>
 	);
@@ -117,7 +126,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
 	return (
 		<SheetPrimitive.Title
 			data-slot="sheet-title"
-			className={cn("font-semibold text-base text-foreground", className)}
+			className={cn(SHEET_TITLE_CLASS, className)}
 			{...props}
 		/>
 	);
@@ -130,7 +139,7 @@ function SheetDescription({
 	return (
 		<SheetPrimitive.Description
 			data-slot="sheet-description"
-			className={cn("text-muted-foreground text-sm", className)}
+			className={cn(SHEET_SUBTITLE_CLASS, className)}
 			{...props}
 		/>
 	);

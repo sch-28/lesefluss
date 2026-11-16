@@ -1,7 +1,13 @@
 import { useRouter } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
+import { ReservedCard } from "../../../components/reserved-card";
 import type { ShelfBook } from "../../../services/db/queries/stats";
+import { SectionHeader } from "./section-header";
+import { TitleCover } from "./title-cover";
+
+/** A 120px cover row with its title, author and detail lines, as it renders loaded. */
+const SHELF_ROW_HEIGHT = 253;
 
 /**
  * Horizontal cover row shared by the stats shelves.
@@ -25,8 +31,7 @@ export function BookShelf({
 	/** Optional overlay on the cover, e.g. rank or time read. */
 	badgeFor?: (book: ShelfBook, index: number) => React.ReactNode;
 }) {
-	const history = useRouter().history;
-	if (isPending) return null;
+	const router = useRouter();
 
 	return (
 		<motion.section
@@ -34,51 +39,56 @@ export function BookShelf({
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="mb-10"
+			className="mt-6"
 		>
-			<header className="mb-3 px-4">
-				<h2 className="font-semibold text-lg">{title}</h2>
-				<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">{subtitle}</p>
-			</header>
-			{books.length === 0 ? (
-				<p className="px-4 text-muted-foreground text-sm">{emptyMessage}</p>
-			) : (
-				<div className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
-					{books.map((book, index) => (
-						<motion.button
-							key={book.id}
-							type="button"
-							onClick={() => history.push(book.href)}
-							initial={{ opacity: 0, x: 16 }}
-							whileInView={{ opacity: 1, x: 0 }}
-							viewport={{ once: true }}
-							transition={{ duration: 0.4, delay: index * 0.06 }}
-							whileTap={{ scale: 0.97 }}
-							className="relative w-[120px] flex-shrink-0 snap-start border-0 bg-transparent p-0 text-left"
-						>
-							<div className="relative aspect-[2/3] overflow-hidden rounded-xl">
-								<CoverImage src={book.coverImage} alt={book.title} />
-								<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
-								{badgeFor?.(book, index)}
-								{book.percent !== undefined && book.percent > 0 && book.percent < 100 && (
-									<div className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
-										<div className="h-full bg-primary" style={{ width: `${book.percent}%` }} />
-									</div>
-								)}
-							</div>
-							<div className="mt-2 px-0.5 text-foreground">
-								<div className="line-clamp-1 font-medium text-sm">{book.title}</div>
-								{book.author && (
-									<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{book.author}</div>
-								)}
-								<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground tabular-nums">
-									{book.detail}
+			<SectionHeader title={title} aside={subtitle} className="px-4" />
+			<ReservedCard isPending={isPending} height={SHELF_ROW_HEIGHT}>
+				{books.length === 0 ? (
+					<p className="px-4 text-muted-foreground text-sm">{emptyMessage}</p>
+				) : (
+					<div className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
+						{books.map((book, index) => (
+							<motion.button
+								key={book.id}
+								type="button"
+								onClick={() => router.navigate({ href: book.href })}
+								initial={{ opacity: 0, x: 16 }}
+								whileInView={{ opacity: 1, x: 0 }}
+								viewport={{ once: true }}
+								transition={{ duration: 0.4, delay: index * 0.06 }}
+								whileTap={{ scale: 0.97 }}
+								className="relative w-[120px] flex-shrink-0 snap-start border-0 bg-transparent p-0 text-left"
+							>
+								<div className="relative aspect-[2/3] overflow-hidden rounded-xl">
+									<CoverImage
+										src={book.coverImage}
+										alt={book.title}
+										fallback={<TitleCover title={book.title} />}
+									/>
+									<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
+									{badgeFor?.(book, index)}
+									{book.percent !== undefined && book.percent > 0 && book.percent < 100 && (
+										<div className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+											<div className="h-full bg-primary" style={{ width: `${book.percent}%` }} />
+										</div>
+									)}
 								</div>
-							</div>
-						</motion.button>
-					))}
-				</div>
-			)}
+								<div className="mt-2 px-0.5 text-foreground">
+									<div className="line-clamp-1 font-medium text-sm">{book.title}</div>
+									{book.author && (
+										<div className="mt-0.5 line-clamp-1 text-[0.6875rem] opacity-60">
+											{book.author}
+										</div>
+									)}
+									<div className="mt-0.5 line-clamp-1 text-[0.6875rem] text-muted-foreground tabular-nums">
+										{book.detail}
+									</div>
+								</div>
+							</motion.button>
+						))}
+					</div>
+				)}
+			</ReservedCard>
 		</motion.section>
 	);
 }

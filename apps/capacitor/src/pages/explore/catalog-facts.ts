@@ -1,5 +1,5 @@
 import { CATALOG_SOURCE_LABELS, type CatalogBook } from "../../services/catalog/client";
-import { languageLabel } from "./language-label";
+import { languageLabel } from "../../utils/language-label";
 
 function authorYears(
 	birth: number | null | undefined,

@@ -105,6 +105,18 @@ describe("useRsvpEngine throttled position save", () => {
 		expect(onPositionChange.mock.calls).toEqual([[SAVED_WORD]]);
 	});
 
+	it("reports the displayed word on pagehide, ahead of the last throttled save", async () => {
+		await playToSaveTick();
+		act(() => vi.advanceTimersByTime(600));
+		expect(lastSaved()).toBe(SAVED_WORD);
+		const shown = engine?.wordIndex;
+		expect(shown).toBeGreaterThan(SAVED_WORD);
+
+		window.dispatchEvent(new Event("pagehide"));
+
+		expect(lastSaved()).toBe(shown);
+	});
+
 	it("drops the pending save on unmount, keeping the flushed word", async () => {
 		await playToSaveTick();
 		view?.unmount();

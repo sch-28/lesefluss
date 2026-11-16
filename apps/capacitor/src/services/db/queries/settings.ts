@@ -1,9 +1,28 @@
-import { changelog, DEFAULT_SETTINGS, SYNCED_SETTING_KEYS } from "@lesefluss/core";
-import { eq } from "drizzle-orm";
+import {
+	changelog,
+	DEFAULT_SETTINGS,
+	type ReaderTheme,
+	SYNCED_SETTING_KEYS,
+} from "@lesefluss/core";
+import { and, eq } from "drizzle-orm";
+import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
 
 const SETTINGS_ID = 1;
+
+/**
+ * A fresh install takes the system's dark or light scheme, which index.html
+ * already painted. A seeded default rather than a save, so it never counts as
+ * an edit that could outrank the account's synced theme.
+ */
+function systemReaderTheme(): ReaderTheme {
+	try {
+		return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+	} catch {
+		return DEFAULT_SETTINGS.READER_THEME;
+	}
+}
 
 /**
  * Fetch the single settings row (id=1), inserting defaults if it doesn't exist yet.
@@ -30,7 +49,7 @@ export async function getSettings(): Promise<Settings> {
 		displayOffTimeout: DEFAULT_SETTINGS.DISPLAY_OFF_TIMEOUT,
 		deepSleepTimeout: DEFAULT_SETTINGS.DEEP_SLEEP_TIMEOUT,
 		brightness: DEFAULT_SETTINGS.BRIGHTNESS,
-		readerTheme: DEFAULT_SETTINGS.READER_THEME,
+		readerTheme: systemReaderTheme(),
 		readerFontSize: DEFAULT_SETTINGS.READER_FONT_SIZE,
 		readerFontFamily: DEFAULT_SETTINGS.READER_FONT_FAMILY,
 		readerBold: DEFAULT_SETTINGS.READER_BOLD,
@@ -45,12 +64,15 @@ export async function getSettings(): Promise<Settings> {
 		readerActiveWordUnderline: DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE,
 		readerGlossaryUnderline: DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE,
 		showReadingTime: DEFAULT_SETTINGS.SHOW_READING_TIME,
+		showLiveWpm: DEFAULT_SETTINGS.SHOW_LIVE_WPM,
+		speedWindow: DEFAULT_SETTINGS.SPEED_WINDOW,
 		defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 		paginationStyle: DEFAULT_SETTINGS.PAGINATION_STYLE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
 		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
 		pageTurnAnimation: DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
 		autoOpenLastBook: DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK,
+		showSessionSummary: DEFAULT_SETTINGS.SHOW_SESSION_SUMMARY,
 		einkMode: DEFAULT_SETTINGS.EINK_MODE,
 		volumeKeyPageTurn: null,
 		volumeKeyInvert: DEFAULT_SETTINGS.VOLUME_KEY_INVERT,
@@ -59,6 +81,7 @@ export async function getSettings(): Promise<Settings> {
 		ttsRewindWords: DEFAULT_SETTINGS.TTS_REWIND_WORDS,
 		ttsVoices: DEFAULT_SETTINGS.TTS_VOICES,
 		ttsFollow: DEFAULT_SETTINGS.TTS_FOLLOW,
+		rsvpAudio: DEFAULT_SETTINGS.RSVP_AUDIO,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,
@@ -86,9 +109,18 @@ export async function saveSettings(
 	updatedAt?: number,
 ): Promise<void> {
 	const hasSyncedField = Object.keys(patch).some((k) => syncedKeys.has(k));
-	const stamp = updatedAt ?? (hasSyncedField ? Date.now() : undefined);
+	const stamp = updatedAt ?? (hasSyncedField ? serverNow() : undefined);
 	await db
 		.update(settings)
 		.set(stamp === undefined ? patch : { ...patch, updatedAt: stamp })
 		.where(eq(settings.id, SETTINGS_ID));
+}
+
+/** The settings counterpart of `adoptBookStamps`. */
+export async function adoptSettingsStamp(pushed: number, stored: number): Promise<void> {
+	if (stored >= pushed) return;
+	await db
+		.update(settings)
+		.set({ updatedAt: stored })
+		.where(and(eq(settings.id, SETTINGS_ID), eq(settings.updatedAt, pushed)));
 }

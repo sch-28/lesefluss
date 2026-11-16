@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../index";
 import { type Highlight, highlights, type NewHighlight } from "../schema";
 
@@ -21,6 +21,15 @@ export async function getHighlightsByBooks(bookIds: string[]): Promise<Highlight
 		.from(highlights)
 		.where(inArray(highlights.bookId, bookIds))
 		.orderBy(asc(highlights.bookId), asc(highlights.startWord));
+}
+
+/** How many highlights each book has; books without any are absent. */
+export async function countHighlightsByBook(): Promise<Map<string, number>> {
+	const rows = await db
+		.select({ bookId: highlights.bookId, n: sql<number>`count(*)`.as("n") })
+		.from(highlights)
+		.groupBy(highlights.bookId);
+	return new Map(rows.map((r) => [r.bookId, r.n]));
 }
 
 /**

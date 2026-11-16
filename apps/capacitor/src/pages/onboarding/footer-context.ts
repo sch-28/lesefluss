@@ -4,6 +4,8 @@ export type OnboardingAction = {
 	label: string;
 	onClick: () => void | Promise<void>;
 	disabled?: boolean;
+	/** For a decline that is the step's only footer action, beside a sign-in in the body. */
+	outline?: boolean;
 };
 
 export type OnboardingFooter = {

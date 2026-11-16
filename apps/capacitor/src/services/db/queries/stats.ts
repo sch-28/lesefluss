@@ -1,30 +1,54 @@
 import {
-	isMeasurableSitting,
+	bookSpeeds,
+	bookStatus,
+	computeSpeedModel,
+	deriveMilestones,
 	type MeasuredReadingMode,
-	measuredReadingSpeed,
-	type ReadingRates,
+	type Milestones,
+	REAL_SITTING_MS,
 	readingProgress,
 	rollUpWorks,
-	summariseReadingRates,
-	wordPos,
+	type SpeedModel,
+	type SpeedWindow,
+	skimCutoffs,
+	speedSittings,
+	speedWindowRows,
+	THIRTY_DAYS_MS,
 } from "@lesefluss/core";
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
 	readDaysOf,
+	readingDaysOfSitting,
 	type StreakResult,
 	sumDurationByLocalDay,
 	summariseStreak,
-	type TrendPeriod,
-	trendBucketsFor,
+	type TrendTestMarker,
+	trendTestMarkers,
 	type WpmTrend,
+	windowTrendBuckets,
 } from "../../stats/aggregate";
 import type { DailyReading } from "../../stats/calendar";
+import {
+	type Insight,
+	type LockedInsight,
+	lockedInsights,
+	speedInsights,
+} from "../../stats/insights";
 import { type ReadingRecords, summariseRecords } from "../../stats/records";
+import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
+import { hasRealProgressSql } from "./books";
+import { getLatestPlausibleSpeedTest, getSpeedTests } from "./speed-tests";
+
+/** Sittings saved under the one-minute bar before it existed stay out of every
+ *  total, list and streak, as Stats › Sessions never lists them. */
+function isRealSittingSql(): SQL {
+	return gte(readingSessions.durationMs, REAL_SITTING_MS);
+}
 
 export interface PeriodTotals {
 	minutes: number;
@@ -48,7 +72,11 @@ export async function getPeriodTotals(
 		})
 		.from(readingSessions)
 		.where(
-			and(gte(readingSessions.startedAt, periodStart), lt(readingSessions.startedAt, periodEnd)),
+			and(
+				gte(readingSessions.startedAt, periodStart),
+				lt(readingSessions.startedAt, periodEnd),
+				isRealSittingSql(),
+			),
 		);
 
 	// Counted on when the book was first finished, not on when it was last
@@ -56,7 +84,7 @@ export async function getPeriodTotals(
 	// today, and March lost it for good.
 	const finishedRow = await db
 		.select({
-			count: sql<number>`COUNT(*)`,
+			count: sql<number>`COUNT(*)`.as("count"),
 		})
 		.from(books)
 		.where(
@@ -72,7 +100,8 @@ export async function getPeriodTotals(
 
 	const dur = Number(sessionsRow[0]?.durationMs ?? 0);
 	return {
-		minutes: Math.round(dur / 60_000),
+		// Floored like formatDuration, so Overview and Sessions show the same total.
+		minutes: Math.floor(dur / 60_000),
 		words: Number(sessionsRow[0]?.words ?? 0),
 		booksFinished: Number(finishedRow[0]?.count ?? 0),
 	};
@@ -92,6 +121,7 @@ export async function getStreak(): Promise<StreakResult> {
 			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions)
+		.where(isRealSittingSql())
 		.orderBy(readingSessions.startedAt);
 
 	return summariseStreak(rows, Date.now());
@@ -128,7 +158,9 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 		})
 		.from(readingSessions)
 		.innerJoin(books, eq(books.id, readingSessions.bookId))
-		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
+		.where(
+			and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false), isRealSittingSql()),
+		)
 		.groupBy(
 			readingSessions.bookId,
 			books.seriesId,
@@ -214,18 +246,22 @@ export interface ShelfBook {
 const CURRENTLY_READING_LIMIT = 10;
 
 /**
- * Books the reader is in the middle of: started, not finished, most recently
- * read first. Serial chapters are excluded because a chapter is not a book the
- * reader would say they are "currently reading".
+ * Books on the Reading shelf (`bookStatus`, the one definition the library,
+ * Social and Explore share), most recently read first. Serial chapters are
+ * excluded because a chapter is not a book the reader would say they are
+ * "currently reading".
  */
 export async function getCurrentlyReading(): Promise<ShelfBook[]> {
-	const rows = await db
+	const candidates = await db
 		.select({
 			id: books.id,
 			title: books.title,
 			author: books.author,
 			wordCount: books.wordCount,
 			wordPosition: books.wordPosition,
+			status: books.status,
+			finishedAt: books.finishedAt,
+			firstSittingAt: books.firstSittingAt,
 			lastRead: books.lastRead,
 		})
 		.from(books)
@@ -233,12 +269,13 @@ export async function getCurrentlyReading(): Promise<ShelfBook[]> {
 			and(
 				eq(books.deleted, false),
 				isNull(books.seriesId),
-				isNull(books.finishedAt),
-				gt(books.wordPosition, wordPos(0)),
+				or(eq(books.status, "reading"), and(isNull(books.status), hasRealProgressSql())),
 			),
 		)
-		.orderBy(desc(books.lastRead))
-		.limit(CURRENTLY_READING_LIMIT);
+		.orderBy(desc(books.lastRead));
+	const rows = candidates
+		.filter((row) => bookStatus(row) === "reading")
+		.slice(0, CURRENTLY_READING_LIMIT);
 
 	const covers = await coversFor(rows.map((row) => row.id));
 	return rows.map((row) => {
@@ -315,7 +352,8 @@ async function coversFor(ids: string[]): Promise<Map<string, string | null>> {
 export async function getDailyReading(): Promise<DailyReading> {
 	const rows = await db
 		.select({ startedAt: readingSessions.startedAt, durationMs: readingSessions.durationMs })
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(isRealSittingSql());
 	return { msByDay: sumDurationByLocalDay(rows), readDays: readDaysOf(rows) };
 }
 
@@ -330,6 +368,7 @@ export async function getReadingRecords(): Promise<ReadingRecords> {
 	const [sessions, bookRows] = await Promise.all([
 		db
 			.select({
+				id: readingSessions.id,
 				bookId: readingSessions.bookId,
 				mode: readingSessions.mode,
 				startedAt: readingSessions.startedAt,
@@ -358,31 +397,84 @@ export async function getReadingRecords(): Promise<ReadingRecords> {
 	return summariseRecords(sessions, bookRows);
 }
 
-export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
-	const now = opts.now;
-	// All-time granularity depends on how far back the history goes, so ask the
-	// cheapest possible question first rather than fetching every row to find out.
-	const oldest =
-		opts.period === "all"
-			? await db
-					.select({ startedAt: sql<number>`MIN(${readingSessions.startedAt})`.as("started_at") })
-					.from(readingSessions)
-					.then((rows) => Number(rows[0]?.startedAt ?? now))
-			: undefined;
+export async function getSpeedTab(): Promise<SpeedTabData> {
+	const [sessions, bookRows] = await Promise.all([
+		db
+			.select({
+				bookId: readingSessions.bookId,
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+				wpmAvg: readingSessions.wpmAvg,
+			})
+			.from(readingSessions)
+			// Ordered so a tied record goes to the earlier sitting on every render.
+			.orderBy(readingSessions.startedAt),
+		db
+			.select({ id: books.id, title: books.title, author: books.author })
+			.from(books)
+			.where(eq(books.deleted, false)),
+	]);
+	const covers = await coversFor(bookRows.map((b) => b.id));
+	const byId = new Map(
+		bookRows.map((b) => [
+			b.id,
+			{ title: b.title, author: b.author, coverImage: covers.get(b.id) ?? null },
+		]),
+	);
+	return buildSpeedTabData(sessions, byId);
+}
 
-	const buckets = trendBucketsFor(opts.period, now, oldest);
-	const rows = await db
-		.select({
-			startedAt: readingSessions.startedAt,
-			mode: readingSessions.mode,
-			wpmAvg: readingSessions.wpmAvg,
-			words: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
-		})
-		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, buckets.starts[0] as number));
+export type SpeedTrendMode = "reading" | "rsvp";
 
-	return buildWpmTrend(rows, buckets);
+export type SpeedTrend = WpmTrend & { tests: TrendTestMarker[] };
+
+/** One mode's speed over the sittings the speed model's window holds, so the
+ *  line and the number above it come from the same rows. Speed tests ride along
+ *  as markers; the 30-day and all-time charts stretch to hold them. */
+export async function getWpmTrend(opts: {
+	window: SpeedWindow;
+	mode: SpeedTrendMode;
+	now: number;
+}): Promise<SpeedTrend> {
+	const [rows, tests] = await Promise.all([
+		db
+			.select({
+				startedAt: readingSessions.startedAt,
+				mode: readingSessions.mode,
+				wpmAvg: readingSessions.wpmAvg,
+				wordsRead: readingSessions.wordsRead,
+				durationMs: readingSessions.durationMs,
+			})
+			.from(readingSessions),
+		getSpeedTests(),
+	]);
+	const inWindow = speedWindowRows(rows, opts.window, opts.now);
+	const ofMode = inWindow.filter((r) => (opts.mode === "rsvp") === (r.mode === "rsvp"));
+	let oldest: number | undefined;
+	for (const r of inWindow) if (oldest === undefined || r.startedAt < oldest) oldest = r.startedAt;
+	const testsFrom =
+		opts.window === "all"
+			? 0
+			: opts.window === "30d"
+				? opts.now - THIRTY_DAYS_MS
+				: Number.POSITIVE_INFINITY;
+	for (const t of tests) {
+		if (t.createdAt >= testsFrom && (oldest === undefined || t.createdAt < oldest)) {
+			oldest = t.createdAt;
+		}
+	}
+	const buckets = windowTrendBuckets(opts.window, oldest, opts.now);
+	const trend = buildWpmTrend(
+		ofMode.map((r) => ({ ...r, words: r.wordsRead })),
+		buckets,
+	);
+	const testWpm = tests.map((t) => ({
+		takenAt: t.createdAt,
+		wpm: opts.mode === "rsvp" ? t.rsvpWpm : t.readingWpm,
+	}));
+	return { ...trend, tests: trendTestMarkers(testWpm, buckets.starts) };
 }
 
 /**
@@ -396,7 +488,8 @@ export async function getHourHistogram(): Promise<number[]> {
 			endedAt: readingSessions.endedAt,
 			durationMs: readingSessions.durationMs,
 		})
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(isRealSittingSql());
 
 	return bucketMinutesByHour(rows);
 }
@@ -418,49 +511,79 @@ export interface BookStats {
 	/** The single longest sitting, for the journey summary. */
 	longestSessionMs: number;
 	longestSessionAt: number | null;
-	/** Words-weighted measured rate across every mode, and the mode that
-	 *  contributed most of those words. */
+	/** The book's own speed from the speed model, and the mode with most of its words. */
 	measuredWpm: number | null;
 	dominantMode: MeasuredReadingMode | null;
 	speedSeries: SpeedPoint[];
 }
 
-/** Recent sessions only: the RSVP ratio shifts when the delay settings change,
- *  and a lifetime average would take months to reflect it. */
-const RATE_SAMPLE_SIZE = 50;
+/** Every session row: the window is chosen inside the model, and a book's own
+ *  speed spans all of its history. The latest speed test stands in until the
+ *  window holds enough reading. */
+export async function getSpeedModel(opts: {
+	window: SpeedWindow;
+	now: number;
+	/** Sittings to leave out, for a speed as it stood before them. */
+	without?: readonly string[];
+	/** The model as it stood at this time: later sittings and tests are left out. */
+	asOf?: number;
+}): Promise<SpeedModel> {
+	const [all, test] = await Promise.all([
+		db
+			.select({
+				id: readingSessions.id,
+				bookId: readingSessions.bookId,
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+				wpmAvg: readingSessions.wpmAvg,
+			})
+			.from(readingSessions),
+		getLatestPlausibleSpeedTest(),
+	]);
+	const without = new Set(opts.without);
+	const asOf = opts.asOf;
+	const rows = all.filter((r) => !without.has(r.id) && (asOf === undefined || r.startedAt < asOf));
+	const speedTest =
+		test && (asOf === undefined || test.createdAt < asOf)
+			? { wpm: test.readingWpm, takenAt: test.createdAt }
+			: null;
+	return computeSpeedModel(rows, { window: opts.window, now: asOf ?? opts.now, speedTest });
+}
 
-export async function getReadingRates(): Promise<ReadingRates> {
-	const rows = await db
+export type SpeedInsights = {
+	reading: Insight[];
+	rsvp: Insight[];
+	locked: { reading: LockedInsight[]; rsvp: LockedInsight[] };
+};
+
+/** The Speed tab's insight tiles for both views, over the sittings in the window. */
+export async function getSpeedInsights(opts: {
+	window: SpeedWindow;
+	now: number;
+}): Promise<SpeedInsights> {
+	const all = await db
 		.select({
 			mode: readingSessions.mode,
+			startedAt: readingSessions.startedAt,
+			durationMs: readingSessions.durationMs,
+			wordsRead: readingSessions.wordsRead,
 			wpmAvg: readingSessions.wpmAvg,
-			wordsRead: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
-		})
-		.from(readingSessions)
-		.orderBy(desc(readingSessions.startedAt))
-		.limit(RATE_SAMPLE_SIZE);
-
-	return summariseReadingRates(rows);
-}
-
-export interface MeasuredReadingSpeed {
-	/** `measuredReadingSpeed` from @lesefluss/core over every session; null before the first plausible one. */
-	wpm: number | null;
-	sessionCount: number;
-}
-
-export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
-	const rows = await db
-		.select({
-			mode: readingSessions.mode,
-			wordsRead: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
+			fontSize: readingSessions.fontSize,
+			segmentWpm: readingSessions.segmentWpm,
 		})
 		.from(readingSessions);
+	const rows = speedWindowRows(all, opts.window, opts.now);
+	const reading = speedInsights(rows, "reading");
+	const rsvp = speedInsights(rows, "rsvp");
 	return {
-		wpm: measuredReadingSpeed(rows),
-		sessionCount: rows.filter(isMeasurableSitting).length,
+		reading,
+		rsvp,
+		locked: {
+			reading: lockedInsights(rows, "reading", reading),
+			rsvp: lockedInsights(rows, "rsvp", rsvp),
+		},
 	};
 }
 
@@ -471,14 +594,14 @@ export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
 export async function getBookStats(bookId: string): Promise<BookStats> {
 	const rows = await db
 		.select({
+			bookId: readingSessions.bookId,
 			startedAt: readingSessions.startedAt,
 			mode: readingSessions.mode,
 			durationMs: readingSessions.durationMs,
 			wordsRead: readingSessions.wordsRead,
-			wpmAvg: readingSessions.wpmAvg,
 		})
 		.from(readingSessions)
-		.where(eq(readingSessions.bookId, bookId))
+		.where(and(eq(readingSessions.bookId, bookId), isRealSittingSql()))
 		.orderBy(readingSessions.startedAt);
 
 	if (rows.length === 0) {
@@ -499,13 +622,20 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	let lastReadAt = 0;
 	let longestSessionMs = 0;
 	let longestSessionAt: number | null = null;
-	// Measured, not the dial: `wpmAvg` holds the RSVP target on rsvp rows, so it
-	// answers "how fast is the engine set", not "how fast was this book read".
-	let sumWords = 0;
-	let sumActiveMs = 0;
-	const wordsByMode = new Map<SpeedPoint["mode"], number>();
 	const speedSeries: SpeedPoint[] = [];
 
+	// The skim cutoff comes from every sitting, as in Stats › Sessions and the speed model,
+	// so a sitting is skimmed or not wherever it is shown.
+	const cutoff = skimCutoffs(
+		await db
+			.select({
+				mode: readingSessions.mode,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+			})
+			.from(readingSessions),
+	);
+	const measured = new Set<(typeof rows)[number]>(speedSittings(rows, cutoff));
 	for (const r of rows) {
 		totalDurationMs += r.durationMs;
 		if (r.startedAt > lastReadAt) lastReadAt = r.startedAt;
@@ -514,11 +644,8 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			longestSessionAt = r.startedAt;
 		}
 		// Totals above are unconditional; only the derived rate is gated, so a
-		// position jump still counts as time spent and words covered.
-		if (isMeasurableSitting(r)) {
-			sumWords += r.wordsRead;
-			sumActiveMs += r.durationMs;
-			wordsByMode.set(r.mode, (wordsByMode.get(r.mode) ?? 0) + r.wordsRead);
+		// position jump or a skim still counts as time spent and words covered.
+		if (measured.has(r) && r.mode !== "listen") {
 			speedSeries.push({
 				startedAt: r.startedAt,
 				mode: r.mode,
@@ -528,14 +655,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		}
 	}
 
-	let dominantMode: SpeedPoint["mode"] | null = null;
-	let dominantWords = 0;
-	for (const [mode, words] of wordsByMode) {
-		if (words > dominantWords) {
-			dominantMode = mode;
-			dominantWords = words;
-		}
-	}
+	const speed = bookSpeeds(rows, cutoff)[bookId];
 
 	return {
 		totalDurationMs,
@@ -545,8 +665,38 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		firstReadAt: rows[0]?.startedAt ?? null,
 		longestSessionMs,
 		longestSessionAt,
-		measuredWpm: sumActiveMs > 0 ? Math.round(sumWords / (sumActiveMs / 60_000)) : null,
-		dominantMode,
+		measuredWpm: speed?.wpm ?? null,
+		dominantMode: speed?.mode ?? null,
 		speedSeries,
 	};
+}
+
+/** Milestones over every real sitting and every finished book; serial chapters don't count as books. */
+export async function getMilestones(): Promise<Milestones> {
+	const [sessions, finished] = await Promise.all([
+		db
+			.select({
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+			})
+			.from(readingSessions)
+			.where(isRealSittingSql()),
+		db
+			.select({
+				wordCount: books.wordCount,
+				wordPosition: books.wordPosition,
+				status: books.status,
+				finishedAt: books.finishedAt,
+				firstSittingAt: books.firstSittingAt,
+			})
+			.from(books)
+			.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.finishedAt))),
+	]);
+	return deriveMilestones({
+		sessions,
+		finishedAt: finished.filter((b) => bookStatus(b) === "finished").map((b) => b.finishedAt ?? 0),
+		dayKeysOf: readingDaysOfSitting,
+	});
 }

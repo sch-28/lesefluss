@@ -1,5 +1,6 @@
 import type { Book } from "../../services/db/schema";
-import { formatRelative } from "../../utils/date-utils";
+import { formatShortDate } from "../../utils/date-utils";
+import { useBookJourney } from "./book-journey";
 import { formatBytes } from "./transfer-modal/utils";
 
 /**
@@ -10,22 +11,25 @@ import { formatBytes } from "./transfer-modal/utils";
  * nothing, which is most of a real library. This fills that gap with what the
  * import already recorded.
  */
-export function BookFileCard({ book, chapterCount }: { book: Book; chapterCount: number }) {
+export function BookFileCard({ book }: { book: Book }) {
+	// The journey above shows the dates once the book has one, the chapter list below the chapter count.
+	const { journey } = useBookJourney(book);
 	const rows: Array<[string, string]> = [
 		["Format", book.fileFormat.toUpperCase()],
 		["Length", `${book.wordCount.toLocaleString()} words`],
 	];
-	if (chapterCount > 0) rows.push(["Chapters", String(chapterCount)]);
 	if (book.size > 0) rows.push(["Size", formatBytes(book.size)]);
-	rows.push(["Added", formatRelative(book.addedAt)]);
-	if (book.finishedAt != null) rows.push(["Finished", formatRelative(book.finishedAt)]);
+	if (!journey) {
+		rows.push(["Added", formatShortDate(book.addedAt)]);
+		if (book.finishedAt != null) rows.push(["Finished", formatShortDate(book.finishedAt)]);
+	}
 	rows.push(["Source", describeSource(book)]);
 
 	return (
 		<section className="book-detail-card mt-4">
 			<h2 className="book-detail-section-title">About this file</h2>
-			{/* Two columns, or one once a large font scale leaves a pair too narrow; values wrap. */}
-			<dl className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-x-4 gap-y-2.5 text-sm">
+			{/* One label-value row per line on a phone; two side-by-side pairs were too narrow for "123,456 words". */}
+			<dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2.5 text-sm sm:grid-cols-2">
 				{rows.map(([label, value]) => (
 					<div key={label} className="flex flex-wrap items-baseline justify-between gap-x-2">
 						<dt className="text-muted-foreground text-xs">{label}</dt>

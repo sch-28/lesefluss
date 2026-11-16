@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MedalGrid } from "@/components/milestones/milestone-medals";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
 	CoverShelf,
@@ -16,11 +17,13 @@ import {
 	SocialSection,
 	StatTile,
 } from "@/components/social/social-ui";
+import { SpeedChip, SpeedChipStatic } from "@/components/speed-chip/speed-chip";
 import { toast } from "@/components/toast";
 import { AuthedFetchError } from "@/services/authed-fetch";
 import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useBlockUser, useRemoveFriend } from "@/services/social/friends";
 import { useProfileView } from "@/services/social/profile-view";
+import { knownMilestones } from "@/services/stats/milestones";
 import { formatDuration } from "@/utils/date-utils";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
 
@@ -39,9 +42,6 @@ function statTiles(stats: ProfileStats): { label: string; value: string }[] {
 	if (stats.readingTimeMs !== null) {
 		tiles.push({ label: "Reading time", value: formatDuration(stats.readingTimeMs) });
 	}
-	if (stats.readingSpeedWpm !== null) {
-		tiles.push({ label: "Reading speed", value: `${stats.readingSpeedWpm} wpm` });
-	}
 	return tiles;
 }
 
@@ -59,6 +59,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 	const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 	const { identity, relation, friendsSince } = view.header;
 	const isSelf = relation === "self" || isPreview;
+	const medals = knownMilestones(view.sections.milestones?.reached);
 	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
 
 	const menuItems: ActionSheetItem[] = [
@@ -108,6 +109,19 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 						</Button>
 					)}
 				</div>
+				{isSelf && !isPreview ? (
+					<SpeedChip className="mt-3" />
+				) : (
+					view.sections.stats && (
+						<SpeedChipStatic
+							className="mt-3"
+							// Older servers send only the mixed speed.
+							speeds={
+								view.sections.stats.speeds ?? { reading: view.sections.stats.readingSpeedWpm }
+							}
+						/>
+					)
+				)}
 				<p className="mt-3 text-muted-foreground text-xs">
 					{isPreview
 						? "Preview: what a friend sees"
@@ -152,7 +166,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 			{view.sections.currentlyReading && (
 				<SocialSection title="Currently reading">
 					{view.sections.currentlyReading.length === 0 ? (
-						<p className="m-0 px-1 text-muted-foreground text-sm">Nothing in progress right now.</p>
+						<p className="m-0 text-muted-foreground text-sm">Nothing in progress right now.</p>
 					) : (
 						<CoverShelf
 							items={view.sections.currentlyReading.map((book) => ({
@@ -171,7 +185,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 			{view.sections.finished && (
 				<SocialSection title="Finished">
 					{view.sections.finished.length === 0 ? (
-						<p className="m-0 px-1 text-muted-foreground text-sm">No finished books yet.</p>
+						<p className="m-0 text-muted-foreground text-sm">No finished books yet.</p>
 					) : (
 						<CoverShelf
 							items={view.sections.finished.map((book) => ({
@@ -196,6 +210,12 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 							<StatTile key={tile.label} value={tile.value} label={tile.label} />
 						))}
 					</div>
+				</SocialSection>
+			)}
+
+			{medals.length > 0 && (
+				<SocialSection title="Milestones">
+					<MedalGrid reached={medals} />
 				</SocialSection>
 			)}
 

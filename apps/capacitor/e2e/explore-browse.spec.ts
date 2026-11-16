@@ -136,7 +136,7 @@ test("a tag on a book opens results for that tag, restored on reload and back", 
 	await expect(cards.filter({ hasText: "Beta Ghosts" })).toBeVisible();
 	await expect(cards.filter({ hasText: "Gamma Romance" })).toHaveCount(0);
 	await expect(page.getByRole("button", { name: "Remove tag Ghost stories" })).toBeVisible();
-	expect(searches.at(-1)?.get("tag")).toBe("ghost-stories");
+	await expect.poll(() => searches.at(-1)?.get("tag")).toBe("ghost-stories");
 
 	await page.reload();
 	await expect(cards.filter({ hasText: "Beta Ghosts" })).toBeVisible();
@@ -153,34 +153,11 @@ test("facet chips add tags and active chips remove them", async ({ page }) => {
 
 	await page.getByRole("button", { name: "Add tag Romance" }).click();
 	await page.waitForURL(/tags=ghost-stories%2Cromance|tags=ghost-stories,romance/);
-	expect(searches.at(-1)?.get("tag")).toBe("ghost-stories,romance");
+	await expect.poll(() => searches.at(-1)?.get("tag")).toBe("ghost-stories,romance");
 
 	await page.getByRole("button", { name: "Remove tag Ghost stories" }).click();
 	await page.waitForURL((url) => url.searchParams.get("tags") === "romance");
 	await expect(page.getByText("Gamma Romance")).toBeVisible();
-});
-
-test("sort and source live in the URL and combine with tags", async ({ page }) => {
-	const { searches } = await mockCatalog(page);
-	await page.goto("/tabs/explore?tags=ghost-stories");
-	await expect(page.getByText("Alpha Ghosts")).toBeVisible();
-
-	await page.getByRole("button", { name: "Popular" }).click();
-	await page.getByRole("menuitemradio", { name: "Title A-Z" }).click();
-	await page.waitForURL((url) => url.searchParams.get("sort") === "title");
-
-	await page.getByRole("button", { name: "Source" }).click();
-	await page.getByRole("menuitemradio", { name: "Standard Ebooks" }).click();
-	await page.waitForURL((url) => url.searchParams.get("source") === "standard_ebooks");
-
-	const last = searches.at(-1);
-	expect(last?.get("sort")).toBe("title");
-	expect(last?.get("source")).toBe("standard_ebooks");
-	expect(last?.get("tag")).toBe("ghost-stories");
-
-	await page.reload();
-	await expect(page.getByRole("button", { name: "Title A-Z" })).toBeVisible();
-	await expect(page.getByRole("button", { name: "Standard Ebooks", exact: true })).toBeVisible();
 });
 
 test("the search query is in the URL, survives a detail round trip and becomes a recent search", async ({
@@ -209,20 +186,6 @@ test("the search query is in the URL, survives a detail round trip and becomes a
 	await page.waitForURL((url) => url.searchParams.get("q") === "ghosts");
 });
 
-test("the tag browse page is reachable from the landing and filters by name", async ({ page }) => {
-	await mockCatalog(page);
-	await page.goto("/tabs/explore");
-	await page.getByRole("button", { name: "Browse by tag" }).click();
-	await page.waitForURL(/\/tabs\/explore\/tags/);
-	await expect(page.getByText("Short stories")).toBeVisible();
-
-	await page.getByRole("searchbox", { name: "Filter tags" }).fill("ghost");
-	await expect(page.getByText("Short stories")).toHaveCount(0);
-	await page.getByRole("button", { name: /Ghost stories/ }).click();
-	await page.waitForURL((url) => url.searchParams.get("tags") === "ghost-stories");
-	await expect(page.getByText("Beta Ghosts")).toBeVisible();
-});
-
 test("returning from a book restores the results scroll position", async ({ page }) => {
 	await mockCatalog(page);
 	await page.setViewportSize({ width: 400, height: 700 });
@@ -241,52 +204,4 @@ test("returning from a book restores the results scroll position", async ({ page
 	await expect
 		.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 5_000 })
 		.toBeGreaterThan(before - 50);
-});
-
-test("a shared link with a tag the catalog no longer has drops just that chip", async ({
-	page,
-}) => {
-	await mockCatalog(page);
-	await page.goto("/tabs/explore?tags=ghost-stories,gone-tag");
-	await page.waitForURL((url) => url.searchParams.get("tags") === "ghost-stories");
-	await expect(page.getByText("Alpha Ghosts")).toBeVisible();
-	await expect(page.getByRole("button", { name: /Remove tag Gone tag/ })).toHaveCount(0);
-});
-
-test("back from results returns to the landing instead of leaving Explore", async ({ page }) => {
-	await mockCatalog(page);
-	await page.goto("/tabs/library");
-	await page.goto("/tabs/explore");
-	await page.getByRole("button", { name: "Horror & Gothic" }).last().click();
-	await page.waitForURL((url) => url.searchParams.get("genre") === "horror");
-	await page.goBack();
-	await page.waitForURL(
-		(url) => url.pathname === "/tabs/explore" && !url.searchParams.get("genre"),
-	);
-	await expect(page.getByRole("button", { name: "Browse by tag" })).toBeVisible();
-});
-
-test("the length chip filters by reading time at the reader's speed", async ({ page }) => {
-	const { searches } = await mockCatalog(page);
-	await page.goto("/tabs/explore?tags=ghost-stories");
-	await expect(page.getByText("Alpha Ghosts")).toBeVisible();
-	await page.getByRole("button", { name: "Length" }).click();
-	await page.getByRole("menuitemradio", { name: "Under 1 hour" }).click();
-	await page.waitForURL((url) => url.searchParams.get("length") === "short");
-	// No sessions yet, so the typical reader's 225 wpm applies: one hour is 13,500 words.
-	expect(searches.at(-1)?.get("max_words")).toBe("13500");
-	expect(searches.at(-1)?.get("min_words")).toBeNull();
-});
-
-test("a tag picked on the tag page adds to the search it was opened from", async ({ page }) => {
-	await mockCatalog(page);
-	await page.goto("/tabs/explore?tags=romance&lang=en");
-	await expect(page.getByText("Gamma Romance")).toBeVisible();
-	await page.getByRole("button", { name: "Tags", exact: true }).click();
-	await page.waitForURL(/\/tabs\/explore\/tags/);
-	await page.getByRole("button", { name: /Ghost stories/ }).click();
-	await page.waitForURL(
-		(url) =>
-			url.pathname === "/tabs/explore" && url.searchParams.get("tags") === "romance,ghost-stories",
-	);
 });

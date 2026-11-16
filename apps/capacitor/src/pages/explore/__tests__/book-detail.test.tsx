@@ -16,13 +16,26 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 	getSimilarBooks,
 }));
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
+const local = vi.hoisted(() => ({ book: null as { id: string } | null }));
 vi.mock("../../../services/db/queries", () => ({
-	queries: { getBookByCatalogId: async () => null },
+	queries: { getBookByCatalogId: async () => local.book },
 }));
+const wishlist = vi.hoisted(() => ({ entry: null as unknown, toggle: vi.fn() }));
+const reader = vi.hoisted(() => ({ rsvp: false }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({
+			data: {
+				pace: { wpm: 300, source: "measured" },
+				sittings: 12,
+				modesUsed: { reading: true, rsvp: reader.rsvp },
+				rsvp: null,
+			},
+		}),
+		useSettings: () => ({ data: { wpm: 400, defaultReaderMode: reader.rsvp ? "rsvp" : "scroll" } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
+		useWishlistEntry: () => wishlist.entry,
+		useToggleWishlist: () => ({ mutate: wishlist.toggle, isPending: false }),
 	},
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
@@ -31,7 +44,13 @@ vi.mock("../../../services/deep-links/parse", () => ({
 }));
 vi.mock("../../../utils/clipboard", () => ({ copyToClipboard }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: vi.fn(), info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: vi.fn(),
+		info: vi.fn(),
+	},
 }));
 vi.mock("../../../components/app-shell/page-header", () => ({
 	PageHeader: ({ right }: { right?: React.ReactNode }) => <header>{right}</header>,
@@ -74,6 +93,8 @@ beforeEach(() => {
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
+	local.book = null;
+	wishlist.entry = null;
 	vi.clearAllMocks();
 });
 
@@ -96,8 +117,24 @@ describe("catalog book detail", () => {
 		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
 		expect(explainer).toContain("75,000 words");
 		expect(explainer).toContain("250 words per page");
-		expect(explainer).toContain("300 wpm, your average over 12 sessions");
+		expect(explainer).toContain("At your pace4h 10m");
+		expect(explainer).toContain("your pace of 300 wpm, from 12 sessions");
+		expect(explainer).not.toContain("RSVP");
 		expect(explainer).not.toContain("approximate");
+	});
+
+	it("adds the time at the RSVP dial for an RSVP reader", async () => {
+		reader.rsvp = true;
+		try {
+			await renderDetail();
+			await click(view?.getButton(/300 pages/) as HTMLButtonElement);
+			const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
+			// 75,000 words at the 400 dial × the 0.65 default delivered ratio = 260 wpm.
+			expect(explainer).toContain("RSVP4h 48m");
+			expect(explainer).toContain("RSVP at 260 wpm");
+		} finally {
+			reader.rsvp = false;
+		}
 	});
 
 	it("marks an estimated length and says so in the explainer", async () => {
@@ -106,7 +143,7 @@ describe("catalog book detail", () => {
 		const fact = view?.getButton(
 			/^About 312 pages, 4 hours 20 minutes\. How is this worked out\?$/,
 		);
-		expect(fact?.textContent).toBe("~312 pages · 4h 20m");
+		expect(fact?.textContent).toBe("312 pages · 4h 20m");
 		await click(fact as HTMLButtonElement);
 		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
 		expect(explainer).toContain("About 78,000 words");
@@ -169,5 +206,60 @@ describe("catalog book detail", () => {
 			"https://lesefluss.app/app/tabs/explore/book/gutenberg%3A84",
 		);
 		expect(toastSuccess).toHaveBeenCalledWith("Link copied");
+	});
+
+	it("saves the book to the wishlist with what the shelf card shows", async () => {
+		await renderDetail();
+		await click(view?.getButton("Add to wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			{
+				saved: true,
+				item: {
+					kind: "catalog",
+					ref: "gutenberg:84",
+					title: "Frankenstein",
+					author: "Mary Shelley",
+					coverUrl: null,
+				},
+			},
+			expect.anything(),
+		);
+		const callbacks = wishlist.toggle.mock.calls[0]?.[1] as { onSuccess: () => void };
+		callbacks.onSuccess();
+		expect(toastSuccess).toHaveBeenCalledWith("Added to your wishlist", { icon: "wishlist" });
+	});
+
+	it("takes a saved book off the wishlist", async () => {
+		wishlist.entry = { id: "w1" };
+		await renderDetail();
+		await click(view?.getButton("Remove from wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
+	});
+
+	it("offers no wishlist for a book already in the library or with nothing to import", async () => {
+		local.book = { id: "b1" };
+		await renderDetail();
+		expect(view?.queryButton(/wishlist/)).toBeNull();
+		view?.unmount();
+
+		local.book = null;
+		getCatalogBook.mockResolvedValue({ ...BOOK, epubUrl: null });
+		await renderDetail();
+		expect(view?.queryButton(/wishlist/)).toBeNull();
+	});
+
+	it("still takes a saved book off the wishlist once it is in the library", async () => {
+		local.book = { id: "b1" };
+		wishlist.entry = { id: "w1" };
+		await renderDetail();
+		expect(view?.queryButton("Add to wishlist")).toBeNull();
+		await click(view?.getButton("Remove from wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
 	});
 });

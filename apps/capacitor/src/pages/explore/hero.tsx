@@ -125,7 +125,11 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 					<p className="m-0 mt-1.5 line-clamp-1 text-foreground/80 text-sm">{book.summary}</p>
 				)}
 				<div className="mt-auto pt-3">
-					<Button size="sm" onClick={() => onOpen(book)}>
+					<Button
+						size="sm"
+						className="relative before:absolute before:inset-x-0 before:-top-3 before:-bottom-1 before:content-['']"
+						onClick={() => onOpen(book)}
+					>
 						View book
 					</Button>
 					{hasMultiple && (

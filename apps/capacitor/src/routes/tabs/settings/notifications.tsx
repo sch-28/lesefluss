@@ -5,6 +5,7 @@ import { Bell, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SignInPanel } from "@/components/sync/sign-in-panel";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { OfflineNotice } from "@/pages/social/social-gate";
@@ -25,6 +26,7 @@ function Spinner() {
 
 function DeviceSection() {
 	const permission = usePushPermission();
+	if (permission.data === "unsupported") return null;
 	let content: React.ReactNode;
 	if (permission.data === "granted") {
 		content = (
@@ -120,11 +122,7 @@ function NotificationSettings() {
 		body = <Spinner />;
 	} else if (!isLoggedIn) {
 		body = (
-			<SettingsSection title="Not signed in">
-				<p className="px-4 py-3 text-muted-foreground text-sm">
-					Sign in under Cloud sync to get notifications from friends.
-				</p>
-			</SettingsSection>
+			<SignInPanel benefit="Sign in to hear when a friend sends a request, invites you to a buddy read or replies in a discussion." />
 		);
 	} else {
 		body = (
@@ -138,7 +136,7 @@ function NotificationSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Notifications" icon={Bell} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">{body}</div>
+			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">{body}</div>
 		</div>
 	);
 }

@@ -8,10 +8,12 @@ import { VoiceSheet } from "@/components/read-aloud/voice-sheet";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SliderRow } from "@/components/settings/slider-row";
+import { SpeedRow } from "@/components/settings/speed-row";
 import { StepperRow } from "@/components/settings/stepper-row";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
+import { TTS_WPM_RANGE } from "@/pages/reader/wpm";
 import { queryHooks } from "@/services/db/hooks";
-import { ttsEngine } from "@/services/tts";
+import { HAS_SYSTEM_VOICE_SETTINGS, ttsEngine } from "@/services/tts";
 import { useTtsVoices } from "@/services/tts/use-voices";
 import {
 	languageName,
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/tabs/settings/read-aloud")({
 	component: ReadAloudSettings,
 });
 
-const { TTS_WPM, TTS_PITCH, TTS_REWIND_WORDS } = SETTING_CONSTRAINTS;
+const { TTS_PITCH, TTS_REWIND_WORDS } = SETTING_CONSTRAINTS;
 
 function ReadAloudSettings() {
 	const { settings, updateSetting } = useAutoSaveSettings();
@@ -43,7 +45,9 @@ function ReadAloudSettings() {
 	const languages = useMemo(() => {
 		const byKey = new Map<string, string>();
 		for (const book of library?.books ?? []) {
-			if (book.language) byKey.set(voiceLanguageKey(book.language), book.language);
+			const key = voiceLanguageKey(book.language);
+			// "und" (undetermined) is no language a voice could be picked for.
+			if (book.language && key !== "und") byKey.set(key, book.language);
 		}
 		return [...byKey.values()].sort((a, b) => languageName(a).localeCompare(languageName(b)));
 	}, [library]);
@@ -61,13 +65,10 @@ function ReadAloudSettings() {
 			<PageHeader title="Listen" icon={Headphones} />
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Voice">
-					<SliderRow
+					<SpeedRow
 						label="Speed"
-						value={speech.wpm}
-						display={`${speech.wpm} wpm`}
-						min={TTS_WPM.min}
-						max={TTS_WPM.max}
-						step={TTS_WPM.step}
+						wpm={speech.wpm}
+						range={TTS_WPM_RANGE}
 						onChange={(wpm) => updateSetting("ttsWpm", wpm)}
 					/>
 					<SliderRow
@@ -83,6 +84,7 @@ function ReadAloudSettings() {
 						icon={Volume2}
 						title="Play a sample"
 						subtitle="Hear the current speed and pitch"
+						inPlace
 						onClick={() =>
 							void ttsEngine.speakSample("This is how your books will sound.", null, speech)
 						}
@@ -110,7 +112,11 @@ function ReadAloudSettings() {
 
 				<SettingsSection
 					title="Voices"
-					hint="From your phone's speech engine, offline once downloaded"
+					hint={
+						HAS_SYSTEM_VOICE_SETTINGS
+							? "From your phone's speech engine, offline once downloaded"
+							: "From your browser and system"
+					}
 				>
 					{[null, ...languages].map((language) => (
 						<NavRow
@@ -121,18 +127,22 @@ function ReadAloudSettings() {
 							onClick={() => setVoiceSheet({ language })}
 						/>
 					))}
-					<NavRow
-						icon={Download}
-						title="Download voices"
-						subtitle="More languages and better voices"
-						onClick={() => void ttsEngine.installVoiceData()}
-					/>
-					<NavRow
-						icon={Settings2}
-						title="System speech settings"
-						subtitle="Speech engine, default language"
-						onClick={() => void ttsEngine.openSystemSettings()}
-					/>
+					{HAS_SYSTEM_VOICE_SETTINGS && (
+						<>
+							<NavRow
+								icon={Download}
+								title="Download voices"
+								subtitle="More languages and better voices"
+								onClick={() => void ttsEngine.installVoiceData()}
+							/>
+							<NavRow
+								icon={Settings2}
+								title="System speech settings"
+								subtitle="Speech engine, default language"
+								onClick={() => void ttsEngine.openSystemSettings()}
+							/>
+						</>
+					)}
 				</SettingsSection>
 			</div>
 

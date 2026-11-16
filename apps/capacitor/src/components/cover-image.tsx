@@ -63,9 +63,7 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 					loading={priority ? "eager" : "lazy"}
 					draggable={false}
 					onDragStart={preventDragStart}
-					{...({ fetchpriority: priority ? "high" : "auto" } as {
-						fetchpriority: "high" | "auto";
-					})}
+					fetchPriority={priority ? "high" : "auto"}
 					onLoad={() => setState("loaded")}
 					onError={() => {
 						setFailedAtEpoch(reconnectEpoch);

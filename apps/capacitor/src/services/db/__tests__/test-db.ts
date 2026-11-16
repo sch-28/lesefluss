@@ -30,19 +30,43 @@ function toSqliteParams(params: unknown[]): SQLInputValue[] {
 	return params.map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p)) as SQLInputValue[];
 }
 
-export function createTestDb() {
+const PLAIN_COLUMN_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Android's CapacitorSQLite reads each result column by name, and a computed
+ * column without `.as()` is named after its SQL text: the cursor then fails
+ * with "Couldn't read row 0 column -1". node:sqlite reads it fine, so the
+ * device failure is reproduced here (LESE-125.26).
+ */
+export function assertNamedColumns(row: Record<string, unknown> | undefined, sql: string) {
+	if (!row) return;
+	for (const name of Object.keys(row)) {
+		if (!PLAIN_COLUMN_NAME.test(name)) {
+			throw new Error(`Result column without a plain alias: ${name}\nin: ${sql}`);
+		}
+	}
+}
+
+/** Runs one migration file the way the app's runner splits it. */
+export function applyMigration(raw: DatabaseSync, tag: string): void {
+	const sql = readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), "utf8");
+	// drizzle separates statements within one migration by this marker.
+	for (const statement of sql.split("--> statement-breakpoint")) {
+		const trimmed = statement.trim();
+		if (trimmed) raw.exec(trimmed);
+	}
+}
+
+/** `stopBefore` leaves that migration and every later one unapplied, for testing a backfill. */
+export function createTestDb(options: { stopBefore?: string } = {}) {
 	const raw = new DatabaseSync(":memory:");
 
 	const journal = JSON.parse(
 		readFileSync(join(MIGRATIONS_DIR, "meta/_journal.json"), "utf8"),
 	) as Journal;
 	for (const entry of journal.entries) {
-		const sql = readFileSync(join(MIGRATIONS_DIR, `${entry.tag}.sql`), "utf8");
-		// drizzle separates statements within one migration by this marker.
-		for (const statement of sql.split("--> statement-breakpoint")) {
-			const trimmed = statement.trim();
-			if (trimmed) raw.exec(trimmed);
-		}
+		if (entry.tag === options.stopBefore) break;
+		applyMigration(raw, entry.tag);
 	}
 
 	const db = drizzle<typeof schema>(
@@ -54,6 +78,7 @@ export function createTestDb() {
 				return { rows: [] };
 			}
 			const rows = statement.all(...values) as Array<Record<string, unknown>>;
+			assertNamedColumns(rows[0], sql);
 			if (method === "get") {
 				const first = rows[0];
 				return { rows: first ? Object.values(first) : [] };

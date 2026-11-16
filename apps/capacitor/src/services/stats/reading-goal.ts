@@ -14,15 +14,17 @@ import {
 	goalPlanLine,
 	inclusiveDays,
 	isFinishedPosition,
+	MAX_GOAL_DAILY_MINUTES,
 	MAX_GOAL_DAILY_PERCENT,
+	MIN_GOAL_DAILY_MINUTES,
 	MIN_GOAL_DAILY_PERCENT,
+	type Pace,
 	paceFinishDay,
 	type ReadingGoalMode,
 	requireDayNumber,
 	wordPos,
 } from "@lesefluss/core";
 import { localDateKey } from "../../utils/date-utils";
-import { type ReadingPace, readingPace } from "../../utils/reading-time";
 import type { ReadingGoal } from "../db/schema";
 
 export type GoalParams = Pick<
@@ -35,6 +37,7 @@ export type GoalParams = Pick<
 	| "planStartWord"
 	| "targetDate"
 	| "dailyPercent"
+	| "dailyMinutes"
 	| "carriedDaysMet"
 	| "completedAt"
 >;
@@ -47,6 +50,8 @@ export type GoalSession = {
 	/** Highest word read in the sitting; null on rows from before it was recorded. */
 	furthestWord?: number | null;
 	wordsRead: number;
+	/** Active reading time; a minute goal counts it. */
+	durationMs?: number;
 };
 
 export type GoalPlanInput = {
@@ -54,8 +59,8 @@ export type GoalPlanInput = {
 	book: { wordCount: number; wordPosition: number };
 	/** This book's sessions, any order. */
 	sessions: GoalSession[];
-	bookWpm: number | null;
-	globalWpm: number | null;
+	/** The speed model's pace for this book (`bookPace`). */
+	pace: Pace;
 	now: number;
 };
 
@@ -74,6 +79,8 @@ export type GoalSeriesPoint = {
 export type ReadingGoalPlan = {
 	kind: "plan";
 	mode: ReadingGoalMode;
+	/** A minute goal's daily minutes, which it judges days by instead of words; null otherwise. */
+	dailyMinutes: number | null;
 	today: string;
 	targetDate: string;
 	/** Deadline: the target date. Pace: the day the remaining work ends at the daily rate. */
@@ -94,7 +101,7 @@ export type ReadingGoalPlan = {
 	aheadBehind: { words: number; percent: number; days: number };
 	daysTargetMet: number;
 	daysRead: number;
-	pace: ReadingPace;
+	pace: Pace;
 	/** End-of-day plan positions; the first point is the baseline, dated the day before the plan starts. */
 	planSeries: GoalSeriesPoint[];
 	/** End-of-day actual positions over the same span, through today. */
@@ -118,9 +125,9 @@ function localMidnightOf(dayNumber: number): number {
 }
 
 /**
- * Sessions that count toward the plan: those ending after the goal began, so
- * reading earlier on the day a goal is created never becomes that goal's
- * progress, and on or after the day the plan starts. Sorted so a tie between
+ * Sessions that count toward the plan: those ending after the goal began (moved
+ * back to the start day's first sitting by `withStartDayReading`) and on or
+ * after the day the plan starts. Sorted so a tie between
  * equal end times always resolves the same way.
  */
 function planSessions(sessions: GoalSession[], goal: GoalParams, planStartDay: number) {
@@ -138,10 +145,15 @@ function planSessions(sessions: GoalSession[], goal: GoalParams, planStartDay: n
  * with every checkpoint, and today's target must not. Rows written since
  * sittings split at midnight never do; older ones may.
  */
-function makeStartOfDay(relevant: GoalSession[], goal: GoalParams, planStartDay: number) {
+function makeStartOfDay(
+	relevant: GoalSession[],
+	goal: GoalParams,
+	planStartDay: number,
+	firstDayStart: number,
+) {
 	const known = new Map<number, number>();
 	return (dayNumber: number): number => {
-		if (dayNumber <= planStartDay) return goal.planStartWord;
+		if (dayNumber <= planStartDay) return firstDayStart;
 		const cached = known.get(dayNumber);
 		if (cached !== undefined) return cached;
 		const midnight = localMidnightOf(dayNumber);
@@ -185,6 +197,22 @@ function makeFurthestOn(relevant: GoalSession[]) {
 		Math.max(dayStart, dayEnd, furthestByDay.get(dayNumber) ?? dayStart);
 }
 
+/** A goal's daily minutes, only where they apply: a pace goal set in minutes. */
+export function minuteGoalOf(goal: Pick<GoalParams, "mode" | "dailyMinutes">): number | null {
+	return goal.mode === "pace" && goal.dailyMinutes != null ? goal.dailyMinutes : null;
+}
+
+/** Active minutes read per local day, by the day a sitting ended; sittings split at midnight. */
+function minutesByDay(relevant: GoalSession[]): Map<number, number> {
+	const byDay = new Map<number, number>();
+	for (const s of relevant) {
+		if (!s.durationMs || s.durationMs <= 0) continue;
+		const day = requireDayNumber(localDateKey(s.endedAt));
+		byDay.set(day, (byDay.get(day) ?? 0) + s.durationMs / 60_000);
+	}
+	return byDay;
+}
+
 /** A day's target is met once its reading got far enough, or finished the book that day. */
 export function isDayMet(
 	dayStart: number,
@@ -212,8 +240,35 @@ function dayTargetWords(
 	return daysLeft <= 1 ? remaining : Math.ceil(remaining / daysLeft);
 }
 
+/**
+ * Reading done earlier on the day a goal starts counts toward that day: the day
+ * then starts at its first sitting, so no word counts twice. A deadline goal's
+ * line starts there too; a pace goal's line keeps its stored start, because its
+ * stored target date is where that line ends. Only while the plan still starts
+ * on that day; a later replan stands.
+ */
+function withStartDayReading(
+	goal: GoalParams,
+	sessions: GoalSession[],
+): { goal: GoalParams; firstDayStart: number } {
+	const unchanged = { goal, firstDayStart: goal.planStartWord };
+	const startDate = localDateKey(goal.startedAt);
+	if (goal.planStartDate !== startDate) return unchanged;
+	const midnight = localMidnightOf(requireDayNumber(startDate));
+	let first: GoalSession | null = null;
+	for (const s of sessions) {
+		if (s.startedAt < midnight || s.startedAt >= goal.startedAt) continue;
+		if (!first || s.startedAt < first.startedAt) first = s;
+	}
+	if (!first) return unchanged;
+	const firstDayStart = wordPos(Math.min(goal.planStartWord, first.startWord));
+	const planStartWord = goal.mode === "deadline" ? firstDayStart : goal.planStartWord;
+	return { goal: { ...goal, startedAt: first.startedAt, planStartWord }, firstDayStart };
+}
+
 export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
-	const { goal, book, now } = input;
+	const { book, now } = input;
+	const { goal, firstDayStart } = withStartDayReading(input.goal, input.sessions);
 	const wordCount = book.wordCount;
 	const position = book.wordPosition;
 	const reachedEnd = isFinishedPosition(position, wordCount);
@@ -232,10 +287,22 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	// A clock set back past the plan start would otherwise evaluate a day before the plan exists.
 	const today = Math.max(requireDayNumber(localDateKey(now)), planStartDay, startedDay);
 	const relevant = planSessions(input.sessions, goal, planStartDay);
-	const startOfDay = makeStartOfDay(relevant, goal, planStartDay);
+	const startOfDay = makeStartOfDay(relevant, goal, planStartDay, firstDayStart);
 	const furthestOn = makeFurthestOn(relevant);
-	const pace = readingPace(input.bookWpm ?? input.globalWpm);
+	const pace = input.pace;
+	const minuteTarget = minuteGoalOf(goal);
+	const minutesOn = minutesByDay(relevant);
+	// A minute goal reads its stored percent (its minutes at the pace when it was set), not
+	// today's pace: the card, the chart's end and the stored target date then share one date.
 	const dailyWords = goalDailyWords(goal.dailyPercent, wordCount);
+	const dayWordTarget = (day: number, start: number) =>
+		minuteTarget != null
+			? Math.min(Math.max(0, wordCount - start), dailyWords)
+			: dayTargetWords(goal, targetDay, day, start, wordCount);
+	const dayMet = (start: number, furthest: number, target: number, day: number) =>
+		minuteTarget != null
+			? (minutesOn.get(day) ?? 0) >= minuteTarget || isDayMet(start, furthest, 0, wordCount)
+			: isDayMet(start, furthest, target, wordCount);
 
 	const line = goalPlanLine(goal, wordCount);
 	const targetDay = line.targetDay;
@@ -247,12 +314,11 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	});
 
 	const dayStartWord = startOfDay(today);
-	const targetWords = dayTargetWords(goal, targetDay, today, dayStartWord, wordCount);
+	const targetWords = dayWordTarget(today, dayStartWord);
 	const furthestTodayWord = furthestOn(today, dayStartWord, position);
 	const progressWords = furthestTodayWord - dayStartWord;
 	// The book counts as finished below 100%, so finishing meets any remaining target.
-	const isTodayMet =
-		reachedEnd || isDayMet(dayStartWord, furthestTodayWord, targetWords, wordCount);
+	const isTodayMet = reachedEnd || dayMet(dayStartWord, furthestTodayWord, targetWords, today);
 
 	let daysTargetMet = goal.carriedDaysMet;
 	const actualSeries: GoalSeriesPoint[] = [
@@ -261,12 +327,12 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	for (let day = planStartDay; day <= today; day++) {
 		const start = day === today ? dayStartWord : startOfDay(day);
 		const end = day === today ? position : startOfDay(day + 1);
-		const target = dayTargetWords(goal, targetDay, day, start, wordCount);
+		const target = dayWordTarget(day, start);
 		// A book already finished at the day's start has nothing left to meet.
 		const met =
 			day === today
 				? isTodayMet && !isFinishedPosition(start, wordCount)
-				: isDayMet(start, furthestOn(day, start, end), target, wordCount);
+				: dayMet(start, furthestOn(day, start, end), target, day);
 		if (met) daysTargetMet++;
 		actualSeries.push({ date: dayKeyOf(day), percent: (end / wordCount) * 100 });
 	}
@@ -278,8 +344,11 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	} else if (goal.mode === "deadline") {
 		projectedFinishDay = Math.max(targetDay, today);
 	} else if (isTodayMet) {
+		// A first day met by reading before the goal began still leaves the line's day-one words
+		// as done, as the stored target date assumed.
+		const from = today === planStartDay ? Math.max(position, line.at(today)) : position;
 		projectedFinishDay =
-			position < wordCount ? paceFinishDay(today + 1, position, dailyWords, wordCount) : today;
+			from < wordCount ? paceFinishDay(today + 1, from, dailyWords, wordCount) : today;
 	} else {
 		projectedFinishDay = paceFinishDay(today, dayStartWord, dailyWords, wordCount);
 	}
@@ -301,16 +370,23 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	return {
 		kind: "plan",
 		mode: goal.mode,
+		dailyMinutes: minuteTarget,
 		today: dayKeyOf(today),
 		targetDate: goal.mode === "deadline" ? goal.targetDate : dayKeyOf(targetDay),
 		projectedFinishDate: dayKeyOf(projectedFinishDay),
 		daysLeft: isComplete ? 0 : Math.max(0, projectedFinishDay - today + 1),
 		isComplete,
 		percentRead: (Math.min(position, wordCount) / wordCount) * 100,
-		dailyTarget: amount(targetWords),
+		dailyTarget:
+			minuteTarget != null
+				? { ...amount(targetWords), minutes: minuteTarget }
+				: amount(targetWords),
 		dayStartWord,
 		furthestTodayWord,
-		progressToday: amount(progressWords),
+		progressToday:
+			minuteTarget != null
+				? { ...amount(progressWords), minutes: minutesOn.get(today) ?? 0 }
+				: amount(progressWords),
 		isTodayMet,
 		aheadBehind: goalAheadBehind(line, position, today, wordCount),
 		daysTargetMet,
@@ -360,14 +436,48 @@ function clampDailyPercent(percent: number): number {
 	return Math.min(MAX_GOAL_DAILY_PERCENT, Math.max(MIN_GOAL_DAILY_PERCENT, percent));
 }
 
+function clampDailyMinutes(minutes: number | null | undefined): number | null {
+	if (minutes == null || !Number.isFinite(minutes)) return null;
+	return Math.min(MAX_GOAL_DAILY_MINUTES, Math.max(MIN_GOAL_DAILY_MINUTES, Math.round(minutes)));
+}
+
+/**
+ * A pace goal's last day, reading `dailyPercent` a day from `fromWord` at the
+ * start of `fromDate`: where its plan line ends, so the stored target date, the
+ * setup sheet and the goal card show the same day.
+ */
+export function paceTargetDate(
+	fromDate: string,
+	fromWord: number,
+	dailyPercent: number,
+	wordCount: number,
+): string {
+	if (wordCount <= 0) return addDays(fromDate, Math.max(1, Math.ceil(100 / dailyPercent)) - 1);
+	return dayKeyOf(
+		paceFinishDay(
+			requireDayNumber(fromDate),
+			fromWord,
+			goalDailyWords(dailyPercent, wordCount),
+			wordCount,
+		),
+	);
+}
+
 export type GoalPlanFields = Pick<
 	ReadingGoal,
-	"mode" | "planStartDate" | "planStartWord" | "targetDate" | "dailyPercent" | "carriedDaysMet"
+	| "mode"
+	| "planStartDate"
+	| "planStartWord"
+	| "targetDate"
+	| "dailyPercent"
+	| "dailyMinutes"
+	| "carriedDaysMet"
 >;
 
+/** A pace goal with `dailyMinutes` is a minute goal; its `dailyPercent` is what those minutes read at the reader's pace. */
 export type NewGoalSpec =
 	| { mode: "deadline"; targetDate: string }
-	| { mode: "pace"; dailyPercent: number };
+	| { mode: "pace"; dailyPercent: number; dailyMinutes?: number | null };
 
 /**
  * Plan fields for a goal starting now at `startWord`. Both modes store both a
@@ -389,22 +499,29 @@ export function newGoalPlanFields(
 			planStartWord: wordPos(startWord),
 			targetDate: spec.targetDate,
 			dailyPercent: clampDailyPercent(remainingPercent / days),
+			dailyMinutes: null,
 			carriedDaysMet: 0,
 		};
 	}
 	const dailyPercent = clampDailyPercent(spec.dailyPercent);
-	const days = Math.max(1, Math.ceil(remainingPercent / dailyPercent));
 	return {
 		mode: "pace",
 		planStartDate: today,
 		planStartWord: wordPos(startWord),
-		targetDate: addDays(today, days - 1),
+		targetDate: paceTargetDate(today, wordPos(startWord), dailyPercent, wordCount),
 		dailyPercent,
+		dailyMinutes: clampDailyMinutes(spec.dailyMinutes),
 		carriedDaysMet: 0,
 	};
 }
 
-export type GoalChange = { mode?: ReadingGoalMode; targetDate?: string; dailyPercent?: number };
+export type GoalChange = {
+	mode?: ReadingGoalMode;
+	targetDate?: string;
+	dailyPercent?: number;
+	/** null turns a minute goal back into a percent goal. */
+	dailyMinutes?: number | null;
+};
 
 /**
  * Restart the plan line from today's start-of-day position, keeping the goal's
@@ -412,13 +529,19 @@ export type GoalChange = { mode?: ReadingGoalMode; targetDate?: string; dailyPer
  *
  * Switching deadline -> pace keeps today's daily target as the pace; pace ->
  * deadline keeps the projected finish as the target date. An explicit value in
- * `change` wins over either.
+ * `change` wins over either. A deadline goal has no daily minutes.
  */
 export function replanGoal(input: GoalPlanInput, change: GoalChange): GoalPlanFields {
 	const { goal } = input;
 	const plan = planReadingGoal(input);
 	const mode = change.mode ?? goal.mode;
 	const today = localDateKey(input.now);
+	const dailyMinutes =
+		mode === "pace"
+			? clampDailyMinutes(
+					change.dailyMinutes !== undefined ? change.dailyMinutes : goal.dailyMinutes,
+				)
+			: null;
 
 	if (plan.kind !== "plan") {
 		return {
@@ -427,6 +550,7 @@ export function replanGoal(input: GoalPlanInput, change: GoalChange): GoalPlanFi
 			planStartWord: wordPos(input.book.wordPosition),
 			targetDate: change.targetDate ?? goal.targetDate,
 			dailyPercent: clampDailyPercent(change.dailyPercent ?? goal.dailyPercent),
+			dailyMinutes,
 			carriedDaysMet: goal.carriedDaysMet,
 		};
 	}
@@ -444,10 +568,11 @@ export function replanGoal(input: GoalPlanInput, change: GoalChange): GoalPlanFi
 		targetDate = plan.projectedFinishDate;
 	}
 	if (mode === "pace" && change.targetDate === undefined) {
-		const remainingPercent = 100 - (plan.dayStartWord / input.book.wordCount) * 100;
-		targetDate = addDays(
+		targetDate = paceTargetDate(
 			plan.today,
-			Math.max(1, Math.ceil(remainingPercent / clampDailyPercent(dailyPercent))) - 1,
+			wordPos(plan.dayStartWord),
+			clampDailyPercent(dailyPercent),
+			input.book.wordCount,
 		);
 	}
 
@@ -457,6 +582,7 @@ export function replanGoal(input: GoalPlanInput, change: GoalChange): GoalPlanFi
 		planStartWord: wordPos(plan.dayStartWord),
 		targetDate,
 		dailyPercent: clampDailyPercent(dailyPercent),
+		dailyMinutes,
 		carriedDaysMet,
 	};
 }

@@ -4,29 +4,23 @@ import { Input } from "@lesefluss/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
 import { DiscordIcon } from "~/components/icons/discord";
 import { GoogleIcon } from "~/components/icons/google";
 import { OldBrowserNotice, oldBrowserCheckScript } from "~/components/old-browser-notice";
 import { sendVerificationEmail, signIn, signUp } from "~/lib/auth-client";
+import { safeRedirectPath } from "~/lib/safe-redirect";
 import { useAuthSession } from "~/lib/session-context";
 import { seo } from "~/utils/seo";
 
-function isSafeRedirect(value: unknown): value is string {
-	if (typeof value !== "string") return false;
-	if (!value.startsWith("/") || value.startsWith("//")) return false;
-	// Avoid bouncing back to login (reload loop) or exposing auth endpoints as redirect targets.
-	if (value === "/login" || value.startsWith("/login/") || value.startsWith("/login?"))
-		return false;
-	if (value.startsWith("/api/")) return false;
-	return true;
-}
-
 export const Route = createFileRoute("/login/")({
-	validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
-		isSafeRedirect(search.redirect) ? { redirect: search.redirect } : {},
+	// The router merges the raw parent search under this result, so a rejected value must be
+	// overwritten with an explicit undefined rather than left out.
+	validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+		redirect: safeRedirectPath(search.redirect),
+	}),
 	component: LoginPage,
 	head: () => ({
 		...seo({
@@ -295,6 +289,17 @@ function AuthForm({
 				{serverError && (
 					<p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-destructive text-sm">
 						{serverError}
+					</p>
+				)}
+
+				{mode === "signin" && (
+					<p className="mt-3 text-right text-sm">
+						<Link
+							to="/reset-password"
+							className="text-muted-foreground underline underline-offset-4"
+						>
+							Forgot password?
+						</Link>
 					</p>
 				)}
 

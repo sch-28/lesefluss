@@ -6,8 +6,14 @@ import {
 	type SequentialProgress as BatchProgress,
 	NO_PROGRESS,
 } from "../../../services/batch/run-sequential";
-import { importScannedFile, pickBookFolder, probeScannedFile } from "../../../services/book-import";
-import { bookKeys } from "../../../services/db/hooks/query-keys";
+import {
+	batchPickerKind,
+	importScannedFile,
+	pickBookFolder,
+	probeScannedFile,
+} from "../../../services/book-import";
+import { bookKeys, collectionKeys } from "../../../services/db/hooks/query-keys";
+import { appendBooksToCollection } from "../../../services/db/queries/collections";
 import { scheduleSyncPush } from "../../../services/sync";
 import { log } from "../../../utils/log";
 import { ALERT_SUPPRESSED, ERROR_TOASTS } from "../import-errors";
@@ -23,12 +29,14 @@ import {
 	toCandidates,
 	toggleCandidate,
 } from "./candidates";
+import { BATCH_IMPORT_COPY, type BatchImportCopy } from "./copy";
 import { type BatchResult, runBatchImport } from "./run-import";
 
 export type FolderImportPhase = "idle" | "scanning" | "review" | "importing" | "done";
 
 type UseFolderImport = {
 	phase: FolderImportPhase;
+	copy: BatchImportCopy;
 	candidates: Candidate[];
 	formats: FormatCount[];
 	selectedCount: number;
@@ -51,13 +59,16 @@ type UseFolderImport = {
  * Drives a folder import from picker to library.
  *
  * `existingTitles` comes from the caller's already-loaded library, so duplicate
- * detection costs no extra query.
+ * detection costs no extra query. Each book imported joins `targetCollectionId`
+ * as it is written, so a cancelled run leaves its books in the collection too.
  */
 export function useFolderImport(
 	existingTitles: ReadonlySet<string>,
 	onClose: () => void,
+	targetCollectionId?: string,
 ): UseFolderImport {
 	const qc = useQueryClient();
+	const [copy] = useState(() => BATCH_IMPORT_COPY[batchPickerKind()]);
 	const [phase, setPhase] = useState<FolderImportPhase>("idle");
 	const [candidates, setCandidates] = useState<Candidate[]>([]);
 	const [pendingProbes, setPendingProbes] = useState(0);
@@ -69,10 +80,6 @@ export function useFolderImport(
 	// sheet goes away rather than keep reading files into a dead component.
 	const abortRef = useRef(false);
 	const cancelImportRef = useRef(false);
-	// Probing yields to the import run. Both read whole files, so letting them
-	// overlap would hold two books in memory at once, which is the peak the
-	// sequential runner exists to avoid.
-	const probesPausedRef = useRef(false);
 	useEffect(() => {
 		abortRef.current = false;
 		return () => {
@@ -87,11 +94,11 @@ export function useFolderImport(
 		let remaining = files.length;
 		setPendingProbes(remaining);
 		for (const candidate of files) {
-			if (abortRef.current || probesPausedRef.current) return;
+			if (abortRef.current) return;
 			const key = candidateKey(candidate);
 			try {
 				const probe = await probeScannedFile(candidate.file);
-				if (abortRef.current || probesPausedRef.current) return;
+				if (abortRef.current) return;
 				setCandidates((current) => applyProbe(current, key, probe, titlesRef.current));
 			} catch (err) {
 				// A probe failure only costs this card its cover and real title; the
@@ -111,12 +118,12 @@ export function useFolderImport(
 			const scan = await pickBookFolder();
 			if (abortRef.current) return;
 			if (scan.files.length === 0) {
-				toast.warning("No books found in that folder");
+				toast.warning(copy.nothingFound);
 				onClose();
 				setPhase("idle");
 				return;
 			}
-			const found = toCandidates(scan.files);
+			const found = toCandidates(scan.files, titlesRef.current);
 			setTruncated(scan.truncated);
 			setCandidates(found);
 			setPhase("review");
@@ -127,23 +134,33 @@ export function useFolderImport(
 			if (!(err instanceof Error)) return;
 			const entry = ERROR_TOASTS[err.message];
 			if (entry) toast.warning(entry.msg);
-			else if (!ALERT_SUPPRESSED.has(err.message)) toast.error("Couldn't scan that folder");
+			else if (!ALERT_SUPPRESSED.has(err.message)) toast.error(copy.scanFailed);
 		}
-	}, [onClose, probeAll]);
+	}, [copy, onClose, probeAll]);
 
 	const beginImport = useCallback(async () => {
 		const selected = candidates.filter((candidate) => candidate.selected).map((c) => c.file);
-		if (selected.length === 0) return;
+		// Probes decide what is a duplicate, and both read whole files: importing
+		// during them would import duplicates and hold two books in memory.
+		if (selected.length === 0 || pendingProbes > 0) return;
 
 		cancelImportRef.current = false;
-		// Stop probing before the first file is read. Cards still waiting keep
-		// their filenames, which is the right trade against holding two books.
-		probesPausedRef.current = true;
-		setPendingProbes(0);
 		setPhase("importing");
+		let joinFailures = 0;
 		const batch = await runBatchImport({
 			files: selected,
-			importFile: importScannedFile,
+			importFile: async (file) => {
+				const book = await importScannedFile(file);
+				if (!targetCollectionId) return book;
+				// The book is written: a failed join must not count the file as failed.
+				try {
+					await appendBooksToCollection(targetCollectionId, [book.id]);
+				} catch (err) {
+					joinFailures += 1;
+					log.warn("book-import", "joining the collection failed:", err);
+				}
+				return book;
+			},
 			onProgress: setProgress,
 			isCancelled: () => cancelImportRef.current || abortRef.current,
 		});
@@ -153,13 +170,19 @@ export function useFolderImport(
 		if (batch.imported > 0) {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			if (targetCollectionId) qc.invalidateQueries({ queryKey: collectionKeys.all });
 			scheduleSyncPush();
+		}
+		if (joinFailures > 0) {
+			toast.error(
+				`${joinFailures} ${joinFailures === 1 ? "book" : "books"} couldn't be added to the collection`,
+			);
 		}
 
 		if (abortRef.current) return;
 		setResult(batch);
 		setPhase("done");
-	}, [candidates, qc]);
+	}, [candidates, pendingProbes, qc, targetCollectionId]);
 
 	const cancelImport = useCallback(() => {
 		cancelImportRef.current = true;
@@ -180,6 +203,7 @@ export function useFolderImport(
 
 	return {
 		phase,
+		copy,
 		candidates,
 		formats: useMemo(() => formatCounts(candidates), [candidates]),
 		selectedCount: candidates.filter((candidate) => candidate.selected).length,
@@ -192,7 +216,7 @@ export function useFolderImport(
 		toggle: useCallback((key: string) => setCandidates((c) => toggleCandidate(c, key)), []),
 		selectAll: useCallback(
 			(selected: boolean, format?: BookFileFormat) =>
-				setCandidates((c) => setSelection(c, selected, format)),
+				setCandidates((c) => setSelection(c, selected, titlesRef.current, format)),
 			[],
 		),
 		beginImport,

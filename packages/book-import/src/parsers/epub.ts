@@ -21,6 +21,7 @@ import { titleFromFileName } from "../utils/file-format";
 import { MAX_DECODE_PIXELS, prepareImage, sniffImageDimensions } from "../utils/image-analysis";
 import { assertBytes } from "../utils/raw-input";
 import { canParseEpub } from "./matchers";
+import { type OpfSeries, readOpfSeries } from "./opf-series";
 
 export const epubParser: Parser = {
 	id: "epub",
@@ -39,6 +40,8 @@ export const epubParser: Parser = {
 			language,
 			images,
 			imageAnchors,
+			seriesName,
+			seriesIndex,
 		} = await parseEpub(
 			input.bytes,
 			input.fileName,
@@ -56,6 +59,8 @@ export const epubParser: Parser = {
 			language,
 			images,
 			imageAnchors,
+			seriesName,
+			seriesIndex,
 			fileFormat: "epub",
 			original: { bytes: input.bytes, extension: "epub" },
 		};
@@ -153,6 +158,9 @@ async function openEpubBook(buffer: ArrayBuffer): Promise<EpubBook> {
 			book.ready,
 			new Promise<never>((_, reject) => {
 				timer = setTimeout(() => reject(new Error("EPUB_INVALID")), EPUB_READY_TIMEOUT_MS);
+				// A zip epubjs cannot open (truncated, no container.xml) never
+				// rejects `ready`; it only emits this.
+				book.on("openFailed", () => reject(new Error("EPUB_INVALID")));
 			}),
 		]);
 	} catch (err) {
@@ -182,6 +190,21 @@ function readEpubMetadata(
 	};
 }
 
+/** The package document's series. A broken or missing OPF text is no series,
+ *  never a failed import. */
+async function readEpubSeries(book: EpubBook): Promise<OpfSeries> {
+	try {
+		// epubjs sets `packagePath` at runtime but leaves it out of its typings.
+		const { packagePath } = book.container as { packagePath?: string };
+		if (!packagePath) return { seriesName: null, seriesIndex: null };
+		// `packagePath` is relative to the zip root; `book.resolve` would put it
+		// under the package folder a second time (OEBPS/OEBPS/content.opf).
+		const opf = await book.archive.getText(`/${packagePath.replace(/^\/+/, "")}`);
+		if (opf) return readOpfSeries(opf);
+	} catch {}
+	return { seriesName: null, seriesIndex: null };
+}
+
 /**
  * Title, author, and cover without touching the spine. A folder scan probes
  * every candidate file, and the section walk below is where all the time goes.
@@ -203,26 +226,30 @@ async function parseEpub(
 	filename: string,
 	onProgress: ((pct: number) => void) | undefined,
 	prepare: PrepareImage,
-): Promise<{
-	content: string;
-	title: string;
-	author: string | null;
-	coverImage: string | null;
-	chapters: Chapter[];
-	linkRanges: ImportLink[] | null;
-	language: string | null;
-	images: ImportImage[] | null;
-	imageAnchors: ImportImageAnchor[] | null;
-}> {
+): Promise<
+	{
+		content: string;
+		title: string;
+		author: string | null;
+		coverImage: string | null;
+		chapters: Chapter[];
+		linkRanges: ImportLink[] | null;
+		language: string | null;
+		images: ImportImage[] | null;
+		imageAnchors: ImportImageAnchor[] | null;
+	} & OpfSeries
+> {
 	const book = await openEpubBook(buffer);
 	const { title, author, language } = readEpubMetadata(book, filename);
+	const { seriesName, seriesIndex } = await readEpubSeries(book);
 
 	const coverImage = await extractCover(book);
 
 	// NCX/nav docs nest chapters under parts via `subitems`, so walk the tree.
 	const toc = await book.loaded.navigation;
 	const tocMap = new Map<string, string>();
-	const walkToc = (items: NavItem[]) => {
+	const tocLevel = new Map<string, number>();
+	const walkToc = (items: NavItem[], level: number) => {
 		for (const item of items) {
 			const href = item.href?.split("#")[0];
 			if (href && item.label) {
@@ -230,14 +257,15 @@ async function parseEpub(
 				// can't break the single-line `# ` heading invariant the reader and
 				// injectTocHeading rely on (a `\n\n` would split it into two paragraphs).
 				tocMap.set(href, item.label.replace(/\s+/g, " ").trim());
+				tocLevel.set(href, level);
 			}
 			if (item.subitems?.length) {
-				walkToc(item.subitems);
+				walkToc(item.subitems, level + 1);
 			}
 		}
 	};
 	if (toc?.toc) {
-		walkToc(toc.toc);
+		walkToc(toc.toc, 0);
 	}
 
 	// spine.length is not typed but exists at runtime; fall back to counting via
@@ -308,7 +336,8 @@ async function parseEpub(
 
 		const chapterTitle = tocMap.get(sections[i].href);
 		if (chapterTitle) {
-			chapters.push({ title: chapterTitle, startByte: byteOffset });
+			const level = tocLevel.get(sections[i].href) ?? 0;
+			chapters.push({ title: chapterTitle, startByte: byteOffset, ...(level > 0 && { level }) });
 		}
 
 		for (const link of sections[i].links) {
@@ -353,6 +382,8 @@ async function parseEpub(
 		language,
 		images: images.length > 0 ? images : null,
 		imageAnchors: imageAnchors.length > 0 ? imageAnchors : null,
+		seriesName,
+		seriesIndex,
 	};
 }
 

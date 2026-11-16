@@ -6,6 +6,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
 import { getTrustedAuthOrigins } from "./allowed-origins";
+import { DISABLED_AUTH_PATHS } from "./auth-disabled-paths";
 import { generateDeviceLinkUserCode } from "./device-link-code";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
@@ -25,6 +26,8 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,
+		// A reset is what a user does after a suspected takeover; the attacker's sessions must end with it.
+		revokeSessionsOnPasswordReset: true,
 		sendResetPassword: async ({ user, url }) => {
 			await sendMail({ to: user.email, ...passwordResetEmail(url) });
 		},
@@ -84,10 +87,7 @@ export const auth = betterAuth({
 			verificationUri: `${requireEnv("BETTER_AUTH_URL")}/link`,
 		}),
 	],
-	// Accounts are deleted only through deleteUserAccount, which purges and
-	// deletes in one transaction. better-auth's own routes delete the user row
-	// separately from any purge (or skip it), so they are switched off.
-	disabledPaths: ["/delete-user", "/admin/remove-user"],
+	disabledPaths: DISABLED_AUTH_PATHS,
 });
 
 export type Session = typeof auth.$Infer.Session;

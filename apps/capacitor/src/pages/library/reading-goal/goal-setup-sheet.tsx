@@ -1,4 +1,4 @@
-import { inclusiveDays } from "@lesefluss/core";
+import { inclusiveDays, modeSpeed } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -7,10 +7,12 @@ import {
 	DrawerTitle,
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { toast } from "../../../components/toast";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingGoal } from "../../../services/db/schema";
 import { areRemindersSupported } from "../../../services/goal-reminders";
@@ -18,18 +20,26 @@ import type { ReadingGoalPlan } from "../../../services/stats/reading-goal";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
 import { log } from "../../../utils/log";
 import { minutesLabel, percentLabel } from "../../../utils/reading-time";
+import { UNDO_WINDOW_MS } from "../stats/use-undoable-delete";
 import {
 	daysToSlider,
 	GOAL_PRESETS,
 	type GoalSetup,
+	type GoalUnit,
 	goalSpec,
+	isMinuteSetup,
 	lockToMode,
+	MINUTE_PRESETS,
 	MISSED_DAY_LABEL,
+	minutesForDays,
 	newGoalSetup,
 	presetDays,
+	rsvpComparison,
 	seedFromGoal,
 	setupValues,
 	sliderToDays,
+	switchGoalUnit,
+	type UnitSwitch,
 } from "./goal-model";
 import { GoalReminderRow } from "./goal-reminder-row";
 
@@ -49,6 +59,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 	const seed = existing ? seedFromGoal(existing.goal, existing.plan) : newGoalSetup(today);
 	const [setup, setSetup] = useState<GoalSetup>(seed);
 	const [isCustomOpen, setCustomOpen] = useState(false);
+	const [unitSwitch, setUnitSwitch] = useState<UnitSwitch | null>(null);
 	const seedReminder = existing?.goal.reminderTime ?? null;
 	const [reminderTime, setReminderTime] = useState<string | null>(seedReminder);
 	const [wasOpen, setWasOpen] = useState(isOpen);
@@ -57,24 +68,48 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		setWasOpen(isOpen);
 		if (isOpen) {
 			setSetup(seed);
+			setUnitSwitch(null);
 			setCustomOpen(false);
 			setReminderTime(seedReminder);
 		}
 	}
 
+	const { data: speedModel } = queryHooks.useStatsSpeedModel();
+	const { data: settings } = queryHooks.useSettings();
 	const create = queryHooks.useCreateReadingGoal();
 	const replan = queryHooks.useReplanReadingGoal();
 	const setReminder = queryHooks.useSetGoalReminder();
 	const remove = queryHooks.useDeleteReadingGoal();
+	const restore = queryHooks.useRestoreReadingGoal();
 	const isBusy = create.isPending || replan.isPending || setReminder.isPending || remove.isPending;
 
-	const values = setupValues(setup, {
+	function removeGoal(goal: ReadingGoal) {
+		remove.mutate(
+			{ id: goal.id },
+			{
+				onSuccess: () => {
+					onClose();
+					toast.success("Goal removed", {
+						action: { label: "Undo", onClick: () => restore.mutate({ goal }) },
+						duration: UNDO_WINDOW_MS,
+					});
+				},
+			},
+		);
+	}
+
+	const setupBook = {
 		today,
 		wordCount: book.wordCount,
 		// A replan restarts from the start of today, so an edit measures from there too.
 		wordPosition: existing ? existing.plan.dayStartWord : book.wordPosition,
 		wpm,
-	});
+	};
+	const values = setupValues(setup, setupBook);
+	const isMinutes = isMinuteSetup(setup);
+	const rsvp = settings
+		? rsvpComparison(values, setupBook, modeSpeed(speedModel, "rsvp", settings.wpm))
+		: null;
 	const presetMatch = GOAL_PRESETS.find((p) => presetDays(today, p.months) === values.days);
 	const isCustom = isCustomOpen || !presetMatch;
 	const dateLocked = setup.lock === "date";
@@ -82,9 +117,21 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		existing !== null &&
 		setup.lock === seed.lock &&
 		setup.days === seed.days &&
-		setup.dailyPercent === seed.dailyPercent;
+		setup.dailyPercent === seed.dailyPercent &&
+		(setup.dailyMinutes ?? null) === (seed.dailyMinutes ?? null);
 
-	const setDays = (days: number) => setSetup((s) => ({ lock: s.lock, days }));
+	const setDays = (days: number) =>
+		setSetup((s) =>
+			isMinuteSetup(s)
+				? { lock: s.lock, days, dailyMinutes: minutesForDays(days, setupBook) }
+				: { lock: s.lock, days },
+		);
+	const setUnit = (unit: GoalUnit) => {
+		if (!dateLocked && (unit === "minutes") === isMinutes) return;
+		const switched = switchGoalUnit(setup, unit, values, unitSwitch);
+		setSetup(switched.setup);
+		setUnitSwitch(switched.last);
+	};
 
 	const save = async () => {
 		const spec = goalSpec(setup.lock, values);
@@ -108,7 +155,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 			}}
 			snapPoints={SNAP_POINTS}
 		>
-			<DrawerContent>
+			<DrawerContent className="sm:mx-auto sm:max-w-lg">
 				<DrawerHeader className="flex-row items-baseline justify-between gap-3 text-left">
 					<DrawerTitle>Reading goal</DrawerTitle>
 					<span className="truncate text-muted-foreground text-xs">
@@ -122,8 +169,14 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 						<ValueCard
 							isLocked={!dateLocked}
 							onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
-							value={`${percentLabel(values.dailyPercent)}%`}
-							label={`a day · ${minutesLabel(values.minutes)}`}
+							value={
+								isMinutes ? `${values.dailyMinutes} min` : `${percentLabel(values.dailyPercent)}%`
+							}
+							label={
+								isMinutes
+									? `a day · ${percentLabel(values.dailyPercent)}%`
+									: `a day · ${minutesLabel(values.minutes)}`
+							}
 							lockLabel="Keep daily amount"
 						/>
 						<ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
@@ -134,6 +187,30 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 							label={`finish · ${values.days} d`}
 							lockLabel="Keep finish date"
 						/>
+					</div>
+
+					<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
+						<FilterChip selected={!isMinutes} onClick={() => setUnit("percent")}>
+							% a day
+						</FilterChip>
+						<FilterChip selected={isMinutes} onClick={() => setUnit("minutes")}>
+							Min a day
+						</FilterChip>
+						{isMinutes &&
+							MINUTE_PRESETS.map((minutes) => {
+								const isOn = values.dailyMinutes === minutes;
+								return (
+									<FilterChip
+										key={minutes}
+										selected={isOn}
+										onClick={() =>
+											setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
+										}
+									>
+										{minutes} min
+									</FilterChip>
+								);
+							})}
 					</div>
 
 					<div className="flex flex-col gap-3">
@@ -158,7 +235,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 								"aria-valuetext": `${values.days} days, finish ${formatDayKey(values.finishDate)}`,
 							}}
 						/>
-						<div className="flex justify-between text-[11px] text-muted-foreground">
+						<div className="flex justify-between text-[0.6875rem] text-muted-foreground">
 							<span>1 week</span>
 							<span>1 month</span>
 							<span>3 months</span>
@@ -170,27 +247,26 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 						{GOAL_PRESETS.map((p) => {
 							const isOn = !isCustom && presetMatch === p;
 							return (
-								<Chip
+								<FilterChip
 									key={p.label}
-									isOn={isOn}
-									aria-pressed={isOn}
+									selected={isOn}
 									onClick={() => {
 										setDays(presetDays(today, p.months));
 										setCustomOpen(false);
 									}}
 								>
 									{p.label}
-								</Chip>
+								</FilterChip>
 							);
 						})}
-						<Chip
-							isOn={isCustom}
+						<FilterChip
+							selected={isCustom}
 							aria-expanded={isCustomOpen}
 							onClick={() => setCustomOpen((open) => !open)}
 						>
 							<CalendarDays className="size-3.5" aria-hidden />
 							{isCustom ? formatDayKey(values.finishDate) : "Custom date"}
-						</Chip>
+						</FilterChip>
 					</div>
 
 					{isCustomOpen && (
@@ -208,6 +284,16 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 								className="min-h-11 rounded-md border border-input bg-background px-3 text-base text-foreground"
 							/>
 						</label>
+					)}
+
+					{rsvp && (
+						<div
+							className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
+							data-testid="goal-rsvp"
+						>
+							<span className="text-muted-foreground">RSVP at {rsvp.wpm} wpm</span>
+							<span className="font-semibold tabular-nums">{rsvp.value}</span>
+						</div>
 					)}
 
 					<div className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm">
@@ -231,7 +317,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 							variant="ghost"
 							className="text-destructive"
 							disabled={isBusy}
-							onClick={() => remove.mutate({ id: existing.goal.id }, { onSuccess: onClose })}
+							onClick={() => removeGoal(existing.goal)}
 						>
 							Remove goal
 						</Button>
@@ -260,7 +346,6 @@ function ValueCard({
 		<button
 			type="button"
 			onClick={onLock}
-			aria-pressed={isLocked}
 			aria-label={`${value}, ${label}. ${lockLabel}`}
 			className={cn(
 				"rounded-lg bg-muted/40 px-2.5 py-2 text-left",
@@ -268,7 +353,7 @@ function ValueCard({
 			)}
 		>
 			<span className="flex items-center justify-between gap-2">
-				<span className="font-bold text-[22px] tabular-nums leading-none">{value}</span>
+				<span className="font-bold text-[1.375rem] tabular-nums leading-none">{value}</span>
 				<LockIcon
 					className={cn(
 						"size-3.5 shrink-0",
@@ -277,24 +362,9 @@ function ValueCard({
 					aria-hidden
 				/>
 			</span>
-			<span className="mt-1 block text-[10px] text-muted-foreground uppercase tracking-wider">
+			<span className="mt-1 block text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 				{label}
 			</span>
-		</button>
-	);
-}
-
-function Chip({ isOn, children, ...props }: React.ComponentProps<"button"> & { isOn: boolean }) {
-	return (
-		<button
-			type="button"
-			className={cn(
-				"inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm",
-				isOn ? "border-foreground bg-foreground text-background" : "border-input",
-			)}
-			{...props}
-		>
-			{children}
 		</button>
 	);
 }

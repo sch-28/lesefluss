@@ -63,6 +63,25 @@ export function nextIntent(state: TagState, current: TagIntent): TagIntent {
 }
 
 /**
+ * "edit" offers both directions; the T and Shift+T sheets offer one, so a tap
+ * only toggles that intent on and off.
+ */
+export type TagSheetMode = "edit" | "add" | "remove";
+
+export function nextIntentFor(mode: TagSheetMode, state: TagState, current: TagIntent): TagIntent {
+	if (mode === "edit") return nextIntent(state, current);
+	return current === "leave" ? mode : "leave";
+}
+
+/** The rows a mode can act on: an add sheet skips tags every book has, a remove
+ *  sheet the ones no book has. */
+export function rowsForMode(rows: readonly TagRow[], mode: TagSheetMode): TagRow[] {
+	if (mode === "add") return rows.filter((row) => row.state !== "all");
+	if (mode === "remove") return rows.filter((row) => row.state !== "none");
+	return [...rows];
+}
+
+/**
  * One book's tags after the intents are applied, preserving its existing order.
  * Removals happen first so a tag that is both removed and re-added ends up at
  * the end rather than in its old position.

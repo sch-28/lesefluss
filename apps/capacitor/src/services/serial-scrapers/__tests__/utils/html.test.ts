@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHtml, stripHidden } from "../../utils/html";
+import { parseHtml, stripHidden, stripTags } from "../../utils/html";
 
 describe("parseHtml", () => {
 	it("returns a parsed Document whose body is queryable", () => {
@@ -50,5 +50,22 @@ describe("stripHidden", () => {
 		const root = buildRoot(`<p id="a" aria-hidden="false">keep</p>`);
 		stripHidden(root);
 		expect(root.querySelector("#a")).not.toBeNull();
+	});
+});
+
+describe("stripTags", () => {
+	it("keeps a blank line between paragraphs and collapses whitespace inside one", () => {
+		expect(stripTags("<p>First  one\n spans lines.</p><p>Second &amp; last.</p>")).toBe(
+			"First one spans lines.\n\nSecond & last.",
+		);
+	});
+
+	it("reads a double <br> as a paragraph break and a single one as a space", () => {
+		expect(stripTags("One<br>still one<br><br>Two")).toBe("One still one\n\nTwo");
+	});
+
+	it("returns null for markup without text", () => {
+		expect(stripTags("<p> </p><br>")).toBeNull();
+		expect(stripTags(null)).toBeNull();
 	});
 });

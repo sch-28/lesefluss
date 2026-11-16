@@ -45,6 +45,7 @@ export function reminderId(goalId: string, date: string): number {
 }
 
 function reminderBody(plan: Extract<ReadingGoalPlanResult, { kind: "plan" }>): string {
+	if (plan.dailyMinutes != null) return `today ${minutesLabel(plan.dailyMinutes)}`;
 	return `today ${percentLabel(plan.dailyTarget.percent)}% · ${minutesLabel(plan.dailyTarget.minutes)}`;
 }
 

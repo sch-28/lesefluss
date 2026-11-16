@@ -13,8 +13,7 @@ const goalData: { current: { goal: ReadingGoal; plan: ReadingGoalPlan } | null }
 vi.mock("../../../../services/db/hooks", () => ({
 	queryHooks: {
 		useReadingGoalPlan: () => ({ data: goalData.current, isPending: false }),
-		useStatsBook: () => ({ data: undefined }),
-		useStatsMeasuredSpeed: () => ({ data: undefined }),
+		useStatsSpeedModel: () => ({ data: undefined }),
 	},
 }));
 vi.mock("../goal-chart", () => ({ GoalChart: () => <div data-testid="goal-chart" /> }));
@@ -59,7 +58,8 @@ describe("GoalCard", () => {
 		const text = view.text();
 		expect(text).toContain("Goal · by");
 		expect(text).toMatch(/5\.0 \/ 11\.3%/);
-		expect(text).toContain("today ·");
+		expect(text).toContain("today");
+		expect(text).not.toMatch(/\d+ of \d+ min/);
 		expect(text).toContain("−5.0%");
 		expect(text).toContain("vs plan · −0.5 d");
 		expect(text).toContain("1 d daydays met");
@@ -105,12 +105,13 @@ describe("GoalChip", () => {
 		);
 		const chip = view.container.querySelector('[data-testid="goal-chip"]');
 		expect(chip?.getAttribute("data-met")).toBe("false");
-		expect(chip?.textContent).toBe("4.0/ 10.0%");
+		expect(chip?.textContent).toBe("Today 4.0 of 10.0%");
 
 		await view.rerender(
 			<GoalChip plan={plan} today={liveToday(plan, 120, 1000)} onOpenDetails={() => {}} />,
 		);
 		expect(chip?.getAttribute("data-met")).toBe("true");
 		expect(chip?.getAttribute("aria-label")).toBe("Today's target met: 10.0%");
+		expect(chip?.textContent).toBe("Today 10.0 of 10.0%");
 	});
 });

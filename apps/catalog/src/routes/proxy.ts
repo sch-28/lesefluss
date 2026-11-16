@@ -1,6 +1,5 @@
-import { promises as dns } from "node:dns";
-import { isIP } from "node:net";
 import { Hono } from "hono";
+import { safeFetch } from "../lib/safe-fetch.js";
 
 const MAX_ARTICLE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB — covers occasionally exceed 5MB before TASK-100 lands
@@ -56,7 +55,7 @@ export const proxyRoute = new Hono()
 			return c.json({ error: "too large" }, 413);
 		}
 
-		const validated = await validateAndCheckSsrf(rawUrl);
+		const validated = validateUrl(rawUrl);
 		if ("status" in validated) return c.json(validated.body, validated.status);
 		if (method === "POST") {
 			const postCheck = validateArticlePost(validated.url, upstreamBody, reqContentType);
@@ -92,7 +91,7 @@ export const proxyRoute = new Hono()
 		if ("status" in read) return c.json(read.body, read.status);
 
 		const html = decodeHtml(read.buf, contentType);
-		return c.json({ html, contentType, finalUrl: upstream.url });
+		return c.json({ html, contentType, finalUrl: fetched.finalUrl });
 	})
 	// GET /proxy/image?url=<encoded>
 	// → 200 image bytes (cache-friendly headers, streamed straight from upstream)
@@ -110,7 +109,7 @@ export const proxyRoute = new Hono()
 	.get("/image", async (c) => {
 		const rawUrl = c.req.query("url")?.trim() ?? "";
 
-		const validated = await validateAndCheckSsrf(rawUrl);
+		const validated = validateUrl(rawUrl);
 		if ("status" in validated) return c.json(validated.body, validated.status);
 
 		if (!isAllowedImageHost(validated.url.hostname)) {
@@ -150,11 +149,8 @@ export const proxyRoute = new Hono()
 		return new Response(imageBody.pipeThrough(limiter), { status: 200, headers });
 	});
 
-/**
- * Validate raw URL string and SSRF-check the resolved hostname. Centralises the
- * preflight that both proxy routes need.
- */
-async function validateAndCheckSsrf(rawUrl: string): Promise<ValidatedUrl | ProxyError> {
+/** The SSRF check itself runs per redirect hop in `safeFetch`. */
+function validateUrl(rawUrl: string): ValidatedUrl | ProxyError {
 	if (!rawUrl) return { status: 400, body: { error: "missing url" } };
 
 	let parsed: URL;
@@ -167,33 +163,19 @@ async function validateAndCheckSsrf(rawUrl: string): Promise<ValidatedUrl | Prox
 		return { status: 400, body: { error: "unsupported protocol" } };
 	}
 
-	// Block requests to private IPs (SSRF). Covers IP-literal hostnames and
-	// names that resolve to private ranges via DNS. Defense-in-depth, not
-	// air-tight — DNS rebinding could theoretically defeat the gap between
-	// check and fetch (TODO: close the window by fetching the resolved IP
-	// directly with a Host header override).
-	try {
-		const addresses = await resolveAll(parsed.hostname);
-		if (addresses.some((a) => isPrivateAddress(a))) {
-			return { status: 400, body: { error: "blocked target" } };
-		}
-	} catch {
-		return { status: 400, body: { error: "dns lookup failed" } };
-	}
-
 	return { url: parsed };
 }
 
 /**
- * Fetch `url` upstream with the standard UA + timeout. Returns the raw Response
- * on success or a structured error the caller can pass to `c.json`.
+ * Fetch `url` upstream with the standard UA + timeout. Returns the Response and
+ * the URL after redirects, or a structured error the caller can pass to `c.json`.
  */
 async function fetchUpstream(
 	url: URL,
 	accept: string,
 	tag: string,
 	opts: { method?: "GET" | "POST"; body?: string; contentType?: string } = {},
-): Promise<{ res: Response } | ProxyError> {
+): Promise<{ res: Response; finalUrl: string } | ProxyError> {
 	const method = opts.method ?? "GET";
 	const headers: Record<string, string> = {
 		// Bare UA — many sites return 403 to the default `node-fetch` one.
@@ -203,26 +185,26 @@ async function fetchUpstream(
 	if (method === "POST" && opts.contentType) {
 		headers["Content-Type"] = opts.contentType;
 	}
-	let res: Response;
-	try {
-		res = await fetch(url.toString(), {
-			method,
-			body: method === "POST" ? (opts.body ?? "") : undefined,
-			redirect: "follow",
-			signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-			headers,
-		});
-	} catch (err) {
-		console.warn(`[proxy/${tag}] upstream fetch failed:`, err);
-		return { status: 502, body: { error: "upstream failed" } };
+	const fetched = await safeFetch(url.toString(), {
+		method,
+		body: method === "POST" ? (opts.body ?? "") : undefined,
+		signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+		headers,
+	});
+	if ("reason" in fetched) {
+		if (fetched.reason === "upstream failed" || fetched.reason === "too many redirects") {
+			return { status: 502, body: { error: "upstream failed" } };
+		}
+		return { status: 400, body: { error: fetched.reason } };
 	}
+	const { res, finalUrl } = fetched;
 	if (!res.ok || !res.body) {
 		console.warn(
 			`[proxy/${tag}] upstream returned ${res.status} for ${url.hostname}${url.pathname}`,
 		);
 		return { status: 502, body: { error: `upstream failed (${res.status})` } };
 	}
-	return { res };
+	return { res, finalUrl };
 }
 
 /**
@@ -345,49 +327,6 @@ async function readRequestText(request: Request, maxBytes: number): Promise<stri
 
 function byteLength(value: string): number {
 	return new TextEncoder().encode(value).byteLength;
-}
-
-async function resolveAll(hostname: string): Promise<string[]> {
-	// IP literals: use as-is.
-	if (isIP(hostname)) return [hostname];
-	const results = await dns.lookup(hostname, { all: true });
-	return results.map((r) => r.address);
-}
-
-function isPrivateAddress(addr: string): boolean {
-	const v = isIP(addr);
-	if (v === 4) return isPrivateIPv4(addr);
-	if (v === 6) return isPrivateIPv6(addr);
-	return true; // unknown → refuse
-}
-
-function isPrivateIPv4(addr: string): boolean {
-	const parts = addr.split(".").map((n) => Number.parseInt(n, 10));
-	if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return true;
-	const a = parts[0] as number;
-	const b = parts[1] as number;
-	if (a === 10) return true; // 10.0.0.0/8
-	if (a === 127) return true; // loopback
-	if (a === 169 && b === 254) return true; // link-local (incl. 169.254.169.254 metadata)
-	if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
-	if (a === 192 && b === 168) return true; // 192.168.0.0/16
-	if (a === 0) return true; // 0.0.0.0/8
-	if (a >= 224) return true; // multicast + reserved
-	return false;
-}
-
-function isPrivateIPv6(addr: string): boolean {
-	const lower = addr.toLowerCase();
-	if (lower === "::1" || lower === "::") return true; // loopback + unspecified
-	if (lower.startsWith("fe80:")) return true; // link-local
-	if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // ULA fc00::/7
-	if (lower.startsWith("ff")) return true; // multicast
-	// IPv4-mapped (::ffff:a.b.c.d) — check the embedded v4 address.
-	if (lower.startsWith("::ffff:")) {
-		const v4 = lower.slice(7);
-		if (isIP(v4) === 4) return isPrivateIPv4(v4);
-	}
-	return false;
 }
 
 function concatChunks(chunks: Uint8Array[], total: number): Uint8Array {

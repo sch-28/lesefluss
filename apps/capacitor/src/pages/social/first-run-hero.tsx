@@ -27,18 +27,21 @@ const STEPS = [
 /** The trailer on a cover-lit card: what social reading looks like before there is anyone to read with. */
 export function TrailerCard({
 	self,
+	isDemoBook = false,
 	children,
 }: {
 	self?: { name: string; avatarUrl: string | null };
+	isDemoBook?: boolean;
 	children: React.ReactNode;
 }) {
-	const book = useCurrentBook();
+	const currentBook = useCurrentBook();
+	const book = isDemoBook ? null : currentBook;
 	return (
 		<section className="relative mt-4 overflow-hidden rounded-3xl border border-border bg-card text-card-foreground">
 			<CoverBackdrop src={book?.coverSrc ?? null} />
-			<div className="relative p-[18px]">
-				<div className="rounded-2xl border border-border bg-card/80 p-3.5">
-					<BuddyReadTrailer self={self} />
+			<div className="relative p-4">
+				<div className="rounded-2xl border border-border bg-card/80 p-3">
+					<BuddyReadTrailer self={self} isDemoBook={isDemoBook} />
 				</div>
 				{children}
 			</div>
@@ -61,10 +64,10 @@ export function FirstRunHero({
 	return (
 		<>
 			<TrailerCard self={me ? { name: me.name, avatarUrl: me.avatarUrl } : undefined}>
-				<h2 className="m-0 mt-5 font-bold text-[26px] text-foreground leading-tight tracking-tight">
+				<h2 className="m-0 mt-6 font-bold text-[26px] text-foreground leading-tight tracking-tight">
 					Read together, wherever you are.
 				</h2>
-				<p className="m-0 mt-2.5 text-[14.5px] text-muted-foreground leading-relaxed">
+				<p className="m-0 mt-3 text-[14.5px] text-muted-foreground leading-relaxed">
 					Pick a book with a friend and watch each other move through it. React to chapters, leave
 					notes, keep each other going.
 				</p>
@@ -74,7 +77,7 @@ export function FirstRunHero({
 						{outgoing.map((r) => (
 							<li
 								key={r.requestId}
-								className="flex items-center gap-2.5 rounded-xl bg-primary/10 py-1.5 pr-1.5 pl-3"
+								className="flex items-center gap-2 rounded-xl bg-primary/10 py-1 pr-1 pl-3"
 							>
 								<SocialAvatar name={r.name} avatarUrl={r.avatarUrl} size="sm" />
 								<span className="min-w-0 flex-1 truncate text-sm">
@@ -94,13 +97,13 @@ export function FirstRunHero({
 					</ul>
 				)}
 
-				<Button asChild size="lg" className="mt-5 h-12 w-full rounded-xl text-[15px]">
+				<Button asChild size="lg" className="mt-6 h-12 w-full rounded-xl text-[15px]">
 					<Link to="/tabs/social/invite-link">
 						<Link2 /> Invite a reading buddy
 					</Link>
 				</Button>
 				<p className="m-0 mt-4 text-muted-foreground text-xs">Got an invite link from someone?</p>
-				<PasteInviteField className="mt-1.5" />
+				<PasteInviteField className="mt-2" />
 				{me && (
 					<Link
 						to="/tabs/social/profile/$userId"
@@ -120,13 +123,13 @@ export function FirstRunHero({
 
 export function HowItWorks() {
 	return (
-		<section className="mt-9 px-1">
+		<section className="mt-8">
 			<h3 className="m-0 font-bold text-[11px] text-muted-foreground uppercase tracking-widest">
 				How it works
 			</h3>
-			<ol className="m-0 mt-3.5 flex list-none flex-col gap-4 p-0">
+			<ol className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
 				{STEPS.map((step, i) => (
-					<li key={step.title} className="flex gap-3.5">
+					<li key={step.title} className="flex gap-3">
 						<span className="w-5 font-extrabold text-[26px] text-primary tabular-nums leading-none">
 							{i + 1}
 						</span>

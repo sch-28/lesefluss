@@ -1,4 +1,3 @@
-import { Browser } from "@capacitor/browser";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen, ExternalLink, Library, Plus, Share2 } from "lucide-react";
@@ -11,6 +10,7 @@ import {
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queries } from "../../services/db/queries";
+import { openLink } from "../../utils/open-link";
 import { type DetailAction, DetailShell } from "../_shared/detail-shell";
 import BookDetailShelves from "./book-detail-shelves";
 import { catalogFacts } from "./catalog-facts";
@@ -19,6 +19,7 @@ import { shareCatalogBook } from "./share-link";
 import { rememberTagLabels } from "./tag-labels";
 import { useCatalogImport } from "./use-catalog-import";
 import { useReadingSpeed } from "./use-reading-speed";
+import { useWishlistAction } from "./use-wishlist-action";
 
 interface Props {
 	catalogId?: string;
@@ -59,6 +60,18 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 	});
 
 	const externalUrl = externalSourceUrl(catalogId);
+	const wishlistAction = useWishlistAction(
+		book
+			? {
+					kind: "catalog",
+					ref: catalogId,
+					title: book.title,
+					author: book.author,
+					coverUrl: book.coverUrl,
+				}
+			: null,
+		existing === null && !!book?.epubUrl,
+	);
 
 	if (isPending || isError || !book) {
 		return (
@@ -75,6 +88,11 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 				error={isError ? error : undefined}
 				onRetry={() => refetch()}
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
+				headerActions={
+					isPending
+						? [{ label: "Share", icon: Share2, disabled: true, onClick: () => undefined }]
+						: undefined
+				}
 			/>
 		);
 	}
@@ -84,7 +102,6 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 	const isReading = isImporting && importer.intent === "read";
 	// An import started from a card elsewhere shows up as "adding".
 	const isAdding = isImporting && importer.intent !== "read";
-	const isStandardEbooks = book.source === "standard_ebooks";
 	const sourceName = CATALOG_SOURCE_LABELS[book.source];
 
 	let primary: DetailAction;
@@ -121,7 +138,7 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		primary = {
 			label: `Read on ${sourceName}`,
 			icon: ExternalLink,
-			onClick: () => void Browser.open({ url: externalUrl }),
+			onClick: () => openLink(externalUrl),
 		};
 	} else {
 		primary = {
@@ -131,6 +148,8 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		};
 	}
 
+	if (wishlistAction) secondary = [...secondary, wishlistAction];
+
 	// The author shelf spans every language; the results must too.
 	const openAuthor = (author: string) =>
 		router.navigate({ to: "/tabs/explore", search: { author, lang: "all" } });
@@ -139,7 +158,6 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		<DetailShell
 			backHref="/tabs/explore"
 			cover={getCoverUrl(book.id, book.coverUrl)}
-			eyebrow={isStandardEbooks ? sourceName : undefined}
 			title={book.title}
 			author={book.author}
 			onAuthorTap={book.author ? () => openAuthor(book.author ?? "") : undefined}

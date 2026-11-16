@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../../../components/toast";
 import { pollChapterList, removeSerial } from "../../serial-scrapers";
+import type { SeriesChapterLength } from "../../stats/what-if";
 import { queries } from "../queries";
 import type { SeriesActivity } from "../queries/series";
 import type { Book, Series } from "../schema";
@@ -20,11 +21,11 @@ function useSeriesList() {
 
 /** Single series row by id. Used when the reader needs provider metadata for a chapter. */
 function useSeries(seriesId: string | undefined | null) {
-	return useQuery<Series | undefined>({
+	return useQuery<Series | null>({
 		queryKey: serialKeys.detail(seriesId ?? ""),
 		// `enabled` gates the call when seriesId is nullish, so the empty-string
-		// fallback below is never executed in practice.
-		queryFn: () => queries.getSeries(seriesId ?? ""),
+		// fallback below is never executed in practice. React Query rejects undefined data.
+		queryFn: async () => (await queries.getSeries(seriesId ?? "")) ?? null,
 		enabled: !!seriesId,
 	});
 }
@@ -40,6 +41,13 @@ function useSeriesChapterCounts() {
 	return useQuery<Map<string, number>>({
 		queryKey: serialKeys.counts,
 		queryFn: () => queries.getSeriesChapterCounts(),
+	});
+}
+
+function useSeriesChapterLengths() {
+	return useQuery<Map<string, SeriesChapterLength[]>>({
+		queryKey: serialKeys.lengths,
+		queryFn: () => queries.getSeriesChapterLengths(),
 	});
 }
 
@@ -153,6 +161,7 @@ export const seriesHooks = {
 	useSeries,
 	useSeriesChapterCounts,
 	useSeriesActivity,
+	useSeriesChapterLengths,
 	useDeleteSeries,
 	useSeriesChapters,
 	useChapterListSync,

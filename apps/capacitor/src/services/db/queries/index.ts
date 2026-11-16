@@ -3,12 +3,27 @@
  * Individual modules stay as pure functions for testability; this just re-exports them
  * under one namespace so callers have a single import.
  */
+
+import {
+	addBookmark,
+	deleteBookmark,
+	getAllBookmarksForSync,
+	getBookmarksByBook,
+	hardDeleteBookmarks,
+	renameBookmark,
+	toggleBookmarkOnScreen,
+	upsertBookmarks,
+} from "./bookmarks";
 import {
 	addBookImages,
 	addBookWithContent,
 	addServerBookWithContent,
+	adoptBookStamps,
 	applyBookMerge,
+	backfillWordCounts,
 	deleteBook,
+	deleteOrphanedContentRows,
+	fillEmptyBookSeries,
 	getAllBooks,
 	getBook,
 	getBookByCatalogId,
@@ -18,16 +33,52 @@ import {
 	getBookImages,
 	getBooks,
 	getBooksForSync,
+	getSeriesBackfillCandidates,
 	hardDeleteBook,
 	loadBookWordIndex,
+	markFirstSitting,
 	parseChapters,
 	parseImageAnchors,
 	parseLinkRanges,
+	resetBookProgress,
 	setActiveBook,
 	setBookImageAnchors,
+	setMissingWordCount,
 	updateBook,
 	writeReaderPosition,
 } from "./books";
+import {
+	addBooksToCollection,
+	createCollection,
+	createCollectionWithBooks,
+	createSeriesCollection,
+	deleteCollection,
+	dismissBookFromCollection,
+	editCollection,
+	getAllCollectionBooksForSync,
+	getAllCollectionsForSync,
+	getCollectionBookIds,
+	getCollectionIdsForBook,
+	getCollectionMembers,
+	getCollectionMemberships,
+	getCollections,
+	getImportSeriesState,
+	getSeriesHintBooks,
+	getSeriesMembershipForBook,
+	getSeriesMemberships,
+	getSeriesReconcileRows,
+	insertMissingCollectionRows,
+	moveCollection,
+	removeBooksFromCollection,
+	renameCollection,
+	restoreEmptiedSeries,
+	setCollectionOrdered,
+	setCollectionView,
+	setMembershipOrder,
+	upsertCollectionBooks,
+	upsertCollections,
+} from "./collections";
+import { getOversizedCovers, getStoredCover, replaceStoredCover } from "./covers";
 import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
 import {
 	addEntry,
@@ -40,6 +91,7 @@ import {
 } from "./glossary";
 import {
 	addHighlight,
+	countHighlightsByBook,
 	deleteAllHighlights,
 	deleteHighlight,
 	deleteHighlightsByBook,
@@ -53,6 +105,7 @@ import {
 	completeFinishedGoals,
 	createGoal,
 	deleteGoal,
+	getActiveGoalPlans,
 	getAllGoalsForSync,
 	getGoalsWithReminders,
 	getReadingGoalPlan,
@@ -60,6 +113,7 @@ import {
 	hardDeleteGoals,
 	replanGoalById,
 	resolveActiveGoalConflicts,
+	restoreGoal,
 	setGoalReminder,
 	upsertGoals,
 } from "./reading-goals";
@@ -70,8 +124,9 @@ import {
 	deleteReadingSession,
 	deleteReadingSessions,
 	getAllReadingSessions,
-	getReadingSessionsPage,
+	getBookReadingSessions,
 	getReadingSessionsSince,
+	updateReadingSession,
 	upsertReadingSession,
 	upsertReadingSessions,
 } from "./reading-sessions";
@@ -85,6 +140,7 @@ import {
 	getSeries,
 	getSeriesActivity,
 	getSeriesChapterCounts,
+	getSeriesChapterLengths,
 	getSeriesChapters,
 	getSeriesEntryChapter,
 	getSeriesForSync,
@@ -96,26 +152,54 @@ import {
 	updateChapterIndex,
 	updateSeries,
 } from "./series";
-import { getSettings, saveSettings } from "./settings";
+import { adoptSettingsStamp, getSettings, saveSettings } from "./settings";
+import {
+	createSmartShelf,
+	deleteSmartShelf,
+	getAllSmartShelvesForSync,
+	getSmartShelves,
+	updateSmartShelf,
+	upsertSmartShelves,
+} from "./smart-shelves";
+import {
+	addSpeedTest,
+	deleteAllSpeedTests,
+	getLatestPlausibleSpeedTest,
+	getSpeedTests,
+	hardDeleteSpeedTests,
+	upsertSpeedTests,
+} from "./speed-tests";
 import {
 	getBookStats,
 	getCurrentlyReading,
 	getDailyReading,
 	getFinishedBooks,
 	getHourHistogram,
-	getMeasuredReadingSpeed,
+	getMilestones,
 	getPeriodTotals,
-	getReadingRates,
 	getReadingRecords,
+	getSpeedInsights,
+	getSpeedModel,
+	getSpeedTab,
 	getStreak,
 	getTopBooks,
 	getWpmTrend,
 } from "./stats";
+import {
+	addToWishlist,
+	deleteAllWishlist,
+	getAllWishlistForSync,
+	getWishlist,
+	hardDeleteWishlist,
+	removeFromWishlist,
+	upsertWishlist,
+} from "./wishlist";
 
 export const queries = {
 	// Settings
 	getSettings,
 	saveSettings,
+	adoptSettingsStamp,
 
 	// Devices
 	saveDevice,
@@ -137,19 +221,33 @@ export const queries = {
 	addBookImages,
 	addServerBookWithContent,
 	applyBookMerge,
+	adoptBookStamps,
 	writeReaderPosition,
 	loadBookWordIndex,
+	backfillWordCounts,
+	setMissingWordCount,
+	getSeriesBackfillCandidates,
+	fillEmptyBookSeries,
 	parseChapters,
 	parseLinkRanges,
 	parseImageAnchors,
 	setBookImageAnchors,
 	updateBook,
+	resetBookProgress,
+	markFirstSitting,
 	setActiveBook,
 	deleteBook,
 	hardDeleteBook,
+	deleteOrphanedContentRows,
+
+	// Covers
+	getOversizedCovers,
+	getStoredCover,
+	replaceStoredCover,
 
 	// Highlights
 	getHighlightsByBook,
+	countHighlightsByBook,
 	getAllHighlights,
 	addHighlight,
 	updateHighlight,
@@ -157,14 +255,25 @@ export const queries = {
 	deleteHighlightsByBook,
 	deleteAllHighlights,
 
+	// Bookmarks
+	getBookmarksByBook,
+	addBookmark,
+	toggleBookmarkOnScreen,
+	renameBookmark,
+	deleteBookmark,
+	getAllBookmarksForSync,
+	upsertBookmarks,
+	hardDeleteBookmarks,
+
 	// Reading sessions
 	getAllReadingSessions,
 	getReadingSessionsSince,
-	getReadingSessionsPage,
+	getBookReadingSessions,
 	countReadingSessions,
 	addReadingSession,
 	upsertReadingSession,
 	upsertReadingSessions,
+	updateReadingSession,
 	deleteAllReadingSessions,
 	deleteReadingSession,
 	deleteReadingSessions,
@@ -173,15 +282,55 @@ export const queries = {
 	getAllGoalsForSync,
 	createGoal,
 	deleteGoal,
+	restoreGoal,
 	completeFinishedGoals,
 	resolveActiveGoalConflicts,
 	upsertGoals,
 	hardDeleteAllGoals,
 	hardDeleteGoals,
+	getActiveGoalPlans,
 	getReadingGoalPlan,
 	replanGoalById,
 	setGoalReminder,
 	getGoalsWithReminders,
+
+	// Collections
+	getCollections,
+	createCollection,
+	createCollectionWithBooks,
+	editCollection,
+	renameCollection,
+	moveCollection,
+	deleteCollection,
+	addBooksToCollection,
+	removeBooksFromCollection,
+	restoreEmptiedSeries,
+	getCollectionBookIds,
+	getCollectionIdsForBook,
+	getSeriesMembershipForBook,
+	getSeriesMemberships,
+	getCollectionMemberships,
+	createSeriesCollection,
+	getAllCollectionsForSync,
+	getAllCollectionBooksForSync,
+	upsertCollections,
+	upsertCollectionBooks,
+	setCollectionOrdered,
+	setCollectionView,
+	setMembershipOrder,
+	getCollectionMembers,
+	getSeriesHintBooks,
+	getSeriesReconcileRows,
+	insertMissingCollectionRows,
+	getImportSeriesState,
+	dismissBookFromCollection,
+	// Smart shelves
+	getSmartShelves,
+	createSmartShelf,
+	updateSmartShelf,
+	deleteSmartShelf,
+	getAllSmartShelvesForSync,
+	upsertSmartShelves,
 
 	// Stats
 	getPeriodTotals,
@@ -192,9 +341,11 @@ export const queries = {
 	getReadingRecords,
 	getTopBooks,
 	getWpmTrend,
+	getSpeedTab,
 	getHourHistogram,
-	getMeasuredReadingSpeed,
-	getReadingRates,
+	getSpeedModel,
+	getSpeedInsights,
+	getMilestones,
 	getBookStats,
 
 	// Glossary
@@ -222,6 +373,7 @@ export const queries = {
 	cleanupOrphanedChapterRows,
 	getSeriesChapters,
 	getSeriesChapterCounts,
+	getSeriesChapterLengths,
 	getSeriesActivity,
 	getSeriesEntryChapter,
 	getNextChapter,
@@ -232,4 +384,21 @@ export const queries = {
 
 	// App launch
 	getLastReadBookId,
+
+	// Wishlist
+	getWishlist,
+	addToWishlist,
+	removeFromWishlist,
+	deleteAllWishlist,
+	getAllWishlistForSync,
+	upsertWishlist,
+	hardDeleteWishlist,
+
+	// Speed tests
+	addSpeedTest,
+	getSpeedTests,
+	getLatestPlausibleSpeedTest,
+	upsertSpeedTests,
+	hardDeleteSpeedTests,
+	deleteAllSpeedTests,
 };

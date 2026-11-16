@@ -19,11 +19,15 @@ export function ToggleRow({
 	const fallbackId = useId();
 	const switchId = id ?? fallbackId;
 	return (
-		<div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
-			<label htmlFor={switchId} className="flex min-w-0 flex-col">
+		// The whole row is the label, so a tap anywhere on it flips the switch.
+		<label
+			htmlFor={switchId}
+			className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2"
+		>
+			<span className="flex min-w-0 flex-col">
 				<span className="text-foreground text-sm">{title}</span>
 				{subtitle && <span className="text-muted-foreground text-xs">{subtitle}</span>}
-			</label>
+			</span>
 			<Switch
 				id={switchId}
 				checked={checked}
@@ -31,6 +35,6 @@ export function ToggleRow({
 				onCheckedChange={onCheckedChange}
 				aria-label={title}
 			/>
-		</div>
+		</label>
 	);
 }

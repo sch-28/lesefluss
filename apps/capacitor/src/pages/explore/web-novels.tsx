@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import type React from "react";
@@ -109,24 +109,26 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 				}
 			/>
 			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
-				<Input
-					ref={inputRef}
-					type="search"
-					inputMode="search"
-					enterKeyHint="search"
-					autoCapitalize="off"
-					autoCorrect="off"
-					spellCheck={false}
-					placeholder="e.g. The Wandering Inn, Cradle"
-					value={query}
-					onChange={(e) => setQuery(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							dismissKeyboard();
-						}
-					}}
-				/>
+				<InputHitArea>
+					<Input
+						ref={inputRef}
+						type="search"
+						inputMode="search"
+						enterKeyHint="search"
+						autoCapitalize="off"
+						autoCorrect="off"
+						spellCheck={false}
+						placeholder="e.g. The Wandering Inn, Cradle"
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								dismissKeyboard();
+							}
+						}}
+					/>
+				</InputHitArea>
 
 				<div className="mt-3 flex flex-wrap gap-2">
 					<Button

@@ -17,6 +17,35 @@
 
 import { startOfLocalDay } from "../../../utils/date-utils";
 
+/** Under `["books"]`, so adding, deleting or syncing books also refreshes counts and members. */
+export const collectionKeys = {
+	all: ["books", "collections"] as const,
+	members: (collectionId: string) => ["books", "collections", "members", collectionId] as const,
+	ofBook: (bookId: string) => ["books", "collections", "of-book", bookId] as const,
+	seriesOfBook: (bookId: string) => ["books", "collections", "series-of-book", bookId] as const,
+	memberships: ["books", "collections", "memberships"] as const,
+	seriesMemberships: ["books", "collections", "series-memberships"] as const,
+	memberRows: (collectionId: string) =>
+		["books", "collections", "member-rows", collectionId] as const,
+	importSeries: (seriesKey: string) =>
+		["books", "collections", "import-series", seriesKey] as const,
+};
+
+/** Under `["books"]` like collections, so a sync pull's book invalidation also refreshes shelves. */
+export const smartShelfKeys = {
+	all: ["books", "smart-shelves"] as const,
+};
+
+/** A book's text or word index: big, and a position save never changes them. */
+export function isBookPayloadKey(key: readonly unknown[]): boolean {
+	return key[0] === "books" && (key[2] === "content" || key[2] === "word-index");
+}
+
+/** Under `["books"]`, so a sync pull and every import refresh it. */
+export const wishlistKeys = {
+	all: ["books", "wishlist"] as const,
+};
+
 export const bookKeys = {
 	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,
@@ -38,6 +67,12 @@ export const bookKeys = {
 
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
+
+	/** bookId → highlight count, for the library table. Under `all` so returning to the library refreshes it. */
+	highlightCounts: ["books", "highlight-counts"] as const,
+
+	/** Bookmarks of a book, in reading order. */
+	bookmarks: (id: string) => ["books", id, "bookmarks"] as const,
 
 	/** Glossary entries visible inside a book (book-scoped + global). */
 	glossary: (id: string) => ["books", id, "glossary"] as const,
@@ -67,12 +102,14 @@ export const readingSessionKeys = {
 	/** All reading sessions across all books. */
 	all: ["reading-sessions"] as const,
 
-	/** Newest-first page, optionally scoped to one book. */
-	page: (limit: number, bookId?: string) =>
-		["reading-sessions", "page", bookId ?? "all", limit] as const,
+	/** One book's sessions, newest first, for its detail page. */
+	book: (bookId: string) => ["reading-sessions", "book", bookId] as const,
 
 	/** Row count, optionally scoped to one book. */
 	count: (bookId?: string) => ["reading-sessions", "count", bookId ?? "all"] as const,
+
+	/** Every session, newest first, for the Sessions tab. */
+	list: ["reading-sessions", "list"] as const,
 };
 
 export const serialKeys = {
@@ -87,6 +124,9 @@ export const serialKeys = {
 
 	/** Map<seriesId, SeriesActivity>. Totals + read-state per series for library filter/sort. */
 	activity: ["serials", "activity"] as const,
+
+	/** Map<seriesId, SeriesChapterLength[]>: every chapter's length and progress, for the cards' time. */
+	lengths: ["serials", "lengths"] as const,
 
 	/** Single series row by id (used by SeriesDetail). */
 	detail: (seriesId: string) => ["serials", "detail", seriesId] as const,
@@ -138,21 +178,40 @@ export const statsKeys = {
 	/** Top-N books since a cutoff. */
 	topBooks: (since: number, limit: number) => ["stats", "top-books", since, limit] as const,
 
-	/** WPM trend, bucketed to the selected period. */
-	wpmTrend: (period: string, dayStart: number) => ["stats", "wpm-trend", period, dayStart] as const,
+	/** One mode's WPM trend over a speed window, as of one local day. */
+	wpmTrend: (window: string, mode: string, dayStart: number) =>
+		["stats", "wpm-trend", window, mode, dayStart] as const,
 
 	/** Hour-of-day histogram. */
 	hourHistogram: ["stats", "hour-histogram"] as const,
 
-	/** Per-mode reading rates used to estimate time remaining. */
-	readingRates: ["stats", "reading-rates"] as const,
-	measuredSpeed: ["stats", "measured-speed"] as const,
+	/** The speed model behind every speed and time estimate. */
+	speedModel: (window: string) => ["stats", "speed-model", window] as const,
+	/** The speed model without some sittings: the average a finished visit is compared with. */
+	speedModelWithout: (window: string, sessionIds: readonly string[]) =>
+		["stats", "speed-model", window, "without", ...sessionIds] as const,
+	/** The speed model as it stood at an earlier time: the base of the speed delta. */
+	speedModelAsOf: (window: string, asOf: number) =>
+		["stats", "speed-model", window, "as-of", asOf] as const,
+	/** The Speed tab's insight tiles over a speed window. */
+	speedInsights: (window: string) => ["stats", "speed-insights", window] as const,
+	/** The Speed tab's per-book rows and records, all time. */
+	speedTab: ["stats", "speed-tab"] as const,
+	milestones: ["stats", "milestones"] as const,
+	/** Under stats: a new test moves the speed model and the trend's markers. */
+	speedTests: ["stats", "speed-tests"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
 
 	/** A book's active reading goal and its plan. Under stats so new sessions refresh it. */
-	goalPlan: (bookId: string, dayKey: string) => ["stats", "goal-plan", bookId, dayKey] as const,
+	goalPlan: (bookId: string, dayKey: string, window: string) =>
+		["stats", "goal-plan", bookId, dayKey, window] as const,
+	/** Every active goal's plan, for the sidebar's total of today. */
+	activeGoalPlans: (dayKey: string, window: string) =>
+		["stats", "goal-plan", "active", dayKey, window] as const,
+	/** The book the sidebar continues. Under stats: every finished sitting can change it. */
+	lastReadBook: ["stats", "last-read-book"] as const,
 	/** Every plan of one book. Its position counts too, so a move without a session must refresh it. */
 	goalPlansOf: (bookId: string) => ["stats", "goal-plan", bookId] as const,
 
@@ -210,6 +269,9 @@ export const socialKeys = {
 
 	/** Read-only preview of someone else's invite link. */
 	invitePreview: (token: string) => ["social", "invite-preview", token] as const,
+	/** The same preview as a signed-out visitor sees it: only the inviter's card. */
+	invitePreviewSignedOut: (token: string) =>
+		["social", "invite-preview-signed-out", token] as const,
 
 	/** The inbox pages. */
 	inbox: ["social", "inbox"] as const,

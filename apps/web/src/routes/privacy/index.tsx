@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy/")({
 
 function PrivacyPage() {
 	return (
-		<LegalPage title="Privacy" subtitle="Last updated: October 2026">
+		<LegalPage title="Privacy" subtitle="Last updated: November 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
@@ -74,12 +74,15 @@ function PrivacyPage() {
 					or default collection of personal data.
 				</p>
 				<p className="mt-4">
-					The Android app sends anonymized diagnostics to our own server to help us find bugs that
-					would otherwise be invisible (for example, a reading position that silently fails to
-					save). These reports contain no account or personal data: an error type and message, the
-					app version, platform, a coarse OS version, and a random session id that is regenerated
-					every time the app starts. They are never linked to an identity or used for tracking. You
-					can turn this off any time under Settings &rarr; Privacy in the app.
+					The Android app can send anonymized diagnostics to our own server to help us find bugs
+					that would otherwise be invisible (for example, a reading position that silently fails to
+					save). This is off unless you turn it on under Settings &rarr; Diagnostics in the app, and
+					you can turn it off again any time; it then stops at once. These reports contain no
+					account or personal data: an error type and message, technical details of the failure
+					(such as a word index or the kind of database write), the app version, platform, a coarse
+					OS and WebView version, and a random session id that is regenerated every time the app
+					starts. They are never linked to an identity or used for tracking. The web app sends no
+					such diagnostics.
 				</p>
 			</section>
 
@@ -383,9 +386,9 @@ function PrivacyPage() {
 				<p>
 					The app runs fully offline by default. Books, settings, and highlights live in a local
 					SQLite database on your device. Apart from the anonymized error diagnostics described
-					above (which you can turn off under Settings &rarr; Privacy), nothing leaves the device
-					unless you explicitly sign in to sync. Bluetooth is used only to talk to the optional
-					ESP32 device and transmits nothing to us.
+					above (off unless you turn them on under Settings &rarr; Diagnostics), nothing leaves the
+					device unless you explicitly sign in to sync. Bluetooth is used only to talk to the
+					optional ESP32 device and transmits nothing to us.
 				</p>
 			</section>
 

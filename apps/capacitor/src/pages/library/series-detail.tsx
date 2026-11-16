@@ -10,7 +10,7 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, CircleX, CloudDownload, Trash2 } from "lucide-react";
+import { BookOpen, CircleX, CloudDownload, ExternalLink, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
@@ -19,13 +19,23 @@ import { serialKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
 import { IS_WEB } from "../../utils/platform";
-import { type DetailAction, DetailShell } from "../_shared/detail-shell";
+import { DangerButton, DangerZone } from "../_shared/danger-zone";
+import { type DetailAction, DetailShell, type HeaderAction } from "../_shared/detail-shell";
 import { SeriesChapterList } from "./series-chapter-list";
+import { SeriesReadingTime } from "./series-reading-time";
 import { useChapterBatchDownload } from "./use-chapter-batch-download";
 
 interface Props {
 	id?: string;
 }
+
+/** Holds the source link's header slot while the series loads. */
+const RESERVED_SOURCE_LINK: HeaderAction = {
+	label: "View original source",
+	icon: ExternalLink,
+	disabled: true,
+	onClick: () => undefined,
+};
 
 const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 	const id = propId ?? "";
@@ -34,7 +44,8 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 
 	const { data: series, isPending: seriesPending } = useQuery({
 		queryKey: serialKeys.detail(id),
-		queryFn: () => queries.getSeries(id),
+		// An unknown id resolves to null; React Query rejects undefined data.
+		queryFn: async () => (await queries.getSeries(id)) ?? null,
 		enabled: !!id,
 	});
 
@@ -42,7 +53,7 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 	// action so the button label can name the actual chapter.
 	const { data: entryChapter } = useQuery({
 		queryKey: serialKeys.entry(id),
-		queryFn: () => queries.getSeriesEntryChapter(id),
+		queryFn: async () => (await queries.getSeriesEntryChapter(id)) ?? null,
 		enabled: !!id,
 	});
 
@@ -64,23 +75,13 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 	);
 	const batch = useChapterBatchDownload(series?.id);
 
-	// Hoisted so hook order stays stable across early returns (React error #310).
-	const deleteHeaderAction = useMemo(
-		() => ({
-			label: "Delete series",
-			icon: Trash2,
-			destructive: true,
-			onClick: () => setIsDeleteOpen(true),
-		}),
-		[],
-	);
-
 	if (seriesPending) {
 		return (
 			<DetailShell
 				cover={null}
 				title="Loading..."
 				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				headerActions={[RESERVED_SOURCE_LINK]}
 				isLoading
 			/>
 		);
@@ -107,7 +108,12 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 			? `Continue chapter ${(entryChapter.chapterIndex ?? 0) + 1}`
 			: "Start reading";
 
-	const statsLine = chapterCount !== undefined && <span>{chapterCountLabel(chapterCount)}</span>;
+	const statsLine = chapterCount !== undefined && (
+		<>
+			<span>{chapterCountLabel(chapterCount)}</span>
+			{chapters && <SeriesReadingTime chapters={chapters} />}
+		</>
+	);
 
 	const provider = providerLabel(series.provider);
 
@@ -157,7 +163,6 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 				progress={downloadProgressPct}
 				description={series.description ? { text: series.description } : undefined}
 				externalLink={{ href: series.sourceUrl, label: `View on ${provider}` }}
-				headerActions={[deleteHeaderAction]}
 			>
 				{syncError?.message === "CLOUDFLARE_CHALLENGE" && (
 					<div className="px-4 pt-3">
@@ -165,6 +170,11 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				<SeriesChapterList seriesId={series.id} isSyncing={isSyncing} />
+				<DangerZone className="mt-6">
+					<DangerButton icon={Trash2} onClick={() => setIsDeleteOpen(true)}>
+						Delete series
+					</DangerButton>
+				</DangerZone>
 			</DetailShell>
 
 			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>

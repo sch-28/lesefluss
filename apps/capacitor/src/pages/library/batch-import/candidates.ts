@@ -20,6 +20,9 @@ export type Candidate = {
 	 * silently undo a deliberate choice.
 	 */
 	touched: boolean;
+	/** What All / None last asked for; an untouched card is selected when this
+	 *  holds and it is no duplicate. */
+	wanted: boolean;
 };
 
 /** Identity within one scan. See `ScannedFile.id` for why the path won't do. */
@@ -46,8 +49,14 @@ export function isDuplicate(candidate: Candidate, existingTitles: ReadonlySet<st
 	return existingTitles.has(normalizeTitle(candidateTitle(candidate)));
 }
 
-export function toCandidates(files: ScannedFile[]): Candidate[] {
-	return files.map((file) => ({ file, selected: true, touched: false }));
+export function toCandidates(
+	files: ScannedFile[],
+	existingTitles: ReadonlySet<string> = new Set(),
+): Candidate[] {
+	return files.map((file) => {
+		const candidate: Candidate = { file, selected: true, touched: false, wanted: true };
+		return { ...candidate, selected: !isDuplicate(candidate, existingTitles) };
+	});
 }
 
 /**
@@ -65,7 +74,7 @@ export function applyProbe(
 		if (candidateKey(candidate) !== key) return candidate;
 		const probed: Candidate = { ...candidate, probe };
 		if (probed.touched) return probed;
-		return { ...probed, selected: !isDuplicate(probed, existingTitles) };
+		return { ...probed, selected: probed.wanted && !isDuplicate(probed, existingTitles) };
 	});
 }
 
@@ -78,17 +87,24 @@ export function toggleCandidate(candidates: Candidate[], key: string): Candidate
 }
 
 /**
- * Select or deselect every candidate, or every candidate of one format. Counts
- * as a manual choice, so later probes leave these alone.
+ * Select or deselect every candidate, or every candidate of one format.
+ * Duplicates stay unticked, now and when a later probe reveals one; only a
+ * tap on the card itself picks a duplicate.
  */
 export function setSelection(
 	candidates: Candidate[],
 	selected: boolean,
+	existingTitles: ReadonlySet<string>,
 	format?: BookFileFormat,
 ): Candidate[] {
 	return candidates.map((candidate) =>
 		format === undefined || candidate.file.format === format
-			? { ...candidate, selected, touched: true }
+			? {
+					...candidate,
+					selected: selected && !isDuplicate(candidate, existingTitles),
+					touched: false,
+					wanted: selected,
+				}
 			: candidate,
 	);
 }

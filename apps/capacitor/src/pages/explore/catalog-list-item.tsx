@@ -1,10 +1,13 @@
+import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
+import { languageLabel } from "../../utils/language-label";
+import { readableSubjects } from "../_shared/readable-subjects";
 import { InLibraryBadge, LengthText, QuickAddButton } from "./card-badges";
-import { languageLabel } from "./language-label";
 import { describeLength } from "./length";
+import { LIST_ROW_TEXT_HEIGHT } from "./skeletons";
 import { useCatalogImport } from "./use-catalog-import";
 import { useReadingSpeed } from "./use-reading-speed";
 
@@ -22,7 +25,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 	const { wpm } = useReadingSpeed();
 	const isInLibrary = libraryIds?.has(result.id) ?? false;
 	const canQuickAdd = libraryIds !== undefined && !isInLibrary && result.hasEpub !== false;
-	const subjects = (result.subjects ?? []).slice(0, MAX_SUBJECTS);
+	const subjects = readableSubjects(result.subjects ?? []).slice(0, MAX_SUBJECTS);
 	const lengthLabels = describeLength(result, wpm);
 
 	return (
@@ -35,7 +38,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 				<div className="h-16 w-11 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={getCoverUrl(result.id, result.coverUrl)} alt="" />
 				</div>
-				<div className="min-w-0 flex-1">
+				<div className={cn("min-w-0 flex-1", LIST_ROW_TEXT_HEIGHT)}>
 					<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
 						{result.title}
 					</div>
@@ -51,16 +54,13 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 						</div>
 					)}
 					{(subjects.length > 0 || isInLibrary) && (
-						<div className="mt-1 flex flex-wrap items-center gap-1">
+						<div className="mt-1 flex items-center gap-1 overflow-hidden">
 							{isInLibrary && <InLibraryBadge />}
-							{subjects.map((s) => (
-								<span
-									key={s}
-									className="max-w-full truncate rounded-full border border-border bg-muted px-2 py-0.5 text-[0.7rem] text-muted-foreground"
-								>
-									{s}
+							{subjects.length > 0 && (
+								<span className="min-w-0 truncate text-[0.75rem] text-muted-foreground">
+									{subjects.join(" · ")}
 								</span>
-							))}
+							)}
 						</div>
 					)}
 				</div>

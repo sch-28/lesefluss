@@ -1,3 +1,4 @@
+import { bookPace } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2, Target } from "lucide-react";
@@ -5,7 +6,7 @@ import { useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
-import { minutesLabel, percentLabel, readingPace } from "../../../utils/reading-time";
+import { percentLabel } from "../../../utils/reading-time";
 import { GoalChart } from "./goal-chart";
 import {
 	canHaveGoal,
@@ -16,6 +17,7 @@ import {
 	liveToday,
 	MISSED_DAY_LABEL,
 	signed,
+	todayFigure,
 } from "./goal-model";
 import { GoalSetupSheet } from "./goal-setup-sheet";
 import { DayCount, GoalStat } from "./goal-stat";
@@ -24,15 +26,13 @@ import { DayCount, GoalStat } from "./goal-stat";
 export function GoalCard({ book }: { book: Book }) {
 	const [isSheetOpen, setSheetOpen] = useState(false);
 	const result = queryHooks.useReadingGoalPlan(canHaveGoal(book) ? book.id : null);
-	const bookStats = queryHooks.useStatsBook(book.id);
-	const globalSpeed = queryHooks.useStatsMeasuredSpeed();
+	const speedModel = queryHooks.useStatsSpeedModel();
 
 	if (!canHaveGoal(book) || result.isPending) return null;
 
 	const goal = result.data?.goal ?? null;
 	const plan = result.data?.plan.kind === "plan" ? result.data.plan : null;
-	const wpm =
-		plan?.pace.wpm ?? readingPace(bookStats.data?.measuredWpm ?? globalSpeed.data?.wpm).wpm;
+	const wpm = plan?.pace.wpm ?? bookPace(speedModel.data, book.id).wpm;
 
 	if (!goal) {
 		if (!canStartGoal(book)) return null;
@@ -67,6 +67,7 @@ export function GoalCard({ book }: { book: Book }) {
 		: "Goal";
 	const tone = plan ? goalTone(plan) : "even";
 	const today = plan ? liveToday(plan, book.wordPosition, book.wordCount) : null;
+	const figure = today ? todayFigure(today) : null;
 	const canEdit = !isComplete && plan !== null;
 
 	return (
@@ -84,20 +85,18 @@ export function GoalCard({ book }: { book: Book }) {
 				)}
 			</div>
 
-			{plan && today && !isComplete && (
+			{plan && today && figure && !isComplete && (
 				<>
 					<div className="flex items-end justify-between gap-4">
 						<div>
 							<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
-								{percentLabel(today.progressPercent)}
-								<span className="font-normal text-xl opacity-60">
-									{" "}
-									/ {percentLabel(plan.dailyTarget.percent)}%
-								</span>
+								{figure.done}
+								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-								today · {Math.round(today.progressWords / plan.pace.wpm)} of{" "}
-								{minutesLabel(plan.dailyTarget.minutes)}
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+								{today.targetMinutes != null
+									? `today · ${percentLabel(today.progressPercent)}%`
+									: "today"}
 							</div>
 						</div>
 						<div className="text-right">
@@ -109,7 +108,7 @@ export function GoalCard({ book }: { book: Book }) {
 							>
 								{signed(plan.aheadBehind.percent, "%")}
 							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								vs plan · {signed(plan.aheadBehind.days, " d")}
 							</div>
 						</div>

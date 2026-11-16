@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -24,18 +24,20 @@ export function PasteInviteField({ className }: { className?: string }) {
 	return (
 		<div className={cn("space-y-2", className)}>
 			<div className="flex gap-2">
-				<Input
-					value={pasted}
-					onChange={(e) => {
-						setPasted(e.target.value);
-						setHint(null);
-					}}
-					placeholder="https://lesefluss.app/invite/…"
-					aria-label="Invite link you received"
-					autoCapitalize="none"
-					autoCorrect="off"
-					spellCheck={false}
-				/>
+				<InputHitArea className="min-w-0 flex-1">
+					<Input
+						value={pasted}
+						onChange={(e) => {
+							setPasted(e.target.value);
+							setHint(null);
+						}}
+						placeholder="https://lesefluss.app/invite/…"
+						aria-label="Invite link you received"
+						autoCapitalize="none"
+						autoCorrect="off"
+						spellCheck={false}
+					/>
+				</InputHitArea>
 				<Button variant="outline" disabled={pasted.trim() === ""} onClick={openPasted}>
 					Open
 				</Button>

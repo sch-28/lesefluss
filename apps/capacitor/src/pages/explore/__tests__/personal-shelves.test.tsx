@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { flush, type Rendered, render } from "../../../test/render";
+import { click, flush, type Rendered, render } from "../../../test/render";
 
 const getSimilarBooks = vi.hoisted(() => vi.fn());
 const searchCatalog = vi.hoisted(() => vi.fn());
@@ -8,7 +8,17 @@ const state = vi.hoisted(() => ({
 	books: [] as unknown[],
 	owned: new Map<string, string>(),
 	isLoggedIn: false,
+	booksRead: "done" as ReadState,
+	wishlistRead: "done" as ReadState,
 }));
+
+type ReadState = "pending" | "failed" | "done";
+const readQuery = (read: ReadState, data: unknown) => ({
+	data: read === "done" ? data : undefined,
+	isPending: read !== "done",
+	// A failed read refetches on mount, which puts it back to pending.
+	errorUpdateCount: read === "failed" ? 1 : 0,
+});
 
 vi.mock("../../../services/catalog/client", async (importActual) => ({
 	...(await importActual<typeof import("../../../services/catalog/client")>()),
@@ -18,9 +28,10 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useBooks: () => ({ data: { books: state.books, covers: new Map() } }),
+		useBooks: () => readQuery(state.booksRead, { books: state.books, covers: new Map() }),
+		useWishlist: () => readQuery(state.wishlistRead, []),
 		useLibraryCatalogIds: () => ({ data: state.owned }),
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 	},
 }));
 vi.mock("../../../services/social/feed", () => ({ useFeed }));
@@ -28,10 +39,12 @@ vi.mock("../../../contexts/sync-context", () => ({
 	useSyncContext: () => ({ isLoggedIn: state.isLoggedIn }),
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
-const { default: PersonalShelves } = await import("../personal-shelves");
+const { default: PersonalShelves, usePersonalShelvesPending } = await import("../personal-shelves");
 
 const result = (id: string, title: string) => ({
 	id,
@@ -53,10 +66,17 @@ beforeEach(() => {
 			author: "Mary Shelley",
 			catalogId: "gutenberg:84",
 			lastRead: 10,
+			wordCount: 75_000,
+			wordPosition: 30_000,
+			status: null,
+			finishedAt: null,
+			firstSittingAt: 5,
 		},
 	];
 	state.owned = new Map([["gutenberg:84", "b1"]]);
 	state.isLoggedIn = false;
+	state.booksRead = "done";
+	state.wishlistRead = "done";
 	getSimilarBooks.mockResolvedValue({
 		results: [result("gutenberg:345", "Dracula"), result("gutenberg:84", "Frankenstein")],
 	});
@@ -86,6 +106,20 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toContain("More by authors you read");
 		expect(view?.text()).toContain("The Last Man");
 		expect(view?.container.querySelectorAll('[data-testid="catalog-card"]')).toHaveLength(2);
+	});
+
+	it("unrolls Because you read in place from its See all", async () => {
+		await renderShelves();
+		const shelf = view?.container.querySelector("section");
+		const seeAll = [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
+			b.textContent?.includes("See all"),
+		);
+		if (!shelf || !seeAll) throw new Error("no See all on the first shelf");
+		expect(shelf.textContent).toContain("Because you read Frankenstein");
+		await click(seeAll);
+		expect(shelf.querySelector("ul")?.className).toContain("grid");
+		expect(seeAll.textContent).toBe("Show less");
+		expect(seeAll.getAttribute("aria-expanded")).toBe("true");
 	});
 
 	it("works without an account and never asks for the feed", async () => {
@@ -118,6 +152,54 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toContain("Middlemarch");
 	});
 
+	it("holds every shelf's slot, in order, while it loads", async () => {
+		getSimilarBooks.mockImplementation(() => new Promise(() => undefined));
+		searchCatalog.mockImplementation(() => new Promise(() => undefined));
+		view = await render(<PersonalShelves onOpen={vi.fn()} onBrowse={vi.fn()} />);
+		const text = view.text();
+		expect(text.indexOf("Because you read Frankenstein")).toBeGreaterThanOrEqual(0);
+		expect(text.indexOf("More by authors you read")).toBeGreaterThan(
+			text.indexOf("Because you read Frankenstein"),
+		);
+		expect(view.container.querySelectorAll('[role="status"]')).toHaveLength(2);
+	});
+
+	it("keeps a shelf that loaded empty at the strip's height, with a line", async () => {
+		getSimilarBooks.mockResolvedValue({ results: [result("gutenberg:84", "Frankenstein")] });
+		await renderShelves();
+		const shelf = view?.container.querySelector("section");
+		expect(shelf?.textContent).toContain("Because you read Frankenstein");
+		expect(shelf?.textContent).toContain("No close matches in the catalog yet.");
+		expect(shelf?.querySelector('[aria-hidden="true"].invisible')).not.toBeNull();
+		expect(view?.text()).toContain("More by authors you read");
+	});
+
+	it("drops See all from a shelf that loaded empty, and keeps it on a full one", async () => {
+		const seeAllOf = (title: string) => {
+			const shelf = [...(view?.container.querySelectorAll("section") ?? [])].find(
+				(s) => s.querySelector("h2")?.textContent === title,
+			);
+			return [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
+				b.textContent?.includes("See all"),
+			);
+		};
+		await renderShelves();
+		expect(seeAllOf("More by authors you read")).toBeDefined();
+
+		view?.unmount();
+		searchCatalog.mockResolvedValue({ results: [result("gutenberg:84", "Frankenstein")] });
+		await renderShelves();
+		expect(view?.text()).toContain("Nothing else by your authors in the catalog yet.");
+		expect(seeAllOf("More by authors you read")).toBeUndefined();
+	});
+
+	it("gives a signed-in reader the friends shelf even before friends read", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({ data: { pages: [{ items: [], nextCursor: null }] } });
+		await renderShelves();
+		expect(view?.text()).toContain("Friends are reading");
+	});
+
 	it("shows nothing for an empty library and no friends", async () => {
 		state.books = [];
 		state.owned = new Map();
@@ -125,5 +207,23 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toBe("");
 		expect(getSimilarBooks).not.toHaveBeenCalled();
 		expect(searchCatalog).not.toHaveBeenCalled();
+	});
+});
+
+describe("usePersonalShelvesPending", () => {
+	const Probe = () => <div>{usePersonalShelvesPending() ? "pending" : "ready"}</div>;
+
+	it.each([
+		["pending", "done", "pending"],
+		["done", "pending", "pending"],
+		["done", "done", "ready"],
+		// A failed read must not hold the landing below the hero blank forever.
+		["failed", "done", "ready"],
+		["done", "failed", "ready"],
+	] as const)("books %s, wishlist %s: %s", async (books, wishlist, expected) => {
+		state.booksRead = books;
+		state.wishlistRead = wishlist;
+		view = await render(<Probe />);
+		expect(view.text()).toBe(expected);
 	});
 });

@@ -4,13 +4,19 @@ import { user as authUser } from "~/db/auth-schema";
 import {
 	socialNotice,
 	socialRestriction,
+	syncBookmarks,
 	syncBooks,
+	syncCollectionBooks,
+	syncCollections,
 	syncGlossaryEntries,
 	syncHighlights,
 	syncReadingGoals,
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncSmartShelves,
+	syncSpeedTests,
+	syncWishlist,
 } from "~/db/schema";
 import { purgeDiscussionOf } from "./social/buddy-read-discussion";
 import { endBuddyReadsOf } from "./social/buddy-reads";
@@ -30,6 +36,12 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId));
 	await tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId));
 	await tx.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
+	await tx.delete(syncCollections).where(eq(syncCollections.userId, userId));
+	await tx.delete(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId));
+	await tx.delete(syncSmartShelves).where(eq(syncSmartShelves.userId, userId));
+	await tx.delete(syncBookmarks).where(eq(syncBookmarks.userId, userId));
+	await tx.delete(syncWishlist).where(eq(syncWishlist.userId, userId));
+	await tx.delete(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
 }
 
@@ -52,8 +64,7 @@ export async function purgeUserSyncData(tx: Tx, userId: string): Promise<void> {
 
 // The only way an account is deleted: the purge and the user row go in one
 // transaction, and the user delete cascades to the session and account tables.
-// No password is required, so OAuth-only users (Google, Discord) can delete
-// their account too.
+// Callers re-authenticate the user first (accountDeletionRefusal).
 export async function deleteUserAccount(userId: string): Promise<void> {
 	await db.transaction(async (tx) => {
 		await purgeUserSyncData(tx, userId);

@@ -12,18 +12,17 @@ export async function getAllReadingSessions(): Promise<ReadingSession[]> {
 	return db.select().from(readingSessions).orderBy(desc(readingSessions.startedAt));
 }
 
-/** Newest-first page of sessions, optionally for one book. */
-export async function getReadingSessionsPage(opts: {
-	limit: number;
-	bookId?: string;
-}): Promise<ReadingSession[]> {
-	const base = db.select().from(readingSessions);
-	const scoped = opts.bookId ? base.where(eq(readingSessions.bookId, opts.bookId)) : base;
-	return scoped.orderBy(desc(readingSessions.startedAt)).limit(opts.limit);
+/** One book's sessions, newest first. */
+export async function getBookReadingSessions(bookId: string): Promise<ReadingSession[]> {
+	return db
+		.select()
+		.from(readingSessions)
+		.where(eq(readingSessions.bookId, bookId))
+		.orderBy(desc(readingSessions.startedAt));
 }
 
 export async function countReadingSessions(bookId?: string): Promise<number> {
-	const base = db.select({ count: sql<number>`COUNT(*)` }).from(readingSessions);
+	const base = db.select({ count: sql<number>`COUNT(*)`.as("count") }).from(readingSessions);
 	const scoped = bookId ? base.where(eq(readingSessions.bookId, bookId)) : base;
 	const row = await scoped;
 	return Number(row[0]?.count ?? 0);
@@ -106,8 +105,20 @@ const EXCLUDED_SESSION_COLUMNS = {
 	// A row from a client that predates the column must not wipe a known value.
 	furthestWord: sql`COALESCE(excluded.furthest_word, reading_sessions.furthest_word)`,
 	wpmAvg: sql`excluded.wpm_avg`,
+	fontSize: sql`COALESCE(excluded.font_size, reading_sessions.font_size)`,
+	segmentWpm: sql`COALESCE(excluded.segment_wpm, reading_sessions.segment_wpm)`,
 	updatedAt: sql`excluded.updated_at`,
 };
+
+export type ReadingSessionEdit = Partial<Pick<ReadingSession, "durationMs" | "mode">>;
+
+/** A hand edit from the session detail; it bumps `updatedAt` so the next push carries it. */
+export async function updateReadingSession(id: string, edit: ReadingSessionEdit): Promise<void> {
+	await db
+		.update(readingSessions)
+		.set({ ...edit, updatedAt: Date.now() })
+		.where(eq(readingSessions.id, id));
+}
 
 /**
  * Hard-delete every reading session row locally. Tombstones live on the server

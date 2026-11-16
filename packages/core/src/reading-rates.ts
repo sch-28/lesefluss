@@ -2,21 +2,9 @@ import type { MeasuredReadingMode, ReadingMode } from "./reading-credit";
 
 /**
  * Reading-rate arithmetic shared by the app's stats, the website and the
- * social profile: which sittings can be trusted for a speed, how fast a reader
- * actually reads, and how serial chapters fold into one work.
+ * social profile: which sittings can be trusted for a speed, and how serial
+ * chapters fold into one work.
  */
-
-export interface ReadingRates {
-	/** Delivered ÷ target for RSVP. The engine spends time on punctuation pauses
-	 *  and the acceleration ramp, so it delivers well under the dial. */
-	rsvpDeliveredRatio: number | null;
-	scrollWpm: number | null;
-	pageWpm: number | null;
-}
-
-/** Measured when there is no history yet. See task-46.3: delivered lands around
- *  63% of nominal. */
-export const DEFAULT_RSVP_DELIVERED_RATIO = 0.65;
 
 /** Below this a sitting is too short for its rate to mean anything. */
 export const MIN_MEASURABLE_MS = 1000;
@@ -54,64 +42,78 @@ export function isMeasurableSitting<
 	return row.mode !== "listen" && isPlausibleRate(row.wordsRead, row.durationMs);
 }
 
-export interface RateSession {
-	mode: ReadingMode;
-	wpmAvg: number | null;
-	wordsRead: number;
-	durationMs: number;
+/** A scroll or page sitting above this is skimming, whatever the reader's own pace. */
+export const SKIM_MAX_READING_WPM = 600;
+
+/** A sitting this far above the reader's own median sitting in its kind of reading is skimming. */
+export const SKIM_MEDIAN_FACTOR = 1.6;
+
+/** Fewer sittings than this give no median worth comparing against. */
+export const SKIM_MEDIAN_MIN_SITTINGS = 5;
+
+type RateRow = { mode: ReadingMode; wordsRead: number; durationMs: number };
+
+/** Speeds above which a sitting counts as skimmed: one for scroll and page, one for RSVP. */
+export type SkimCutoffs = { reading: number; rsvp: number };
+
+function sittingWpm(row: RateRow): number {
+	return row.wordsRead / (row.durationMs / 60_000);
+}
+
+function medianOf(rates: number[]): number | null {
+	if (rates.length < SKIM_MEDIAN_MIN_SITTINGS) return null;
+	rates.sort((a, b) => a - b);
+	const mid = rates.length >> 1;
+	return rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
 }
 
 /**
- * How fast this reader actually reads, per mode, for estimating time remaining.
- *
- * Words-weighted so a one-paragraph sitting cannot swing the estimate. Callers
- * pass the most recent sessions rather than all of them: the RSVP ratio moves
- * when the punctuation-delay settings change, and a lifetime average would take
- * months to catch up.
+ * The skim cutoffs from these rows. Scroll and page: the hard cap, or 1.6x the
+ * median sitting under the cap when there are enough. RSVP is compared only
+ * with RSVP, whose dial sits well above reading pace: 1.6x its median, and no
+ * cutoff below MAX_PLAUSIBLE_WPM's guard until there are enough sittings.
  */
-export function summariseReadingRates(rows: RateSession[]): ReadingRates {
-	let rsvpDeliveredWords = 0;
-	let rsvpTargetWordsWpm = 0;
-	let rsvpTargetWords = 0;
-	let rsvpActiveMs = 0;
-	const measured = new Map<"scroll" | "page", { words: number; activeMs: number }>();
-
+export function skimCutoffs(rows: readonly RateRow[]): SkimCutoffs {
+	const reading: number[] = [];
+	const rsvp: number[] = [];
 	for (const r of rows) {
-		if (!isMeasurableSitting(r)) continue;
-		if (r.mode === "rsvp") {
-			// Both halves of the ratio come from the same rows: counting a
-			// dial-less session's words as delivered while excluding it from the
-			// target divides one population by another.
-			if (r.wpmAvg == null || r.wpmAvg <= 0) continue;
-			rsvpDeliveredWords += r.wordsRead;
-			rsvpActiveMs += r.durationMs;
-			rsvpTargetWordsWpm += r.wpmAvg * r.wordsRead;
-			rsvpTargetWords += r.wordsRead;
-			continue;
+		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
+		const wpm = sittingWpm(r);
+		if (r.mode === "rsvp") rsvp.push(wpm);
+		else if ((r.mode === "scroll" || r.mode === "page") && wpm <= SKIM_MAX_READING_WPM) {
+			reading.push(wpm);
 		}
-		const bucket = measured.get(r.mode) ?? { words: 0, activeMs: 0 };
-		bucket.words += r.wordsRead;
-		bucket.activeMs += r.durationMs;
-		measured.set(r.mode, bucket);
 	}
-
-	const deliveredWpm = rsvpActiveMs > 0 ? rsvpDeliveredWords / (rsvpActiveMs / 60_000) : null;
-	const targetWpm = rsvpTargetWords > 0 ? rsvpTargetWordsWpm / rsvpTargetWords : null;
-
-	function wpmOf(mode: "scroll" | "page"): number | null {
-		const bucket = measured.get(mode);
-		if (!bucket || bucket.activeMs <= 0) return null;
-		return Math.max(1, Math.round(bucket.words / (bucket.activeMs / 60_000)));
-	}
-
+	const readingMedian = medianOf(reading);
+	const rsvpMedian = medianOf(rsvp);
 	return {
-		rsvpDeliveredRatio:
-			deliveredWpm !== null && targetWpm !== null && targetWpm > 0
-				? deliveredWpm / targetWpm
-				: null,
-		scrollWpm: wpmOf("scroll"),
-		pageWpm: wpmOf("page"),
+		reading:
+			readingMedian === null
+				? SKIM_MAX_READING_WPM
+				: Math.min(SKIM_MAX_READING_WPM, readingMedian * SKIM_MEDIAN_FACTOR),
+		rsvp: rsvpMedian === null ? Number.POSITIVE_INFINITY : rsvpMedian * SKIM_MEDIAN_FACTOR,
 	};
+}
+
+/**
+ * Whether a sitting was skimmed: its time, words and streak still count, but it
+ * never feeds a speed or an average. Listening runs at the voice's pace and is never skimmed.
+ */
+export function isSkimmedSitting(row: RateRow, cutoffs: SkimCutoffs): boolean {
+	if (row.mode === "listen") return false;
+	if (!isPlausibleRate(row.wordsRead, row.durationMs)) return false;
+	return sittingWpm(row) > (row.mode === "rsvp" ? cutoffs.rsvp : cutoffs.reading);
+}
+
+/** The sittings a speed is computed from: measurable and not skimmed, judged against these rows. */
+export function speedSittings<T extends RateRow>(
+	rows: readonly T[],
+	cutoffs: SkimCutoffs = skimCutoffs(rows),
+): (T & { mode: MeasuredReadingMode })[] {
+	return rows.filter(
+		(r): r is T & { mode: MeasuredReadingMode } =>
+			isMeasurableSitting(r) && !isSkimmedSitting(r, cutoffs),
+	);
 }
 
 export interface BookTotals {
@@ -169,23 +171,4 @@ export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
 	}
 
 	return [...works.values()].sort((a, b) => b.durationMs - a.durationMs);
-}
-
-/**
- * One measured reading speed across every mode: words actually read per active
- * minute over the plausible sittings. Null when nothing measurable happened, so
- * a profile hides the figure instead of showing zero.
- */
-export function measuredReadingSpeed(
-	rows: readonly { mode: ReadingMode; wordsRead: number; durationMs: number }[],
-): number | null {
-	let words = 0;
-	let activeMs = 0;
-	for (const r of rows) {
-		if (!isMeasurableSitting(r)) continue;
-		words += r.wordsRead;
-		activeMs += r.durationMs;
-	}
-	if (activeMs <= 0) return null;
-	return Math.max(1, Math.round(words / (activeMs / 60_000)));
 }

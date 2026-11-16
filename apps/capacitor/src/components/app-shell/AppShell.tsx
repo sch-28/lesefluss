@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppUpdateBar } from "../app-update-bar";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { TabBar } from "./TabBar";
 
@@ -7,6 +8,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 		<>
 			<DesktopSidebar />
 			<TabBar />
+			<AppUpdateBar />
 			{/* Body is locked (height:100%, overflow:hidden) in variables.css so
 			 * document scroll is dead. This div is the app's scroll container:
 			 * viewport height, scrolls vertically, padded for the fixed bottom

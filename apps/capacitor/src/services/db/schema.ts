@@ -5,6 +5,8 @@ import {
 	type ReadingGoalMode,
 	type ReadingGoalStatus,
 	type ReadingMode,
+	type SpeedWindow,
+	type WishlistKind,
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
@@ -66,6 +68,8 @@ export const settings = sqliteTable("settings", {
 		.notNull()
 		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
+	showLiveWpm: integer("show_live_wpm", { mode: "boolean" }).notNull().default(false),
+	speedWindow: text("speed_window").$type<SpeedWindow>().notNull().default("recent"),
 	// Local-only sync opt-outs. Never added to SYNCED_SETTING_KEYS; off-state is
 	// non-destructive (server keeps its copy, this device stops pushing/merging).
 	syncHighlights: integer("sync_highlights", { mode: "boolean" }).notNull().default(true),
@@ -83,6 +87,7 @@ export const settings = sqliteTable("settings", {
 	lastSeenChangelogDate: text("last_seen_changelog_date").notNull().default(""),
 	pageTurnAnimation: integer("page_turn_animation", { mode: "boolean" }).notNull().default(true),
 	autoOpenLastBook: integer("auto_open_last_book", { mode: "boolean" }).notNull().default(false),
+	showSessionSummary: integer("show_session_summary", { mode: "boolean" }).notNull().default(true),
 	einkMode: integer("eink_mode", { mode: "boolean" }).notNull().default(false),
 	// Null = never set; see volumeKeysFor.
 	volumeKeyPageTurn: integer("volume_key_page_turn", { mode: "boolean" }),
@@ -93,6 +98,7 @@ export const settings = sqliteTable("settings", {
 	// JSON object of primary language ("de", or "default") → voice name; see parseVoiceChoices.
 	ttsVoices: text("tts_voices").notNull().default("{}"),
 	ttsFollow: integer("tts_follow", { mode: "boolean" }).notNull().default(true),
+	rsvpAudio: integer("rsvp_audio", { mode: "boolean" }).notNull().default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 
@@ -117,6 +123,10 @@ export const books = sqliteTable("books", {
 	/** When the book first crossed the finished threshold. Distinct from
 	 *  `lastRead`, which moves every time the book is reopened. */
 	finishedAt: integer("finished_at"),
+	/** Start of the first real sitting (`REAL_SITTING_MS`), which is what puts a
+	 *  book on Reading; a scroll that only saves a position leaves it null. Only
+	 *  ever set, earliest wins across devices. */
+	firstSittingAt: integer("first_sitting_at"),
 	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null (null = locally imported)
 	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
 	sourceUrl: text("source_url"), // original URL for source='url' imports
@@ -141,8 +151,8 @@ export const books = sqliteTable("books", {
 	language: text("language"),
 	/**
 	 * Explicit shelf. NULL means "derive from reading progress" (see
-	 * `bookStatus()` in @lesefluss/core); a value set by the reader is sticky and
-	 * survives further reading.
+	 * `bookStatus()` in @lesefluss/core); a value set by the reader holds until a
+	 * real sitting moves Want to read or Dropped back to NULL.
 	 *
 	 * Unlike `series.provider` this carries no SQL CHECK: the column is added to
 	 * an existing table, and SQLite can only gain a table constraint by rebuilding
@@ -177,6 +187,13 @@ export const books = sqliteTable("books", {
 	/** Revision of the reader-editable fields (description, language, status,
 	 *  rating, review, tags), epoch ms. Seeded from `updated_at` in 0032. */
 	metadataUpdatedAt: integer("metadata_updated_at").notNull().default(0),
+	/** Book-level series ("Foundation"), unrelated to the serial `seriesId`. */
+	seriesName: text("series_name"),
+	/** Number within `seriesName`; decimals allowed (2.5). */
+	seriesIndex: real("series_index"),
+	/** Revision of `seriesName` and `seriesIndex` only, epoch ms. Outside the
+	 *  metadata group so a tag or rating edit elsewhere never undoes a series edit. */
+	seriesUpdatedAt: integer("series_updated_at").notNull().default(0),
 });
 
 /**
@@ -302,7 +319,12 @@ export type NewBookContent = typeof bookContent.$inferInsert;
 /**
  * Chapter entry as stored in bookContent.chapters JSON column.
  */
-export type Chapter = { title: string; startWord: number };
+export type Chapter = {
+	title: string;
+	startWord: number;
+	/** Nesting in the book's table of contents; absent at the top and in books imported before it was kept. */
+	level?: number;
+};
 
 /**
  * External hyperlink as stored in bookContent.linkRanges JSON column.
@@ -352,7 +374,9 @@ export type NewSeries = typeof series.$inferInsert;
  * ESP32 reading is NOT tracked here (no clock, would double-count via position sync).
  *
  * `bookId` is intentionally not a FK: rows must outlive the book for all-time totals.
- * `wpmAvg` is RSVP-only (null otherwise).
+ * `wpmAvg` is the dial on RSVP rows, not a measured rate; on scroll and page it
+ * is the sitting's own rate (null past the credit ceiling), and null on listen rows.
+ * Measured speeds come from wordsRead / durationMs (the core speed model).
  */
 export const readingSessions = sqliteTable("reading_sessions", {
 	id: text("id").primaryKey(), // random hex, generated client-side
@@ -367,7 +391,11 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	// Highest word actually read this sitting, unlike endWord which a jump or moving back sets.
 	// Null on rows from before it existed.
 	furthestWord: integer("furthest_word").$type<WordPosition>(),
-	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
+	wpmAvg: integer("wpm_avg"),
+	// Reader font size, or the RSVP word size; null on listen rows and rows from before it existed.
+	fontSize: integer("font_size"),
+	// wpm per full SEGMENT_MS of active reading, in order; null when the sitting has no full segment.
+	segmentWpm: text("segment_wpm", { mode: "json" }).$type<number[]>(),
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });
 
@@ -397,6 +425,8 @@ export const readingGoals = sqliteTable(
 		planStartWord: integer("plan_start_word").$type<WordPosition>().notNull(),
 		targetDate: text("target_date").notNull(),
 		dailyPercent: real("daily_percent").notNull(),
+		/** A minute goal's minutes a day: a pace goal that counts active reading time. */
+		dailyMinutes: real("daily_minutes"),
 		carriedDaysMet: integer("carried_days_met").notNull().default(0),
 		completedAt: integer("completed_at"),
 		/** Local time of day for a daily reminder, "HH:MM"; null = no reminder. */
@@ -413,3 +443,115 @@ export const readingGoals = sqliteTable(
 
 export type ReadingGoal = typeof readingGoals.$inferSelect;
 export type NewReadingGoal = typeof readingGoals.$inferInsert;
+
+/**
+ * A bookmark marks one word. Tombstoned on delete (`deleted`) so the delete
+ * syncs; the pull hard-deletes the row once the server holds the tombstone.
+ */
+export const bookmarks = sqliteTable("bookmarks", {
+	id: text("id").primaryKey(),
+	bookId: text("book_id").notNull(),
+	word: integer("word").$type<WordPosition>().notNull(),
+	label: text("label"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type Bookmark = typeof bookmarks.$inferSelect;
+
+/**
+ * A title saved from Explore without importing it. `ref` is what the import
+ * takes: a catalog id or a series URL. Tombstoned on delete (`deleted`) so the
+ * delete syncs; the pull hard-deletes the row once the server holds the tombstone.
+ */
+export const wishlist = sqliteTable("wishlist", {
+	id: text("id").primaryKey(),
+	kind: text("kind").$type<WishlistKind>().notNull(),
+	ref: text("ref").notNull(),
+	title: text("title").notNull(),
+	author: text("author"),
+	coverUrl: text("cover_url"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type WishlistItem = typeof wishlist.$inferSelect;
+
+/**
+ * One speed test result. `rsvpWpm` is null when the test ended after its read
+ * round. Never tombstoned locally: "Delete reading stats" tombstones them on the
+ * server and drops the local rows.
+ */
+export const speedTests = sqliteTable("speed_tests", {
+	id: text("id").primaryKey(),
+	readingWpm: integer("reading_wpm").notNull(),
+	rsvpWpm: integer("rsvp_wpm"),
+	passageId: text("passage_id").notNull(),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type SpeedTestRow = typeof speedTests.$inferSelect;
+
+/**
+ * Manual collections. Tombstoned on delete (`deleted`) so the delete syncs;
+ * tombstones stay and are pushed with every sync. `sortOrder` is fractional so a
+ * move writes one row.
+ */
+export const collections = sqliteTable("collections", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	sortOrder: real("sort_order").notNull(),
+	/** Members read in sequence: by `seriesIndex`, then `position`. */
+	ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+	/** Set on a series collection (normalizeSeriesKey); its id is derived from it. */
+	seriesKey: text("series_key"),
+	/** Its own group-by and columns as JSON (pages/library/shelf-view.ts); null follows the device. */
+	view: text("view"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+/**
+ * One row per (collection, book), merged newest-wins per row, so two devices
+ * adding different books both keep theirs. Nothing is written when a book is
+ * deleted: every read joins live books instead (queries/collections.ts).
+ */
+export const collectionBooks = sqliteTable(
+	"collection_books",
+	{
+		collectionId: text("collection_id").notNull(),
+		bookId: text("book_id").notNull(),
+		seriesIndex: real("series_index"),
+		/** Manual order among members with the same (or no) `seriesIndex`. */
+		position: real("position"),
+		deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+		updatedAt: integer("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.collectionId, t.bookId] })],
+);
+
+/**
+ * Saved filters. `conditions` is a condition tree as JSON (pages/library/condition-tree.ts),
+ * kept as text so a tree from a newer client is stored and pushed back unchanged.
+ * Tombstoned on delete like collections.
+ */
+export const smartShelves = sqliteTable("smart_shelves", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	conditions: text("conditions").notNull(),
+	pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+	sortOrder: real("sort_order").notNull(),
+	/** As on collections. */
+	view: text("view"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type SmartShelf = typeof smartShelves.$inferSelect;
+export type Collection = typeof collections.$inferSelect;
+export type CollectionBook = typeof collectionBooks.$inferSelect;

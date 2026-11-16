@@ -1,7 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { Library, Plus, Share2 } from "lucide-react";
 import type React from "react";
-import { toast } from "../../components/toast";
 import { isSerialUrl, providerLabel } from "../../services/serial-scrapers";
 import { DetailShell } from "../_shared/detail-shell";
 import LengthFact from "./length-fact";
@@ -9,6 +8,7 @@ import { shareLink } from "./share-link";
 import { useReadingSpeed } from "./use-reading-speed";
 import { useSerialPreview } from "./use-serial-preview";
 import { useWebNovelImport } from "./use-web-novel-import";
+import { useWishlistAction } from "./use-wishlist-action";
 import { Ao3Meta, chapterFallback, webNovelFacts, webNovelLength } from "./web-novel-facts";
 
 /**
@@ -25,6 +25,18 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 	const preview = useSerialPreview(url);
 	const importer = useWebNovelImport(url ?? "");
 	const speed = useReadingSpeed();
+	const wishlistAction = useWishlistAction(
+		preview.result
+			? {
+					kind: "serial",
+					ref: preview.result.sourceUrl,
+					title: preview.result.title,
+					author: preview.result.author,
+					coverUrl: preview.result.coverImage,
+				}
+			: null,
+		importer.isMembershipKnown && !importer.existingSeriesId,
+	);
 
 	const result = preview.result;
 	const existingSeriesId = importer.existingSeriesId;
@@ -54,6 +66,11 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 				onRetry={() => preview.refetch()}
 				errorSourceLink={{ href: url, label: "Open the original page" }}
 				externalLink={{ href: url }}
+				headerActions={
+					preview.isPending
+						? [{ label: "Share", icon: Share2, disabled: true, onClick: () => undefined }]
+						: undefined
+				}
 			/>
 		);
 	}
@@ -62,7 +79,6 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 	const provider = providerLabel(result.provider);
 
 	const handleImport = () => {
-		toast.info(`Importing "${result.title}"...`);
 		importer.start(result.title, () => router.navigate({ to: "/tabs/library" }));
 	};
 
@@ -108,6 +124,7 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 			].filter(Boolean)}
 			subjects={result.details?.tags}
 			primaryAction={primaryAction}
+			secondaryActions={wishlistAction ? [wishlistAction] : undefined}
 			description={result.description ? { text: result.description } : undefined}
 			externalLink={{
 				href: result.sourceUrl,

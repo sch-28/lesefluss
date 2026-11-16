@@ -3,6 +3,7 @@ import type {
 	InvitePreview,
 	RelationshipState,
 	RespondToRequestBody,
+	SignedOutInvitePreview,
 	SocialRelationships,
 } from "@lesefluss/core";
 import { SOCIAL_API, socialActionErrorMessage } from "@lesefluss/core";
@@ -10,6 +11,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
 import { offerPushAfterFriendship } from "../push/offer";
+import { SYNC_URL } from "../sync/auth-client";
+import { SYNC_ENABLED } from "../sync/session";
 import { socialQueryDefaults } from "./cache";
 import { socialErrorBody } from "./profile";
 
@@ -122,6 +125,27 @@ export function useInvitePreview(token: string, enabled = true) {
 		queryKey: socialKeys.invitePreview(token),
 		queryFn: () => friendsClient.previewInvite(token),
 		enabled,
+		...socialQueryDefaults,
+		refetchOnWindowFocus: false,
+	});
+}
+
+async function previewInviteSignedOut(token: string): Promise<SignedOutInvitePreview> {
+	const res = await fetch(`${SYNC_URL}${SOCIAL_API.invitePreviewSignedOut}`, {
+		method: "POST",
+		credentials: "omit",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ token }),
+	});
+	if (!res.ok) throw new AuthedFetchError(res.status, await res.text(), null);
+	return res.json();
+}
+
+export function useSignedOutInvitePreview(token: string) {
+	return useQuery({
+		queryKey: socialKeys.invitePreviewSignedOut(token),
+		queryFn: () => previewInviteSignedOut(token),
+		enabled: SYNC_ENABLED,
 		...socialQueryDefaults,
 		refetchOnWindowFocus: false,
 	});

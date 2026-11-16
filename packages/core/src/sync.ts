@@ -3,7 +3,9 @@ import { BOOK_STATUSES } from "./books";
 import { isDayKey } from "./day-key";
 import { READING_MODES } from "./reading-credit";
 import {
+	MAX_GOAL_DAILY_MINUTES,
 	MAX_GOAL_DAILY_PERCENT,
+	MIN_GOAL_DAILY_MINUTES,
 	MIN_GOAL_DAILY_PERCENT,
 	READING_GOAL_MODES,
 	READING_GOAL_STATUSES,
@@ -15,6 +17,7 @@ import {
 	SETTING_CONSTRAINTS,
 	SYNCED_SETTING_KEYS,
 } from "./settings";
+import { SPEED_WINDOWS } from "./speed-model";
 
 /**
  * Max plain-text content size (UTF-8 bytes) a book may have to be eligible for
@@ -46,6 +49,11 @@ export function isSyncEligible(book: { size: number; deleted?: boolean | null })
 // Zod schemas - runtime validation on server, type source-of-truth for both apps
 // ---------------------------------------------------------------------------
 
+/** Longest book-level series name. The EPUB importer caps at the same length. */
+export const BOOK_SERIES_NAME_MAX = 200;
+/** Highest book-level series number. */
+export const BOOK_SERIES_INDEX_MAX = 100_000;
+
 export const SyncBookSchema = z.object({
 	bookId: z.string().regex(/^[0-9a-f]{8}$/),
 	title: z.string().max(500),
@@ -68,6 +76,9 @@ export const SyncBookSchema = z.object({
 	// Optional for the same reason as `finishedAt`: absent means the client has
 	// no such field, not that the book has no add date.
 	addedAt: z.number().int().nonnegative().nullable().optional(),
+	// Start of the book's first real sitting (see bookStatus()). Earliest wins on
+	// merge; optional for the same reason as `finishedAt`.
+	firstSittingAt: z.number().int().nonnegative().nullable().optional(),
 	// Reader-editable metadata. All optional for the same reason as `finishedAt`:
 	// an older client omits them entirely, and absent must not read as "cleared".
 	description: z.string().max(20_000).nullable().optional(),
@@ -91,6 +102,15 @@ export const SyncBookSchema = z.object({
 	 * the field omits it, and the merge falls back to `updatedAt`.
 	 */
 	metadataUpdatedAt: z.number().int().nonnegative().nullable().optional(),
+	/**
+	 * Book-level series ("Foundation" #2.5), unrelated to the serial `seriesId`
+	 * below. Merges on its own revision, `seriesUpdatedAt`, so an edit in the
+	 * metadata group never undoes it. Optional with no default: a client that
+	 * pre-dates the fields omits them, and the server then keeps its own.
+	 */
+	seriesName: z.string().max(BOOK_SERIES_NAME_MAX).nullable().optional(),
+	seriesIndex: z.number().nonnegative().max(BOOK_SERIES_INDEX_MAX).nullable().optional(),
+	seriesUpdatedAt: z.number().int().nonnegative().nullable().optional(),
 	// Serial chapter membership (null for standalone books)
 	seriesId: z
 		.string()
@@ -187,6 +207,8 @@ export const SyncSettingsSchema = z.object({
 		.min(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.min)
 		.max(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.max),
 	showReadingTime: z.boolean(),
+	showLiveWpm: z.boolean(),
+	speedWindow: z.enum(SPEED_WINDOWS),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
 	readerGlossaryUnderline: z.boolean().optional().default(true),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),
@@ -275,6 +297,9 @@ export const SyncReadingSessionSchema = z
 		furthestWord: pgInt().nullable().optional(),
 		// A slow scroll session legitimately rounds to 0 wpm.
 		wpmAvg: z.number().int().nonnegative().nullable(),
+		// Optional: clients from before these existed omit them, and the server keeps what it has.
+		fontSize: z.number().int().min(1).max(500).nullable().optional(),
+		segmentWpm: z.array(z.number().int().nonnegative().max(100_000)).max(200).nullable().optional(),
 		updatedAt: z.number().int().nonnegative(),
 	})
 	.refine((d) => d.endedAt >= d.startedAt, {
@@ -297,9 +322,128 @@ export const SyncReadingGoalSchema = z.object({
 	planStartWord: pgInt(),
 	targetDate: dayKey(),
 	dailyPercent: z.number().min(MIN_GOAL_DAILY_PERCENT).max(MAX_GOAL_DAILY_PERCENT),
+	/** A minute goal's minutes a day; null for a percent or date goal. Optional
+	 *  on the wire: a client from before minute goals omits it. */
+	dailyMinutes: z
+		.number()
+		.min(MIN_GOAL_DAILY_MINUTES)
+		.max(MAX_GOAL_DAILY_MINUTES)
+		.nullable()
+		.optional(),
 	carriedDaysMet: pgInt(),
 	completedAt: epochMs().nullable(),
 	reminderTime: z.string().regex(REMINDER_TIME_REGEX).nullable(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
+export const COLLECTION_NAME_MAX = 100;
+export const COLLECTIONS_PUSH_MAX = 1000;
+export const COLLECTION_BOOKS_PUSH_MAX = 50_000;
+
+/** A collection's or smart shelf's own view (group-by and columns) as JSON. */
+export const SHELF_VIEW_MAX = 2048;
+/** Optional on the wire like `ordered`: a push without it leaves the stored view alone. */
+const shelfView = () => z.string().min(2).max(SHELF_VIEW_MAX).nullable().optional();
+
+export const SyncCollectionSchema = z.object({
+	collectionId: z.string().min(1).max(64),
+	name: z.string().trim().min(1).max(COLLECTION_NAME_MAX),
+	sortOrder: z.number(),
+	/** Optional on the wire: a client from before series collections omits them, and the server keeps what it stores. */
+	ordered: z.boolean().optional(),
+	seriesKey: z.string().min(1).max(BOOK_SERIES_NAME_MAX).nullable().optional(),
+	view: shelfView(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
+/** One membership. `deleted` is a row value so a book removed and added again wins by `updatedAt`. */
+export const SyncCollectionBookSchema = z.object({
+	collectionId: z.string().min(1).max(64),
+	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	seriesIndex: z.number().nonnegative().max(BOOK_SERIES_INDEX_MAX).nullable().optional(),
+	position: z.number().finite().nullable().optional(),
+	deleted: z.boolean(),
+	updatedAt: epochMs(),
+});
+
+export const SMART_SHELF_NAME_MAX = 100;
+export const SMART_SHELVES_PUSH_MAX = 500;
+export const SMART_SHELF_CONDITIONS_MAX = 16_384;
+
+/** `conditions` is the condition tree as JSON, carried opaquely so a tree a newer
+ *  client writes survives a round trip through an older one. */
+export const SyncSmartShelfSchema = z.object({
+	shelfId: z.string().min(1).max(64),
+	name: z.string().trim().min(1).max(SMART_SHELF_NAME_MAX),
+	conditions: z.string().min(2).max(SMART_SHELF_CONDITIONS_MAX),
+	pinned: z.boolean(),
+	sortOrder: z.number(),
+	view: shelfView(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
+export const BOOKMARK_LABEL_MAX = 200;
+export const BOOKMARKS_PUSH_MAX = 5000;
+
+export const SyncBookmarkSchema = z.object({
+	bookmarkId: z.string().min(1).max(64),
+	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	word: pgInt(),
+	label: z.string().max(BOOKMARK_LABEL_MAX).nullable(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
+export const WISHLIST_PUSH_MAX = 5000;
+export const WISHLIST_KINDS = ["catalog", "serial"] as const;
+export type WishlistKind = (typeof WISHLIST_KINDS)[number];
+
+// "gutenberg:1342", "se:mary-shelley/frankenstein"; never a URL, whose "//" follows the colon.
+const CATALOG_ID = /^[a-z][a-z0-9_-]*:(?!\/)\S+$/;
+const HTTP_URL = /^https?:\/\/\S+$/i;
+
+export const WISHLIST_TITLE_MAX = 500;
+export const WISHLIST_AUTHOR_MAX = 200;
+export const WISHLIST_URL_MAX = 2000;
+
+export function isWishlistCoverUrl(url: string): boolean {
+	return url.length <= WISHLIST_URL_MAX && HTTP_URL.test(url);
+}
+
+/** `ref` is what the import takes: a catalog id ("gutenberg:1342") or a series URL. */
+export const SyncWishlistItemSchema = z
+	.object({
+		itemId: z.string().min(1).max(64),
+		kind: z.enum(WISHLIST_KINDS),
+		ref: z.string().max(WISHLIST_URL_MAX),
+		title: z.string().max(WISHLIST_TITLE_MAX),
+		author: z.string().max(WISHLIST_AUTHOR_MAX).nullable(),
+		coverUrl: z.string().max(WISHLIST_URL_MAX).regex(HTTP_URL).nullable(),
+		deleted: z.boolean(),
+		createdAt: epochMs(),
+		updatedAt: epochMs(),
+	})
+	.refine((d) => (d.kind === "catalog" ? CATALOG_ID.test(d.ref) : HTTP_URL.test(d.ref)), {
+		message: "ref does not match its kind",
+		path: ["ref"],
+	});
+
+export const SPEED_TESTS_PUSH_MAX = 1000;
+export const SPEED_TEST_WPM_MAX = 5000;
+
+/** `rsvpWpm` is null when the test ended after its read round. */
+export const SyncSpeedTestSchema = z.object({
+	testId: z.string().min(1).max(64),
+	readingWpm: z.number().int().min(1).max(SPEED_TEST_WPM_MAX),
+	rsvpWpm: z.number().int().min(1).max(SPEED_TEST_WPM_MAX).nullable(),
+	passageId: z.string().min(1).max(64),
 	deleted: z.boolean(),
 	createdAt: epochMs(),
 	updatedAt: epochMs(),
@@ -320,11 +464,42 @@ export const SyncPayloadSchema = z.object({
 	// No default: a client that pre-dates goals omits the field, and that must
 	// not read as "this account has no goals".
 	readingGoals: z.array(SyncReadingGoalSchema).max(5000).optional(),
+	// No default, as with goals: an omitted array never means "no collections".
+	collections: z.array(SyncCollectionSchema).max(COLLECTIONS_PUSH_MAX).optional(),
+	collectionBooks: z.array(SyncCollectionBookSchema).max(COLLECTION_BOOKS_PUSH_MAX).optional(),
+	smartShelves: z.array(SyncSmartShelfSchema).max(SMART_SHELVES_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "no bookmarks".
+	bookmarks: z.array(SyncBookmarkSchema).max(BOOKMARKS_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "an empty wishlist".
+	wishlist: z.array(SyncWishlistItemSchema).max(WISHLIST_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "no speed tests".
+	speedTests: z.array(SyncSpeedTestSchema).max(SPEED_TESTS_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
 export const SyncPushSchema = SyncPayloadSchema.extend({
 	settings: SyncSettingsPushSchema.nullable(),
+});
+
+/**
+ * The stamps a push carried from a clock running ahead of the server's, after
+ * the server clamped them to its own time. The pushing device adopts them, or
+ * its future stamps would hide every newer row another device writes until real
+ * time catches up. Lists only the clamped rows; a push with none gets no body.
+ */
+export const SyncPushStampsSchema = z.object({
+	books: z
+		.array(
+			z.object({
+				bookId: z.string(),
+				updatedAt: epochMs(),
+				metadataUpdatedAt: epochMs(),
+				// Absent from a server that pre-dates the series revision.
+				seriesUpdatedAt: epochMs().optional(),
+			}),
+		)
+		.max(50_000),
+	settingsUpdatedAt: epochMs().nullable(),
 });
 
 // ---------------------------------------------------------------------------
@@ -337,11 +512,26 @@ export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
+/** Ids per `/api/sync/delete-sessions` call; a client chunks a larger delete. */
+export const DELETE_SESSIONS_BATCH_MAX = 500;
+
+/** The push schema's id cap: an unknown id leaves a permanent placeholder tombstone. */
+export const DeleteSessionsRequestSchema = z.object({
+	sessionIds: z.array(z.string().min(1).max(64)).min(1).max(DELETE_SESSIONS_BATCH_MAX),
+});
+
 /** A malformed tombstone list deletes nothing rather than failing the pull. */
 export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
+export type SyncCollection = z.infer<typeof SyncCollectionSchema>;
+export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
+export type SyncSmartShelf = z.infer<typeof SyncSmartShelfSchema>;
+export type SyncBookmark = z.infer<typeof SyncBookmarkSchema>;
+export type SyncWishlistItem = z.infer<typeof SyncWishlistItemSchema>;
+export type SyncSpeedTest = z.infer<typeof SyncSpeedTestSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
+export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
 
 /**
  * A pulled book. `originKey` is an opaque, server-computed identity of the
@@ -370,6 +560,17 @@ export type SyncResponse = {
 	deletedSessionIdsAsOf?: number;
 	/** Optional so a client pointed at an older server can do without it. */
 	readingGoals?: SyncReadingGoal[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	collections?: SyncCollection[];
+	collectionBooks?: SyncCollectionBook[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	smartShelves?: SyncSmartShelf[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	bookmarks?: SyncBookmark[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	wishlist?: SyncWishlistItem[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	speedTests?: SyncSpeedTest[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:
@@ -380,6 +581,11 @@ export type SyncResponse = {
 	contentBookIds?: string[];
 	/** Optional so a client pointed at an older server can do without it. */
 	contentQuota?: ContentQuota;
+	/**
+	 * The server's clock (ms) as it answered, from which a client keeps its clock
+	 * offset. Optional: older servers do not send it.
+	 */
+	serverTime?: number;
 };
 
 /**
@@ -406,4 +612,36 @@ export type ContentQuotaExceeded = ContentQuota & {
 	 * once that much is free. Optional: older servers send only the ids.
 	 */
 	rejectedContentBytes?: Record<string, number>;
+	/** As a 2xx push answer carries them: absent when nothing was clamped, or from a server that pre-dates stamps. */
+	stamps?: SyncPushStamps;
 };
+
+/**
+ * The body of `POST /api/account/delete`; the literal guards against an accidental call.
+ * `password` is required for an account that has one; an account that signs in only
+ * with Google or Discord sends none and needs a recent sign-in instead.
+ */
+export const DeleteAccountRequestSchema = z.object({
+	confirm: z.literal("delete-account"),
+	password: z.string().max(1024).optional(),
+});
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequestSchema>;
+
+/** Why the server refused an account deletion (403 `reason`); nothing was deleted. */
+export type DeleteAccountRefusal =
+	| "password_required"
+	| "wrong_password"
+	| "reauth_required"
+	| "rate_limited";
+
+export const DELETE_ACCOUNT_REFUSAL_MESSAGES: Record<DeleteAccountRefusal, string> = {
+	password_required: "Enter your password to delete your account.",
+	wrong_password: "That password is not correct.",
+	reauth_required:
+		"For your security, sign out and sign in again, then delete your account within 10 minutes.",
+	rate_limited: "Too many attempts. Wait a minute, then try again.",
+};
+
+export function isDeleteAccountRefusal(value: unknown): value is DeleteAccountRefusal {
+	return typeof value === "string" && Object.keys(DELETE_ACCOUNT_REFUSAL_MESSAGES).includes(value);
+}

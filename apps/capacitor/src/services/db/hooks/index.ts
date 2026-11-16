@@ -26,8 +26,10 @@
  * Query keys are re-exported for callers that need manual invalidation.
  */
 
+import { bookmarkHooks } from "./use-bookmarks";
 import { bookHooks } from "./use-books";
 import { bulkBookHooks } from "./use-bulk-books";
+import { collectionHooks } from "./use-collections";
 import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
@@ -36,10 +38,14 @@ import { readingSessionHooks } from "./use-reading-sessions";
 import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
+import { smartShelfHooks } from "./use-smart-shelves";
+import { speedTestHooks } from "./use-speed-tests";
 import { statsHooks } from "./use-stats";
+import { wishlistHooks } from "./use-wishlist";
 
 export {
 	bookKeys,
+	collectionKeys,
 	glossaryKeys,
 	readingSessionKeys,
 	serialKeys,
@@ -89,6 +95,7 @@ export const queryHooks = {
 
 	/** Mutation: delete a book (disk + DB). */
 	useDeleteBook: bookHooks.useDeleteBook,
+	useResetBookProgress: bookHooks.useResetBookProgress,
 
 	/** Delete, restatus, or retag many books, invalidating once at the end. */
 	useBulkBookActions: bulkBookHooks.useBulkBookActions,
@@ -103,6 +110,9 @@ export const queryHooks = {
 	// ── Highlights ─────────────────────────────────────────────────────────
 	/** All highlights for a book, ordered by position. */
 	useHighlights: highlightHooks.useHighlights,
+
+	/** bookId → highlight count; load only while something shows it. */
+	useHighlightCounts: highlightHooks.useHighlightCounts,
 
 	/** Mutation: add a new highlight. */
 	useAddHighlight: highlightHooks.useAddHighlight,
@@ -148,6 +158,9 @@ export const queryHooks = {
 	/** Map<seriesId, SeriesActivity>. Drives library filter+sort for series cards. */
 	useSeriesActivity: seriesHooks.useSeriesActivity,
 
+	/** Map<seriesId, SeriesChapterLength[]> in one query: the series cards' reading time. */
+	useSeriesChapterLengths: seriesHooks.useSeriesChapterLengths,
+
 	/** Mutation: soft-delete a series + tombstone all its chapter rows. */
 	useDeleteSeries: seriesHooks.useDeleteSeries,
 
@@ -162,11 +175,59 @@ export const queryHooks = {
 
 	/** A book's active goal and its plan (see services/stats/reading-goal.ts). */
 	useReadingGoalPlan: readingGoalHooks.useReadingGoalPlan,
+	useActiveGoalPlans: readingGoalHooks.useActiveGoalPlans,
+	useLastReadBookId: readingGoalHooks.useLastReadBookId,
 	useCreateReadingGoal: readingGoalHooks.useCreateReadingGoal,
 	/** Mode switch or new target date / daily percent. */
 	useReplanReadingGoal: readingGoalHooks.useReplanReadingGoal,
 	useSetGoalReminder: readingGoalHooks.useSetGoalReminder,
 	useDeleteReadingGoal: readingGoalHooks.useDeleteReadingGoal,
+	useRestoreReadingGoal: readingGoalHooks.useRestoreReadingGoal,
+
+	// ── Collections ───────────────────────────────────────────────────────
+	useCollections: collectionHooks.useCollections,
+	useCollectionBookIds: collectionHooks.useCollectionBookIds,
+	useCollectionIdsForBook: collectionHooks.useCollectionIdsForBook,
+	useCollectionMemberships: collectionHooks.useCollectionMemberships,
+	/** Book id → its series collections with #N, in sidebar order. */
+	useSeriesMemberships: collectionHooks.useSeriesMemberships,
+	useCollectionMembers: collectionHooks.useCollectionMembers,
+	/** Mutation: books into a collection or a new series, with their #N. */
+	useAddNumberedBooks: collectionHooks.useAddNumberedBooks,
+	useCreateCollection: collectionHooks.useCreateCollection,
+	/** Mutation: the collection page's create, with its picked books. */
+	useCreateCollectionWithBooks: collectionHooks.useCreateCollectionWithBooks,
+	/** Mutation: the collection page's save (name, order, members). */
+	useEditCollection: collectionHooks.useEditCollection,
+	useRenameCollection: collectionHooks.useRenameCollection,
+	useSetCollectionView: collectionHooks.useSetCollectionView,
+	useMoveCollection: collectionHooks.useMoveCollection,
+	useDeleteCollection: collectionHooks.useDeleteCollection,
+	useAddBooksToCollection: collectionHooks.useAddBooksToCollection,
+	useRemoveBooksFromCollection: collectionHooks.useRemoveBooksFromCollection,
+	/** Mutation: an ordered collection's new #N, one write per changed row. */
+	useReorderCollection: collectionHooks.useReorderCollection,
+	useSeriesMembershipForBook: collectionHooks.useSeriesMembershipForBook,
+	useSaveBookSeries: collectionHooks.useSaveBookSeries,
+	useImportSeriesState: collectionHooks.useImportSeriesState,
+
+	// ── Bookmarks ─────────────────────────────────────────────────────────
+	useBookmarks: bookmarkHooks.useBookmarks,
+	useAddBookmark: bookmarkHooks.useAddBookmark,
+	useToggleBookmark: bookmarkHooks.useToggleBookmark,
+	useRenameBookmark: bookmarkHooks.useRenameBookmark,
+	useDeleteBookmark: bookmarkHooks.useDeleteBookmark,
+
+	// ── Wishlist ──────────────────────────────────────────────────────────
+	useWishlist: wishlistHooks.useWishlist,
+	useWishlistEntry: wishlistHooks.useWishlistEntry,
+	useToggleWishlist: wishlistHooks.useToggleWishlist,
+
+	// ── Smart shelves ─────────────────────────────────────────────────────
+	useSmartShelfRows: smartShelfHooks.useSmartShelfRows,
+	useCreateSmartShelf: smartShelfHooks.useCreateSmartShelf,
+	useUpdateSmartShelf: smartShelfHooks.useUpdateSmartShelf,
+	useDeleteSmartShelf: smartShelfHooks.useDeleteSmartShelf,
 
 	// ── Stats ─────────────────────────────────────────────────────────────
 	useStatsPeriodTotals: statsHooks.usePeriodTotals,
@@ -175,8 +236,15 @@ export const queryHooks = {
 	useStatsTopBooks: statsHooks.useTopBooks,
 	useStatsWpmTrend: statsHooks.useWpmTrend,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
-	useStatsReadingRates: statsHooks.useReadingRates,
-	useStatsMeasuredSpeed: statsHooks.useMeasuredReadingSpeed,
+	/** One speed model for every speed and time estimate (see @lesefluss/core speed-model). */
+	useStatsSpeedModel: statsHooks.useSpeedModel,
+	useStatsSpeedModelWithout: statsHooks.useSpeedModelWithout,
+	useStatsSpeedModelEarlier: statsHooks.useSpeedModelEarlier,
+	useStatsSpeedInsights: statsHooks.useSpeedInsights,
+	useStatsMilestones: statsHooks.useMilestones,
+	useSpeedTests: speedTestHooks.useSpeedTests,
+	useSaveSpeedTest: speedTestHooks.useSaveSpeedTest,
+	useStatsSpeedTab: statsHooks.useSpeedTab,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
 	useStatsFinishedBooks: statsHooks.useFinishedBooks,
@@ -184,11 +252,11 @@ export const queryHooks = {
 	useStatsDailyReading: statsHooks.useDailyReading,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
-	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,
+	useBookReadingSessions: readingSessionHooks.useBookReadingSessions,
 	useReadingSessionCount: readingSessionHooks.useReadingSessionCount,
-
-	/** Mutation: delete one reading session (server + local). */
-	useDeleteReadingSession: readingSessionHooks.useDeleteReadingSession,
+	useDeleteReadingSessions: readingSessionHooks.useDeleteReadingSessions,
+	useUpdateReadingSession: readingSessionHooks.useUpdateReadingSession,
+	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
 
 	// ── Danger Zone (bulk deletions) ───────────────────────────────────────
 	/** Mutation: hard-delete every highlight on this device + sync. */

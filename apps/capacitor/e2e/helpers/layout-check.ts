@@ -13,8 +13,8 @@ import type { Page } from "@playwright/test";
  * window, a title that yields to actions); text inside it is not counted.
  * Measures each line of text, not boxes, since text can overflow a box that
  * itself fits. Skipped as not on screen: text a scroll container has scrolled
- * out of view (along the axis it scrolls), text under a fixed or sticky header
- * or tab bar, text folded into a closed <details>, and visually hidden text
+ * out of view (along the axis it scrolls), text under a fixed or sticky header,
+ * tab bar or tab strip, text folded into a closed <details>, and visually hidden text
  * for screen readers (sr-only: a box of 1px or less that clips its overflow).
  */
 export function textLayoutProblems(page: Page, rootSelector = "body"): Promise<string[]> {
@@ -40,7 +40,7 @@ export function textLayoutProblems(page: Page, rootSelector = "body"): Promise<s
 			);
 		};
 
-		const bars = [...document.querySelectorAll("nav, header")]
+		const bars = [...document.querySelectorAll("nav, header, [role=tablist]")]
 			.map((bar) => {
 				for (let e: Element | null = bar; e; e = e.parentElement) {
 					if (["fixed", "sticky"].includes(style(e).position)) return { bar, box: e };

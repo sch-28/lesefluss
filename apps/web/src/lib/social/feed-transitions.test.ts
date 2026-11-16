@@ -11,6 +11,7 @@ function book(patch: Partial<FeedBookState> = {}): FeedBookState {
 		wordPosition: 0,
 		wordCount: 1000,
 		finishedAt: null,
+		firstSittingAt: null,
 		deleted: false,
 		seriesId: null,
 		source: null,
@@ -25,8 +26,17 @@ function run(before: FeedBookState | null, after: FeedBookState) {
 
 describe("feedTransitions", () => {
 	test("starting a book emits started", () => {
-		expect(run(book(), book({ wordPosition: 50 }))).toEqual(["started"]);
+		const sat = new Date(NOW.getTime() - HOUR);
+		expect(run(book(), book({ wordPosition: 50, firstSittingAt: sat }))).toEqual(["started"]);
 		expect(run(book(), book({ status: "reading" }))).toEqual(["started"]);
+	});
+
+	test("a glance that only saves a position is not news", () => {
+		expect(run(book(), book({ wordPosition: 50 }))).toEqual([]);
+		const sat = new Date(NOW.getTime() - HOUR);
+		expect(
+			run(book({ wordPosition: 50 }), book({ wordPosition: 80, firstSittingAt: sat })),
+		).toEqual(["started"]);
 	});
 
 	test("finishing emits finished, by progress, by status or by a new finish date", () => {
@@ -43,6 +53,11 @@ describe("feedTransitions", () => {
 
 	test("a book read in one go from want to finished emits only finished", () => {
 		expect(run(book(), book({ wordPosition: 1000 }))).toEqual(["finished"]);
+	});
+
+	test("a reset finished book keeps its finish date, so reading it again is not news", () => {
+		const reset = book({ finishedAt: new Date(NOW.getTime() - 100 * HOUR) });
+		expect(run(reset, book({ ...reset, wordPosition: 50 }))).toEqual([]);
 	});
 
 	test("a book the server has never seen emits nothing", () => {

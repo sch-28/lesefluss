@@ -8,7 +8,8 @@ import {
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import type { SearchResult } from "../../services/serial-scrapers";
-import { ErrorState } from "../_shared/load-states";
+import { useIsOnline } from "../../services/social/cache";
+import { describeLoadError, ErrorState } from "../_shared/load-states";
 import BrowseRow from "./browse-row";
 import type { ExploreSearch } from "./explore-search";
 import Hero from "./hero";
@@ -32,6 +33,11 @@ type Props = {
 	onBrowseTags: () => void;
 	/** Shelves that know the reader, placed right under the hero. */
 	personalShelves?: React.ReactNode;
+	/**
+	 * Until the local data that decides the personal shelves is read, nothing goes
+	 * below them: shelves added above loaded content would push it down.
+	 */
+	isPersonalPending?: boolean;
 };
 
 const ExploreLanding: React.FC<Props> = ({
@@ -41,6 +47,7 @@ const ExploreLanding: React.FC<Props> = ({
 	onBrowse,
 	onBrowseTags,
 	personalShelves,
+	isPersonalPending = false,
 }) => {
 	const [shuffleNonce, setShuffleNonce] = useState(0);
 
@@ -55,6 +62,12 @@ const ExploreLanding: React.FC<Props> = ({
 	});
 
 	const data = landingQuery.data;
+	const isOnline = useIsOnline();
+	// Every section below needs the network; without it each would stack its own
+	// error, so one message stands in for all of them until a retry gets through.
+	const isUnreachable =
+		!isOnline ||
+		(landingQuery.isError && !data && describeLoadError(landingQuery.error, isOnline) !== "server");
 	const failed = new Set(data?.failed ?? []);
 	const retryLanding = () => landingQuery.refetch();
 	const catalogShelf = (
@@ -81,6 +94,22 @@ const ExploreLanding: React.FC<Props> = ({
 		[data],
 	);
 
+	if (isUnreachable) {
+		return (
+			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+				<ErrorState
+					error={landingQuery.error}
+					onRetry={() => {
+						void landingQuery.refetch();
+						void randomQuery.refetch();
+					}}
+					className="mb-6"
+				/>
+				{personalShelves}
+			</div>
+		);
+	}
+
 	return (
 		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
 			<BrowseRow
@@ -90,53 +119,64 @@ const ExploreLanding: React.FC<Props> = ({
 			/>
 
 			{landingQuery.isPending ? (
-				<>
-					<HeroSkeleton />
-					<ShelfSkeleton />
-					<ShelfSkeleton />
-				</>
+				<HeroSkeleton />
 			) : landingQuery.isError && !data ? (
 				<ErrorState error={landingQuery.error} onRetry={retryLanding} className="mb-6" />
 			) : (
 				heroBooks.length > 0 && <Hero books={heroBooks} onOpen={onOpen} />
 			)}
 
-			{personalShelves}
-
-			{/* Web novels stay together and high; each half loads and fails on its own. */}
-			<TrendingWebNovels onOpen={onOpenWebNovel} />
-			<WebNovelsSection />
-
-			{data && (
+			{!isPersonalPending && (
 				<>
-					{data.recently_added &&
-						catalogShelf("recently_added", "Recently added", data.recently_added, {
-							scope: "catalog",
-							sort: "recent",
-						})}
-					{catalogShelf("most_read", "Most read", data.most_read, {
-						scope: "catalog",
-						sort: "popular",
-					})}
-					{catalogShelf("featured_se", "New from Standard Ebooks", data.featured_se, {
-						source: "standard_ebooks",
-						sort: "recent",
-					})}
-					{data.genres.map((g) => catalogShelf(`genre:${g.id}`, g.label, g.books, { genre: g.id }))}
+					{personalShelves}
+
+					{/* Web novels stay together and high; each half loads and fails on its own. */}
+					<TrendingWebNovels onOpen={onOpenWebNovel} />
+					<WebNovelsSection />
+
+					{/* Held in the catalog shelves' own slot: skeletons above the personal
+			    shelves pushed those down, then let them jump up on load. */}
+					{landingQuery.isPending && (
+						<>
+							<ShelfSkeleton />
+							<ShelfSkeleton />
+							<ShelfSkeleton />
+						</>
+					)}
+					{data && (
+						<>
+							{data.recently_added &&
+								catalogShelf("recently_added", "Recently added", data.recently_added, {
+									scope: "catalog",
+									sort: "recent",
+								})}
+							{catalogShelf("most_read", "Most read", data.most_read, {
+								scope: "catalog",
+								sort: "popular",
+							})}
+							{catalogShelf("featured_se", "New from Standard Ebooks", data.featured_se, {
+								source: "standard_ebooks",
+								sort: "recent",
+							})}
+							{data.genres.map((g) =>
+								catalogShelf(`genre:${g.id}`, g.label, g.books, { genre: g.id }),
+							)}
+						</>
+					)}
+
+					<Shelf
+						title="Random picks"
+						books={randomQuery.data?.results ?? []}
+						onOpen={onOpen}
+						onSeeAll={() => onBrowse({ source: "standard_ebooks" })}
+						onShuffle={() => setShuffleNonce((n) => n + 1)}
+						isShuffling={randomQuery.isFetching}
+						isLoading={randomQuery.isPending}
+						error={randomQuery.isError ? randomQuery.error : undefined}
+						onRetry={() => randomQuery.refetch()}
+					/>
 				</>
 			)}
-
-			<Shelf
-				title="Random picks"
-				books={randomQuery.data?.results ?? []}
-				onOpen={onOpen}
-				onSeeAll={() => onBrowse({ source: "standard_ebooks" })}
-				onShuffle={() => setShuffleNonce((n) => n + 1)}
-				isShuffling={randomQuery.isFetching}
-				isLoading={randomQuery.isPending}
-				error={randomQuery.isError ? randomQuery.error : undefined}
-				onRetry={() => randomQuery.refetch()}
-			/>
 		</div>
 	);
 };

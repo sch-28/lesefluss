@@ -114,6 +114,16 @@ describe("applyProbe", () => {
 	});
 });
 
+describe("toCandidates", () => {
+	it("starts a file whose name is already in the library unticked", () => {
+		const candidates = toCandidates(
+			[file("Morning Star.epub"), file("b.epub")],
+			library("morning star"),
+		);
+		expect(candidates.map((c) => c.selected)).toEqual([false, true]);
+	});
+});
+
 describe("isDuplicate", () => {
 	it("matches on the filename before a probe has landed", () => {
 		const [candidate] = toCandidates([file("Morning Star.epub")]);
@@ -124,19 +134,35 @@ describe("isDuplicate", () => {
 describe("setSelection", () => {
 	it("applies to one format only when given one", () => {
 		const candidates = toCandidates([file("a.epub"), file("b.pdf", "pdf")]);
-		const after = setSelection(candidates, false, "pdf");
+		const after = setSelection(candidates, false, library(), "pdf");
 		expect(after.map((c) => c.selected)).toEqual([true, false]);
 	});
 
 	it("applies to everything when given no format", () => {
-		const after = setSelection(toCandidates([file("a.epub"), file("b.pdf", "pdf")]), false);
+		const after = setSelection(
+			toCandidates([file("a.epub"), file("b.pdf", "pdf")]),
+			false,
+			library(),
+		);
 		expect(after.every((c) => !c.selected)).toBe(true);
 	});
 
 	// Otherwise a probe landing after "select none" would quietly re-select.
-	it("counts as a manual choice", () => {
-		const after = setSelection(toCandidates([file("a.epub")]), false);
+	it("holds for probes that land afterwards", () => {
+		const after = setSelection(toCandidates([file("a.epub")]), false, library());
 		const [probed] = applyProbe(after, "a.epub", probe({ title: "Iron Gold" }), library());
+		expect(probed.selected).toBe(false);
+	});
+
+	it("leaves duplicates unticked, also ones a later probe reveals", () => {
+		const titles = library("morning star");
+		const all = setSelection(
+			toCandidates([file("Morning Star.epub"), file("b.epub")], titles),
+			true,
+			titles,
+		);
+		expect(all.map((c) => c.selected)).toEqual([false, true]);
+		const [, probed] = applyProbe(all, "b.epub", probe({ title: "Morning Star" }), titles);
 		expect(probed.selected).toBe(false);
 	});
 });

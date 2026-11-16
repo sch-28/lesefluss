@@ -8,19 +8,23 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { CollapsibleProse } from "./collapsible-prose";
 import { ErrorState } from "./load-states";
+import { readableSubjects } from "./readable-subjects";
 
 export interface DetailAction {
 	label: string;
+	/** Trails the label only on a wide button (28rem and up); a long one ends in an ellipsis. */
+	detail?: string;
 	icon?: LucideIcon;
 	onClick: () => void;
 	disabled?: boolean;
@@ -29,7 +33,7 @@ export interface DetailAction {
 	destructive?: boolean;
 }
 
-export type HeaderAction = Pick<DetailAction, "label" | "onClick" | "destructive"> & {
+export type HeaderAction = Pick<DetailAction, "label" | "onClick" | "destructive" | "disabled"> & {
 	icon: LucideIcon;
 };
 
@@ -45,9 +49,7 @@ export interface DetailShellProps {
 
 	// Stats / subjects
 	statsLine?: React.ReactNode;
-	/** Hero facts as badges. Preferred over `statsLine`: a badge row fills the
-	 *  column beside the cover, where a single line of small grey text left a
-	 *  hole on every book that carries no catalog metadata. */
+	/** Hero facts as plain text; a fact that is a link styles itself as one. */
 	facts?: readonly React.ReactNode[];
 	subjects?: readonly string[];
 	/** Tappable tags; shown instead of `subjects` when given. */
@@ -73,7 +75,7 @@ export interface DetailShellProps {
 	headerActions?: readonly HeaderAction[];
 	/** Determinate progress bar at the top (0-100). */
 	progress?: number;
-	/** Centered loading spinner instead of the body. */
+	/** Hero frame with a cover placeholder and a spinner instead of the body. */
 	isLoading?: boolean;
 	/** Replace body with an error message. */
 	errorMessage?: string;
@@ -84,6 +86,32 @@ export interface DetailShellProps {
 }
 
 const COLLAPSED_TAG_COUNT = 8;
+/** The app's chip at hero size; a coarse pointer still gets the 44px hit area. */
+const SMALL_CHIP = "h-8 px-3 text-xs";
+
+/**
+ * The page header echoes the title only once the hero's h1 has scrolled under it, so the
+ * title never shows twice on screen.
+ */
+function useHeroTitleInView(showsHero: boolean) {
+	const headerRef = useRef<HTMLElement>(null);
+	const heroTitleRef = useRef<HTMLHeadingElement>(null);
+	const [isHeroTitleInView, setHeroTitleInView] = useState(true);
+	useEffect(() => {
+		const heroTitle = heroTitleRef.current;
+		if (!showsHero || !heroTitle || typeof IntersectionObserver === "undefined") return;
+		const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry) setHeroTitleInView(entry.isIntersecting);
+			},
+			{ rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px` },
+		);
+		observer.observe(heroTitle);
+		return () => observer.disconnect();
+	}, [showsHero]);
+	return { headerRef, heroTitleRef, isHeroTitleInView };
+}
 
 export const DetailShell: React.FC<DetailShellProps> = ({
 	cover,
@@ -109,10 +137,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	onRetry,
 	errorSourceLink,
 }) => {
+	const showsHero = !isLoading && error === undefined && !errorMessage;
+	const { headerRef, heroTitleRef, isHeroTitleInView } = useHeroTitleInView(showsHero);
 	return (
 		<>
 			<PageHeader
+				ref={headerRef}
 				title={title}
+				titleShown={showsHero ? !isHeroTitleInView : undefined}
 				right={
 					<div className="flex items-center gap-1">
 						{externalLink && (
@@ -135,6 +167,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									variant="ghost"
 									size="icon"
 									onClick={action.onClick}
+									disabled={action.disabled}
 									aria-label={action.label}
 									className={
 										action.destructive ? "text-destructive hover:text-destructive" : undefined
@@ -153,9 +186,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 			)}
 
 			{isLoading ? (
-				<div className="flex min-h-[60vh] items-center justify-center">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
-				</div>
+				<DetailFrame>
+					<section className="flex gap-4" aria-busy="true">
+						<div className="aspect-2/3 w-28 shrink-0 rounded-md border border-border bg-muted" />
+						<div className="flex flex-1 items-center justify-center">
+							<Loader2 className="size-6 animate-spin text-muted-foreground" />
+						</div>
+					</section>
+				</DetailFrame>
 			) : error !== undefined ? (
 				<ErrorState
 					className="min-h-[60vh]"
@@ -165,11 +203,18 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					sourceLink={errorSourceLink}
 				/>
 			) : errorMessage ? (
-				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+				<div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 p-8 text-center">
 					<p className="m-0 text-muted-foreground">{errorMessage}</p>
+					<Button
+						variant="outline"
+						onClick={primaryAction.onClick}
+						disabled={primaryAction.disabled}
+					>
+						{primaryAction.label}
+					</Button>
 				</div>
 			) : (
-				<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">
+				<DetailFrame>
 					{/* Wraps: at a large font scale the text drops below the cover rather than squeeze. */}
 					<section className="flex flex-wrap gap-4">
 						<div className="aspect-2/3 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
@@ -192,13 +237,18 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									{eyebrow}
 								</span>
 							)}
-							<h1 className="mt-1 break-words font-semibold text-xl leading-tight">{title}</h1>
+							<h1
+								ref={heroTitleRef}
+								className="mt-1 break-words font-semibold text-xl leading-tight"
+							>
+								{title}
+							</h1>
 							{author &&
 								(onAuthorTap ? (
 									<button
 										type="button"
 										onClick={onAuthorTap}
-										className="mt-1 self-start border-0 bg-transparent p-0 text-left text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+										className="mt-1 self-start border-0 bg-transparent p-0 text-left text-primary text-sm underline underline-offset-4"
 									>
 										{author}
 									</button>
@@ -206,21 +256,25 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									<p className="mt-1 text-muted-foreground text-sm">{author}</p>
 								))}
 							{facts && facts.length > 0 && (
-								<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-									{facts.map((fact, i) => (
-										<span
-											// Index key safe: array rebuilt each render, never reordered.
-											// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-											key={i}
-											className="rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground leading-none"
-										>
-											{fact}
-										</span>
-									))}
+								// Every fact leads with its dot; the frame clips the dot that starts each
+								// line, so a wrap never leaves one dangling.
+								<div className="mt-2 overflow-hidden text-muted-foreground text-xs">
+									<div className="-ml-4 flex flex-wrap items-center gap-y-1">
+										{facts.map((fact, i) => (
+											<span
+												// Index key safe: array rebuilt each render, never reordered.
+												// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+												key={i}
+												className="inline-flex items-center before:w-4 before:shrink-0 before:text-center before:content-['·']"
+											>
+												{fact}
+											</span>
+										))}
+									</div>
 								</div>
 							)}
 							{statsLine && (
-								<div className="mt-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
+								<div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
 									{statsLine}
 								</div>
 							)}
@@ -247,22 +301,15 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					) : (
 						subjects &&
 						subjects.length > 0 && (
-							<div className="mt-4 flex flex-wrap gap-1.5">
-								{subjects.slice(0, COLLAPSED_TAG_COUNT).map((s) => (
-									<span
-										key={s}
-										className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
-									>
-										{s}
-									</span>
-								))}
-							</div>
+							<p className="m-0 mt-4 text-muted-foreground text-xs">
+								{readableSubjects(subjects).slice(0, COLLAPSED_TAG_COUNT).join(" · ")}
+							</p>
 						)
 					)}
 
 					{(description?.html || description?.text) && (
-						<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
-							<h2 className="m-0 mb-3 font-semibold text-base">About</h2>
+						<section className="book-detail-card mt-6">
+							<h2 className="book-detail-section-title">About</h2>
 							<CollapsibleProse>
 								{description.html ? (
 									<SanitizedDescription
@@ -270,20 +317,29 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 										html={description.html}
 									/>
 								) : (
-									<p className="m-0 text-foreground/80 text-sm leading-relaxed">
-										{description.text}
-									</p>
+									<div className="flex flex-col gap-3 text-foreground/80 text-sm leading-relaxed">
+										{(description.text ?? "").split(/\n\s*\n/).map((paragraph, i) => (
+											// biome-ignore lint/suspicious/noArrayIndexKey: paragraphs of one fixed text
+											<p key={i} className="m-0">
+												{paragraph}
+											</p>
+										))}
+									</div>
 								)}
 							</CollapsibleProse>
 						</section>
 					)}
 
 					{children}
-				</div>
+				</DetailFrame>
 			)}
 		</>
 	);
 };
+
+const DetailFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">{children}</div>
+);
 
 const TagList: React.FC<{
 	tags: readonly { id: string; label: string }[];
@@ -293,25 +349,27 @@ const TagList: React.FC<{
 	const visible = isExpanded ? tags : tags.slice(0, COLLAPSED_TAG_COUNT);
 	const hiddenCount = tags.length - visible.length;
 	return (
-		<div className="mt-4 flex flex-wrap gap-1.5" data-testid="detail-tags">
+		<div className="mt-4 flex flex-wrap gap-2" data-testid="detail-tags">
 			{visible.map((t) => (
-				<button
-					type="button"
+				<FilterChip
 					key={t.id}
+					selected={false}
+					action
 					onClick={() => onTagTap(t.id)}
-					className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+					className={SMALL_CHIP}
 				>
 					{t.label}
-				</button>
+				</FilterChip>
 			))}
 			{hiddenCount > 0 && (
-				<button
-					type="button"
+				<FilterChip
+					selected={false}
+					action
 					onClick={() => setExpanded(true)}
-					className="rounded-full border border-border border-dashed bg-transparent px-2.5 py-0.5 text-muted-foreground text-xs"
+					className={cn(SMALL_CHIP, "text-muted-foreground")}
 				>
 					{hiddenCount} more
-				</button>
+				</FilterChip>
 			)}
 		</div>
 	);
@@ -329,7 +387,7 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			disabled={action.disabled || action.loading}
 			onClick={action.onClick}
 			className={cn(
-				"w-full",
+				"@container w-full",
 				action.destructive &&
 					(primary
 						? "bg-destructive hover:bg-destructive/90"
@@ -337,7 +395,10 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			)}
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
-			{action.label}
+			<span className="min-w-0 truncate">
+				{action.label}
+				{action.detail && <span className="@md:inline hidden"> · {action.detail}</span>}
+			</span>
 		</Button>
 	);
 };

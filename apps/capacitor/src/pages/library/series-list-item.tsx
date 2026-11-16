@@ -1,36 +1,49 @@
 import type React from "react";
+import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
+import type { SeriesChapterLength } from "../../services/stats/what-if";
+import { type CardFieldId, CardFieldSlot, DEFAULT_CARD_FIELDS, TextField } from "./card-fields";
+import { SeriesCardTime } from "./series-reading-time";
 import { useLongPress } from "./use-long-press";
 
 interface SeriesListItemProps {
 	series: Series;
 	chapterCount: number | undefined;
+	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
+	/** The book cards' fields; a serial fills author and time left, the others take no line. */
+	fields?: readonly CardFieldId[];
 }
 
 const SeriesListItem: React.FC<SeriesListItemProps> = ({
 	series,
 	chapterCount,
+	chapterLengths,
 	onOpen,
 	onMenu,
+	fields = DEFAULT_CARD_FIELDS.list,
 }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
+	const detailsId = useId();
 
 	return (
-		<div
-			className="flex cursor-pointer select-none items-center gap-3 active:opacity-70"
+		<button
+			type="button"
+			aria-label={series.title}
+			aria-describedby={detailsId}
+			className="flex min-h-16 w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 border-border border-b bg-transparent py-1 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none" }}
 			{...handlers}
 		>
-			<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
+			<div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
 					fallback={
-						<span className="font-semibold text-[#bbb] text-[0.6rem] uppercase tracking-wide">
+						<span className="font-semibold text-[0.6rem] text-muted-foreground uppercase tracking-wide">
 							{series.provider}
 						</span>
 					}
@@ -38,19 +51,29 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
-					{series.title}
+				<div className="truncate font-medium text-[0.875rem] leading-5">{series.title}</div>
+				<div id={detailsId}>
+					{fields.map((field) =>
+						field === "progress" ? null : (
+							<CardFieldSlot key={field} surface="list" field={field}>
+								{field === "author" && series.author && <TextField text={series.author} />}
+								{field === "timeLeft" && (
+									<SeriesCardTime
+										chapters={chapterLengths}
+										className="truncate text-muted-foreground tabular-nums"
+									/>
+								)}
+							</CardFieldSlot>
+						),
+					)}
+					{chapterCount !== undefined && (
+						<div className="mt-0.5 text-[0.75rem] text-muted-foreground">
+							{chapterCountLabel(chapterCount)}
+						</div>
+					)}
 				</div>
-				{series.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.8rem]">
-						{series.author}
-					</div>
-				)}
-				{chapterCount !== undefined && (
-					<div className="mt-0.5 text-[#888] text-[0.75rem]">{chapterCountLabel(chapterCount)}</div>
-				)}
 			</div>
-		</div>
+		</button>
 	);
 };
 

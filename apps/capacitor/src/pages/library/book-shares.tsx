@@ -8,8 +8,8 @@ export function BookShares({ bookId, enabled }: { bookId: string; enabled: boole
 	const revoke = useRevokeShare(bookId);
 	if (!enabled || !shares.data?.length) return null;
 	return (
-		<section className="rounded-lg border border-border bg-card p-4 text-card-foreground">
-			<h2 className="m-0 mb-2 font-semibold text-base">Shared with</h2>
+		<section className="book-detail-card">
+			<h2 className="book-detail-section-title">Shared with</h2>
 			<ul className="m-0 flex list-none flex-col gap-2 p-0">
 				{shares.data.map((share) => (
 					<li key={share.shareId} className="flex items-center justify-between gap-3 text-sm">
