@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import CoverImage from "@/components/cover-image";
 import { queryHooks } from "@/services/db/hooks";
 import { formatDeadline, paceText } from "@/services/social/buddy-reads";
+import { formatPercent } from "@/utils/format-percent";
 import { BuddyTrack, type TrackRider } from "./buddy-track";
 import { CoverBackdrop } from "./cover-backdrop";
 import { FinishedLabel, useLocalCover } from "./social-ui";
@@ -36,7 +37,7 @@ function ridersOf(read: BuddyReadSummary, me: BuddyReadMemberPreview | undefined
 			avatarUrl: m.identity.avatarUrl,
 			percent,
 			isSelf: m.isSelf,
-			label: m.isSelf ? `You · ${percent}%` : undefined,
+			label: m.isSelf ? `You · ${formatPercent(percent)}` : undefined,
 		};
 	});
 }
@@ -125,7 +126,9 @@ export function BuddyReadCard({
 					) : (
 						<>
 							<p className="sr-only">
-								{riders.map((r) => `${r.isSelf ? "You" : r.name} ${r.percent}%`).join(", ")}
+								{riders
+									.map((r) => `${r.isSelf ? "You" : r.name} ${formatPercent(r.percent)}`)
+									.join(", ")}
 							</p>
 							<BuddyTrack riders={riders} className={isFeatured ? "mt-4" : "mt-3"} />
 						</>

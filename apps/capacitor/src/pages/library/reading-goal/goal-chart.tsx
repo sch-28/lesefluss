@@ -2,6 +2,7 @@ import { addDays, dayNumberOf } from "@lesefluss/core";
 import type { LineCustomSvgLayerProps, LineSvgLayer } from "@nivo/line";
 import { ResponsiveLine } from "@nivo/line";
 import { useMemo } from "react";
+import { formatPercent } from "@/utils/format-percent";
 import { useTheme } from "../../../contexts/theme-context";
 import type { GoalSeriesPoint } from "../../../services/stats/reading-goal";
 import { formatDayKey } from "../../../utils/date-utils";
@@ -29,7 +30,7 @@ const AXIS_LEFT = {
 	tickSize: 0,
 	tickPadding: 6,
 	tickValues: Y_TICKS,
-	format: (v: unknown) => `${v}%`,
+	format: (v: unknown) => formatPercent(Number(v)),
 } as const;
 
 /**

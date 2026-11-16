@@ -1,13 +1,15 @@
 import { cn } from "@lesefluss/ui/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { MoreHorizontal, Plus, Sparkles } from "lucide-react";
+import { MoreHorizontal, Pin, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { filterToTree } from "../../pages/library/condition-tree";
 import { decodeFilterParam, encodeFilterParam } from "../../pages/library/filter-model";
 import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
 import { type ShelfEntry, useSmartShelves } from "../../pages/library/use-smart-shelves";
-import { canSaveAsShelf, SaveShelfDialog } from "../smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../smart-shelves/shelf-actions";
+
+const ROW_BUTTON =
+	"mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground";
 
 type Props = {
 	isCollapsed: boolean;
@@ -15,17 +17,15 @@ type Props = {
 };
 
 export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
-	const { shelves, counts, setBuiltInPinned } = useSmartShelves();
+	const { shelves, counts, isLoading, setBuiltInPinned } = useSmartShelves();
 	const location = useLocation();
 	const [menuFor, setMenuFor] = useState<ShelfEntry | null>(null);
-	const [saving, setSaving] = useState(false);
 	const [creating, setCreating] = useState(false);
 
 	const onLibrary = location.pathname === "/tabs/library";
 	const search = location.search as { shelf?: string; f?: string };
 	const activeId = onLibrary ? search.shelf : undefined;
 	const currentFilter = (onLibrary && decodeFilterParam(search.f)) || {};
-	const canSave = canSaveAsShelf(currentFilter);
 
 	if (isCollapsed) {
 		return (
@@ -75,50 +75,39 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 							className="relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
 						>
 							<span className="min-w-0 flex-1 truncate">{s.name}</span>
-							{s.pinned && (
-								<span
-									role="img"
-									aria-label="Pinned"
-									className="size-1.5 shrink-0 rounded-full bg-primary"
-								/>
-							)}
-							{(counts.get(s.id) ?? 0) > 0 && (
-								<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden">
-									{counts.get(s.id)}
-								</span>
-							)}
+							<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums">
+								{isLoading ? null : (counts.get(s.id) ?? 0)}
+							</span>
 						</Link>
-						<button
-							type="button"
-							onClick={() => setMenuFor(s)}
-							aria-label={`${s.name} options`}
-							className="mr-2 hidden size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:inline-flex group-hover:inline-flex"
-						>
-							<MoreHorizontal className="size-4" />
-						</button>
+						{s.isBuiltIn ? (
+							// A built-in only pins, so its one action is a button, not a one-item menu.
+							<button
+								type="button"
+								onClick={() => setBuiltInPinned(s.id, !s.pinned)}
+								aria-label={s.pinned ? `Unpin ${s.name}` : `Pin ${s.name}`}
+								title={s.pinned ? "Unpin" : "Pin"}
+								className={cn(ROW_BUTTON, s.pinned && "text-primary")}
+							>
+								<Pin className={cn("size-4", s.pinned && "fill-current")} />
+							</button>
+						) : (
+							<button
+								type="button"
+								onClick={() => setMenuFor(s)}
+								aria-label={`${s.name} options`}
+								className={ROW_BUTTON}
+							>
+								<MoreHorizontal className="size-4" />
+							</button>
+						)}
 					</li>
 				))}
-				<li>
-					<button
-						type="button"
-						onClick={() => setSaving(true)}
-						disabled={!canSave}
-						className={cn(
-							"flex w-full items-center gap-2 py-1.5 pl-5 text-left text-sidebar-foreground/50 text-sm hover:text-sidebar-foreground",
-							"disabled:pointer-events-none disabled:opacity-50",
-						)}
-					>
-						<Plus className="size-4" />
-						Save current filter…
-					</button>
-				</li>
 			</ul>
 			<ShelfActions
 				shelf={menuFor}
 				onClose={() => setMenuFor(null)}
 				setBuiltInPinned={setBuiltInPinned}
 			/>
-			<SaveShelfDialog open={saving} onOpenChange={setSaving} filter={currentFilter} />
 			<ShelfConditionEditor
 				open={creating}
 				onOpenChange={setCreating}

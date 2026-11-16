@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import type React from "react";
+import { PageContainer } from "@/components/page-container";
 import { SpeedTest } from "../../components/speed-test/speed-test";
 
 /** The speed test, full screen, from the Speed tab. */
@@ -24,9 +25,9 @@ const SpeedTestPage: React.FC = () => {
 				</Button>
 			</div>
 			<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
-				<div className="mx-auto w-full max-w-md pt-2">
+				<PageContainer width="flow" className="pt-2">
 					<SpeedTest onSkip={close} onFinish={close} skipLabel="Not now" finishLabel="Done" />
-				</div>
+				</PageContainer>
 			</main>
 		</div>
 	);

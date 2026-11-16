@@ -46,15 +46,15 @@ test("rating and status edit in place and feed the built-in shelves", async ({ p
 		"Finished",
 	);
 	// "Unrated" holds finished books without a rating.
-	await expect(shelves.getByRole("link", { name: "Finished Pinned 1" })).toBeVisible();
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned 1" })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Finished 1", exact: true })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated 1", exact: true })).toBeVisible();
 
 	await page.getByRole("button", { name: "Edit rating of Riverkeep" }).click();
 	await page
 		.getByRole("group", { name: "Rate Riverkeep" })
 		.getByRole("button", { name: "Rate 4 stars" })
 		.click();
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned", exact: true })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated 0", exact: true })).toBeVisible();
 
 	// The table keeps the view across a reload: the edit is in the database, not the cell.
 	await page.reload();

@@ -83,12 +83,12 @@ test("a digit rates the focused book and S sets its status", async ({ page }) =>
 		.getByRole("menuitem", { name: "Finished", exact: true })
 		.or(page.getByRole("button", { name: "Finished", exact: true }))
 		.click();
-	await expect(shelves.getByRole("link", { name: "Finished Pinned 1" })).toBeVisible();
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned 1" })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Finished 1", exact: true })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated 1", exact: true })).toBeVisible();
 
 	await page.locator("body").click({ position: { x: 700, y: 880 } });
 	await page.keyboard.press("4");
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned", exact: true })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated 0", exact: true })).toBeVisible();
 
 	await page.keyboard.press("/");
 	await page.keyboard.type("rating:>=4");

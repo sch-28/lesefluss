@@ -34,6 +34,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMediaQuery } from "../hooks/use-media-query";
 import { queryHooks } from "../services/db/hooks";
+import { formatDayKey } from "../utils/date-utils";
 import { whatsNewLayout } from "./whats-new-layout";
 
 const RELEVANT_TAGS = new Set<ChangelogTag>(["App", "ESP32"]);
@@ -56,14 +57,6 @@ function entriesNewerThan(date: string): ChangelogEntry[] {
 const ALL_RELEVANT_ENTRIES: ChangelogEntry[] = changelog.filter((e) =>
 	e.tags.some((t) => RELEVANT_TAGS.has(t)),
 );
-
-function formatDate(iso: string) {
-	return new Date(iso).toLocaleDateString(undefined, {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
-}
 
 const EntryIcon: React.FC<{ icon?: ChangelogIcon; isSmall?: boolean }> = ({ icon, isSmall }) => {
 	if (!icon) return null;
@@ -156,7 +149,7 @@ const AlsoNew: React.FC<{ entries: ChangelogEntry[]; newestDate: string | null }
 						<ListEntry
 							key={changelogEntryKey(entry)}
 							entry={entry}
-							date={entry.date === newestDate ? undefined : formatDate(entry.date)}
+							date={entry.date === newestDate ? undefined : formatDayKey(entry.date)}
 						/>
 					))}
 				</div>
@@ -171,7 +164,7 @@ const FullChangelog: React.FC<{ entries: ChangelogEntry[] }> = ({ entries }) => 
 			<section key={changelogEntryKey(entry)} className="flex flex-col gap-2">
 				<header className="flex items-baseline justify-between gap-3">
 					<h3 className="m-0 font-semibold text-base">{entry.title}</h3>
-					<span className="text-muted-foreground text-xs">{formatDate(entry.date)}</span>
+					<span className="text-muted-foreground text-xs">{formatDayKey(entry.date)}</span>
 				</header>
 				<ul className="m-0 list-disc pl-5 text-foreground/85 text-sm">
 					{entry.changes.map((change) => (

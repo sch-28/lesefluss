@@ -99,7 +99,7 @@ export function FirstRunHero({
 
 				<Button asChild size="lg" className="mt-6 h-12 w-full rounded-xl text-[15px]">
 					<Link to="/tabs/social/invite-link">
-						<Link2 /> Invite a reading buddy
+						<Link2 /> Invite a friend
 					</Link>
 				</Button>
 				<p className="m-0 mt-4 text-muted-foreground text-xs">Got an invite link from someone?</p>

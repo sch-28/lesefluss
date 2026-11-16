@@ -1,6 +1,7 @@
 import { cn } from "@lesefluss/ui/utils";
 import { Plus, SlidersHorizontal, X } from "lucide-react";
 import type React from "react";
+import { PageContainer } from "../../components/page-container";
 import {
 	activeFilterCount,
 	chipsOf,
@@ -64,8 +65,9 @@ const FilterBar: React.FC<Props> = ({
 	if (count === 0 && !addFilter && !shelfConditions) return null;
 	const matchesAllTags = filter.tags?.mode === "all";
 	return (
-		<div
-			className="flex items-center gap-1.5 overflow-x-auto px-4 py-2 content-container"
+		<PageContainer
+			width="grid"
+			className="flex items-center gap-1.5 overflow-x-auto px-4 py-2"
 			data-testid="filter-bar"
 		>
 			{shelfConditions?.isCustom && (
@@ -132,7 +134,7 @@ const FilterBar: React.FC<Props> = ({
 					)}
 				</span>
 			)}
-		</div>
+		</PageContainer>
 	);
 };
 

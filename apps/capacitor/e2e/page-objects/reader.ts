@@ -242,7 +242,7 @@ export const reader = {
 	/** Contents is the first entry of the More menu. */
 	openContents: async (page: Page) => {
 		await page.getByRole("button", { name: "More actions" }).click();
-		await page.getByRole("menuitem", { name: "Contents and bookmarks" }).click();
+		await page.getByRole("menuitem", { name: "Contents and annotations" }).click();
 	},
 
 	/** Browse mode starts from the annotations sheet, which closes on the way. */
@@ -252,22 +252,16 @@ export const reader = {
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	},
 
-	/** Below 22rem (27rem with series chapter buttons) the header folds Listen into More actions. */
+	/** A narrow header row (see header-width.ts) folds Listen into More actions. */
 	startListening: async (page: Page) => {
-		const hasSeriesNav = await page
-			.getByRole("button", { name: "Previous chapter", exact: true })
-			.isVisible();
-		const isNarrow = await page.evaluate(
-			(rem) =>
-				window.innerWidth <
-				rem * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
-			hasSeriesNav ? 27 : 22,
-		);
-		if (!isNarrow) {
-			await page.getByRole("button", { name: "Listen", exact: true }).click();
+		const more = page.getByRole("button", { name: "More actions" });
+		await expect(more).toBeVisible();
+		const listen = page.getByRole("button", { name: "Listen", exact: true });
+		if (await listen.isVisible()) {
+			await listen.click();
 			return;
 		}
-		await page.getByRole("button", { name: "More actions" }).click();
+		await more.click();
 		await page.getByRole("menuitem", { name: "Listen", exact: true }).click();
 		// The closing menu's scroll lock still swallows wheel events.
 		await expect(page.getByRole("menu")).toBeHidden();

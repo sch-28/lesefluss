@@ -23,17 +23,18 @@ test.beforeEach(async ({ page }) => {
 	await seedLibrary(page, BOOKS);
 });
 
-test("the current filter saves as a shelf that counts and reopens its books", async ({ page }) => {
+test("the shelf + starts from the current filter and saves a shelf that counts and reopens its books", async ({
+	page,
+}) => {
 	const shelves = page.getByRole("region", { name: "Smart shelves" });
 	const cards = page.locator("[data-book-title]");
 
-	await expect(shelves.getByRole("button", { name: "Save current filter…" })).toBeDisabled();
 	await filterByAuthor(page, "Ada Vance");
 	await expect(cards).toHaveCount(2);
 
-	await shelves.getByRole("button", { name: "Save current filter…" }).click();
-	const dialog = page.getByRole("dialog", { name: "Save as smart shelf" });
-	await expect(dialog.getByTestId("shelf-live-count")).toHaveText("2 books match right now");
+	await shelves.getByRole("button", { name: "New smart shelf" }).click();
+	const dialog = page.getByRole("dialog", { name: "New smart shelf" });
+	await expect(dialog.getByTestId("shelf-live-count")).toHaveText("2 books match · live");
 	await dialog.getByRole("textbox", { name: "Shelf name" }).fill("Ada");
 	await dialog.getByRole("button", { name: "Save" }).click();
 	await expect(dialog).toBeHidden();
@@ -50,8 +51,8 @@ test("the current filter saves as a shelf that counts and reopens its books", as
 test("a shelf's count follows the library live", async ({ page }) => {
 	const shelves = page.getByRole("region", { name: "Smart shelves" });
 	await filterByAuthor(page, "Bo Lind");
-	await shelves.getByRole("button", { name: "Save current filter…" }).click();
-	const dialog = page.getByRole("dialog", { name: "Save as smart shelf" });
+	await shelves.getByRole("button", { name: "New smart shelf" }).click();
+	const dialog = page.getByRole("dialog", { name: "New smart shelf" });
 	await dialog.getByRole("textbox", { name: "Shelf name" }).fill("Bo");
 	await dialog.getByRole("button", { name: "Save" }).click();
 	await expect(shelves.getByRole("link", { name: /^Bo .*1$/ })).toBeVisible();
@@ -59,5 +60,5 @@ test("a shelf's count follows the library live", async ({ page }) => {
 	await page.locator('[data-book-title="Riverkeep"]').click({ button: "right" });
 	await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 	await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
-	await expect(shelves.getByRole("link", { name: /^Bo( Pinned)?$/ })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: /^Bo .*0$/ })).toBeVisible();
 });

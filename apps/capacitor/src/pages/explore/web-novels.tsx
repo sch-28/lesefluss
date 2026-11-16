@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import {
@@ -108,7 +109,7 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 					/>
 				}
 			/>
-			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<InputHitArea>
 					<Input
 						ref={inputRef}
@@ -187,7 +188,7 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 					viewMode={viewMode}
 					onPick={handlePick}
 				/>
-			</div>
+			</PageContainer>
 		</div>
 	);
 };

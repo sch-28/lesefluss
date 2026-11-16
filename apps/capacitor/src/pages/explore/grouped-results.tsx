@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
+import { PageContainer } from "@/components/page-container";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { type CatalogSearchResult, searchCatalog } from "../../services/catalog/client";
@@ -92,7 +93,7 @@ const GroupedResults: React.FC<Props> = ({
 
 	if (isUnreachable) {
 		return (
-			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<ErrorState
 					error={catalog.error}
 					onRetry={() => {
@@ -101,14 +102,14 @@ const GroupedResults: React.FC<Props> = ({
 					}}
 					className="min-h-[50vh]"
 				/>
-			</div>
+			</PageContainer>
 		);
 	}
 
 	const catalogTitle = `Public domain (${catalog.data?.total.toLocaleString() ?? 0})`;
 
 	return (
-		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+		<PageContainer width="grid" className="px-4 pt-4 pb-20">
 			{catalog.isPending ? (
 				isWide ? (
 					<ShelfSkeleton />
@@ -246,7 +247,7 @@ const GroupedResults: React.FC<Props> = ({
 					</div>
 				</div>
 			)}
-		</div>
+		</PageContainer>
 	);
 };
 

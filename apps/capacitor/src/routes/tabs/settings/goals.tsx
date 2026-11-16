@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SheetOrDialog } from "@/components/sheet-or-dialog";
@@ -28,7 +29,7 @@ function Goals() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Goals" icon={Target} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Goals">
 					{!plans.data && <ReservedCard isPending height={NO_GOALS_ROW_HEIGHT} />}
 					{plans.data && goals.length === 0 && (
@@ -42,7 +43,7 @@ function Goals() {
 					goalBookIds={plans.data?.map((p) => p.goal.bookId) ?? []}
 					isDisabled={!plans.data}
 				/>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

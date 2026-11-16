@@ -18,7 +18,7 @@ import { getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
-import { formatShortDate } from "../../utils/date-utils";
+import { formatDate } from "../../utils/date-utils";
 import { BookEditFields } from "./book-edit-fields";
 import {
 	type BookEditValues,
@@ -151,7 +151,7 @@ const EditBookForm: React.FC<{
 
 	const cover =
 		library?.covers.get(book.id) ?? (book.catalogId ? getCoverUrl(book.catalogId) : null);
-	const facts = [wordCountFact(book.wordCount), `Added ${formatShortDate(book.addedAt)}`].filter(
+	const facts = [wordCountFact(book.wordCount), `Added ${formatDate(book.addedAt)}`].filter(
 		(f): f is string => f !== null,
 	);
 

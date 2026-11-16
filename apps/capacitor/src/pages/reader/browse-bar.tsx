@@ -1,4 +1,5 @@
 import { BookOpen, Undo2 } from "lucide-react";
+import { formatPercent } from "@/utils/format-percent";
 
 type Props = {
 	anchorPct: number;
@@ -16,7 +17,7 @@ export function BrowseBar({ anchorPct, onBack, onReadFromHere }: Props) {
 		>
 			<button type="button" onClick={onBack} data-testid="browse-back">
 				<Undo2 aria-hidden />
-				<span>Back to {Math.round(anchorPct)}%</span>
+				<span>Back to {formatPercent(anchorPct)}</span>
 			</button>
 			<span className="reader-browse-bar-divider" aria-hidden />
 			<button type="button" onClick={onReadFromHere} data-testid="browse-read-from-here">

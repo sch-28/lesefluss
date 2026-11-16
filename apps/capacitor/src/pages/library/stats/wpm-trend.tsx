@@ -5,7 +5,7 @@ import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
-import { formatShortDate } from "../../../utils/date-utils";
+import { formatDate } from "../../../utils/date-utils";
 import { evenTickIndices } from "./chart-axis";
 
 /** Until the card is measured; the chart then draws at its real width so text never scales. */
@@ -66,7 +66,7 @@ function formatBucketTick(start: number, granularity: TrendGranularity): string 
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:
-			return formatShortDate(start);
+			return formatDate(start);
 	}
 }
 
@@ -75,8 +75,8 @@ export function trendAxisLegend(windowLabel: string, bucketStarts: readonly numb
 	const first = bucketStarts[0];
 	const last = bucketStarts.at(-1);
 	if (first === undefined || last === undefined) return windowLabel;
-	const from = formatShortDate(first);
-	const to = formatShortDate(last);
+	const from = formatDate(first);
+	const to = formatDate(last);
 	return from === to ? `${windowLabel} · ${from}` : `${windowLabel} · ${from} – ${to}`;
 }
 

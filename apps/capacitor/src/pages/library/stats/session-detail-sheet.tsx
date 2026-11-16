@@ -6,7 +6,9 @@ import { useId, useState } from "react";
 import { EntryDialog } from "../../../components/entry-dialog";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
-import { formatClock, formatPercent, MODE_BADGE_LABELS } from "./session-list";
+import { formatDate } from "../../../utils/date-utils";
+import { formatPercent } from "../../../utils/format-percent";
+import { formatClock, MODE_BADGE_LABELS } from "./session-list";
 
 const MAX_EDIT_MINUTES = 24 * 60;
 
@@ -76,11 +78,7 @@ function SessionDetailForm({
 		wordCount > 0
 			? `${formatPercent((session.startWord / wordCount) * 100)} → ${formatPercent((session.endWord / wordCount) * 100)}`
 			: null;
-	const date = new Date(session.startedAt).toLocaleDateString(undefined, {
-		weekday: "short",
-		day: "numeric",
-		month: "short",
-	});
+	const date = formatDate(session.startedAt);
 
 	function save() {
 		if (durationMs === null) return;

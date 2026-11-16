@@ -16,7 +16,8 @@ import {
 	THIRTY_DAYS_MS,
 } from "@lesefluss/core";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, type SQL, sql } from "drizzle-orm";
-import { formatShortDate } from "../../../utils/date-utils";
+import { formatPercent } from "@/utils/format-percent";
+import { formatDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
@@ -285,7 +286,7 @@ export async function getCurrentlyReading(): Promise<ShelfBook[]> {
 			title: row.title,
 			author: row.author,
 			coverImage: covers.get(row.id) ?? null,
-			detail: `${percent}% read`,
+			detail: `${formatPercent(percent)} read`,
 			percent,
 			href: `/tabs/library/book/${row.id}`,
 		};
@@ -326,7 +327,7 @@ export async function getFinishedBooks(): Promise<FinishedBooks> {
 		title: row.title,
 		author: row.author,
 		coverImage: covers.get(row.id) ?? null,
-		detail: row.finishedAt != null ? formatShortDate(row.finishedAt) : "",
+		detail: row.finishedAt != null ? formatDate(row.finishedAt) : "",
 		href: `/tabs/library/book/${row.id}`,
 	}));
 

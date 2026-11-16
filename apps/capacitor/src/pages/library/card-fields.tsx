@@ -5,6 +5,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Check, Clock } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
+import { formatPercent } from "@/utils/format-percent";
 import { usePersistentString } from "../../hooks/use-persistent-string";
 import { formatReadingTime } from "../../utils/reading-time";
 import type { LibraryItem } from "./sort-filter";
@@ -181,7 +182,7 @@ export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ sta
 			<span id={id} className="flex flex-1 items-center gap-1.5">
 				<Progress value={status.progress} className="h-1 flex-1" aria-label="Reading progress" />
 				<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-					{status.progress}%
+					{formatPercent(status.progress)}
 				</span>
 			</span>
 		);

@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { SocialSection } from "@/components/social/social-ui";
 import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picker";
@@ -86,11 +87,11 @@ export default function BuddyReadsPage() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Buddy reads" icon={Users} backTo="/tabs/social" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/buddy-reads">
 					<BuddyReadsContent />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

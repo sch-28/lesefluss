@@ -3,14 +3,17 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type CacheSnapshot, Virtualizer, type VirtualizerHandle } from "virtua";
+import { PAGE_WIDTH_PX, PageContainer } from "../../components/page-container";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
 import { rowTokens } from "./library-focus";
 import type { LibraryItem } from "./sort-filter";
 
 const SCROLL_CONTAINER = '[data-scroll-restoration-id="app-scroll"]';
 
-/** Tailwind's md / lg / xl breakpoints. */
+/** Viewport widths; the two widest add columns once the page passes 1280 beside the sidebar. */
 const COLUMN_BREAKPOINTS: readonly [minWidth: number, cols: number][] = [
+	[1920, 8],
+	[1600, 7],
 	[1280, 6],
 	[1024, 5],
 	[768, 4],
@@ -19,7 +22,6 @@ const COLUMN_BREAKPOINTS: readonly [minWidth: number, cols: number][] = [
 const TWO_COLUMNS_BELOW_REM = 20;
 const GRID_CLASS = "grid gap-4 pb-4";
 
-const CONTENT_MAX_PX = 900;
 const PADDING_PX = 16;
 const GAP_PX = 16;
 /** Cover (2:3) plus title, author and status lines under it. */
@@ -31,7 +33,7 @@ const LIST_ROW_PX = 64;
  *  their real space and a restored scroll offset lands near the same books. */
 export function estimateRowPx(viewMode: "grid" | "list", cols: number, viewportPx: number): number {
 	if (viewMode === "list") return LIST_ROW_PX;
-	const content = Math.min(viewportPx, CONTENT_MAX_PX) - 2 * PADDING_PX;
+	const content = Math.min(viewportPx, PAGE_WIDTH_PX.grid) - 2 * PADDING_PX;
 	const coverWidth = (content - (cols - 1) * GAP_PX) / cols;
 	return Math.round(coverWidth * 1.5 + CARD_TEXT_PX + GAP_PX);
 }
@@ -210,9 +212,10 @@ const VirtualBookGrid: React.FC<Props> = ({
 	);
 
 	return (
-		<div
+		<PageContainer
+			width="grid"
 			ref={anchor}
-			className="p-4 pb-24 content-container"
+			className="p-4 pb-24"
 			data-testid="library-items"
 			onPointerDown={(e) => {
 				pressAt.current = { x: e.clientX, y: e.clientY };
@@ -284,7 +287,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 					);
 				})}
 			</Virtualizer>
-		</div>
+		</PageContainer>
 	);
 };
 

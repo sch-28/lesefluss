@@ -20,6 +20,7 @@ import { ActionSheet } from "../../components/action-sheet";
 import BookCover from "../../components/book-cover";
 import { CollectionActions } from "../../components/collections/collection-actions";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
+import { PageContainer } from "../../components/page-container";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { Book } from "../../services/db/schema";
@@ -111,7 +112,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 		speedModel ? estimateMinutesLeft(book, bookPace(speedModel, book.id).wpm) : null;
 
 	return (
-		<div data-testid="ordered-collection">
+		<PageContainer width="grid" data-testid="ordered-collection">
 			<div className="px-4 pt-1 pb-4">
 				<div className="-mx-3 flex items-center">
 					<IconButton
@@ -158,10 +159,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 					</Button>
 				</div>
 			) : (
-				<ol
-					className="m-0 list-none p-4 pb-24 content-container"
-					aria-label={`${collection.name} books`}
-				>
+				<ol className="m-0 list-none p-4 pb-24" aria-label={`${collection.name} books`}>
 					{rows.map((row, index) => (
 						<OrderedBookRow
 							key={row.book.id}
@@ -247,7 +245,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 				allCollections={collections}
 				onClose={() => setActionsOpen(false)}
 			/>
-		</div>
+		</PageContainer>
 	);
 };
 

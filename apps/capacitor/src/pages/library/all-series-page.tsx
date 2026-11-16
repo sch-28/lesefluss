@@ -1,6 +1,7 @@
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
+import { PageContainer } from "../../components/page-container";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { AllSeriesList } from "./all-series-list";
 import { seriesSummary } from "./series-nav";
@@ -20,31 +21,33 @@ const AllSeriesPage: React.FC = () => {
 	return (
 		<div className="bg-background text-foreground" data-testid="all-series-page">
 			<div className="border-border border-b px-4 pt-[calc(var(--safe-top)+0.75rem)] pb-3">
-				<nav
-					aria-label="Breadcrumb"
-					className="flex items-center gap-1 text-muted-foreground text-xs"
-				>
-					<button
-						type="button"
-						onClick={() => navigate({ to: "/tabs/library", search: {} })}
-						className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
+				<PageContainer width="grid">
+					<nav
+						aria-label="Breadcrumb"
+						className="flex items-center gap-1 text-muted-foreground text-xs"
 					>
-						Library
-					</button>
-					<ChevronRight aria-hidden className="size-3" />
-					<span aria-current="page" className="text-foreground">
-						All series
-					</span>
-				</nav>
-				<h2 className="m-0 mt-1 font-semibold text-lg">All series</h2>
-				<p
-					className="m-0 min-h-[1lh] text-muted-foreground text-sm"
-					data-testid="all-series-summary"
-				>
-					{isPending ? null : seriesSummary(entries)}
-				</p>
+						<button
+							type="button"
+							onClick={() => navigate({ to: "/tabs/library", search: {} })}
+							className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
+						>
+							Library
+						</button>
+						<ChevronRight aria-hidden className="size-3" />
+						<span aria-current="page" className="text-foreground">
+							All series
+						</span>
+					</nav>
+					<h2 className="m-0 mt-1 font-semibold text-lg">All series</h2>
+					<p
+						className="m-0 min-h-[1lh] text-muted-foreground text-sm"
+						data-testid="all-series-summary"
+					>
+						{isPending ? null : seriesSummary(entries)}
+					</p>
+				</PageContainer>
 			</div>
-			<div className="p-4">
+			<PageContainer width="grid" className="p-4">
 				{!isPending && entries.length === 0 ? (
 					<p className="m-0 p-6 text-center text-muted-foreground text-sm">
 						Book series and serials you add show up here.
@@ -59,7 +62,7 @@ const AllSeriesPage: React.FC = () => {
 						autoFocus={isDesktop}
 					/>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	);
 };

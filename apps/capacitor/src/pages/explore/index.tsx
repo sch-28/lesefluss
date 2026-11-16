@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 import type React from "react";
 import { useEffect } from "react";
+import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ViewModeToggle } from "../../components/view-mode-toggle";
 import {
@@ -160,15 +161,15 @@ const Explore: React.FC<Props> = ({ search }) => {
 			{/* Sticks under the header (safe area + 48px row + 1px border) so search
 			    and filters stay in reach on a long list. */}
 			<div className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background/95 pb-2 backdrop-blur">
-				<div className="mx-auto max-w-5xl px-4 pt-3">
+				<PageContainer width="grid" className="px-4 pt-3">
 					<SearchField
 						value={queryText.text}
 						onChange={queryText.setText}
 						onSubmit={queryText.submit}
 					/>
-				</div>
+				</PageContainer>
 				{mode === "catalog" && lang !== undefined && (
-					<div className="mx-auto max-w-5xl">
+					<PageContainer width="grid">
 						<FilterRow
 							search={search}
 							lang={lang}
@@ -181,7 +182,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 							onRemoveTag={(id) => update((s) => removeTag(s, id))}
 							onBrowseTags={browseTags}
 						/>
-					</div>
+					</PageContainer>
 				)}
 			</div>
 
@@ -222,7 +223,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 					onSearchAllLanguages={searchAllLanguages}
 				/>
 			) : (
-				<div className="mx-auto max-w-5xl">
+				<PageContainer width="grid">
 					<CatalogResults
 						filters={filters}
 						enabled={isSpeedReady}
@@ -233,7 +234,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 						hasQuery={!!search.q}
 						onSearchAllLanguages={searchAllLanguages}
 					/>
-				</div>
+				</PageContainer>
 			)}
 		</div>
 	);

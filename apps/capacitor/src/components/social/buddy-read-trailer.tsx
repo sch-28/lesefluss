@@ -17,6 +17,7 @@ import { MessageCircle, RotateCcw } from "lucide-react";
 import { useRef } from "react";
 import CoverImage from "@/components/cover-image";
 import { useIsForeground } from "@/hooks/use-is-foreground";
+import { formatPercent } from "@/utils/format-percent";
 import { BuddyTrack, type TrackRider } from "./buddy-track";
 import { useCurrentBook } from "./social-ui";
 
@@ -108,7 +109,7 @@ export function BuddyReadTrailer({
 				avatarUrl: null,
 				percent,
 				toneClassName: BUDDY_TRAILER_READER_TONES[name],
-				label: `${percent}%`,
+				label: formatPercent(percent),
 				steps,
 			};
 		}),
@@ -119,7 +120,7 @@ export function BuddyReadTrailer({
 			percent: positions.self.percent,
 			isSelf: true,
 			toneClassName: "bg-primary text-primary-foreground",
-			label: `You · ${positions.self.percent}%`,
+			label: `You · ${formatPercent(positions.self.percent)}`,
 			steps: positions.self.steps,
 		},
 	];

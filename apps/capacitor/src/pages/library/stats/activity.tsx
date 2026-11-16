@@ -3,6 +3,7 @@ import { useElementWidth } from "../../../hooks/use-element-width";
 import { useLocalDayNow } from "../../../hooks/use-local-day";
 import { queryHooks } from "../../../services/db/hooks";
 import { NO_READING, type WeekTotal, weeklyHours } from "../../../services/stats/calendar";
+import { formatDate } from "../../../utils/date-utils";
 import { StatsSection } from "./section-header";
 
 const WEEKS = 12;
@@ -105,10 +106,8 @@ export function Activity() {
 											textAnchor={isLast ? "end" : "middle"}
 											className="fill-muted-foreground text-[11px]"
 										>
-											{new Date(week.weekStart).toLocaleDateString(undefined, {
-												month: "short",
-												day: "numeric",
-											})}
+											{/* An axis tick never carries a year: it would crowd its neighbours. */}
+											{formatDate(week.weekStart, week.weekStart)}
 										</text>
 									)}
 								</g>

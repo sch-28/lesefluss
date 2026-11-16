@@ -171,8 +171,15 @@ describe("VirtualBookGrid", () => {
 		expect(estimateRowPx("list", 1, 390)).toBe(64);
 		// 390px: three 109px covers, 163px tall, plus text and gap.
 		expect(estimateRowPx("grid", 3, 390)).toBe(251);
-		// Wide screens cap the content at 900px.
+		// Wide screens cap the content at the 1280px grid width.
 		expect(estimateRowPx("grid", 6, 1400)).toBe(estimateRowPx("grid", 6, 2400));
+	});
+
+	it("adds columns on wide screens instead of growing the covers", () => {
+		expect(columnsFor(1280, 16)).toBe(6);
+		expect(columnsFor(1600, 16)).toBe(7);
+		expect(columnsFor(1920, 16)).toBe(8);
+		expect(columnsFor(2560, 16)).toBe(8);
 	});
 
 	it("drops to two columns on a phone under a large system font", () => {

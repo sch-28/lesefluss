@@ -7,7 +7,7 @@ import {
 	milestoneKey,
 	milestoneProgress,
 } from "../../services/stats/milestones";
-import { formatShortDate } from "../../utils/date-utils";
+import { formatDate } from "../../utils/date-utils";
 
 function RsvpBadge() {
 	return (
@@ -31,7 +31,7 @@ export function ReachedMedal({ milestone }: { milestone: ReachedMilestone }) {
 			</div>
 			<span className="mt-1.5 font-medium text-xs leading-tight">{face.caption}</span>
 			<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-				{formatShortDate(milestone.reachedAt)}
+				{formatDate(milestone.reachedAt)}
 			</span>
 		</div>
 	);

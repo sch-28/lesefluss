@@ -2,7 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { buildJourney } from "../../services/stats/journey";
-import { formatDuration, formatShortDate } from "../../utils/date-utils";
+import { formatDate, formatDuration } from "../../utils/date-utils";
 
 /** The journey once the book has one: null while it was only added, or while stats load. */
 export function useBookJourney(book: Book) {
@@ -61,7 +61,7 @@ export function BookJourney({ book }: { book: Book }) {
 							<span className="text-[0.625rem] uppercase tracking-wide opacity-55">
 								{milestone.label}
 							</span>
-							<span className="text-xs tabular-nums">{formatShortDate(milestone.at)}</span>
+							<span className="text-xs tabular-nums">{formatDate(milestone.at)}</span>
 						</li>
 					);
 				})}
@@ -77,7 +77,7 @@ export function BookJourney({ book }: { book: Book }) {
 				{longestSessionAt != null && longestSessionMs > 0 && (
 					<>
 						{" · longest "}
-						{formatDuration(longestSessionMs)} on {formatShortDate(longestSessionAt)}
+						{formatDuration(longestSessionMs)} on {formatDate(longestSessionAt)}
 					</>
 				)}
 			</p>

@@ -65,11 +65,11 @@ export function ThemeCards({
 						</span>
 						<span
 							className={cn(
-								"wrap-anywhere max-w-full font-medium text-foreground",
-								compact ? "text-xs" : "text-sm",
+								"max-w-full text-balance break-words text-center font-medium text-foreground",
+								compact ? "text-xs leading-tight" : "text-sm",
 							)}
 						>
-							{compact ? (t.short ?? t.label) : t.label}
+							{t.label}
 						</span>
 					</button>
 				))}

@@ -3,6 +3,7 @@ import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import { ProgressBar, SocialSection } from "@/components/social/social-ui";
+import { formatPercent } from "@/utils/format-percent";
 
 /** Friends as faces, each with how far they are in the book they read now. */
 export function FriendsRow({ friends }: { friends: SocialRelationships["friends"] }) {
@@ -26,7 +27,7 @@ export function FriendsRow({ friends }: { friends: SocialRelationships["friends"
 							params={{ userId: f.userId }}
 							aria-label={
 								f.nowReading
-									? `${f.name}, reading ${f.nowReading.title}, ${f.nowReading.progressPercent}%`
+									? `${f.name}, reading ${f.nowReading.title}, ${formatPercent(f.nowReading.progressPercent)}`
 									: f.name
 							}
 							className="block text-center text-foreground no-underline"

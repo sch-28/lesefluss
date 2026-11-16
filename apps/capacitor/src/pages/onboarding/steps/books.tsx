@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { formatPercent } from "@/utils/format-percent";
 import CoverImage from "../../../components/cover-image";
 import { CATALOG_ENABLED, getCoverUrl, getLanding } from "../../../services/catalog/client";
 import { importFromCatalog } from "../../../services/catalog/import";
@@ -89,7 +90,7 @@ const BooksStep: React.FC = () => {
 
 	useEffect(() => {
 		const label = importing
-			? `Adding... ${progress}%`
+			? `Adding... ${formatPercent(progress)}`
 			: selected.size
 				? `Add ${selected.size}`
 				: "Continue";

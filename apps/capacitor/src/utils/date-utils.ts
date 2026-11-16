@@ -34,41 +34,38 @@ export function previousLocalDayStart(localDayStart: number): number {
 	return startOfLocalDay(localDayStart - TWELVE_HOURS_MS);
 }
 
-/** "30m", "1h", "4h 12m". Zero or negative inputs render as "0m". */
+/** The app's one duration format: "0 min", "30 min", "1h", "4h 12m". Floors to whole minutes. */
 export function formatDuration(ms: number): string {
 	const min = Math.max(0, Math.floor(ms / 60_000));
-	if (min < 60) return `${min}m`;
+	if (min < 60) return `${min} min`;
 	const h = Math.floor(min / 60);
 	const r = min % 60;
 	return r === 0 ? `${h}h` : `${h}h ${r}m`;
 }
 
-/**
- * Coarse relative timestamp: "today", "yesterday", "5d ago", "3w ago",
- * falling back to an absolute "MMM D, YYYY" past 60 days.
- */
+const DATE_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat("en-US", {
+	month: "short",
+	day: "numeric",
+	year: "numeric",
+});
+
+/** The app's one calendar date format: "Aug 25", with the year when it is not the current one. */
+export function formatDate(epochMs: number, now: number = Date.now()): string {
+	// Intl's format throws on an invalid time; one bad timestamp must not take down the page.
+	if (!Number.isFinite(epochMs)) return "";
+	const sameYear = new Date(epochMs).getFullYear() === new Date(now).getFullYear();
+	return (sameYear ? DATE_FORMAT : DATE_WITH_YEAR_FORMAT).format(epochMs);
+}
+
+/** Coarse relative timestamp: "today", "yesterday", "5d ago", "3w ago", then `formatDate` past 60 days. */
 export function formatRelative(epochMs: number, now: number = Date.now()): string {
 	const days = daysBetweenLocal(epochMs, now);
 	if (days <= 0) return "today";
 	if (days === 1) return "yesterday";
 	if (days < 7) return `${days}d ago`;
 	if (days < 60) return `${Math.floor(days / 7)}w ago`;
-	const d = new Date(epochMs);
-	const months = [
-		"Jan",
-		"Feb",
-		"Mar",
-		"Apr",
-		"May",
-		"Jun",
-		"Jul",
-		"Aug",
-		"Sep",
-		"Oct",
-		"Nov",
-		"Dec",
-	];
-	return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+	return formatDate(epochMs, now);
 }
 
 /** Finer than `formatRelative` for the last day: "just now", "5 min ago", "3 h ago". */
@@ -87,19 +84,8 @@ export function localDateOfKey(key: string, hours = 0, minutes = 0, seconds = 0)
 	return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1, hours, minutes, seconds);
 }
 
-/** "18 Dec" for a `YYYY-MM-DD` key, with the year when it is not the current one. */
+/** `formatDate` for a `YYYY-MM-DD` key. */
 export function formatDayKey(key: string, now: number = Date.now()): string {
 	const date = localDateOfKey(key);
-	if (!date) return key;
-	return date.toLocaleDateString(undefined, {
-		day: "numeric",
-		month: "short",
-		...(date.getFullYear() === new Date(now).getFullYear() ? {} : { year: "numeric" }),
-	});
-}
-
-/** Short calendar date, e.g. "3 May". Used for chart ticks, shelf dates and the
- *  reading journey, which were each formatting this independently. */
-export function formatShortDate(epochMs: number): string {
-	return new Date(epochMs).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	return date ? formatDate(date.getTime(), now) : key;
 }

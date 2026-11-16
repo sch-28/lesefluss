@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { EmptyRow, Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PageContainer } from "@/components/page-container";
 import { toast } from "@/components/toast";
 import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useRelationships, useUnblockUser } from "@/services/social/friends";
@@ -75,11 +76,11 @@ export default function BlockedUsersPage() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Blocked users" icon={ShieldOff} backTo="/tabs/social" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/blocked">
 					<BlockedContent />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

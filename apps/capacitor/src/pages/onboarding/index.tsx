@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useBackHandler } from "../../hooks/use-back-handler";
 import { replayPendingLink } from "../../services/deep-links/use-deep-links";
@@ -97,16 +98,13 @@ const Onboarding: React.FC = () => {
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">
 					{/* Top-anchored, not centred: every step's heading starts at the same height,
 					    and the speed test can change height between its rounds without a jump. */}
-					<div
-						className="mx-auto w-full max-w-md pt-[min(8dvh,4rem)]"
-						data-testid="onboarding-step"
-					>
+					<PageContainer width="flow" className="pt-[min(8dvh,4rem)]" data-testid="onboarding-step">
 						{stepNodes[step]}
-					</div>
+					</PageContainer>
 				</main>
 
 				<div className="border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
-					<div className="mx-auto flex w-full max-w-md flex-col gap-2">
+					<PageContainer width="flow" className="flex flex-col gap-2">
 						{/* Kept on the first step too, hidden, so the primary button never moves. */}
 						<div
 							className={cn(
@@ -149,7 +147,7 @@ const Onboarding: React.FC = () => {
 						) : (
 							<div className={SECONDARY_SLOT} aria-hidden data-testid="onboarding-secondary-slot" />
 						)}
-					</div>
+					</PageContainer>
 				</div>
 			</div>
 		</OnboardingFooterContext.Provider>

@@ -23,6 +23,7 @@ import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import CoverImage from "@/components/cover-image";
+import { PageContainer } from "@/components/page-container";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
@@ -50,6 +51,7 @@ import { useIsOnline } from "@/services/social/cache";
 import { useBlockUser } from "@/services/social/friends";
 import { currentChapterIndex } from "@/utils/chapters";
 import { formatAgo, formatRelative } from "@/utils/date-utils";
+import { formatPercent } from "@/utils/format-percent";
 import { DangerButton, DangerZone } from "../_shared/danger-zone";
 import { BuddyReadDeadline } from "./buddy-read-deadline";
 import { DiscussionPanel } from "./buddy-read-discussion";
@@ -91,7 +93,11 @@ function ParticipantRow({
 }) {
 	const p = participant;
 	const facts = [
-		p.finishedAt !== null ? null : p.percent !== null ? `${p.percent}%` : "Progress unknown",
+		p.finishedAt !== null
+			? null
+			: p.percent !== null
+				? formatPercent(p.percent)
+				: "Progress unknown",
 		chapterTitle,
 		!p.isSelf && !detail.approximate && myPosition !== null
 			? relativeTo(p.wordPosition - myPosition)
@@ -536,7 +542,7 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 	return (
 		<div className="bg-background">
 			<PageHeader title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate
 					returnTo={`/tabs/social/buddy-read/${id}`}
 					signedOut={{
@@ -546,7 +552,7 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 				>
 					<BuddyReadContent id={id} tab={tab} />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

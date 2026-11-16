@@ -14,4 +14,4 @@ export function evenTickIndices(count: number, maxTicks: number): number[] {
 	return Array.from({ length: maxTicks }, (_, i) => Math.round(i * step));
 }
 
-export { formatShortDate as formatDayTick } from "../../../utils/date-utils";
+export { formatDate as formatDayTick } from "../../../utils/date-utils";

@@ -17,6 +17,7 @@ import { useMultiBookAdapter } from "../../hooks/use-multi-book-adapter";
 import type { MultiBookStorage } from "../../services/devices";
 import type { DeviceCapabilities } from "../../services/devices/capabilities";
 import { formatBytes } from "../../utils/format-bytes";
+import { formatPercent } from "../../utils/format-percent";
 import { log } from "../../utils/log";
 
 export type MultiBookSyncProps = {
@@ -24,10 +25,7 @@ export type MultiBookSyncProps = {
 };
 
 function progressLabel(words: number, total: number): string {
-	if (total === 0) {
-		return "0%";
-	}
-	return `${Math.min(100, Math.round((words / total) * 100))}%`;
+	return formatPercent(total === 0 ? 0 : (words / total) * 100);
 }
 
 export function MultiBookSync(_props: MultiBookSyncProps) {

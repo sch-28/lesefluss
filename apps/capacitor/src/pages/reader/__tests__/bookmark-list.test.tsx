@@ -1,7 +1,7 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, type Rendered, render } from "../../../test/render";
-import { formatShortDate } from "../../../utils/date-utils";
+import { formatDate } from "../../../utils/date-utils";
 import BookmarkList, { type BookmarkRow } from "../bookmark-list";
 
 const CREATED = Date.UTC(2026, 4, 3, 12);
@@ -88,8 +88,8 @@ describe("BookmarkList", () => {
 		);
 		const items = [...rendered.container.querySelectorAll("li")].map((li) => li.textContent);
 		expect(items).toEqual([
-			`Chapter 2 · 40% · ${formatShortDate(CREATED)}The river bent slowly around the old mill`,
-			`90% · ${formatShortDate(CREATED)}Big revealThe river bent slowly around the old mill`,
+			`Chapter 2 · 40% · ${formatDate(CREATED)}The river bent slowly around the old mill`,
+			`90% · ${formatDate(CREATED)}Big revealThe river bent slowly around the old mill`,
 		]);
 		const current = rendered.container.querySelector("[aria-current=location]");
 		expect(current?.closest("li")).toBe(rendered.container.querySelector("li"));

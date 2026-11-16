@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Tag } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { getTags } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -51,7 +52,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Browse by tag" icon={Tag} />
-			<div className="mx-auto max-w-3xl px-4 pt-4 pb-20">
+			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<InputHitArea>
 					<Input
 						type="search"
@@ -94,7 +95,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 						))}
 					</ul>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	);
 };

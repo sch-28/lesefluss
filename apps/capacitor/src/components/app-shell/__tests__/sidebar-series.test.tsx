@@ -107,8 +107,12 @@ describe("SidebarSeries", () => {
 		chapterCounts = new Map([["wn", 304]]);
 		rendered = await render(<SidebarSeries isCollapsed={false} />);
 		expect(rows().map((r) => [r.getAttribute("href"), r.textContent])).toEqual([
-			["/tabs/library?collection=dune", "#Series dune6"],
-			["/tabs/library/series/wn", "≋Worm304"],
+			["/tabs/library?collection=dune", "Series dune6"],
+			["/tabs/library/series/wn", "Worm304"],
+		]);
+		expect(rows().map((r) => r.querySelector("svg")?.getAttribute("class"))).toEqual([
+			expect.stringContaining("lucide-layers"),
+			expect.stringContaining("lucide-scroll-text"),
 		]);
 		expect(allSeriesLink()?.textContent).toBe("All series2");
 	});

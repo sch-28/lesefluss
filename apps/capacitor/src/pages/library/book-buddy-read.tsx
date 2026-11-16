@@ -18,6 +18,7 @@ import {
 	useBuddyReads,
 	useCreateBuddyRead,
 } from "@/services/social/buddy-reads";
+import { formatPercent } from "@/utils/format-percent";
 import { SignedOutSocial } from "../social/signed-out";
 
 /** The buddy read this book belongs to: the running one, else the latest finished one. */
@@ -83,7 +84,11 @@ export function BookBuddyRead({
 							<SocialAvatar name={p.identity.name} avatarUrl={p.identity.avatarUrl} size="sm" />
 							<span className="min-w-0 flex-1 truncate">{p.identity.name}</span>
 							<span className="text-muted-foreground text-xs">
-								{p.finishedAt !== null ? "Finished" : p.percent !== null ? `${p.percent}%` : "–"}
+								{p.finishedAt !== null
+									? "Finished"
+									: p.percent !== null
+										? formatPercent(p.percent)
+										: "–"}
 							</span>
 						</li>
 					))}

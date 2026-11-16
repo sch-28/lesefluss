@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { useCloudStorage } from "@/services/db/hooks/use-cloud-storage";
 import { formatBytes } from "@/utils/format-bytes";
+import { formatPercent } from "@/utils/format-percent";
 
 const NEARLY_FULL = 0.9;
 
@@ -24,7 +25,7 @@ export function CloudStorageSection() {
 				<div className="flex justify-between text-sm">
 					<span className="text-foreground">{usage}</span>
 					{/* Floored: an account with room left must never read 100%. */}
-					<span className="text-muted-foreground">{Math.floor(share * 100)}%</span>
+					<span className="text-muted-foreground">{formatPercent(Math.floor(share * 100))}</span>
 				</div>
 				<Progress
 					value={share * 100}

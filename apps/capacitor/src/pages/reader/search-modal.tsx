@@ -12,6 +12,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatPercent } from "@/utils/format-percent";
 
 export interface SearchModalProps {
 	isOpen: boolean;
@@ -178,7 +179,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
 											)}
 										</p>
 										<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-											{r.pct}%
+											{formatPercent(r.pct)}
 										</span>
 									</button>
 								</li>

@@ -628,10 +628,15 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	pointer-events: auto;
 }
 
+/* One focal font for every RSVP word: the reader, Quick RSVP, the speed test and the settings preview. */
+:root {
+	--rsvp-focal-font: "Courier New", Consolas, monospace;
+}
+
 .rsvp-word-container {
 	position: absolute;
-	top: 50%;
-	font-family: "Courier New", Consolas, monospace;
+	top: calc(50% - var(--rsvp-word-lift, 0px));
+	font-family: var(--rsvp-focal-font);
 	font-weight: 700;
 	color: var(--reader-text);
 	letter-spacing: 0.02em;
@@ -718,10 +723,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	color: var(--reader-text);
 	z-index: 10;
-}
-
-.rsvp-controls:has(~ .rsvp-voice-button) {
-	bottom: 136px;
 }
 
 .rsvp-controls-row {
@@ -870,28 +871,32 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	position: absolute;
 	left: 50%;
 	transform: translateX(-50%);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: var(--rsvp-context-font, var(--font-sans, system-ui, sans-serif));
 	font-weight: 400;
 	font-size: 1.1rem;
 	line-height: 1.4;
 	letter-spacing: normal;
 	color: var(--reader-progress-label, #888);
 	opacity: 0.9;
-	text-align: left;
+	text-align: var(--reader-text-align, left);
+	hyphens: var(--reader-hyphens, manual);
 	width: min(80vw, 560px);
 	word-break: normal;
 	overflow-wrap: break-word;
 }
 
 /* The peeks fill only the room between the word and the screen's edge above,
- * or the paused controls below (bottom 24px + about 111px tall + a gap), and fade
- * out where they are cut. 50 words run far past that on a small phone. */
+ * or the paused controls below (measured into --rsvp-next-max by RsvpView), and
+ * fade out where they are cut. 50 words run far past that on a small phone. */
 .rsvp-context-prev {
 	bottom: calc(100% + 0.6em);
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
-	max-height: max(0px, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 8px));
+	max-height: max(
+		0px,
+		calc(50cqh - var(--rsvp-word-lift, 0px) - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 8px)
+	);
 	overflow: hidden;
 	-webkit-mask-image: linear-gradient(to top, #000 calc(100% - 2.5em), transparent);
 	mask-image: linear-gradient(to top, #000 calc(100% - 2.5em), transparent);
@@ -899,7 +904,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 .rsvp-context-next {
 	top: calc(100% + 0.6em);
-	max-height: max(0px, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 147px));
+	max-height: max(
+		0px,
+		var(--rsvp-next-max, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 215px - 0.6em))
+	);
 	overflow: hidden;
 	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
 	mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
@@ -917,7 +925,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	color: inherit;
 	font: inherit;
 	padding: 1px 2px;
-	margin: 0 1px;
+	margin: 0;
 	border-radius: 3px;
 	cursor: pointer;
 	transition:
@@ -931,14 +939,40 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	color: var(--reader-text);
 }
 
-/* ── RSVP corner buttons (paused): icon and label ── */
+/* ── RSVP pills (paused): one row under the controls card, icon and label ── */
+
+.rsvp-pills {
+	position: absolute;
+	left: 16px;
+	right: 16px;
+	bottom: 24px;
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	pointer-events: none;
+	z-index: 10;
+	container-type: inline-size;
+}
+
+/* Labels that don't fit the row (a phone with four pills, or large text) drop to their
+ * icons; the names stay as aria-labels. em follows the text size, so the cut does too. */
+@container (max-width: 20em) {
+	.rsvp-pills span {
+		display: none;
+	}
+}
+
+@container (max-width: 32em) {
+	.rsvp-pills--four span {
+		display: none;
+	}
+}
 
 .rsvp-dict-button,
 .rsvp-settings-button,
 .rsvp-voice-button,
 .rsvp-sleep-button {
-	position: absolute;
-	bottom: 24px;
+	flex-shrink: 0;
 	min-width: 44px;
 	height: 44px;
 	padding: 0 14px 0 12px;
@@ -953,26 +987,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	font-size: 0.8125rem;
 	cursor: pointer;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
-	z-index: 10;
-}
-
-.rsvp-dict-button {
-	right: 16px;
-}
-
-.rsvp-settings-button {
-	left: 16px;
-}
-
-/* Read-aloud extras stack above the settings and dictionary buttons. */
-.rsvp-voice-button {
-	left: 16px;
-	bottom: 80px;
-}
-
-.rsvp-sleep-button {
-	right: 16px;
-	bottom: 80px;
 }
 
 .rsvp-sleep-button--on {
@@ -1466,10 +1480,15 @@ html.eink .reading-ruler-band {
 	height: 110px;
 }
 
+.rsvp-mini-word {
+	font-family: var(--rsvp-focal-font);
+	font-weight: 700;
+}
+
 .rsvp-preview-word {
 	position: absolute;
 	top: 50%;
-	font-family: "Courier New", Consolas, monospace;
+	font-family: var(--rsvp-focal-font);
 	font-weight: 700;
 	font-size: 1.6rem;
 	color: var(--reader-text, #fff);
@@ -1533,13 +1552,6 @@ body.theme-sepia .local-storage-notice__dismiss {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Sidebar (hidden on mobile) ── */
-
-/* ── Shared content max-width container ── */
-.content-container {
-	max-width: 900px;
-	width: 100%;
-	margin: 0 auto;
-}
 
 @media (min-width: 1081px) {
 	/* Sidebar width drives both its own box and the router-outlet's left margin.

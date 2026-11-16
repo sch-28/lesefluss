@@ -13,6 +13,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { useToast } from "@/components/toast";
@@ -51,7 +52,7 @@ function ExportSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Export highlights" icon={Download} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{hasNoHighlights ? (
 					<NoHighlights />
 				) : (
@@ -67,7 +68,7 @@ function ExportSettings() {
 						onExport={() => exportMutation.mutate()}
 					/>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

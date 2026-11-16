@@ -6,7 +6,7 @@ import { useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
-import { percentLabel } from "../../../utils/reading-time";
+import { formatPercent } from "../../../utils/format-percent";
 import { GoalChart } from "./goal-chart";
 import {
 	canHaveGoal,
@@ -95,7 +95,7 @@ export function GoalCard({ book }: { book: Book }) {
 							</div>
 							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								{today.targetMinutes != null
-									? `today · ${percentLabel(today.progressPercent)}%`
+									? `today · ${formatPercent(today.progressPercent, 1)}`
 									: "today"}
 							</div>
 						</div>
@@ -149,7 +149,7 @@ export function GoalCard({ book }: { book: Book }) {
 					planSeries={plan.planSeries}
 					actualSeries={plan.actualSeries}
 					historySeries={plan.historySeries}
-					ariaLabel={`Plan vs actual: ${percentLabel(plan.percentRead)}% read, ${signed(plan.aheadBehind.percent, "%")} vs plan`}
+					ariaLabel={`Plan vs actual: ${formatPercent(plan.percentRead)} read, ${signed(plan.aheadBehind.percent, "%")} vs plan`}
 				/>
 			)}
 

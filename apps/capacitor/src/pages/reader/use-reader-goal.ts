@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { localDateKey } from "../../utils/date-utils";
-import { percentLabel } from "../../utils/reading-time";
+import { formatPercent } from "../../utils/format-percent";
 import { canHaveGoal, liveToday } from "../library/reading-goal/goal-model";
 import type { ReaderGoalDivider } from "./goal-divider";
 
@@ -74,7 +74,7 @@ export function useReaderGoal(
 		const lastTargetWord = goalPlan.dayStartWord + goalPlan.dailyTarget.words - 1;
 		return {
 			paragraphIndex: findParagraphIndexForWord(lastTargetWord),
-			divider: { label: `${percentLabel(goalPlan.dailyTarget.percent)}%`, passed: isMet },
+			divider: { label: formatPercent(goalPlan.dailyTarget.percent, 1), passed: isMet },
 		};
 	}, [goalPlan, isMet, findParagraphIndexForWord]);
 	return { goalPlan, goalToday, goalDivider, furthestReadToday, reportFurthestRead };

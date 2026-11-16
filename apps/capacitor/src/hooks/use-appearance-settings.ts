@@ -5,12 +5,11 @@ import { type AppTheme, useTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";
 
-export const THEMES: { value: AppTheme; label: string; short?: string }[] = [
+export const THEMES: { value: AppTheme; label: string }[] = [
 	{ value: "dark", label: "Dark" },
 	{ value: "sepia", label: "Sepia" },
 	{ value: "light", label: "Light" },
-	// `short`: the appearance popover's four-across row has no room for the full name.
-	{ value: "high-contrast", label: "High contrast", short: "Contrast" },
+	{ value: "high-contrast", label: "High contrast" },
 ];
 
 const SERIF_STACK = "Georgia, 'Times New Roman', serif";

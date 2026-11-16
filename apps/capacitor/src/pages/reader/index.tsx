@@ -117,6 +117,7 @@ import {
 	publishSettle,
 	type SaveSource,
 } from "../../test-hooks/reader";
+import { formatPercent } from "../../utils/format-percent";
 import { openLink } from "../../utils/open-link";
 import { formatReadingTime } from "../../utils/reading-time";
 import { useBookActions } from "../library/book-actions/use-book-actions";
@@ -489,7 +490,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 		showUnsavedMove: (word) => showUnsavedMove(word),
 		getSession: () => browseSessionRef.current,
 		notifyAutoCommit: (word, undo) => {
-			toast.info(`Reading position moved to ${Math.round(percentOfBook(word))}%`, {
+			toast.info(`Reading position moved to ${formatPercent(percentOfBook(word))}`, {
 				duration: 10_000,
 				action: { label: "Undo", onClick: undo },
 			});
@@ -2917,7 +2918,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 									disabled={!content}
 								>
 									<ListTree />
-									<span>Contents and bookmarks</span>
+									<span>Contents and annotations</span>
 								</DropdownMenuItem>
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
@@ -3076,6 +3077,8 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 							isSessionPaused={isSessionPaused}
 							audio={rsvpAudio}
 							onPlayingChange={setIsRsvpPlaying}
+							contextFontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+							contextTextAlign={textAlign}
 						/>
 					) : paginationStyle === "page" ? (
 						<PageView
@@ -3225,7 +3228,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 							<DiscussionTicks ticks={discussionTicks} />
 							<div className="reader-progress-label">
 								<span>
-									{Math.round(progressPct)}%
+									{formatPercent(progressPct)}
 									{bookMinutesRemaining > 0 && (
 										<> · {formatReadingTime(bookMinutesRemaining)} left</>
 									)}

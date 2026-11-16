@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { estimateMinutesLeft, minutesLabel } from "../reading-time";
+import { formatDuration } from "../date-utils";
+import { estimateMinutesLeft, formatReadingTime } from "../reading-time";
 
-describe("minutesLabel", () => {
-	it("shows an estimate as a plain value", () => {
-		expect(minutesLabel(10)).toBe("10 min");
-		expect(minutesLabel(65)).toBe("1h 5m");
-		expect(minutesLabel(0.5)).toBe("< 1 min");
+describe("formatReadingTime", () => {
+	it("shows an estimate in the one duration format, rounded", () => {
+		expect(formatReadingTime(10)).toBe("10 min");
+		expect(formatReadingTime(14.6)).toBe("15 min");
+		expect(formatReadingTime(65)).toBe("1h 5m");
+		expect(formatReadingTime(761)).toBe(formatDuration(761 * 60_000));
+		expect(formatReadingTime(0.5)).toBe("< 1 min");
 	});
 });
 

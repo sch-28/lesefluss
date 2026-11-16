@@ -1,5 +1,7 @@
 import { BOOK_STATUS_LABELS, displayAuthor, ratingStars } from "@lesefluss/core";
+import { formatPercent } from "@/utils/format-percent";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
+import { formatDate } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
 import type { SeriesMemberships } from "./group-by";
 import type { LibraryItem, SortBy, SortState } from "./sort-filter";
@@ -36,7 +38,7 @@ export type TableColumn = {
 	text: (item: LibraryItem, ctx: CellContext) => string;
 };
 
-const date = (ms: number | null) => (ms === null ? "" : new Date(ms).toLocaleDateString());
+const date = (ms: number | null) => (ms === null ? "" : formatDate(ms));
 const bookOnly =
 	(text: (item: Extract<LibraryItem, { kind: "book" }>, ctx: CellContext) => string) =>
 	(item: LibraryItem, ctx: CellContext) =>
@@ -86,7 +88,7 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 		width: "5.5rem",
 		align: "end",
 		sortBy: "progress",
-		text: (item) => `${item.sortKey.progress}%`,
+		text: (item) => formatPercent(item.sortKey.progress),
 	},
 	{
 		id: "rating",

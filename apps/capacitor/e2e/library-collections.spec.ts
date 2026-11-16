@@ -24,10 +24,10 @@ async function openHolidayCollection(page: Page) {
 	await page.getByRole("button", { name: "EPUB Tidewater Ada Vance" }).click();
 	await page.getByRole("button", { name: "Create with 2 books" }).click();
 
-	// The open collection's row trades its book count for the options button.
-	await expect(sidebar.getByRole("link", { name: "Holiday", exact: true })).toBeVisible();
+	// Every row keeps its book count and its options button.
+	await expect(sidebar.getByRole("link", { name: "Holiday 2", exact: true })).toBeVisible();
 	await expect(sidebar.getByRole("button", { name: "Holiday options" })).toBeVisible();
-	await sidebar.getByRole("link", { name: "Holiday", exact: true }).click();
+	await sidebar.getByRole("link", { name: "Holiday 2", exact: true }).click();
 	await expect(page).toHaveURL(/collection=/);
 	await expect(page.locator("[data-book-title]")).toHaveCount(2);
 }

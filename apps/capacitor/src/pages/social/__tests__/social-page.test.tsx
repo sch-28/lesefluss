@@ -134,7 +134,7 @@ describe("SocialPage", () => {
 		view = await render(<SocialPage />);
 
 		expect(view.text()).toContain("Read together, wherever you are.");
-		expect(view.text()).toContain("Invite a reading buddy");
+		expect(view.text()).toContain("Invite a friend");
 		expect(view.text()).toContain("Bea hasn't accepted yet");
 		expect(
 			view.container.querySelector('input[aria-label="Invite link you received"]'),

@@ -2,6 +2,7 @@ import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ReservedCard } from "../../components/reserved-card";
 import { useLocalDayNow } from "../../hooks/use-local-day";
@@ -43,7 +44,7 @@ const Stats: React.FC = () => {
 	return (
 		<div className="bg-background text-foreground">
 			<TabHeader title="Stats" icon={BarChart3} />
-			<div className="mx-auto w-full max-w-3xl">
+			<PageContainer width="text">
 				<Tabs
 					value={tab}
 					onValueChange={(v) => {
@@ -103,7 +104,7 @@ const Stats: React.FC = () => {
 						</p>
 					</div>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	);
 };

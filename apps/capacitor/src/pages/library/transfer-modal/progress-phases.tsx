@@ -3,6 +3,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
+import { formatPercent } from "@/utils/format-percent";
 import BookCover from "../../../components/book-cover";
 import type { Book } from "../../../services/db/schema";
 import { ESTIMATED_BPS, formatSeconds } from "./utils";
@@ -44,7 +45,7 @@ export const TransferringPhase: React.FC<TransferringProps> = ({ book, progress,
 					<span>
 						Chunk {ackedChunks} / {totalChunks}
 					</span>
-					<span className="font-medium text-foreground">{progress}%</span>
+					<span className="font-medium text-foreground">{formatPercent(progress)}</span>
 				</div>
 			</div>
 

@@ -3,6 +3,7 @@ import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gauge } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { WINDOW_LABELS } from "@/components/speed-chip/speed-chip-model";
@@ -37,7 +38,7 @@ function SpeedSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Speed & estimates" icon={Gauge} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Window">
 					<RadioGroup
 						aria-label="Speed window"
@@ -69,7 +70,7 @@ function SpeedSettings() {
 				<div className="mt-3 px-4">
 					<SpeedPreview />
 				</div>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

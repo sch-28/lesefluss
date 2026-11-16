@@ -247,8 +247,8 @@ describe("minute goals", () => {
 
 	it("keeps a percent goal's figure in percent, clamped at the target once met", () => {
 		const plan = makePlan({ position: 50, sessions: [session(1, 0, 50)], now: at(1, 21) });
-		expect(todayFigure(liveToday(plan, 50, WORDS))).toEqual({ done: "5.0", target: "10.0%" });
-		expect(todayFigure(liveToday(plan, 130, WORDS))).toEqual({ done: "10.0", target: "10.0%" });
+		expect(todayFigure(liveToday(plan, 50, WORDS))).toEqual({ done: "5%", target: "10%" });
+		expect(todayFigure(liveToday(plan, 130, WORDS))).toEqual({ done: "10%", target: "10%" });
 	});
 });
 

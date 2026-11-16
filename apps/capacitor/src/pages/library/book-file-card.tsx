@@ -1,5 +1,5 @@
 import type { Book } from "../../services/db/schema";
-import { formatShortDate } from "../../utils/date-utils";
+import { formatDate } from "../../utils/date-utils";
 import { useBookJourney } from "./book-journey";
 import { formatBytes } from "./transfer-modal/utils";
 
@@ -20,8 +20,8 @@ export function BookFileCard({ book }: { book: Book }) {
 	];
 	if (book.size > 0) rows.push(["Size", formatBytes(book.size)]);
 	if (!journey) {
-		rows.push(["Added", formatShortDate(book.addedAt)]);
-		if (book.finishedAt != null) rows.push(["Finished", formatShortDate(book.finishedAt)]);
+		rows.push(["Added", formatDate(book.addedAt)]);
+		if (book.finishedAt != null) rows.push(["Finished", formatDate(book.finishedAt)]);
 	}
 	rows.push(["Source", describeSource(book)]);
 

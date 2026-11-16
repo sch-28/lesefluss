@@ -13,7 +13,7 @@ import {
 	milestoneProgressLine,
 	milestoneTitle,
 } from "../../../../services/stats/milestones";
-import { formatShortDate } from "../../../../utils/date-utils";
+import { formatDate } from "../../../../utils/date-utils";
 import { STAT_ROW_HEIGHT, StatRow, StatsSection } from "../section-header";
 
 const TOTAL_TIERS = MILESTONE_KINDS.reduce((sum, kind) => sum + MILESTONE_TIERS[kind].length, 0);
@@ -53,7 +53,7 @@ function ReachedRow({ milestone }: { milestone: ReachedMilestone }) {
 			<StatRow
 				icon={<MilestoneIcon kind={milestone.kind} threshold={milestone.threshold} />}
 				label={milestoneTitle(milestone.kind, milestone.threshold)}
-				sub={formatShortDate(milestone.reachedAt)}
+				sub={formatDate(milestone.reachedAt)}
 			/>
 		</div>
 	);

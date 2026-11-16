@@ -152,12 +152,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 								className="relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
 							>
 								<span className="min-w-0 flex-1 truncate">{c.name}</span>
-								<span
-									className={cn(
-										"shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden",
-										activeId === c.id && "hidden",
-									)}
-								>
+								<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums">
 									{c.bookCount}
 								</span>
 							</Link>
@@ -165,27 +160,13 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 								type="button"
 								onClick={() => setMenuFor(c)}
 								aria-label={`${c.name} options`}
-								// Shown on the open collection, so its options never need a hover.
-								className={cn(
-									"mr-2 size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:inline-flex group-hover:inline-flex",
-									activeId === c.id ? "inline-flex" : "hidden",
-								)}
+								className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
 							>
 								<MoreHorizontal className="size-4" />
 							</button>
 						</li>
 					);
 				})}
-				<li>
-					<button
-						type="button"
-						onClick={newCollection}
-						className="flex w-full items-center gap-2 py-1.5 pl-5 text-left text-sidebar-foreground/50 text-sm hover:text-sidebar-foreground"
-					>
-						<Plus className="size-4" />
-						New collection
-					</button>
-				</li>
 			</ul>
 			<CollectionActions
 				collection={menuFor}

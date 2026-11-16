@@ -74,7 +74,7 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 		"Search in book",
 		"Appearance",
 		"Contents and annotations",
-		/^Switch to (page|scroll) view/,
+		/^Layout: (Page|Scroll)/,
 		"Book details",
 		"Listen",
 		"Remove bookmark here",

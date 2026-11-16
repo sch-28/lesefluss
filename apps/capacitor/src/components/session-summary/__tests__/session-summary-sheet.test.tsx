@@ -204,7 +204,7 @@ describe("SessionSummarySheet", () => {
 		);
 		const saved = document.querySelector("[data-testid=summary-time-saved]")?.textContent;
 		expect(saved).toContain("Reading (200 wpm)");
-		expect(saved).toContain("20m");
+		expect(saved).toContain("20 min");
 	});
 
 	it("opens at its full height, with no partial snap", async () => {
@@ -282,7 +282,7 @@ describe("SessionSummarySheet", () => {
 			kind: "book",
 			title: "Morning Star",
 			cover: "data:image/png;base64,AA",
-			hero: "34m",
+			hero: "34 min",
 		});
 		if (card?.kind !== "book") throw new Error("book card expected");
 		expect(card.tiles.map((t) => [t.label, t.value])).toEqual([

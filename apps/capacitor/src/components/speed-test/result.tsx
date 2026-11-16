@@ -8,7 +8,7 @@ import {
 	minutesFor,
 	stepDial,
 } from "../../services/stats/speed-test";
-import { estimateMinutesLeft, minutesLabel } from "../../utils/reading-time";
+import { estimateMinutesLeft, formatReadingTime } from "../../utils/reading-time";
 import { SpeedGauge } from "./gauge";
 import { Stat } from "./stat";
 
@@ -76,18 +76,18 @@ export function SpeedTestResult({
 				<dl className="mt-2 grid grid-cols-3 gap-2 text-center">
 					<div>
 						<dt className="text-muted-foreground text-xs">Reading</dt>
-						<dd className="font-semibold tabular-nums">{minutesLabel(readingMinutes)}</dd>
+						<dd className="font-semibold tabular-nums">{formatReadingTime(readingMinutes)}</dd>
 					</div>
 					{rsvpMinutes !== null && (
 						<>
 							<div>
 								<dt className="text-muted-foreground text-xs">RSVP</dt>
-								<dd className="font-semibold tabular-nums">{minutesLabel(rsvpMinutes)}</dd>
+								<dd className="font-semibold tabular-nums">{formatReadingTime(rsvpMinutes)}</dd>
 							</div>
 							<div>
 								<dt className="text-muted-foreground text-xs">Saved</dt>
 								<dd className="font-semibold tabular-nums">
-									{saved >= 1 ? minutesLabel(saved) : "–"}
+									{saved >= 1 ? formatReadingTime(saved) : "–"}
 								</dd>
 							</div>
 						</>

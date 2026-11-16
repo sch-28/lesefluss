@@ -9,7 +9,8 @@
 import type { LocalNotificationsPlugin } from "@capacitor/local-notifications";
 import { addDays } from "@lesefluss/core";
 import { localDateOfKey } from "../../utils/date-utils";
-import { minutesLabel, percentLabel } from "../../utils/reading-time";
+import { formatPercent } from "../../utils/format-percent";
+import { formatReadingTime } from "../../utils/reading-time";
 import type { ReadingGoal } from "../db/schema";
 import type { ReadingGoalPlanResult } from "../stats/reading-goal";
 
@@ -45,8 +46,8 @@ export function reminderId(goalId: string, date: string): number {
 }
 
 function reminderBody(plan: Extract<ReadingGoalPlanResult, { kind: "plan" }>): string {
-	if (plan.dailyMinutes != null) return `today ${minutesLabel(plan.dailyMinutes)}`;
-	return `today ${percentLabel(plan.dailyTarget.percent)}% · ${minutesLabel(plan.dailyTarget.minutes)}`;
+	if (plan.dailyMinutes != null) return `today ${formatReadingTime(plan.dailyMinutes)}`;
+	return `today ${formatPercent(plan.dailyTarget.percent, 1)} · ${formatReadingTime(plan.dailyTarget.minutes)}`;
 }
 
 /**

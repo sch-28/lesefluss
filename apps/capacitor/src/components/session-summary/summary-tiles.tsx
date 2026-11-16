@@ -15,7 +15,8 @@ import { goalTone } from "../../pages/library/reading-goal/goal-model";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import type { SummaryStats } from "../../services/stats/session-summary";
 import { formatDayKey, formatDuration } from "../../utils/date-utils";
-import { estimatePages, percentLabel } from "../../utils/reading-time";
+import { formatPercent } from "../../utils/format-percent";
+import { estimatePages } from "../../utils/reading-time";
 import { GoalRing } from "../goal-ring";
 import { Sparkline } from "../sparkline";
 
@@ -87,7 +88,7 @@ export function summaryGoalLine(plan: ReadingGoalPlan): string {
 		return `Today ${Math.floor(plan.progressToday.minutes)} / ${plan.dailyMinutes} min`;
 	}
 	const pace = goalTone(plan) === "behind" ? "behind, finish" : "on track";
-	return `${percentLabel(plan.progressToday.percent)}% / ${percentLabel(plan.dailyTarget.percent)}% today · ${pace} ${formatDayKey(plan.projectedFinishDate)}`;
+	return `${formatPercent(plan.progressToday.percent, 1)} / ${formatPercent(plan.dailyTarget.percent, 1)} today · ${pace} ${formatDayKey(plan.projectedFinishDate)}`;
 }
 
 export function GoalRow({ plan }: { plan: ReadingGoalPlan }) {
@@ -167,9 +168,9 @@ export function BookTile({ from, to }: { from: number; to: number }) {
 		<Tile icon={<BookOpen className="size-3" />} label="Book" testId="summary-book">
 			<span className="flex items-center gap-2">
 				<GoalRing size={30} fraction={to / 100} />
-				<Value>{gained > 0 ? `+${gained}%` : `${Math.round(to)}%`}</Value>
+				<Value>{gained > 0 ? `+${formatPercent(gained)}` : formatPercent(to)}</Value>
 			</span>
-			<Caption>{gained > 0 ? `${Math.round(from)} → ${Math.round(to)}%` : "read"}</Caption>
+			<Caption>{gained > 0 ? `${Math.round(from)} → ${formatPercent(to)}` : "read"}</Caption>
 		</Tile>
 	);
 }

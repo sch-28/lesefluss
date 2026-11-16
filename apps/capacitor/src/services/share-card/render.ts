@@ -1,3 +1,5 @@
+import { formatPercent } from "../../utils/format-percent";
+
 export type ShareCardFormat = "story" | "square";
 
 export const SHARE_CARD_SIZES: Record<ShareCardFormat, { width: number; height: number }> = {
@@ -524,7 +526,9 @@ function drawBookStory(
 	if (data.hero) {
 		setFont(ctx, `italic 48px ${SERIF}`);
 		ctx.fillStyle = "rgba(255,255,255,0.75)";
-		const caption = data.progress ? `${data.title} · ${Math.round(data.progress.to)}%` : data.title;
+		const caption = data.progress
+			? `${data.title} · ${formatPercent(data.progress.to)}`
+			: data.title;
 		ctx.fillText(wrapLines(ctx, caption, width - PAD * 2, 1)[0] ?? "", width / 2, y);
 		y += 60 + 40;
 		setFont(ctx, `800 192px ${SANS}`, "-4px");
@@ -572,7 +576,9 @@ function drawBookSquare(
 	if (data.hero) {
 		setFont(ctx, `italic 44px ${SERIF}`);
 		ctx.fillStyle = "rgba(255,255,255,0.75)";
-		const caption = data.progress ? `${data.title} · ${Math.round(data.progress.to)}%` : data.title;
+		const caption = data.progress
+			? `${data.title} · ${formatPercent(data.progress.to)}`
+			: data.title;
 		ctx.fillText(wrapLines(ctx, caption, textW, 1)[0] ?? "", x, y);
 		y -= 76;
 		const size = fitSize(ctx, data.hero, "800", 176, textW);

@@ -55,6 +55,10 @@ test("two-finger tap pauses the session, tap resumes, flush still works", async 
 	// Accumulate past the noise floor (MIN_DURATION_MS, MIN_WORDS) so the pause
 	// checkpoint has a row to write. Steps stay under the tracker's 15s poll
 	// throttle guard, which would take a longer gap for a suspended page.
+	// The wheel scrolls only over the text column, not wherever the library click left the mouse.
+	const column = await page.locator(".reader-scroll-content").boundingBox();
+	if (!column) throw new Error("no reader column");
+	await page.mouse.move(column.x + column.width / 2, column.y + column.height / 2);
 	for (let i = 0; i < 8; i++) {
 		await page.mouse.wheel(0, 120);
 		await page.waitForTimeout(300);

@@ -8,7 +8,7 @@
  */
 
 import { AVERAGE_READER_WPM } from "@lesefluss/core";
-import { formatDuration } from "../../utils/date-utils";
+import { formatDate, formatDuration } from "../../utils/date-utils";
 import type { SpeedBucket, WpmTrend } from "./aggregate";
 import type { CalendarDay } from "./calendar";
 
@@ -16,10 +16,6 @@ const MS_PER_MINUTE = 60_000;
 
 function formatHour(hour: number): string {
 	return `${String(hour).padStart(2, "0")}:00`;
-}
-
-function formatDayLong(epochMs: number): string {
-	return new Date(epochMs).toLocaleDateString(undefined, { month: "long", day: "numeric" });
 }
 
 /**
@@ -48,7 +44,7 @@ export function summariseDays(days: CalendarDay[], rangeLabel: string): string {
 	if (timed.length > 0) {
 		const best = timed.reduce((a, b) => (b.durationMs > a.durationMs ? b : a));
 		sentences.push(
-			`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.durationMs)}.`,
+			`Longest day was ${formatDate(best.dayStart)} at ${formatDuration(best.durationMs)}.`,
 		);
 	}
 	return sentences.join(" ");

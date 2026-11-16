@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hasOpenOverlay } from "../../commands/guard";
 import { formatKey, matchesKey } from "../../commands/keys";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
+import { PageContainer } from "../../components/page-container";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import type { EditForm } from "./book-edit-fields";
 import type { BookEditValues } from "./book-edit-form";
@@ -126,7 +127,7 @@ export const BookEditLayout: React.FC<Props> = ({
 	return (
 		<div className="flex min-h-full flex-col">
 			<header className="sticky top-0 z-20 border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
-				<div className="mx-auto flex h-12 max-w-4xl items-center gap-2 px-2 md:h-14 md:px-4">
+				<PageContainer width="text" className="flex h-12 items-center gap-2 px-2 md:h-14 md:px-4">
 					<button
 						type="button"
 						onClick={onCancel}
@@ -139,16 +140,16 @@ export const BookEditLayout: React.FC<Props> = ({
 					<h1 className="m-0 font-semibold text-base leading-5">{title}</h1>
 					<div className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{status}</div>
 					{isWide && <div className="flex gap-2">{actions}</div>}
-				</div>
+				</PageContainer>
 			</header>
-			<main className="mx-auto w-full max-w-4xl flex-1 px-4 py-4 pb-24 md:pb-8">
+			<PageContainer as="main" width="text" className="flex-1 px-4 py-4 pb-24 md:pb-8">
 				{children}
 				{isWide && (
 					<p className="m-0 mt-4 text-center text-muted-foreground text-xs">
 						{formatKey(SAVE_KEY).join("+")} save · Esc cancel (asks when unsaved)
 					</p>
 				)}
-			</main>
+			</PageContainer>
 			{!isWide && (
 				<div
 					data-toast-clear

@@ -5,8 +5,9 @@ import { cn } from "@lesefluss/ui/utils";
 import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { formatPercent } from "@/utils/format-percent";
 import { useMediaQuery } from "../../hooks/use-media-query";
-import { formatShortDate } from "../../utils/date-utils";
+import { formatDate } from "../../utils/date-utils";
 
 export type BookmarkRow = {
 	id: string;
@@ -50,7 +51,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
 	return (
 		<ul className="flex flex-col" aria-label="Bookmarks">
 			{rows.map((row) => {
-				const meta = [row.chapterTitle, `${row.percent}%`, formatShortDate(row.createdAt)]
+				const meta = [row.chapterTitle, formatPercent(row.percent), formatDate(row.createdAt)]
 					.filter(Boolean)
 					.join(" · ");
 				const isCurrent = row.id === currentId;

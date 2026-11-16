@@ -2,7 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
-import { minutesLabel } from "../../utils/reading-time";
+import { formatReadingTime } from "../../utils/reading-time";
 import {
 	daysMetWithToday,
 	GOAL_TONE_CLASS,
@@ -68,7 +68,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 				<div className="grid grid-cols-3 gap-2">
 					<GoalStat
 						size="sm"
-						value={today.isMet ? "0 min" : minutesLabel(today.minutesToGo)}
+						value={today.isMet ? "0 min" : formatReadingTime(today.minutesToGo)}
 						label="to go"
 					/>
 					<GoalStat

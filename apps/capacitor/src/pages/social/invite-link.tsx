@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PageContainer } from "@/components/page-container";
 import { PasteInviteField } from "@/components/social/paste-invite-field";
 import { toast } from "@/components/toast";
 import { useIsOnline } from "@/services/social/cache";
@@ -17,15 +18,8 @@ import {
 	useRevokeInvite,
 } from "@/services/social/friends";
 import { copyToClipboard } from "@/utils/clipboard";
+import { formatDate } from "@/utils/date-utils";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
-
-function formatExpiry(ms: number): string {
-	return new Date(ms).toLocaleDateString(undefined, {
-		day: "numeric",
-		month: "long",
-		year: "numeric",
-	});
-}
 
 let hasAutoCreatedInvite = false;
 
@@ -92,7 +86,7 @@ function InviteLinkContent() {
 									/>
 								</InputHitArea>
 								<p className="text-muted-foreground text-xs">
-									Expires on {formatExpiry(current.expiresAt)}.
+									Expires {formatDate(current.expiresAt)}.
 								</p>
 							</div>
 							<div className="flex flex-wrap gap-x-2 gap-y-4">
@@ -171,12 +165,12 @@ function InviteLinkContent() {
 export default function InviteLinkPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Add friend" icon={Link2} backTo="/tabs/social" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageHeader title="Invite a friend" icon={Link2} backTo="/tabs/social" />
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/invite-link">
 					<InviteLinkContent />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

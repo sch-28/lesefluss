@@ -13,6 +13,7 @@ import { minuteGoalOf } from "../../services/stats/reading-goal";
 import { summariseSpeedBuckets } from "../../services/stats/summaries";
 import { averageDailyMinutes } from "../../services/stats/what-if";
 import { formatDuration, formatRelative, localDateKey } from "../../utils/date-utils";
+import { formatPercent } from "../../utils/format-percent";
 import { formatReadingTime } from "../../utils/reading-time";
 import { canHaveGoal } from "./reading-goal/goal-model";
 
@@ -244,7 +245,7 @@ export function BookStatsCard({ book }: Props) {
 								Page <span className="font-semibold">{pagesIn}</span> of {totalPages} ·{" "}
 							</>
 						)}
-						{percent}% read
+						{formatPercent(percent)} read
 					</p>
 				</div>
 			)}

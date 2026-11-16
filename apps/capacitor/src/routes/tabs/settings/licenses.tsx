@@ -5,6 +5,7 @@ import atkinsonLicense from "@/assets/licenses/fonts/atkinson-hyperlegible-OFL.t
 import literataLicense from "@/assets/licenses/fonts/literata-OFL.txt?raw";
 import openDyslexicLicense from "@/assets/licenses/fonts/opendyslexic-OFL.txt?raw";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { ExpanderRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 
@@ -23,13 +24,13 @@ function Licenses() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Open source licenses" icon={Scale} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Reader fonts">
 					{NOTICES.map(({ title, license }) => (
 						<LicenseNotice key={title} title={title} license={license} />
 					))}
 				</SettingsSection>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

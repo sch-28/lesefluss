@@ -19,14 +19,20 @@ const px = (selector: string, prop: string) => {
 };
 
 describe("RSVP paused controls layout", () => {
-	it("sit above the labelled corner pills, which are too wide to share their row on a phone", () => {
+	it("sit above the one row of secondary pills, with or without the read-aloud pills", () => {
 		const PILL = 44;
 		const GAP = 8;
-		const pillsTop = px(".rsvp-dict-button", "bottom") + PILL;
-		const voicePillsTop = px(".rsvp-sleep-button", "bottom") + PILL;
+		const pillsTop = px(".rsvp-pills", "bottom") + PILL;
 		expect(px(".rsvp-controls", "bottom")).toBeGreaterThanOrEqual(pillsTop + GAP);
-		expect(px(".rsvp-controls:has(~ .rsvp-voice-button)", "bottom")).toBeGreaterThanOrEqual(
-			voicePillsTop + GAP,
-		);
+		expect(CSS).not.toMatch(/\.rsvp-controls:has/);
+	});
+
+	it("give the RSVP word, Quick RSVP, the speed test and the settings preview one focal font", () => {
+		const focal = CSS.match(/--rsvp-focal-font: ([^;]+);/)?.[1];
+		expect(focal).toBeTruthy();
+		for (const selector of [".rsvp-word-container", ".rsvp-preview-word", ".rsvp-mini-word"]) {
+			const body = CSS.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+			expect(body, selector).toContain("font-family: var(--rsvp-focal-font)");
+		}
 	});
 });

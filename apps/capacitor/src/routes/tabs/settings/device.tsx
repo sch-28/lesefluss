@@ -29,6 +29,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { DeviceSync } from "@/components/device-sync";
+import { PageContainer } from "@/components/page-container";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SliderRow } from "@/components/settings/slider-row";
 import { useToast } from "@/components/toast";
@@ -191,7 +192,7 @@ function DeviceSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Device" icon={Cpu} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{isMultiBookConnected && connectedDescriptorId && (
 					<DeviceSync descriptorId={connectedDescriptorId} />
 				)}
@@ -409,7 +410,7 @@ function DeviceSettings() {
 						</button>
 					</SettingsSection>
 				)}
-			</div>
+			</PageContainer>
 
 			<AlertDialog
 				open={forgetTarget !== null}

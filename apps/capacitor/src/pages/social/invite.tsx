@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { useSyncContext } from "@/contexts/sync-context";
 import { clearPendingLink, setPendingLink } from "@/services/deep-links/pending-link";
@@ -98,7 +99,7 @@ function Outcome({
 					</p>
 					<Button className="w-full" onClick={confirm} disabled={!isOnline || redeem.isPending}>
 						<UserPlus />
-						{redeem.isPending ? "Adding…" : "Add friend"}
+						{redeem.isPending ? "Accepting…" : "Accept invitation"}
 					</Button>
 					{!isOnline && (
 						<p className="text-muted-foreground text-xs">
@@ -201,9 +202,9 @@ export default function InvitePage({ token }: { token: string }) {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Invitation" icon={UserPlus} backTo="/tabs/social" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<InviteContent token={token} />
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

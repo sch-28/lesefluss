@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import CoverImage from "@/components/cover-image";
+import { PageContainer } from "@/components/page-container";
 import { EnableNotificationsRow } from "@/components/push/enable-notifications-row";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import { toast } from "@/components/toast";
@@ -22,15 +23,8 @@ import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useRespondToRequest } from "@/services/social/friends";
 import { useInbox, useMarkAllRead, useMarkRead } from "@/services/social/inbox";
 import { shareFailureMessage, useRespondToShare } from "@/services/social/shares";
+import { formatAgo } from "@/utils/date-utils";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
-
-function formatWhen(ms: number): string {
-	const diff = Date.now() - ms;
-	if (diff < 60_000) return "just now";
-	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
-	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h ago`;
-	return new Date(ms).toLocaleDateString();
-}
 
 function describe(item: InboxItem): string {
 	if (!isNotificationType(item.type)) return "did something new. Update the app to see it.";
@@ -276,7 +270,7 @@ function InboxRow({
 						)}
 						{describe(item)}
 					</p>
-					<p className="mt-0.5 text-muted-foreground text-xs">{formatWhen(item.createdAt)}</p>
+					<p className="mt-0.5 text-muted-foreground text-xs">{formatAgo(item.createdAt)}</p>
 				</button>
 				{share && <ShareBookCard book={share.book} />}
 				{buddyInvite?.state === "pending" && <BuddyReadInviteCard invite={buddyInvite} />}
@@ -455,11 +449,11 @@ export default function InboxPage() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Inbox" icon={Inbox} backTo="/tabs/social" />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/inbox">
 					<InboxContent />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

@@ -16,7 +16,7 @@ import { ReservedCard } from "../../../../components/reserved-card";
 import { queryHooks } from "../../../../services/db/hooks";
 import type { Insight, InsightId, LockedInsight } from "../../../../services/stats/insights";
 import { type SpeedView, timeSavedMs } from "../../../../services/stats/speed-tab";
-import { formatDuration, formatShortDate } from "../../../../utils/date-utils";
+import { formatDate, formatDuration } from "../../../../utils/date-utils";
 import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "../section-header";
 import { deliveredPercent } from "./rsvp-dial";
 
@@ -210,7 +210,7 @@ function SpeedTestRow() {
 			label="Speed test"
 			sub={
 				latest
-					? `${formatShortDate(latest.createdAt)} · ${latest.readingWpm} wpm`
+					? `${formatDate(latest.createdAt)} · ${latest.readingWpm} wpm`
 					: "Not taken yet · 1 minute"
 			}
 			action={
@@ -268,14 +268,14 @@ export function PersonalBests() {
 						<BestRow
 							label="Fastest sitting"
 							value={<Wpm wpm={records.fastestSitting.wpm} />}
-							detail={`${records.fastestSitting.title} · ${formatShortDate(records.fastestSitting.at)}`}
+							detail={`${records.fastestSitting.title} · ${formatDate(records.fastestSitting.at)}`}
 						/>
 					)}
 					{records?.bestRsvpSitting && (
 						<BestRow
 							label="Fastest RSVP sitting"
 							value={<Wpm wpm={records.bestRsvpSitting.wpm} />}
-							detail={`${records.bestRsvpSitting.title} · ${formatShortDate(records.bestRsvpSitting.at)}`}
+							detail={`${records.bestRsvpSitting.title} · ${formatDate(records.bestRsvpSitting.at)}`}
 						/>
 					)}
 					{records?.fastestBook && (
@@ -289,7 +289,7 @@ export function PersonalBests() {
 						<BestRow
 							label="Longest RSVP run"
 							value={formatDuration(records.longestRsvpRun.durationMs)}
-							detail={`${records.longestRsvpRun.title} · ${formatShortDate(records.longestRsvpRun.at)}`}
+							detail={`${records.longestRsvpRun.title} · ${formatDate(records.longestRsvpRun.at)}`}
 						/>
 					)}
 					{!hasBest && (

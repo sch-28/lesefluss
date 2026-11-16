@@ -4,6 +4,7 @@ import { AudioLines, Download, Headphones, Settings2, Volume2 } from "lucide-rea
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { PageContainer } from "@/components/page-container";
 import { VoiceSheet } from "@/components/read-aloud/voice-sheet";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -63,7 +64,7 @@ function ReadAloudSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Listen" icon={Headphones} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Voice">
 					<SpeedRow
 						label="Speed"
@@ -144,7 +145,7 @@ function ReadAloudSettings() {
 						</>
 					)}
 				</SettingsSection>
-			</div>
+			</PageContainer>
 
 			<VoiceSheet
 				open={voiceSheet !== null}

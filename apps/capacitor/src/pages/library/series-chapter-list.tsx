@@ -17,6 +17,7 @@ import { AlertCircle, CheckCircle2, Circle, CircleDashed, Loader2, Lock } from "
 import type React from "react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { VList, type VListHandle } from "virtua";
+import { formatPercent } from "@/utils/format-percent";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { isBookFinished } from "./sort-filter";
@@ -79,7 +80,7 @@ const ChapterRow = memo<ChapterRowProps>(({ book, isOpen, onTap }) => {
 
 			{/* Progress % for in-progress chapters */}
 			{state.kind === "in-progress" && (
-				<span className="shrink-0 text-muted-foreground text-xs">{state.pct}%</span>
+				<span className="shrink-0 text-muted-foreground text-xs">{formatPercent(state.pct)}</span>
 			)}
 
 			<StateGlyph state={state} />

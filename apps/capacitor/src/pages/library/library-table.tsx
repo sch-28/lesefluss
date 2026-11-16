@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef } from "react";
 import { Virtualizer } from "virtua";
+import { PageContainer } from "../../components/page-container";
 import type { BulkAction } from "../../services/db/hooks/use-bulk-books";
 import type { Book, Series } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
@@ -110,7 +111,7 @@ const LibraryTable: React.FC<Props> = ({
 		item.kind === "book" ? onBookMenu(item.book) : onSeriesMenu(item.series);
 
 	return (
-		<div className="px-4 pb-24" data-testid="library-table">
+		<PageContainer width="grid" className="px-4 pb-24" data-testid="library-table">
 			<div
 				className="sticky top-[calc(var(--safe-top,0px)+3rem)] z-10 grid items-center border-border border-b bg-background text-muted-foreground text-xs"
 				style={{ gridTemplateColumns: template }}
@@ -305,7 +306,7 @@ const LibraryTable: React.FC<Props> = ({
 					})}
 				</Virtualizer>
 			</div>
-		</div>
+		</PageContainer>
 	);
 };
 

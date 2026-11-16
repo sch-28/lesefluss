@@ -6,6 +6,7 @@ import {
 	wpmFrom,
 } from "@lesefluss/core";
 import { formatDuration } from "../../utils/date-utils";
+import { formatPercent } from "../../utils/format-percent";
 import type { SessionRow } from "../reading-sessions/rules";
 import { readingDaysOfSitting } from "../stats/aggregate";
 import { compactNumber, milestoneFace } from "../stats/milestones";
@@ -48,7 +49,7 @@ export function sessionCardData(input: {
 	tiles.push({ label: "Words", value: compactNumber(stats.words) });
 	if (stats.fromPercent !== null && stats.toPercent !== null) {
 		const gained = Math.round((stats.toPercent - stats.fromPercent) * 10) / 10;
-		tiles.push({ label: "Book", value: `+${gained}%` });
+		tiles.push({ label: "Book", value: `+${formatPercent(gained, 1)}` });
 	}
 	if (stats.rsvp) {
 		tiles.push({

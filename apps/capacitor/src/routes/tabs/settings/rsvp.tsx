@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Gauge, Zap } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PageContainer } from "@/components/page-container";
 import RsvpPreview from "@/pages/settings/rsvp-preview";
 import RsvpSettingsForm from "@/pages/settings/rsvp-settings-form";
 import { queryHooks } from "@/services/db/hooks";
@@ -28,7 +29,7 @@ function RsvpSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="RSVP" icon={Zap} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{previewSettings && <RsvpPreview settings={previewSettings} />}
 				<Button
 					variant="outline"
@@ -38,7 +39,7 @@ function RsvpSettings() {
 					<Gauge className="size-4" /> Test my speed
 				</Button>
 				<RsvpSettingsForm />
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

@@ -111,8 +111,8 @@ describe("SessionsTab", () => {
 			session("c", "mm", at(3, 9)),
 		];
 		const text = (await show()).text();
-		expect(text).toContain("3 sessions · 30m total");
-		expect(text).toMatch(/Today10m.*Middlemarch.*Yesterday10m.*Emma/);
+		expect(text).toContain("3 sessions · 30 min total");
+		expect(text).toMatch(/Today10 min.*Middlemarch.*Yesterday10 min.*Emma/);
 	});
 
 	it("shows an RSVP sitting's delivered speed, not its dial", async () => {
@@ -143,7 +143,7 @@ describe("SessionsTab", () => {
 		];
 		vi.useFakeTimers({ shouldAdvanceTime: true });
 		const v = await show("mm");
-		expect(v.text()).toContain("2 sessions · 20m · 250 wpm");
+		expect(v.text()).toContain("2 sessions · 20 min · 250 wpm");
 		expect(v.text()).toContain("10% → 35%");
 		expect(v.text()).not.toContain("Emma");
 
@@ -199,7 +199,7 @@ describe("SessionsTab", () => {
 		expect(state.toast).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain("Delete 5 sessions of Middlemarch?");
 		expect(document.body.textContent).toContain(
-			"50m of reading is removed here and on your other devices after sync.",
+			"50 min of reading is removed here and on your other devices after sync.",
 		);
 		const confirm = [...document.body.querySelectorAll("button")].find(
 			(b) => b.textContent === "Delete 5",

@@ -1,4 +1,5 @@
 import type React from "react";
+import { formatPercent } from "@/utils/format-percent";
 
 /** Chapter and percent above the progress bar: the drag target, or after a tap the current spot. */
 export const ScrubBubble: React.FC<{ chapterTitle?: string; pct: number }> = ({
@@ -11,6 +12,6 @@ export const ScrubBubble: React.FC<{ chapterTitle?: string; pct: number }> = ({
 		role="status"
 	>
 		{chapterTitle && <span className="reader-scrub-bubble-chapter">{chapterTitle}</span>}
-		<span>{Math.round(pct)}%</span>
+		<span>{formatPercent(pct)}</span>
 	</div>
 );

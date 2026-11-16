@@ -10,6 +10,7 @@ import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MedalGrid } from "@/components/milestones/milestone-medals";
+import { PageContainer } from "@/components/page-container";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
 	CoverShelf,
@@ -25,6 +26,7 @@ import { socialErrorMessage, useBlockUser, useRemoveFriend } from "@/services/so
 import { useProfileView } from "@/services/social/profile-view";
 import { knownMilestones } from "@/services/stats/milestones";
 import { formatDuration } from "@/utils/date-utils";
+import { formatPercent } from "@/utils/format-percent";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
 
 function statTiles(stats: ProfileStats): { label: string; value: string }[] {
@@ -175,7 +177,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 								author: book.author,
 								coverSrc: profileCoverSrc(book.cover),
 								percent: book.progressPercent,
-								detail: `${book.progressPercent}%`,
+								detail: formatPercent(book.progressPercent),
 							}))}
 						/>
 					)}
@@ -282,11 +284,11 @@ export default function ProfilePage({ userId, isPreview }: { userId: string; isP
 				icon={UserRound}
 				backTo="/tabs/social"
 			/>
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo={`/tabs/social/profile/${encodeURIComponent(userId)}`}>
 					<ProfileBody userId={userId} isPreview={isPreview} />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

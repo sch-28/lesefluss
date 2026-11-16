@@ -1,7 +1,8 @@
 import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Pause, Play, Redo2, Undo2 } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
+import { formatPercent } from "../../utils/format-percent";
 import { writePendingPosition } from "../reader/pending-position";
 import { useRsvpEngine } from "../reader/use-rsvp-engine";
 import { RSVP_WPM_RANGE, steppedWpm } from "../reader/wpm";
@@ -14,10 +15,6 @@ type Props = {
 };
 
 const controlClass = "grid size-8 place-items-center rounded-md hover:bg-muted";
-
-function percentOf(word: number, total: number): number {
-	return total > 0 ? Math.min(100, Math.floor((word / total) * 100)) : 0;
-}
 
 function Frame({ children }: { children: React.ReactNode }) {
 	return (
@@ -200,7 +197,7 @@ function MiniReading({
 	settingsRef.current = settings;
 
 	const total = engine.words.length;
-	const percent = percentOf(engine.wordIndex, total);
+	const percent = formatPercent(total > 0 ? (engine.wordIndex / total) * 100 : 0);
 	const progress = total > 1 ? engine.wordIndex / (total - 1) : 0;
 	const word = engine.currentWord?.word ?? "";
 	const orp = calcOrpIndex(word.length);
@@ -217,7 +214,7 @@ function MiniReading({
 			>
 				<div className="flex items-center justify-between gap-2 bg-muted/60 px-3 py-1.5 text-muted-foreground text-xs">
 					<span className="min-w-0 truncate">
-						<span className="text-foreground">{start.title}</span> · {percent}%
+						<span className="text-foreground">{start.title}</span> · {percent}
 					</span>
 					<span className="shrink-0">
 						{status === "playing"
@@ -232,7 +229,7 @@ function MiniReading({
 					onClick={() => engine.togglePlayPause()}
 					disabled={stoppedAt !== null}
 					aria-label={engine.isPlaying ? "Pause" : "Play"}
-					className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center px-4 font-serif text-[32px] leading-none"
+					className="rsvp-mini-word grid flex-1 grid-cols-[1fr_auto_1fr] items-center px-4 text-[32px] leading-none"
 					style={{ "--mini-focal": focalColor } as CSSProperties}
 				>
 					<span className="whitespace-pre text-right">{word.slice(0, orp)}</span>
@@ -242,15 +239,17 @@ function MiniReading({
 				<div className="flex items-center justify-center gap-1 pb-1 text-muted-foreground text-xs">
 					<button
 						type="button"
-						aria-label="Previous word"
+						aria-label="Back one word"
+						title="Back one word"
 						onClick={() => engine.backWord()}
 						className={controlClass}
 					>
-						<SkipBack className="size-3.5" />
+						<Undo2 className="size-3.5" />
 					</button>
 					<button
 						type="button"
 						aria-label={engine.isPlaying ? "Pause" : "Play"}
+						title={engine.isPlaying ? "Pause" : "Play"}
 						onClick={() => engine.togglePlayPause()}
 						className={`${controlClass} text-foreground`}
 					>
@@ -258,11 +257,12 @@ function MiniReading({
 					</button>
 					<button
 						type="button"
-						aria-label="Next word"
+						aria-label="Forward one word"
+						title="Forward one word"
 						onClick={() => engine.forwardWord()}
 						className={controlClass}
 					>
-						<SkipForward className="size-3.5" />
+						<Redo2 className="size-3.5" />
 					</button>
 					<RsvpSpeedControl wpm={settings.wpm} onChange={engine.changeWpm} compact />
 				</div>

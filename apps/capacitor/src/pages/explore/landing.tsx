@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import {
 	type CatalogSearchResult,
 	getLanding,
@@ -96,7 +97,7 @@ const ExploreLanding: React.FC<Props> = ({
 
 	if (isUnreachable) {
 		return (
-			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<ErrorState
 					error={landingQuery.error}
 					onRetry={() => {
@@ -106,12 +107,12 @@ const ExploreLanding: React.FC<Props> = ({
 					className="mb-6"
 				/>
 				{personalShelves}
-			</div>
+			</PageContainer>
 		);
 	}
 
 	return (
-		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+		<PageContainer width="grid" className="px-4 pt-4 pb-20">
 			<BrowseRow
 				lang={lang}
 				onGenreTap={(genre) => onBrowse({ genre })}
@@ -177,7 +178,7 @@ const ExploreLanding: React.FC<Props> = ({
 					/>
 				</>
 			)}
-		</div>
+		</PageContainer>
 	);
 };
 

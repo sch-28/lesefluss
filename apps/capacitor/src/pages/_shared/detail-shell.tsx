@@ -14,6 +14,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { PageContainer } from "@/components/page-container";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
@@ -338,7 +339,9 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 };
 
 const DetailFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">{children}</div>
+	<PageContainer width="text" className="px-4 pt-4 pb-12">
+		{children}
+	</PageContainer>
 );
 
 const TagList: React.FC<{

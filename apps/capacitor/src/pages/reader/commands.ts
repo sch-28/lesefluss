@@ -63,7 +63,7 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 		},
 		{
 			id: "rsvp.next-word",
-			title: "Next word",
+			title: "Forward one word",
 			scope: "rsvp",
 			keys: ["ArrowRight"],
 			when: inRsvp,
@@ -71,7 +71,7 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 		},
 		{
 			id: "rsvp.prev-word",
-			title: "Previous word",
+			title: "Back one word",
 			scope: "rsvp",
 			keys: ["ArrowLeft"],
 			when: inRsvp,
@@ -259,7 +259,7 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 		},
 		{
 			id: "reader.layout",
-			title: input.paginationStyle === "page" ? "Switch to scroll view" : "Switch to page view",
+			title: input.paginationStyle === "page" ? "Layout: Scroll" : "Layout: Page",
 			keywords: ["pagination", "layout", "mode"],
 			scope: "reader",
 			when: () => isStandard() && input.canChangeLayout,

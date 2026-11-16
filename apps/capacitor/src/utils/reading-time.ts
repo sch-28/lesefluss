@@ -1,11 +1,10 @@
 import { estimateMinutes } from "@lesefluss/core";
+import { formatDuration } from "./date-utils";
 
+/** An estimate in `formatDuration`'s format, rounded rather than floored; "< 1 min" under a minute. */
 export function formatReadingTime(minutes: number): string {
 	if (minutes < 1) return "< 1 min";
-	if (minutes < 60) return `${Math.round(minutes)} min`;
-	const h = Math.floor(minutes / 60);
-	const m = Math.round(minutes % 60);
-	return m > 0 ? `${h}h ${m}m` : `${h}h`;
+	return formatDuration(Math.round(minutes) * 60_000);
 }
 
 /**
@@ -29,16 +28,6 @@ export function estimatePages(wordCount: number): number {
 export function bookPageCount(book: { seriesId: string | null; wordCount: number }): number | null {
 	if (book.seriesId !== null || book.wordCount <= 0) return null;
 	return estimatePages(book.wordCount);
-}
-
-/** A percent with one decimal, as goal stats show it: "1.3". */
-export function percentLabel(value: number): string {
-	return (Math.round(value * 10) / 10).toFixed(1);
-}
-
-/** "10 min", "1h 5m", or "< 1 min". Never "~": an estimate says so only in a popover. */
-export function minutesLabel(minutes: number): string {
-	return formatReadingTime(minutes);
 }
 
 /**

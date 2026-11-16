@@ -20,7 +20,8 @@ import {
 } from "../../../services/stats/reading-goal";
 import { goalProgressMinutes } from "../../../services/stats/today-goal-summary";
 import { formatDayKey, localDateKey, localDateOfKey } from "../../../utils/date-utils";
-import { minutesLabel, percentLabel } from "../../../utils/reading-time";
+import { formatPercent } from "../../../utils/format-percent";
+import { formatReadingTime } from "../../../utils/reading-time";
 
 export const MIN_GOAL_DAYS = 7;
 export const MAX_GOAL_DAYS = 365;
@@ -211,8 +212,8 @@ export function rsvpComparison(
 		const finish = finishAtMinutes(values.dailyMinutes, rsvpWpm, book);
 		return finish < values.finishDate ? { wpm, value: `Done ${formatDayKey(finish)}` } : null;
 	}
-	const rsvpMinutes = minutesLabel((values.minutes * book.wpm) / rsvpWpm);
-	return rsvpMinutes === minutesLabel(values.minutes)
+	const rsvpMinutes = formatReadingTime((values.minutes * book.wpm) / rsvpWpm);
+	return rsvpMinutes === formatReadingTime(values.minutes)
 		? null
 		: { wpm, value: `${rsvpMinutes} a day` };
 }
@@ -356,7 +357,7 @@ export function todayFigure(today: LiveToday): { done: string; target: string } 
 		return { done: String(read), target: `${needed} min` };
 	}
 	const done = today.isMet ? today.targetPercent : today.progressPercent;
-	return { done: percentLabel(done), target: `${percentLabel(today.targetPercent)}%` };
+	return { done: formatPercent(done, 1), target: formatPercent(today.targetPercent, 1) };
 }
 
 /** Days met, today included once the live view sees it met, before the plan does. */
@@ -376,10 +377,10 @@ export function signed(value: number, unit: string): string {
 /** A minute goal names its minutes and a percent goal its percent, each with the other figure. */
 export function goalAmountLabel(goal: ReadingGoal, plan: ReadingGoalPlan): string {
 	if (plan.dailyMinutes != null) {
-		return `${Math.round(plan.dailyMinutes)} min a day · ${percentLabel(plan.dailyTarget.percent)}%`;
+		return `${Math.round(plan.dailyMinutes)} min a day · ${formatPercent(plan.dailyTarget.percent, 1)}`;
 	}
 	if (goal.mode === "pace") {
-		return `${percentLabel(goal.dailyPercent)}% a day · ${minutesLabel(plan.dailyTarget.minutes)}`;
+		return `${formatPercent(goal.dailyPercent, 1)} a day · ${formatReadingTime(plan.dailyTarget.minutes)}`;
 	}
-	return `By ${formatDayKey(goal.targetDate)} · ${minutesLabel(plan.dailyTarget.minutes)} a day`;
+	return `By ${formatDayKey(goal.targetDate)} · ${formatReadingTime(plan.dailyTarget.minutes)} a day`;
 }

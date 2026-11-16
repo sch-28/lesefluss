@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { useBuddyReadProgress, useBuddyReads } from "../../services/social/buddy-reads";
 import { useIsOnline } from "../../services/social/cache";
+import { formatPercent } from "../../utils/format-percent";
 import { signed } from "../library/reading-goal/goal-model";
 
 export type BuddyMarker = {
@@ -132,7 +133,7 @@ export function BuddyReadMarkers({
 					type="button"
 					className={cn("reader-buddy-marker", m.live && "reader-buddy-marker--live")}
 					style={{ left: `${m.percent}%` }}
-					aria-label={`${m.name} is at ${Math.round(m.percent)}%${m.live ? ", reading now" : ""}`}
+					aria-label={`${m.name} is at ${formatPercent(m.percent)}${m.live ? ", reading now" : ""}`}
 					onPointerDown={stop}
 					onPointerMove={stop}
 					onPointerUp={stop}
@@ -158,7 +159,7 @@ export function BuddyReadMarkers({
 						<div key={m.userId}>
 							<div>
 								{m.name} <span className="reader-buddy-popover-handle">@{m.handle}</span> ·{" "}
-								{Math.round(m.percent)}%
+								{formatPercent(m.percent)}
 							</div>
 							{markerDetail(m, myWord, approximate) && (
 								<div className="reader-buddy-popover-handle">

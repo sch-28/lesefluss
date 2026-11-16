@@ -53,12 +53,29 @@ const optionsButton = (name: string) =>
 	rendered?.container.querySelector<HTMLElement>(`button[aria-label="${name} options"]`);
 
 describe("SidebarCollections", () => {
-	it("shows the open collection's options without a hover, the others on hover", async () => {
+	it("shows every collection's options and count without a hover", async () => {
 		location = { pathname: "/tabs/library", search: { collection: "b" } };
 		rendered = await render(<SidebarCollections isCollapsed={false} onExpand={vi.fn()} />);
-		expect(optionsButton("C b")?.className).toContain("inline-flex");
-		expect(optionsButton("C b")?.className).not.toMatch(/(^| )hidden( |$)/);
-		expect(optionsButton("C a")?.className).toMatch(/(^| )hidden( |$)/);
-		expect(optionsButton("C a")?.className).toContain("group-hover:inline-flex");
+		for (const name of ["C a", "C b"]) {
+			expect(optionsButton(name)?.className).toContain("inline-flex");
+			expect(optionsButton(name)?.className).not.toMatch(/(^| )hidden( |$)|group-hover/);
+		}
+		const counts = rendered?.container.querySelectorAll("a span.tabular-nums");
+		expect([...(counts ?? [])].map((c) => [c.textContent, c.className.includes("hidden")])).toEqual(
+			[
+				["2", false],
+				["2", false],
+			],
+		);
+	});
+
+	it("offers one New collection entry, in the header", async () => {
+		rendered = await render(<SidebarCollections isCollapsed={false} onExpand={vi.fn()} />);
+		const buttons = [...(rendered?.container.querySelectorAll("button") ?? [])];
+		const entries = buttons.filter(
+			(b) =>
+				b.getAttribute("aria-label") === "New collection" || b.textContent === "New collection",
+		);
+		expect(entries).toHaveLength(1);
 	});
 });

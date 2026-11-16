@@ -121,4 +121,14 @@ describe("reader keys for the sheets", () => {
 		expect(bookmark?.title).toBe("Remove bookmark here");
 		expect(bookmark?.sheetTitle).toBe("Add or remove bookmark");
 	});
+
+	it("names the layout and contents actions as the reader menu does", () => {
+		const { input } = setup();
+		const titles = (style: ReaderActionInput["paginationStyle"]) =>
+			readerActionCommands({ ...input, paginationStyle: style }).map((c) => c.title);
+		expect(titles("scroll")).toEqual(
+			expect.arrayContaining(["Layout: Page", "Contents and annotations"]),
+		);
+		expect(titles("page")).toContain("Layout: Scroll");
+	});
 });

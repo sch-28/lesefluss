@@ -14,8 +14,9 @@ import type { Book, ReadingGoal } from "../../../services/db/schema";
 import { areRemindersSupported } from "../../../services/goal-reminders";
 import type { ReadingGoalPlan } from "../../../services/stats/reading-goal";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
+import { formatPercent } from "../../../utils/format-percent";
 import { log } from "../../../utils/log";
-import { minutesLabel, percentLabel } from "../../../utils/reading-time";
+import { formatReadingTime } from "../../../utils/reading-time";
 import { UNDO_WINDOW_MS } from "../stats/use-undoable-delete";
 import {
 	daysToSlider,
@@ -143,7 +144,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		onClose();
 	};
 
-	const readLabel = `${percentLabel((book.wordPosition / Math.max(1, book.wordCount)) * 100)}% read`;
+	const readLabel = `${formatPercent((book.wordPosition / Math.max(1, book.wordCount)) * 100)} read`;
 	return (
 		<SheetOrDialog
 			open={isOpen}
@@ -161,13 +162,11 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 					<ValueCard
 						isLocked={!dateLocked}
 						onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
-						value={
-							isMinutes ? `${values.dailyMinutes} min` : `${percentLabel(values.dailyPercent)}%`
-						}
+						value={isMinutes ? `${values.dailyMinutes} min` : formatPercent(values.dailyPercent, 1)}
 						label={
 							isMinutes
-								? `a day · ${percentLabel(values.dailyPercent)}%`
-								: `a day · ${minutesLabel(values.minutes)}`
+								? `a day · ${formatPercent(values.dailyPercent, 1)}`
+								: `a day · ${formatReadingTime(values.minutes)}`
 						}
 						lockLabel="Keep daily amount"
 					/>

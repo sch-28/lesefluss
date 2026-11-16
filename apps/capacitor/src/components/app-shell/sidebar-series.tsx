@@ -1,7 +1,7 @@
 import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Hash } from "lucide-react";
+import { Layers, ScrollText } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -23,6 +23,8 @@ import { toast } from "../toast";
 
 const ROW =
 	"relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary";
+
+const SERIES_ICON = "size-3.5 shrink-0 text-sidebar-foreground/50";
 
 const COUNT = "shrink-0 text-sidebar-foreground/50 text-xs tabular-nums";
 
@@ -69,7 +71,7 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 				aria-label="All series"
 				className="flex w-16 shrink-0 items-center justify-center py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground"
 			>
-				<Hash className="size-5" />
+				<Layers className="size-5" />
 			</button>
 		);
 	}
@@ -121,9 +123,11 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 							data-active={activeKey === seriesEntryKey(e)}
 							className={ROW}
 						>
-							<span aria-hidden className="w-3 shrink-0 text-center text-sidebar-foreground/50">
-								{e.kind === "serial" ? "≋" : "#"}
-							</span>
+							{e.kind === "serial" ? (
+								<ScrollText aria-hidden className={SERIES_ICON} />
+							) : (
+								<Layers aria-hidden className={SERIES_ICON} />
+							)}
 							<span className="min-w-0 flex-1 truncate">{e.name}</span>
 							<span className={COUNT}>{e.count}</span>
 						</Link>

@@ -35,7 +35,7 @@ describe("planReminders", () => {
 		expect(planned[0]).toMatchObject({
 			at: new Date(2026, 2, 1, 20, 0).getTime(),
 			title: "Dune",
-			body: "today 10.0% · < 1 min",
+			body: "today 10% · < 1 min",
 			bookId: "deadbeef",
 		});
 	});
@@ -129,7 +129,7 @@ describe("applyReminders", () => {
 				{
 					id: planned[0]?.id,
 					title: "Dune",
-					body: "today 10.0% · < 1 min",
+					body: "today 10% · < 1 min",
 					schedule: { at: new Date(2026, 2, 1, 20, 0), allowWhileIdle: true },
 					isExactNotification: false,
 					channelId: "goal-reminders",

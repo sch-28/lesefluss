@@ -18,6 +18,7 @@ import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
 import { lostReadingDays } from "../../../services/stats/session-delete-impact";
 import { formatDuration } from "../../../utils/date-utils";
+import { formatPercent } from "../../../utils/format-percent";
 import { useLongPress } from "../use-long-press";
 import {
 	CONFIRM_DELETE_FROM,
@@ -40,11 +41,6 @@ export function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 			{MODE_BADGE_LABELS[mode]}
 		</span>
 	);
-}
-
-/** Rounds like `readingProgress`, so a session's range matches the book's card and detail page. */
-export function formatPercent(value: number): string {
-	return `${Math.min(100, Math.max(0, Math.round(value)))}%`;
 }
 
 export function formatClock(epochMs: number): string {

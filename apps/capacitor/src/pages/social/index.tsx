@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PageContainer } from "@/components/page-container";
 import { ActivityFeed } from "@/components/social/activity-feed";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
@@ -369,11 +370,11 @@ export default function SocialPage() {
 	return (
 		<div className="bg-background">
 			<TabHeader title="Social" icon={Users} right={isLoggedIn ? <SocialMenu /> : undefined} />
-			<div className="mx-auto max-w-2xl px-4 pb-10">
+			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social">
 					<SocialContent />
 				</SocialGate>
-			</div>
+			</PageContainer>
 		</div>
 	);
 }

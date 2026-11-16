@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { PageContainer } from "@/components/page-container";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SignInPanel } from "@/components/sync/sign-in-panel";
 import { toast } from "@/components/toast";
@@ -144,7 +145,9 @@ function NotificationSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Notifications" icon={Bell} />
-			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">{body}</div>
+			<PageContainer width="text" className="px-4 pt-4 pb-10">
+				{body}
+			</PageContainer>
 		</div>
 	);
 }

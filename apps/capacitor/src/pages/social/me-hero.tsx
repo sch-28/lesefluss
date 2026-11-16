@@ -8,6 +8,7 @@ import { CoverBackdrop } from "@/components/social/cover-backdrop";
 import { ProgressBar, useCurrentBook } from "@/components/social/social-ui";
 import { queryHooks } from "@/services/db/hooks";
 import { useBuddyReads } from "@/services/social/buddy-reads";
+import { formatPercent } from "@/utils/format-percent";
 
 function Stat({ value, label, icon }: { value: number; label: string; icon?: React.ReactNode }) {
 	return (
@@ -76,7 +77,7 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 							<div className="mt-0.5 truncate font-semibold text-sm">{book.title}</div>
 							<ProgressBar percent={book.percent} className="mt-1.5 h-1" />
 						</div>
-						<div className="font-bold text-[13px] tabular-nums">{book.percent}%</div>
+						<div className="font-bold text-[13px] tabular-nums">{formatPercent(book.percent)}</div>
 					</div>
 				)}
 			</div>
