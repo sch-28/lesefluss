@@ -1,10 +1,8 @@
 import { cn } from "@lesefluss/ui/utils";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal, Pin, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { filterToTree } from "../../pages/library/condition-tree";
-import { decodeFilterParam, encodeFilterParam } from "../../pages/library/filter-model";
-import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
+import { encodeFilterParam } from "../../pages/library/filter-model";
 import { type ShelfEntry, useSmartShelves } from "../../pages/library/use-smart-shelves";
 import { ShelfActions } from "../smart-shelves/shelf-actions";
 import { useActiveRowInView } from "./use-active-row-in-view";
@@ -21,12 +19,11 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 	const { shelves, counts, isLoading, setBuiltInPinned } = useSmartShelves();
 	const location = useLocation();
 	const [menuFor, setMenuFor] = useState<ShelfEntry | null>(null);
-	const [creating, setCreating] = useState(false);
+	const navigate = useNavigate();
 
 	const onLibrary = location.pathname === "/tabs/library";
 	const search = location.search as { shelf?: string; f?: string };
 	const activeId = onLibrary ? search.shelf : undefined;
-	const currentFilter = (onLibrary && decodeFilterParam(search.f)) || {};
 	const listRef = useActiveRowInView(activeId, shelves.length);
 
 	if (isCollapsed) {
@@ -51,7 +48,10 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 				</h2>
 				<button
 					type="button"
-					onClick={() => setCreating(true)}
+					// Starts from the library's filter as it stands.
+					onClick={() =>
+						navigate({ to: "/tabs/library/shelves/new", search: onLibrary ? { f: search.f } : {} })
+					}
 					aria-label="New smart shelf"
 					title="New smart shelf"
 					className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -109,12 +109,6 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 				shelf={menuFor}
 				onClose={() => setMenuFor(null)}
 				setBuiltInPinned={setBuiltInPinned}
-			/>
-			<ShelfConditionEditor
-				open={creating}
-				onOpenChange={setCreating}
-				shelf={null}
-				initialTree={filterToTree(currentFilter)}
 			/>
 		</section>
 	);

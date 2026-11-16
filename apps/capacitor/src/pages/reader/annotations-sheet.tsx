@@ -17,7 +17,7 @@ import {
 } from "@lesefluss/ui/drawer";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
-import { Compass, Plus } from "lucide-react";
+import { Compass, Plus, X } from "lucide-react";
 import type React from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useMediaQuery } from "../../hooks/use-media-query";
@@ -148,8 +148,29 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 					theme ? `reader-theme-${theme}` : undefined,
 				)}
 			>
-				<DrawerTitle className="sr-only">Annotations</DrawerTitle>
-				<DrawerHeader className="flex-row items-center gap-2 px-3">
+				<DrawerHeader className="flex-row items-center gap-1 pb-1">
+					<DrawerTitle className="min-w-0 flex-1">Contents and annotations</DrawerTitle>
+					{browse && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								browse.onToggle();
+								onClose();
+							}}
+							aria-pressed={browse.isBrowsing}
+							data-testid="browse-toggle"
+							className={cn("shrink-0", browse.isBrowsing && "text-primary")}
+						>
+							<Compass />
+							Browse
+						</Button>
+					)}
+					<Button variant="ghost" size="icon" onClick={onClose} aria-label="Close" title="Close">
+						<X />
+					</Button>
+				</DrawerHeader>
+				<div className="px-3 pb-3">
 					<SegmentedControl
 						aria-label="Annotations"
 						value={tab}
@@ -185,29 +206,12 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 							},
 							{ value: "glossary", label: "Glossary" },
 						]}
-						// Tight items fit four tabs beside the browse toggle at 390px; a fifth tab or a
+						// Tight items fit four tabs at 390px; a fifth tab or a
 						// large font scale scrolls sideways rather than breaking a label mid-word.
-						className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]"
+						className="w-full overflow-x-auto [scrollbar-width:none]"
 						itemClassName="flex-[1_0_auto] gap-1 whitespace-nowrap px-1 text-[0.8125rem]"
 					/>
-					{browse && (
-						<Button
-							variant="outline"
-							size="icon-lg"
-							onClick={() => {
-								browse.onToggle();
-								onClose();
-							}}
-							title="Browse mode"
-							aria-pressed={browse.isBrowsing}
-							data-testid="browse-toggle"
-							className={cn("shrink-0", browse.isBrowsing && "text-primary")}
-						>
-							<Compass />
-							<span className="sr-only">Browse mode</span>
-						</Button>
-					)}
-				</DrawerHeader>
+				</div>
 
 				{/* Keyed so each tab starts at its own scroll position, not the last tab's. */}
 				<div key={tab} className="relative flex-1 overflow-y-auto">

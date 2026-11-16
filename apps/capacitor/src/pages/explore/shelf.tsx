@@ -36,27 +36,32 @@ const Shelf: React.FC<Props> = ({
 }) => {
 	const [isExpanded, setExpanded] = useState(false);
 	const isEmpty = !isLoading && !error && books.length === 0;
-	const body = isLoading ? (
-		<ShelfStripSkeleton />
-	) : error ? (
-		<ErrorState error={error} onRetry={onRetry} className="p-4" />
-	) : isEmpty ? (
-		// Holds the strip's height: a shelf that loads empty must not pull the page up.
+	// Holds the strip's height: a shelf that loads empty or fails must not move the page.
+	const overSpacer = (content: React.ReactNode) => (
 		<div className="grid grid-cols-[minmax(0,1fr)]">
 			<div className="[grid-area:1/1]">
 				<ShelfStripSkeleton isSpacer />
 			</div>
-			<p className="m-0 self-center text-muted-foreground text-xs [grid-area:1/1]">
-				{emptyLabel ?? "Nothing here yet."}
-			</p>
+			<div className="self-center [grid-area:1/1]">{content}</div>
 		</div>
+	);
+	const body = isLoading ? (
+		<ShelfStripSkeleton />
+	) : error ? (
+		overSpacer(<ErrorState error={error} onRetry={onRetry} className="p-4" />)
+	) : isEmpty ? (
+		overSpacer(
+			<p className="m-0 text-muted-foreground text-xs">{emptyLabel ?? "Nothing here yet."}</p>,
+		)
 	) : undefined;
 
 	return (
 		<ShelfFrame
 			title={title}
 			onSeeAll={
-				isEmpty ? undefined : (onSeeAll ?? (body ? undefined : () => setExpanded(!isExpanded)))
+				isEmpty || error
+					? undefined
+					: (onSeeAll ?? (body ? undefined : () => setExpanded(!isExpanded)))
 			}
 			isExpanded={onSeeAll ? undefined : isExpanded}
 			body={body}

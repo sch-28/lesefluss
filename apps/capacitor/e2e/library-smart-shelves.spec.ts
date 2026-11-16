@@ -33,11 +33,12 @@ test("the shelf + starts from the current filter and saves a shelf that counts a
 	await expect(cards).toHaveCount(2);
 
 	await shelves.getByRole("button", { name: "New smart shelf" }).click();
-	const dialog = page.getByRole("dialog", { name: "New smart shelf" });
-	await expect(dialog.getByTestId("shelf-live-count")).toHaveText("2 books match · live");
-	await dialog.getByRole("textbox", { name: "Shelf name" }).fill("Ada");
-	await dialog.getByRole("button", { name: "Save" }).click();
-	await expect(dialog).toBeHidden();
+	// A page, like New collection: it starts from the filter as it stood.
+	await expect(page.getByRole("heading", { name: "New smart shelf" })).toBeVisible();
+	await expect(page.getByTestId("shelf-live-count")).toHaveText("2 books match");
+	await page.getByRole("textbox", { name: "Shelf name" }).fill("Ada");
+	await page.getByRole("button", { name: "Create shelf" }).click();
+	await expect(page.getByRole("heading", { name: "New smart shelf" })).toBeHidden();
 	await expect(shelves.getByRole("link", { name: /^Ada .*2$/ })).toBeVisible();
 
 	await page.getByTestId("filter-bar").getByRole("button", { name: "Clear", exact: true }).click();
@@ -52,9 +53,8 @@ test("a shelf's count follows the library live", async ({ page }) => {
 	const shelves = page.getByRole("region", { name: "Smart shelves" });
 	await filterByAuthor(page, "Bo Lind");
 	await shelves.getByRole("button", { name: "New smart shelf" }).click();
-	const dialog = page.getByRole("dialog", { name: "New smart shelf" });
-	await dialog.getByRole("textbox", { name: "Shelf name" }).fill("Bo");
-	await dialog.getByRole("button", { name: "Save" }).click();
+	await page.getByRole("textbox", { name: "Shelf name" }).fill("Bo");
+	await page.getByRole("button", { name: "Create shelf" }).click();
 	await expect(shelves.getByRole("link", { name: /^Bo .*1$/ })).toBeVisible();
 
 	await page.locator('[data-book-title="Riverkeep"]').click({ button: "right" });

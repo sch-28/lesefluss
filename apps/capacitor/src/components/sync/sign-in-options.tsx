@@ -4,7 +4,7 @@ import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowRight, ChevronDown, Globe, type LucideIcon, Smartphone } from "lucide-react";
 import type React from "react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -33,7 +33,7 @@ type SignInOption = {
 function PrimaryOption({ icon: Icon, title, description, onClick, disabled, error }: SignInOption) {
 	const descriptionId = useId();
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="flex flex-col items-center gap-2">
 			<Button
 				type="button"
 				wrapLabel
@@ -46,7 +46,7 @@ function PrimaryOption({ icon: Icon, title, description, onClick, disabled, erro
 				<span className="flex-1 text-left">{title}</span>
 				<ArrowRight className="size-5" />
 			</Button>
-			<p id={descriptionId} className="m-0 px-1 text-muted-foreground text-xs">
+			<p id={descriptionId} className="m-0 px-1 text-center text-muted-foreground text-xs">
 				{description}
 			</p>
 			{error && <FieldError>{error}</FieldError>}
@@ -115,6 +115,13 @@ export function SignInOptions({
 	const [browserError, setBrowserError] = useState<string | null>(null);
 	const [isResetMode, setIsResetMode] = useState(false);
 	const [resetSentTo, setResetSentTo] = useState<string | null>(null);
+	const emailFormRef = useRef<HTMLFormElement>(null);
+
+	// The form opens under the fold on a short window; without this the toggle looks dead.
+	useEffect(() => {
+		if (isEmailFormOpen)
+			emailFormRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+	}, [isEmailFormOpen]);
 
 	if (!NATIVE_SYNC_ENABLED) return null;
 
@@ -215,6 +222,7 @@ export function SignInOptions({
 
 			{isEmailFormOpen && (
 				<form
+					ref={emailFormRef}
 					id={`${id}-email-form`}
 					onSubmit={handleSubmit}
 					className="flex flex-col gap-3"
@@ -273,7 +281,7 @@ export function SignInOptions({
 					)}
 					<Button
 						type="button"
-						variant="ghost"
+						variant="link"
 						className="self-center"
 						disabled={isPending}
 						onClick={() => switchResetMode(!isResetMode)}

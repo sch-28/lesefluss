@@ -64,8 +64,8 @@ const ExploreLanding: React.FC<Props> = ({
 
 	const data = landingQuery.data;
 	const isOnline = useIsOnline();
-	// Every section below needs the network; without it each would stack its own
-	// error, so one message stands in for all of them until a retry gets through.
+	// Every section below needs the network, the personal shelves too; without it each
+	// would stack its own error, so one message stands in for all of them until a retry gets through.
 	const isUnreachable =
 		!isOnline ||
 		(landingQuery.isError && !data && describeLoadError(landingQuery.error, isOnline) !== "server");
@@ -105,9 +105,7 @@ const ExploreLanding: React.FC<Props> = ({
 						void landingQuery.refetch();
 						void randomQuery.refetch();
 					}}
-					className="mb-6"
 				/>
-				{personalShelves}
 			</PageContainer>
 		);
 	}

@@ -34,6 +34,7 @@ import {
 	append,
 	canAddGroup,
 	completePart,
+	type DraftCondition,
 	type DraftGroup,
 	type DraftNode,
 	fromDraft,
@@ -72,6 +73,9 @@ type Editing = {
 	isStacked: boolean;
 	menuFor: string | null;
 	toggleMenu: (id: string) => void;
+	untouched: ReadonlySet<string>;
+	/** Adds a node whose fresh rows stay unflagged until edited. */
+	add: (groupId: string, node: DraftNode) => void;
 	drag: {
 		id: string | null;
 		dropAt: DropAt | null;
@@ -213,14 +217,14 @@ const MenuButton: React.FC<{ id: string; editing: Editing; label: string }> = ({
 );
 
 const GroupTools: React.FC<{ group: DraftGroup; editing: Editing }> = ({ group, editing }) => {
-	const { root, setRoot } = editing;
+	const { root } = editing;
 	return (
 		<div className="flex gap-1.5" {...dropHandlers(editing, group.id, group.items.length)}>
 			<Button
 				type="button"
 				size="sm"
 				variant="ghost"
-				onClick={() => setRoot(append(root, group.id, newCondition()))}
+				onClick={() => editing.add(group.id, newCondition())}
 			>
 				<Plus />
 				Condition
@@ -230,7 +234,7 @@ const GroupTools: React.FC<{ group: DraftGroup; editing: Editing }> = ({ group, 
 					type="button"
 					size="sm"
 					variant="ghost"
-					onClick={() => setRoot(append(root, group.id, newGroup()))}
+					onClick={() => editing.add(group.id, newGroup())}
 				>
 					<Plus />
 					Group
@@ -287,6 +291,7 @@ const NodeView: React.FC<{
 				cond={node}
 				options={editing.options}
 				isStacked={isStacked}
+				isUntouched={editing.untouched.has(node.id)}
 				onChange={(cond) => setRoot(updateCondition(root, node.id, cond))}
 				leading={
 					isStacked ? undefined : <DragHandle id={node.id} editing={editing} label="condition" />
@@ -332,19 +337,38 @@ function useLiveCount(root: DraftGroup, items: ReturnType<typeof useShelfLibrary
 	}, [counted, items, now]);
 }
 
-const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: () => void }> = ({
+function conditionsOf(node: DraftNode): DraftCondition[] {
+	return isDraftGroup(node) ? node.items.flatMap(conditionsOf) : [node];
+}
+
+type EditorOptions = {
+	/** null creates a new shelf. */
+	shelf: ShelfEntry | null;
+	initialTree?: ConditionTree;
+	isStacked: boolean;
+	onDone: () => void;
+	/** The shelf replaces the page that made it in history, so Back skips the form. */
+	replaceOnSave?: boolean;
+};
+
+/** The editor's draft, its rows and its save, for the dialog, the sheet and the New smart shelf page. */
+export function useShelfEditor({
 	shelf,
 	initialTree,
 	isStacked,
-	onOpenChange,
 	onDone,
-}) => {
+	replaceOnSave = false,
+}: EditorOptions) {
 	const [name, setName] = useState(shelf?.name ?? "");
-	const [root, setRootState] = useState(() => {
+	const [seed] = useState(() => {
 		const draft = toDraft(initialTree?.root ?? shelf?.tree?.root ?? EMPTY_ROOT);
+		if (shelf || draft.items.length > 0) return { draft, untouched: new Set<string>() };
 		// A new shelf opens on one row to fill in rather than on an empty page.
-		return !shelf && draft.items.length === 0 ? { ...draft, items: [newCondition()] } : draft;
+		const first = newCondition();
+		return { draft: { ...draft, items: [first] }, untouched: new Set([first.id]) };
 	});
+	const [root, setRootState] = useState(seed.draft);
+	const [untouched, setUntouched] = useState<ReadonlySet<string>>(seed.untouched);
 	const [menuFor, setMenuFor] = useState<string | null>(null);
 	const [dragId, setDragId] = useState<string | null>(null);
 	const [dropAt, setDropAt] = useState<DropAt | null>(null);
@@ -365,11 +389,28 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 
 	const editing: Editing = {
 		root,
-		setRoot: setRootState,
+		setRoot: (next) => {
+			setRootState(next);
+			// Moves keep a row's object; an edit replaces it, and the row counts as touched.
+			const before = new Map(conditionsOf(root).map((c) => [c.id, c]));
+			setUntouched(
+				(ids) =>
+					new Set(
+						conditionsOf(next)
+							.filter((c) => ids.has(c.id) && before.get(c.id) === c)
+							.map((c) => c.id),
+					),
+			);
+		},
 		options,
 		isStacked,
 		menuFor,
 		toggleMenu: (id) => setMenuFor((open) => (open === id ? null : id)),
+		untouched,
+		add: (groupId, node) => {
+			setRootState(append(root, groupId, node));
+			setUntouched((ids) => new Set([...ids, ...conditionsOf(node).map((c) => c.id)]));
+		},
 		drag: {
 			id: dragId,
 			dropAt,
@@ -394,13 +435,18 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 	};
 
 	const save = () => {
-		if (!canSave) return;
+		if (!canSave) {
+			// A save tried with rows left blank shows which ones.
+			setUntouched(new Set());
+			return;
+		}
 		const filter = treeToFilter(tree);
 		const show = (id: string) => {
 			onDone();
 			navigate({
 				to: "/tabs/library",
 				search: { shelf: id, f: filter ? encodeFilterParam(filter) : undefined },
+				replace: replaceOnSave || undefined,
 			});
 		};
 		if (shelf) {
@@ -464,6 +510,24 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 			save();
 		}
 	};
+
+	const isDirty = name !== (shelf?.name ?? "") || root !== seed.draft;
+	return { body, save, keyboard, canSave, hint, count, countLabel, trimmed, isPending, isDirty };
+}
+
+const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: () => void }> = ({
+	shelf,
+	initialTree,
+	isStacked,
+	onOpenChange,
+	onDone,
+}) => {
+	const { body, save, keyboard, canSave, hint, count, countLabel, trimmed } = useShelfEditor({
+		shelf,
+		initialTree,
+		isStacked,
+		onDone,
+	});
 
 	if (isStacked) {
 		return (

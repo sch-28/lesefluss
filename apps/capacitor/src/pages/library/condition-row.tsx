@@ -189,9 +189,11 @@ type Props = {
 	trailing: React.ReactNode;
 	/** The phone's stacked card instead of the desktop grid row. */
 	isStacked?: boolean;
+	/** A row just added and not yet filled in: no error outline before any input. */
+	isUntouched?: boolean;
 };
 
-/** One condition: field, operator, value. An incomplete one is outlined, as it blocks Save. */
+/** One condition: field, operator, value. An incomplete one, once touched, is outlined, as it blocks Save. */
 export const ConditionRow: React.FC<Props> = ({
 	cond,
 	options,
@@ -199,12 +201,15 @@ export const ConditionRow: React.FC<Props> = ({
 	leading,
 	trailing,
 	isStacked = false,
+	isUntouched = false,
 }) => {
 	const spec = fieldSpec(cond.field);
 	const isIncomplete = !isConditionComplete(cond);
 	const frame = cn(
 		"rounded-lg",
-		isIncomplete && "outline-dashed outline-1 outline-destructive/70 outline-offset-2",
+		isIncomplete &&
+			!isUntouched &&
+			"outline-dashed outline-1 outline-destructive/70 outline-offset-2",
 	);
 
 	if (!spec || !operatorSpec(cond.field, cond.op)) {

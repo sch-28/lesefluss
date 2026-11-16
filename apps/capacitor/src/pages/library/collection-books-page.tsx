@@ -141,6 +141,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 	const [name, setName] = useState(collection?.name ?? "");
 	const opensAsSeries = mode.kind === "create" && mode.series === true;
 	const [asSeries, setAsSeries] = useState(opensAsSeries);
+	const isNewSeries = opensAsSeries;
 	const [keepOrder, setKeepOrder] = useState(collection?.ordered ?? false);
 	// A series is always numbered.
 	const ordered = keepOrder || asSeries;
@@ -251,19 +252,26 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 		() => [
 			{ id: "reading", label: "Reading", matches: (b) => bookStatus(b) === "reading" },
 			{ id: "want", label: "Want to read", matches: (b) => bookStatus(b) === "want" },
-			collection
-				? {
-						id: "outside",
-						label: `Not in ${collection.name}`,
-						matches: (b) => !memberIds.has(b.id),
-					}
-				: {
-						id: "outside",
-						label: "Not in a collection",
-						matches: (b) => !memberships?.get(b.id)?.length,
-					},
+			...(collection
+				? [
+						{
+							id: "outside",
+							label: `Not in ${collection.name}`,
+							matches: (b: Book) => !memberIds.has(b.id),
+						},
+					]
+				: isNewSeries
+					? // A book can sit in a collection and a series at once, so the chip would hide good picks.
+						[]
+					: [
+							{
+								id: "outside",
+								label: "Not in a collection",
+								matches: (b: Book) => !memberships?.get(b.id)?.length,
+							},
+						]),
 		],
-		[collection, memberIds, memberships],
+		[collection, memberIds, memberships, isNewSeries],
 	);
 
 	const noun = asSeries ? "series" : "collection";
@@ -334,23 +342,20 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 								</p>
 							)}
 						</div>
-						<div className="flex items-center justify-between gap-3">
-							<div className="min-w-0">
-								<Label htmlFor="collection-ordered">Keep in order</Label>
-								<p className="m-0 text-muted-foreground text-xs">
-									{mode.kind === "create"
-										? "Numbers books #1, #2… in the order you pick them"
-										: "Numbers books in reading order; new ones go last"}
-								</p>
+						{!asSeries && (
+							<div className="flex items-center justify-between gap-3">
+								<div className="min-w-0">
+									<Label htmlFor="collection-ordered">Keep in order</Label>
+									<p className="m-0 text-muted-foreground text-xs">
+										{mode.kind === "create"
+											? "Numbers books #1, #2… in the order you pick them"
+											: "Numbers books in reading order; new ones go last"}
+									</p>
+								</div>
+								<Switch id="collection-ordered" checked={ordered} onCheckedChange={setKeepOrder} />
 							</div>
-							<Switch
-								id="collection-ordered"
-								checked={ordered}
-								disabled={asSeries}
-								onCheckedChange={setKeepOrder}
-							/>
-						</div>
-						{mode.kind === "create" && (
+						)}
+						{mode.kind === "create" && !isNewSeries && (
 							<div className="flex items-center justify-between gap-3">
 								<div className="min-w-0">
 									<Label htmlFor="collection-series">As series</Label>

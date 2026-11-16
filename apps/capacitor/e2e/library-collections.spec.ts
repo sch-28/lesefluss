@@ -105,6 +105,41 @@ test.describe("on desktop", () => {
 			)
 			.toEqual(["Northlight", "Tidewater"]);
 	});
+
+	test("a series has the library toolbar, opening in series order every time", async ({ page }) => {
+		const series = page.getByRole("region", { name: "Series" });
+		const titles = () =>
+			page
+				.locator("[data-book-title]")
+				.evaluateAll((els) => els.map((e) => e.getAttribute("data-book-title")));
+		const sortRow = (name: string) =>
+			page.getByRole("button", { name, exact: true }).and(page.locator("[data-selected]"));
+		await series.getByRole("link", { name: "Tide 2" }).click();
+		await expect(page.getByRole("heading", { name: "Tide", level: 1 })).toBeVisible();
+		for (const name of ["Filter", "Sort", "View"])
+			await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+		await expect(page.getByRole("combobox", { name: "Search library" })).toBeVisible();
+
+		await page.getByRole("button", { name: "Sort", exact: true }).click();
+		await expect(sortRow("Series order")).toBeVisible();
+		await page.getByRole("button", { name: "Descending", exact: true }).click();
+		await expect.poll(titles).toEqual(["Tidewater", "Northlight"]);
+		await page.getByRole("button", { name: "Sort", exact: true }).click();
+		await page.getByRole("button", { name: "Title", exact: true }).click();
+		await expect.poll(titles).toEqual(["Northlight", "Tidewater"]);
+
+		// The series' sort is its own: the library's stays as it was.
+		await page.goBack();
+		await expect(page.getByRole("heading", { name: "Tide", level: 1 })).toHaveCount(0);
+		await page.getByRole("button", { name: "Sort", exact: true }).click();
+		await expect(sortRow("Series order")).toHaveCount(0);
+		await expect(sortRow("Title")).toHaveCount(0);
+		await page.keyboard.press("Escape");
+
+		await series.getByRole("link", { name: "Tide 2" }).click();
+		await page.getByRole("button", { name: "Sort", exact: true }).click();
+		await expect(sortRow("Series order")).toBeVisible();
+	});
 });
 
 test.describe("on a phone", () => {

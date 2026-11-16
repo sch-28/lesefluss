@@ -183,9 +183,6 @@ describe("CollectionBooksPage", () => {
 	it("opened as a series, creates a numbered series and leaves without asking when untouched", async () => {
 		await open("/tabs/library/collections/new?series=true");
 		expect(body()).toContain("New series");
-		expect((document.getElementById("collection-ordered") as HTMLButtonElement).disabled).toBe(
-			true,
-		);
 		await type("collection-name", "Dune");
 		await click(row("b1"));
 		await click(button("Create with 1 book"));
@@ -227,20 +224,22 @@ describe("CollectionBooksPage", () => {
 		expect(body()).not.toContain("Discard");
 	});
 
-	it("opened as a series, unticking As series asks before leaving and saves a plain collection", async () => {
+	it("opened as a series, has no As series or Keep in order switch and no Not in a collection chip", async () => {
 		await open("/tabs/library/collections/new?series=true");
+		expect(document.getElementById("collection-series")).toBeNull();
+		expect(document.getElementById("collection-ordered")).toBeNull();
+		expect(body()).not.toContain("Not in a collection");
+	});
+
+	it("a new collection keeps its own form: Keep in order, As series and the Not in a collection chip", async () => {
+		await open("/tabs/library/collections/new");
+		expect(body()).toContain("New collection");
+		expect(document.getElementById("collection-ordered")).not.toBeNull();
+		expect(document.getElementById("collection-series")).not.toBeNull();
+		expect(body()).toContain("Not in a collection");
 		await click(document.getElementById("collection-series") as HTMLElement);
-		await click(button("Cancel"));
-		expect(body()).toContain("Discard changes?");
-		await click(button("Keep editing"));
-		await type("collection-name", "Mixed");
-		await click(button("Create collection"));
-		expect(createWithBooks).toHaveBeenCalledWith({
-			name: "Mixed",
-			bookIds: [],
-			ordered: false,
-			series: false,
-		});
+		// A series is always numbered, so the switch goes rather than sitting greyed out.
+		expect(document.getElementById("collection-ordered")).toBeNull();
 	});
 
 	it("ticking and unticking As series leaves a new collection clean and unordered", async () => {

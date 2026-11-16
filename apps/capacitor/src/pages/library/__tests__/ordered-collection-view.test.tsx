@@ -2,7 +2,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { click, flush, type Rendered, render } from "../../../test/render";
-import type { OrderedCardOptions } from "../ordered-collection-view";
+import type { OrderedCardOptions, OrderedViewOptions } from "../ordered-collection-view";
 import { buildLibraryItems, type LibraryItem } from "../sort-filter";
 
 const reorder = vi.fn();
@@ -96,7 +96,7 @@ const series = {
 
 let rendered: Rendered;
 
-async function mount(canDrag = true) {
+async function mount(canDrag = true, view?: OrderedViewOptions) {
 	rendered = await render(
 		<OrderedCollectionView
 			collection={series}
@@ -106,6 +106,7 @@ async function mount(canDrag = true) {
 			onOpenBook={() => {}}
 			onAddBooks={() => {}}
 			canDrag={canDrag}
+			view={view}
 		/>,
 	);
 	await flush();
@@ -216,5 +217,75 @@ describe("OrderedCollectionView", () => {
 		await click(rendered.getButton("More for Messiah"));
 		await click(rendered.getButton("Remove from series"));
 		expect(remove).toHaveBeenCalledWith({ collectionId: "s", bookIds: ["b"] });
+	});
+
+	const byId = (ids: string[]) =>
+		ids.map((id) => items.find((i) => i.kind === "book" && i.book.id === id) as LibraryItem);
+
+	/** Moves in a narrowed or reversed list would write the wrong #N positions. */
+	async function expectNoReorder() {
+		const [first, second] = rows();
+		drag("dragstart", first);
+		drag("dragover", second, 10);
+		drag("drop", second, 10);
+		expect(reorder).not.toHaveBeenCalled();
+		const title = second.querySelector("[data-book-id]")?.textContent?.replace(/^#\d+ /, "");
+		await click(rendered.getButton(`More for ${title}`));
+		expect(rendered.getButton("Move up").disabled).toBe(true);
+		expect(rendered.getButton("Move down").disabled).toBe(true);
+	}
+
+	it("shows the toolbar's matches in #N order, keeping each book's #N", async () => {
+		await mount(true, {
+			matches: byId(["c", "a"]),
+			inSeriesOrder: true,
+			reversed: false,
+			onClearNarrowing: () => {},
+		});
+		expect(order()).toEqual(["a", "c"]);
+		const cards = [...rendered.container.querySelectorAll<HTMLElement>('[data-testid="card"]')];
+		expect(cards.map((c) => c.dataset.number)).toEqual(["1", "3"]);
+		await expectNoReorder();
+	});
+
+	it("follows another sort, and reorders only while every book shows in #N order", async () => {
+		await mount(true, {
+			matches: byId(["c", "a", "b"]),
+			inSeriesOrder: false,
+			reversed: false,
+			onClearNarrowing: () => {},
+		});
+		expect(order()).toEqual(["c", "a", "b"]);
+		const [first, , last] = rows();
+		drag("dragstart", first);
+		drag("dragover", last, 10);
+		drag("drop", last, 10);
+		expect(reorder).not.toHaveBeenCalled();
+		await click(rendered.getButton("More for Messiah"));
+		expect(rendered.getButton("Move up").disabled).toBe(true);
+	});
+
+	it("runs #N backwards when reversed", async () => {
+		await mount(true, {
+			matches: byId(["a", "b", "c"]),
+			inSeriesOrder: true,
+			reversed: true,
+			onClearNarrowing: () => {},
+		});
+		expect(order()).toEqual(["c", "b", "a"]);
+		await expectNoReorder();
+	});
+
+	it("says no book matches, with a way out, when the search leaves none", async () => {
+		const clear = vi.fn();
+		await mount(true, {
+			matches: [],
+			inSeriesOrder: true,
+			reversed: false,
+			onClearNarrowing: clear,
+		});
+		expect(rendered.text()).toContain("No books match");
+		await click(rendered.getButton("Clear search and filters"));
+		expect(clear).toHaveBeenCalled();
 	});
 });

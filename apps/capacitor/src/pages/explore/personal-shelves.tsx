@@ -70,6 +70,11 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const isSimilarLoading = similar.isLoading;
 	const isAuthorsLoading = byAuthors.some((q) => q.isLoading);
 	const isFeedLoading = isLoggedIn && !!feed.isLoading;
+	// A failed shelf shows its error, never the empty note: that note claims the catalog has nothing.
+	const similarError = becauseYouRead.length === 0 ? similar.error : null;
+	const authorsError =
+		authorBooks.length === 0 ? (byAuthors.find((q) => q.error)?.error ?? null) : null;
+	const feedError = friends.length === 0 && isLoggedIn ? (feed.error ?? null) : null;
 
 	// A shelf's slot follows local facts only (the library, being signed in), never
 	// what the catalog sends back: a shelf that loads empty keeps its height.
@@ -81,6 +86,8 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 					books={becauseYouRead}
 					onOpen={onOpen}
 					isLoading={isSimilarLoading}
+					error={similarError ?? undefined}
+					onRetry={() => similar.refetch()}
 					emptyLabel="No close matches in the catalog yet."
 				/>
 			)}
@@ -91,6 +98,10 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 					onOpen={onOpen}
 					onSeeAll={() => onBrowse({ author: authors[0], lang: "all" })}
 					isLoading={isAuthorsLoading}
+					error={authorsError ?? undefined}
+					onRetry={() => {
+						for (const q of byAuthors) if (q.error) void q.refetch();
+					}}
 					emptyLabel="Nothing else by your authors in the catalog yet."
 				/>
 			)}
@@ -100,6 +111,8 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 					books={friends}
 					onOpen={onOpen}
 					isLoading={isFeedLoading}
+					error={feedError ?? undefined}
+					onRetry={() => feed.refetch()}
 					emptyLabel="Books your friends read show up here."
 				/>
 			)}

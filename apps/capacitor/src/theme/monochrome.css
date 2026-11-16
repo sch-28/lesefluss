@@ -569,8 +569,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	overflow: hidden;
 	/* Reserve scrollbar gutter always so paused-mode (overflow-y: auto)
 	 * doesn't narrow the inner width — keeps focal X consistent between
-	 * play/pause when xOffset != 50. */
-	scrollbar-gutter: stable;
+	 * play/pause when xOffset != 50. Both edges, so the column stays centred
+	 * under the header and the progress bar. */
+	scrollbar-gutter: stable both-edges;
 	/* Establish a container so `cqw` units in child transforms resolve
 	 * against the display's actual width (needed for the paused-mode
 	 * focal-word offset on desktop/web embeds where the reader isn't
@@ -880,7 +881,8 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	opacity: 0.9;
 	text-align: var(--reader-text-align, left);
 	hyphens: var(--reader-hyphens, manual);
-	width: min(80vw, 560px);
+	/* The column less the 16px insets of the progress track and pills, so all share one edge. */
+	width: calc(100cqw - 32px);
 	word-break: normal;
 	overflow-wrap: break-word;
 }

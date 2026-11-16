@@ -93,6 +93,13 @@ const PAGE_TRANSITION_MS = 220;
  * line. Reserved for good, not on open: a re-flow on each tap would move the text.
  */
 const PROGRESS_BAR_RESERVE = "4.75rem";
+/**
+ * A spread's room above and below its text, under the header and over the progress
+ * bar. Less at the bottom: the columns break between lines, so the last line
+ * usually stops short of the column's end and leaves the rest of the gap there.
+ */
+const SPREAD_PAD_TOP_PX = 32;
+const SPREAD_PAD_BOTTOM_PX = 16;
 const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
 const DRAG_HOLD_MAX_MS = 2000; // a font-load re-anchor waits at most this long for a drag
 // Without finger-follow there is no page to drag against, so a short flick must do.
@@ -158,6 +165,8 @@ export interface PageViewProps {
 	onMotion?: (moving: boolean) => void;
 	/** The column grid, for overlays that mark one page of a spread. */
 	onColumns?: (columns: { stride: number; width: number }) => void;
+	/** The page's or spread's outer width, margins included, so the reader's bars can sit on it. */
+	onLayout?: (layout: { width: number; isSpread: boolean }) => void;
 	onTap: () => void;
 	/**
 	 * Called when the user turns a page, so reader chrome can get out of the
@@ -219,6 +228,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		onInitialActiveOffset,
 		onMotion,
 		onColumns,
+		onLayout,
 		onTap,
 		onHideProgressBar,
 		onTurnStart,
@@ -315,7 +325,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	useEffect(() => {
 		onColumns?.({ stride: columnStride, width: columnWidth });
 	}, [onColumns, columnStride, columnWidth]);
-	const pageHeight = viewport ? viewport.h : 0;
+	const isSpread = columnsPerPage === 2;
+	const hasViewport = viewport !== null;
+	useEffect(() => {
+		if (hasViewport) onLayout?.({ width: viewWidth, isSpread });
+	}, [onLayout, hasViewport, viewWidth, isSpread]);
+	const padTop = isSpread ? SPREAD_PAD_TOP_PX : 0;
+	const padBottom = isSpread ? SPREAD_PAD_BOTTOM_PX : 0;
+	const pageHeight = viewport ? Math.max(0, viewport.h - padTop - padBottom) : 0;
 	const align = effectiveTextAlign(textAlign, columnWidth, fontSize, textSpacing.letter);
 	const isLayoutReady = columnWidth > 0 && pageHeight > 0;
 
@@ -1001,7 +1018,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				height: `calc(100% - ${PROGRESS_BAR_RESERVE} - var(--safe-bottom))`,
 				width: viewport ? `${viewWidth}px` : "100%",
 				margin: "0 auto",
-				padding: `0 ${pageMargin}px`,
+				padding: `${padTop}px ${pageMargin}px ${padBottom}px`,
 				boxSizing: "border-box",
 				touchAction: "pan-y",
 				userSelect: "none",

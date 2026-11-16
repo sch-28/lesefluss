@@ -87,8 +87,15 @@ import { SearchAutocomplete } from "./search-autocomplete";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
 import { ShelfConditionEditor } from "./shelf-condition-editor";
-import { applyLibraryView, buildLibraryItems, type LibraryItem, tagsInUse } from "./sort-filter";
-import SortPopover from "./sort-popover";
+import {
+	applyLibraryView,
+	buildLibraryItems,
+	type LibraryItem,
+	type SortBy,
+	type SortState,
+	tagsInUse,
+} from "./sort-filter";
+import SortPopover, { type PopoverSortBy, SERIES_ORDER } from "./sort-popover";
 import { type CellContext, headerSort } from "./table-columns";
 import TransferModal from "./transfer-modal";
 import { UpdateShelfAction } from "./update-shelf-action";
@@ -107,12 +114,21 @@ import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
+const SERIES_VIEW_MODE_KEY = "lesefluss:series-view-mode";
 /** Facets whose values come from the books; a value can vanish with its last book. */
 const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
 
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
 const isViewMode = (value: string): value is LibraryViewMode =>
 	value === "grid" || value === "list" || value === "table";
+
+type SeriesSort = Omit<SortState, "sortBy"> & { sortBy: PopoverSortBy };
+const IN_SERIES_ORDER: SeriesSort = {
+	sortBy: SERIES_ORDER,
+	reversed: false,
+	thenBy: null,
+	thenReversed: false,
+};
 
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
@@ -187,7 +203,21 @@ const Library: React.FC = () => {
 					}
 				: null;
 	const libraryView = useLibraryView(shelfViewTarget);
-	const { sort, setSort, groupBy, setGroupBy, columnIds, tableColumns } = libraryView;
+	const { setSort: setLibrarySort, groupBy, setGroupBy, columnIds, tableColumns } = libraryView;
+	// A series opens in its own #N order; another sort there lasts while it is open.
+	const [seriesSort, setSeriesSort] = useState(IN_SERIES_ORDER);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opening another collection is the reset trigger
+	useEffect(() => setSeriesSort(IN_SERIES_ORDER), [collectionId]);
+	const shownSort = isOrderedView ? seriesSort : libraryView.sort;
+	const isInSeriesOrder = shownSort.sortBy === SERIES_ORDER;
+	// The series view puts its matches in #N order itself; any sort is fine underneath.
+	const sort: SortState = isInSeriesOrder
+		? { ...shownSort, sortBy: "title", reversed: false }
+		: { ...shownSort, sortBy: shownSort.sortBy as SortBy };
+	const setSort = (patch: Partial<SeriesSort>) => {
+		if (isOrderedView) setSeriesSort((current) => ({ ...current, ...patch }));
+		else if (patch.sortBy !== SERIES_ORDER) setLibrarySort(patch as Partial<SortState>);
+	};
 	const { sortBy } = sort;
 	const [collapsedGroups, toggleGroup] = useCollapsedGroups(groupBy);
 	const [filter, setFilter] = useLibraryFilter();
@@ -201,14 +231,26 @@ const Library: React.FC = () => {
 	useEffect(() => {
 		if (collectionId || shelfId) closeSearch();
 	}, [collectionId, shelfId, closeSearch]);
-	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
+	const [libraryViewMode, setLibraryViewMode] = usePersistentString(
+		VIEW_MODE_KEY,
+		isViewMode,
+		"grid",
+	);
+	// A series opens as a grid of covers, whatever layout the library has.
+	const [seriesViewMode, setSeriesViewMode] = usePersistentString(
+		SERIES_VIEW_MODE_KEY,
+		isViewMode,
+		"grid",
+	);
+	const viewMode = isOrderedView ? seriesViewMode : libraryViewMode;
+	const setViewMode = isOrderedView ? setSeriesViewMode : setLibraryViewMode;
 	// The table needs the width (its default columns fit from 1024 px beside the
 	// sidebar rail); a narrower window shows a stored table as the list. A series'
 	// #N order and its drag-reorder live on the cards, so it shows the table as the list.
 	const canTable = useMediaQuery(WIDE_QUERY) && !isOrderedView;
 	const shownView: LibraryViewMode = viewMode === "table" && !canTable ? "list" : viewMode;
 	const isEmptyLibrary = !isPending && books.length === 0 && series.length === 0;
-	const controls = headerControls({ isOrderedView, isEmptyLibrary });
+	const controls = headerControls({ isEmptyLibrary });
 	const cardFields = useCardFields();
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
 		(shownView === "table" && columnIds.includes("highlights")) ||
@@ -742,9 +784,10 @@ const Library: React.FC = () => {
 								{isDesktop && "Sort"}
 							</Button>
 						}
-						sortBy={sortBy}
+						sortBy={shownSort.sortBy}
 						onSort={(s) => setSort({ sortBy: s, reversed: false })}
-						reversed={sort.reversed}
+						reversed={shownSort.reversed}
+						hasSeriesOrder={isOrderedView}
 						onReversed={(r) => setSort({ reversed: r })}
 						thenBy={sort.thenBy ?? "none"}
 						onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
@@ -928,7 +971,7 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{!isOrderedView && !isCollectionEmpty && (books.length > 0 || series.length > 0) && (
+			{!isCollectionEmpty && (books.length > 0 || series.length > 0) && (
 				<FilterBar
 					filter={activeFilter}
 					onChange={setFilter}
@@ -1014,6 +1057,15 @@ const Library: React.FC = () => {
 					onOpenBook={openBook}
 					onAddBooks={openAddBooks}
 					canDrag={canDragBooks}
+					view={{
+						matches: visibleItems,
+						inSeriesOrder: isInSeriesOrder,
+						reversed: shownSort.reversed,
+						onClearNarrowing: () => {
+							setFilter({});
+							closeSearch();
+						},
+					}}
 				/>
 			) : isCollectionEmpty ? (
 				<EmptyState

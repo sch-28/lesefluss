@@ -2310,12 +2310,14 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
 	const headerRef = useRef<HTMLElement>(null);
 	const headerWidth = useElementWidth(headerRef);
-	// Page mode lays out its own spreads, so its bars stay full width.
+	const [pageLayout, setPageLayout] = useState<{ width: number; isSpread: boolean } | null>(null);
+	const isPageMode = readerMode !== "rsvp" && paginationStyle === "page";
+	// Page mode measures its own page or spread, so its bars follow that width.
 	const readerColumnPx =
 		readerMode === "rsvp"
 			? RSVP_COLUMN_PX
-			: paginationStyle === "page"
-				? null
+			: isPageMode
+				? (pageLayout?.width ?? null)
 				: readerColumnWidthPx(readerFontSize, readerMargin);
 	// In rem, so large system text on a phone moves Listen and Bookmark into the menu and the title stays readable.
 	const headerSize = {
@@ -2699,7 +2701,9 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 	);
 	const currentBookmarkId =
 		lastAtOrBefore(bookmarkRows, progressWord, (row) => row.word)?.id ?? null;
-	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
+	// A spread keeps the bar open: page mode reserves its strip anyway, so it covers no text.
+	const isProgressCollapsed =
+		!progressBarVisible && readerMode !== "rsvp" && !(isPageMode && pageLayout?.isSpread);
 	const isShowingSkeleton =
 		chapterFetch.kind !== "locked" &&
 		chapterFetch.kind !== "error" &&
@@ -3120,6 +3124,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 							onPositionSettle={handleScrollPositionSettle}
 							onMotion={onRulerMotion}
 							onColumns={onRulerColumns}
+							onLayout={setPageLayout}
 							onInitialActiveOffset={handleSetActiveWord}
 							onTap={handleToggleProgressBar}
 							onHideProgressBar={handleHideProgressBar}

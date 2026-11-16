@@ -97,6 +97,15 @@ const renderShelves = async () => {
 	return view;
 };
 
+const seeAllOf = (title: string) => {
+	const shelf = [...(view?.container.querySelectorAll("section") ?? [])].find(
+		(s) => s.querySelector("h2")?.textContent === title,
+	);
+	return [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
+		b.textContent?.includes("See all"),
+	);
+};
+
 describe("PersonalShelves", () => {
 	it("recommends from the reader's library, leaving out books they own", async () => {
 		await renderShelves();
@@ -175,14 +184,6 @@ describe("PersonalShelves", () => {
 	});
 
 	it("drops See all from a shelf that loaded empty, and keeps it on a full one", async () => {
-		const seeAllOf = (title: string) => {
-			const shelf = [...(view?.container.querySelectorAll("section") ?? [])].find(
-				(s) => s.querySelector("h2")?.textContent === title,
-			);
-			return [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
-				b.textContent?.includes("See all"),
-			);
-		};
 		await renderShelves();
 		expect(seeAllOf("More by authors you read")).toBeDefined();
 
@@ -191,6 +192,25 @@ describe("PersonalShelves", () => {
 		await renderShelves();
 		expect(view?.text()).toContain("Nothing else by your authors in the catalog yet.");
 		expect(seeAllOf("More by authors you read")).toBeUndefined();
+	});
+
+	it("shows a shelf's load error with Retry, never its empty note", async () => {
+		getSimilarBooks.mockRejectedValue(new TypeError("Failed to fetch"));
+		searchCatalog.mockRejectedValue(new TypeError("Failed to fetch"));
+		await renderShelves();
+		expect(view?.text()).not.toContain("Nothing else by your authors in the catalog yet.");
+		expect(view?.text()).not.toContain("No close matches in the catalog yet.");
+		expect(view?.container.querySelectorAll('[role="alert"]')).toHaveLength(2);
+		const retries = [...(view?.container.querySelectorAll("button") ?? [])].filter(
+			(b) => b.textContent === "Retry",
+		);
+		expect(retries).toHaveLength(2);
+		// The failed shelf keeps the strip's height and offers no list that would fail too.
+		expect(view?.container.querySelectorAll('[aria-hidden="true"].invisible')).toHaveLength(2);
+		expect(seeAllOf("More by authors you read")).toBeUndefined();
+		searchCatalog.mockClear();
+		retries[1]?.click();
+		await vi.waitFor(() => expect(searchCatalog).toHaveBeenCalled());
 	});
 
 	it("gives a signed-in reader the friends shelf even before friends read", async () => {

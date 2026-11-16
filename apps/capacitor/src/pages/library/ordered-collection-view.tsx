@@ -1,6 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
-import { ArrowDown, ArrowUp, BookOpen, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Play, Plus, SearchX, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
@@ -31,6 +31,16 @@ export type OrderedCardOptions = {
 	onMenu: () => void;
 };
 
+/** The library toolbar's search, filter and sort, applied to the members. */
+export type OrderedViewOptions = {
+	/** The members the search and filter leave, in the chosen sort. */
+	matches: readonly LibraryItem[];
+	/** Series order (#N), else the order of `matches`. */
+	inSeriesOrder: boolean;
+	reversed: boolean;
+	onClearNarrowing: () => void;
+};
+
 type Props = {
 	collection: CollectionWithCount;
 	/** The library's items; the view picks its members' book items in #N order. */
@@ -42,6 +52,8 @@ type Props = {
 	onAddBooks: () => void;
 	/** Native drag needs a mouse; touch reorders through Move up / down. */
 	canDrag: boolean;
+	/** Without it, every member shows in series order. */
+	view?: OrderedViewOptions;
 };
 
 type DropTarget = { index: number; after: boolean };
@@ -59,7 +71,8 @@ const OrderedCollectionView: React.FC<Props> = ({
 	renderCard,
 	onOpenBook,
 	onAddBooks,
-	canDrag,
+	canDrag: canMouseDrag,
+	view,
 }) => {
 	const members = queryHooks.useCollectionMembers(collection.id);
 	const reorder = queryHooks.useReorderCollection();
@@ -85,10 +98,23 @@ const OrderedCollectionView: React.FC<Props> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new stored order is the reset trigger
 	useEffect(() => setOptimistic(null), [stored]);
 	const rows = optimistic ?? stored;
-	const rowItems = useMemo(
-		() => rows.flatMap((row) => itemsById.get(row.book.id) ?? []),
-		[rows, itemsById],
-	);
+	const rowItems = useMemo(() => {
+		if (!view) return rows.flatMap((row) => itemsById.get(row.book.id) ?? []);
+		const members = new Set(rows.map((row) => row.book.id));
+		const matches = view.matches.filter(
+			(item): item is BookItem => item.kind === "book" && members.has(item.book.id),
+		);
+		if (!view.inSeriesOrder) return matches;
+		const matchIds = new Set(matches.map((item) => item.book.id));
+		const ordered = rows.flatMap((row) =>
+			matchIds.has(row.book.id) ? (itemsById.get(row.book.id) ?? []) : [],
+		);
+		return view.reversed ? ordered.reverse() : ordered;
+	}, [rows, itemsById, view]);
+	// A move is only readable while the cards show every member in #N order.
+	const canReorder =
+		!view || (view.inSeriesOrder && !view.reversed && rowItems.length === rows.length);
+	const canDrag = canMouseDrag && canReorder;
 	const indexOf = useMemo(() => new Map(rows.map((row, i) => [row.book.id, i])), [rows]);
 
 	const [dragFrom, setDragFrom] = useState<number | null>(null);
@@ -212,6 +238,19 @@ const OrderedCollectionView: React.FC<Props> = ({
 						</Button>
 					}
 				/>
+			) : members.isSuccess && rowItems.length === 0 ? (
+				<EmptyState
+					icon={SearchX}
+					title="No books match"
+					page
+					action={
+						<Button variant="outline" onClick={view?.onClearNarrowing}>
+							Clear search and filters
+						</Button>
+					}
+				>
+					Try another search, or clear the filters.
+				</EmptyState>
 			) : (
 				<VirtualBookGrid items={rowItems} viewMode={viewMode} renderItem={renderItem} />
 			)}
@@ -233,7 +272,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 					{
 						label: "Move up",
 						icon: ArrowUp,
-						disabled: menuFor === null || menuFor <= 0,
+						disabled: !canReorder || menuFor === null || menuFor <= 0,
 						onSelect: () => {
 							if (menuFor !== null) move(menuFor, menuFor - 1);
 						},
@@ -241,7 +280,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 					{
 						label: "Move down",
 						icon: ArrowDown,
-						disabled: menuFor === null || menuFor >= rows.length - 1,
+						disabled: !canReorder || menuFor === null || menuFor >= rows.length - 1,
 						onSelect: () => {
 							if (menuFor !== null) move(menuFor, menuFor + 1);
 						},

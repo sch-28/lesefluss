@@ -176,7 +176,7 @@ describe("Explore landing", () => {
 		await flush();
 		expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
 		expect(view.text()).toContain("Couldn't connect");
-		expect(view.text()).toContain("Personal shelves");
+		expect(view.text()).not.toContain("Personal shelves");
 		expect(view.text()).not.toContain("Providers");
 
 		getLanding.mockResolvedValue(LANDING);

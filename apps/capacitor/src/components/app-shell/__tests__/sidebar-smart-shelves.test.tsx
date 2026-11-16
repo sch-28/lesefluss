@@ -4,6 +4,7 @@ import type { ShelfEntry } from "../../../pages/library/smart-shelves";
 import { click, type Rendered, render } from "../../../test/render";
 
 const setBuiltInPinned = vi.fn();
+const navigate = vi.fn();
 const shelves: Partial<ShelfEntry>[] = [
 	{ id: "reading", name: "Reading", isBuiltIn: true, pinned: true },
 	{ id: "unread", name: "Unread", isBuiltIn: true, pinned: false },
@@ -11,7 +12,8 @@ const shelves: Partial<ShelfEntry>[] = [
 ];
 
 vi.mock("@tanstack/react-router", () => ({
-	useLocation: () => ({ pathname: "/tabs/library", search: {} }),
+	useLocation: () => ({ pathname: "/tabs/library", search: { f: "enc-filter" } }),
+	useNavigate: () => navigate,
 	Link: ({ children, ...rest }: { children: React.ReactNode }) => <a {...rest}>{children}</a>,
 }));
 vi.mock("../../../pages/library/use-smart-shelves", () => ({
@@ -25,9 +27,6 @@ vi.mock("../../../pages/library/use-smart-shelves", () => ({
 	}),
 }));
 vi.mock("../../smart-shelves/shelf-actions", () => ({ ShelfActions: () => null }));
-vi.mock("../../../pages/library/shelf-condition-editor", () => ({
-	ShelfConditionEditor: () => null,
-}));
 
 const { SidebarSmartShelves } = await import("../sidebar-smart-shelves");
 
@@ -36,6 +35,7 @@ afterEach(() => {
 	rendered?.unmount();
 	rendered = undefined;
 	setBuiltInPinned.mockClear();
+	navigate.mockClear();
 });
 
 const button = (label: string) =>
@@ -71,5 +71,14 @@ describe("SidebarSmartShelves", () => {
 		expect(rendered?.container.querySelector('[aria-label="Pinned"]')).toBeNull();
 		expect(rendered?.container.textContent).not.toContain("Save current filter");
 		expect(button("New smart shelf")).not.toBeNull();
+	});
+
+	it("opens the New smart shelf page from the library's current filter", async () => {
+		rendered = await render(<SidebarSmartShelves isCollapsed={false} onExpand={vi.fn()} />);
+		await click(pressable("New smart shelf"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/shelves/new",
+			search: { f: "enc-filter" },
+		});
 	});
 });

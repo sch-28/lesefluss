@@ -2,7 +2,15 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/
 import { CHIP_BASE, FilterChip } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { Hash, Layers, type LucideIcon, MoreHorizontal, Plus, ScrollText } from "lucide-react";
+import {
+	Hash,
+	Layers,
+	type LucideIcon,
+	MoreHorizontal,
+	Plus,
+	ScrollText,
+	Sparkles,
+} from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
@@ -305,6 +313,12 @@ const CollectionShelfRow: React.FC<{
 						icon: Layers,
 						onSelect: () =>
 							navigate({ to: "/tabs/library/collections/new", search: { series: true } }),
+					},
+					{
+						label: "New smart shelf",
+						hint: "Fills itself from conditions",
+						icon: Sparkles,
+						onSelect: () => navigate({ to: "/tabs/library/shelves/new" }),
 					},
 				]}
 			/>

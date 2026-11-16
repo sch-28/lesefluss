@@ -221,7 +221,7 @@ describe("CollectionShelfRow", () => {
 		expect(sheet()?.textContent).not.toContain("All series");
 	});
 
-	it("starts the row with + New, offering a new collection and a new series", async () => {
+	it("starts the row with + New, offering a new collection, series and smart shelf", async () => {
 		collections = [collection("a")];
 		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
 		const toolbar = rendered.container.querySelector("[role=toolbar]");
@@ -235,5 +235,8 @@ describe("CollectionShelfRow", () => {
 		await click(rendered.getButton("New"));
 		await click(rendered.getButton("New collection"));
 		expect(navigate).toHaveBeenLastCalledWith({ to: "/tabs/library/collections/new" });
+		await click(rendered.getButton("New"));
+		await click(rendered.getButton("New smart shelf"));
+		expect(navigate).toHaveBeenLastCalledWith({ to: "/tabs/library/shelves/new" });
 	});
 });

@@ -160,6 +160,8 @@ describe("ShelfConditionEditor", () => {
 		await open(null);
 		expect(rows()).toHaveLength(1);
 		expect(rows()[0].hasAttribute("data-incomplete")).toBe(true);
+		// Blank but untouched: no error outline before any input.
+		expect(rows()[0].className).not.toContain("outline-dashed");
 		expect(saveButton().disabled).toBe(true);
 
 		setValue(q("input[placeholder='Shelf name']"), "Now");
@@ -180,6 +182,23 @@ describe("ShelfConditionEditor", () => {
 			to: "/tabs/library",
 			search: { shelf: "new", f: filter && encodeFilterParam(filter) },
 		});
+	});
+
+	it("outlines a blank row only once it was edited, or a save was tried", async () => {
+		isWide = true;
+		await open(custom);
+		press("Condition", 0);
+		const added = () => rows()[3] as HTMLElement;
+		expect(added().hasAttribute("data-incomplete")).toBe(true);
+		expect(added().className).not.toContain("outline-dashed");
+		const name = q<HTMLInputElement>("input[placeholder='Shelf name']");
+		act(() => {
+			name.dispatchEvent(
+				new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true }),
+			);
+		});
+		expect(update).not.toHaveBeenCalled();
+		expect(added().className).toContain("outline-dashed");
 	});
 
 	it("shows nested groups and counts matches live, a moment after an edit", async () => {

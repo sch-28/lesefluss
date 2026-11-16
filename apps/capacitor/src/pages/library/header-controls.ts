@@ -9,13 +9,9 @@ export type HeaderControls = {
 	view: boolean;
 };
 
-/** Which of the library toolbar's view controls show. The ordered (series)
- *  view keeps its members in #N order, so only its layout can change; an empty
- *  library has nothing to search, sort or lay out. */
-export function headerControls(view: {
-	isOrderedView: boolean;
-	isEmptyLibrary?: boolean;
-}): HeaderControls {
-	const listed = !view.isOrderedView && !view.isEmptyLibrary;
-	return { search: listed, filter: listed, sort: listed, view: !view.isEmptyLibrary };
+/** Which of the library toolbar's view controls show: all of them, on the
+ *  series page too, but none in an empty library, with nothing to search, sort or lay out. */
+export function headerControls(view: { isEmptyLibrary?: boolean }): HeaderControls {
+	const shown = !view.isEmptyLibrary;
+	return { search: shown, filter: shown, sort: shown, view: shown };
 }

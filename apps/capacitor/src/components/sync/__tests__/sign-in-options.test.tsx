@@ -147,6 +147,24 @@ describe("SignInOptions", () => {
 		).toBe("default");
 	});
 
+	it("scrolls the opened email form into view, with Forgot password as a link", async () => {
+		const scrolled: Element[] = [];
+		const scrollIntoView = vi
+			.spyOn(Element.prototype, "scrollIntoView")
+			.mockImplementation(function (this: Element) {
+				scrolled.push(this);
+			});
+		try {
+			view = await render(<SignInOptions />);
+			expect(scrollIntoView).not.toHaveBeenCalled();
+			await openEmailForm();
+			expect(scrolled).toEqual([view.container.querySelector("form")]);
+			expect(view.getButton("Forgot password?").getAttribute("data-variant")).toBe("link");
+		} finally {
+			scrollIntoView.mockRestore();
+		}
+	});
+
 	it("leads with the browser normally and with the phone in e-ink mode", async () => {
 		const filledButton = () =>
 			view?.container.querySelector("button[data-variant='default']")?.textContent;
