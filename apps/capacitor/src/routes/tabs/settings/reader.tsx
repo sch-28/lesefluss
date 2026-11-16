@@ -62,7 +62,7 @@ function ReaderSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Reader" icon={BookOpen} />
+			<PageHeader width="text" title="Reader" icon={BookOpen} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<ReaderPreview />
 

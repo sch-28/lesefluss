@@ -280,6 +280,7 @@ export default function ProfilePage({ userId, isPreview }: { userId: string; isP
 	return (
 		<div className="bg-background">
 			<PageHeader
+				width="text"
 				title={isPreview ? "Profile preview" : "Profile"}
 				icon={UserRound}
 				backTo="/tabs/social"

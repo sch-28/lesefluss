@@ -1,5 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { SearchX } from "lucide-react";
 import type React from "react";
 import { PageContainer } from "@/components/page-container";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
@@ -132,7 +133,7 @@ const GroupedResults: React.FC<Props> = ({
 				)
 			) : catalog.isError ? (
 				<section className="mb-6">
-					<h2 className="m-0 mb-2 font-semibold text-[0.95rem]">Public domain</h2>
+					<h2 className="m-0 mb-2 font-semibold text-sm">Public domain</h2>
 					<ErrorState error={catalog.error} onRetry={() => catalog.refetch()} className="p-4" />
 				</section>
 			) : catalogResults.length === 0 ? null : isWide ? (
@@ -232,7 +233,7 @@ const GroupedResults: React.FC<Props> = ({
 
 			{isEverythingEmpty && (
 				<div className="flex flex-col items-center gap-2">
-					<EmptyState>Nothing found for "{q}".</EmptyState>
+					<EmptyState icon={SearchX}>Nothing found for "{q}".</EmptyState>
 					<div className="flex flex-wrap justify-center gap-2">
 						{suggestion && (
 							<Button variant="outline" size="sm" onClick={() => onSearchSuggestion(suggestion)}>

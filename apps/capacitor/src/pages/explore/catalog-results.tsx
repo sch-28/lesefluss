@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import type { ViewMode } from "../../components/view-mode-toggle";
@@ -62,7 +62,7 @@ const ZeroResults: React.FC<ZeroResultActions & { suggestion?: string | null }> 
 	const filtersHideQuery = hasQuery && !!onClearFilters;
 	return (
 		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-2">
-			<EmptyState>
+			<EmptyState icon={SearchX}>
 				{filtersHideQuery
 					? "No books match this search with the active filters."
 					: "No books match."}

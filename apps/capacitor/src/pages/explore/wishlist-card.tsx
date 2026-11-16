@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Library, X } from "lucide-react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
+import { TextCover } from "../../components/text-cover";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
@@ -53,11 +54,7 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 				<CoverImage
 					src={cover}
 					alt={item.title}
-					fallback={
-						<div className="absolute inset-0 flex items-end p-2 font-semibold text-[0.75rem] text-muted-foreground leading-tight">
-							{item.title}
-						</div>
-					}
+					fallback={<TextCover title={item.title} author={item.author} />}
 				/>
 			</div>
 			<div className="px-0.5 pt-1">

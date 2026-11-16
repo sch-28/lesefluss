@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { MoreVertical, X } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import type React from "react";
 import { useEffect } from "react";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
@@ -52,7 +52,7 @@ const BulkActionBar: React.FC<Props> = ({ selection }) => {
 					disabled={selection.picked.length === 0 || selection.isRunning}
 					onClick={() => selection.openSheet("actions")}
 				>
-					<MoreVertical />
+					<MoreHorizontal />
 				</Button>
 			</div>
 		</div>

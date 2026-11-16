@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import type React from "react";
@@ -43,15 +44,9 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 				Browse by tag
 			</Button>
 			{withBooks.map((g) => (
-				<Button
-					key={g.id}
-					variant="outline"
-					size="sm"
-					className="shrink-0"
-					onClick={() => onGenreTap(g.id)}
-				>
+				<FilterChip key={g.id} selected={false} action onClick={() => onGenreTap(g.id)}>
 					{g.label}
-				</Button>
+				</FilterChip>
 			))}
 		</nav>
 	);

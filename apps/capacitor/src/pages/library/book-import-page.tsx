@@ -89,7 +89,6 @@ const ImportForm: React.FC<{
 	return (
 		<BookEditLayout
 			title="Add book"
-			closeIcon="close"
 			status={queue.total > 1 ? `${queue.position} of ${queue.total}` : null}
 			cancelLabel="Cancel import"
 			saveLabel="Add to library"

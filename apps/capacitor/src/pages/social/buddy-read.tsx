@@ -541,7 +541,7 @@ export type BuddyReadTab = "overview" | "discussion";
 export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadTab }) {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
+			<PageHeader width="text" title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
 			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate
 					returnTo={`/tabs/social/buddy-read/${id}`}

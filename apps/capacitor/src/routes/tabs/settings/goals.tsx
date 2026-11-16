@@ -28,7 +28,7 @@ function Goals() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Goals" icon={Target} />
+			<PageHeader width="text" title="Goals" icon={Target} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Goals">
 					{!plans.data && <ReservedCard isPending height={NO_GOALS_ROW_HEIGHT} />}

@@ -21,7 +21,7 @@ function DiagnosticsSettings() {
 	};
 	return (
 		<div className="bg-background">
-			<PageHeader title="Diagnostics" icon={ShieldCheck} />
+			<PageHeader width="text" title="Diagnostics" icon={ShieldCheck} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Privacy">
 					{IS_WEB ? (

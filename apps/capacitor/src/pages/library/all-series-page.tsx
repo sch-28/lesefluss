@@ -1,6 +1,9 @@
+import { Button } from "@lesefluss/ui/button";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import type React from "react";
+import { PageHeader } from "../../components/app-shell/page-header";
+import { EmptyState } from "../../components/empty-state";
 import { PageContainer } from "../../components/page-container";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { AllSeriesList } from "./all-series-list";
@@ -18,40 +21,42 @@ const AllSeriesPage: React.FC = () => {
 			? router.history.back()
 			: void navigate({ to: "/tabs/library", search: {}, replace: true });
 
+	const newSeries = () =>
+		void navigate({ to: "/tabs/library/collections/new", search: { series: true } });
+
 	return (
 		<div className="bg-background text-foreground" data-testid="all-series-page">
-			<div className="border-border border-b px-4 pt-[calc(var(--safe-top)+0.75rem)] pb-3">
-				<PageContainer width="grid">
-					<nav
-						aria-label="Breadcrumb"
-						className="flex items-center gap-1 text-muted-foreground text-xs"
-					>
-						<button
-							type="button"
-							onClick={() => navigate({ to: "/tabs/library", search: {} })}
-							className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
-						>
-							Library
-						</button>
-						<ChevronRight aria-hidden className="size-3" />
-						<span aria-current="page" className="text-foreground">
-							All series
-						</span>
-					</nav>
-					<h2 className="m-0 mt-1 font-semibold text-lg">All series</h2>
-					<p
-						className="m-0 min-h-[1lh] text-muted-foreground text-sm"
-						data-testid="all-series-summary"
-					>
-						{isPending ? null : seriesSummary(entries)}
-					</p>
-				</PageContainer>
-			</div>
+			<PageHeader
+				title="All series"
+				width="grid"
+				backTo="/tabs/library"
+				right={
+					<Button variant="ghost" size="icon" aria-label="New series" onClick={newSeries}>
+						<Plus />
+					</Button>
+				}
+			/>
 			<PageContainer width="grid" className="p-4">
+				<p
+					className="m-0 mb-3 min-h-[1lh] text-muted-foreground text-sm"
+					data-testid="all-series-summary"
+				>
+					{isPending || entries.length === 0 ? null : seriesSummary(entries)}
+				</p>
 				{!isPending && entries.length === 0 ? (
-					<p className="m-0 p-6 text-center text-muted-foreground text-sm">
-						Book series and serials you add show up here.
-					</p>
+					<EmptyState
+						icon={Layers}
+						title="No series yet"
+						action={
+							<Button variant="outline" onClick={newSeries}>
+								<Plus className="size-4" />
+								New series
+							</Button>
+						}
+					>
+						Book series and serials you add show up here. Series are also found from book metadata
+						on import.
+					</EmptyState>
 				) : (
 					<AllSeriesList
 						entries={entries}

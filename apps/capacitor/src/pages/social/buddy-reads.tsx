@@ -86,7 +86,7 @@ function BuddyReadsContent() {
 export default function BuddyReadsPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Buddy reads" icon={Users} backTo="/tabs/social" />
+			<PageHeader width="text" title="Buddy reads" icon={Users} backTo="/tabs/social" />
 			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/buddy-reads">
 					<BuddyReadsContent />

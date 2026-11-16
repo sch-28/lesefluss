@@ -41,7 +41,6 @@ export const RenameCollectionDialog: React.FC<Props> = ({ open, onOpenChange, co
 			>
 				<InputHitArea>
 					<Input
-						autoFocus
 						value={name}
 						maxLength={COLLECTION_NAME_MAX}
 						aria-label={`${noun[0]?.toUpperCase()}${noun.slice(1)} name`}

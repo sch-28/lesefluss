@@ -33,6 +33,24 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSeriesActivity: () => ({ data: new Map() }),
 	},
 }));
+vi.mock("../../../components/action-sheet", () => ({
+	ActionSheet: ({
+		open,
+		items,
+	}: {
+		open: boolean;
+		items: { label: string; onSelect: () => void }[];
+	}): React.ReactNode =>
+		open ? (
+			<div data-testid="new-sheet">
+				{items.map((i) => (
+					<button key={i.label} type="button" onClick={i.onSelect}>
+						{i.label}
+					</button>
+				))}
+			</div>
+		) : null,
+}));
 vi.mock("../use-smart-shelves", () => ({
 	useSmartShelves: () => ({ shelves: [], counts: new Map(), setBuiltInPinned: vi.fn() }),
 }));
@@ -132,13 +150,20 @@ describe("CollectionShelfRow", () => {
 		serials = [{ id: "wn", title: "Worm", author: null, coverImage: null }];
 		chapterCounts = new Map([["wn", 40]]);
 		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
-		expect(row().map((b) => b.textContent)).toEqual(["All", "C plain2", "C dune2", "Worm40", ""]);
+		expect(row().map((b) => b.textContent)).toEqual([
+			"New",
+			"All",
+			"C plain2",
+			"C dune2",
+			"Worm40",
+			"",
+		]);
 		expect(rendered.container.querySelectorAll("[data-testid=shelf-series]")).toHaveLength(2);
 		expect(rendered.container.textContent).not.toContain("#");
 
-		await click(row()[2] as HTMLElement);
-		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: { collection: "dune" } });
 		await click(row()[3] as HTMLElement);
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: { collection: "dune" } });
+		await click(row()[4] as HTMLElement);
 		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library/series/$id", params: { id: "wn" } });
 	});
 
@@ -155,7 +180,7 @@ describe("CollectionShelfRow", () => {
 	it("shows no 0 chip in the row and hides the row's scrollbar", async () => {
 		collections = [{ ...collection("empty"), bookCount: 0 }, collection("full")];
 		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
-		expect(row().map((b) => b.textContent)).toEqual(["All", "C full2", ""]);
+		expect(row().map((b) => b.textContent)).toEqual(["New", "All", "C full2", ""]);
 		const toolbar = rendered.container.querySelector("[role=toolbar]");
 		expect(toolbar?.className).toContain("[&::-webkit-scrollbar]:hidden");
 		await click(rendered.getButton("More"));
@@ -168,7 +193,6 @@ describe("CollectionShelfRow", () => {
 		expect(rendered.container.querySelectorAll("[data-testid=shelf-collection]")).toHaveLength(10);
 		await click(rendered.getButton("More, 2 more"));
 		expect(sheet()?.textContent).toContain("C c11");
-		expect(sheet()?.textContent).toContain("New collection");
 		const c11 = [...(sheet()?.querySelectorAll("button") ?? [])].find((b) =>
 			b.textContent?.includes("C c11"),
 		) as HTMLElement;
@@ -195,5 +219,21 @@ describe("CollectionShelfRow", () => {
 		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
 		await click(rendered.getButton("More"));
 		expect(sheet()?.textContent).not.toContain("All series");
+	});
+
+	it("starts the row with + New, offering a new collection and a new series", async () => {
+		collections = [collection("a")];
+		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
+		const toolbar = rendered.container.querySelector("[role=toolbar]");
+		expect(toolbar?.firstElementChild?.textContent).toBe("New");
+		await click(rendered.getButton("New"));
+		await click(rendered.getButton("New series"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/new",
+			search: { series: true },
+		});
+		await click(rendered.getButton("New"));
+		await click(rendered.getButton("New collection"));
+		expect(navigate).toHaveBeenLastCalledWith({ to: "/tabs/library/collections/new" });
 	});
 });

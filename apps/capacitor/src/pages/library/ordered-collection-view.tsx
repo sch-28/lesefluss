@@ -1,25 +1,13 @@
 import { bookPace } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { IconButton } from "@lesefluss/ui/icon-button";
 import { cn } from "@lesefluss/ui/utils";
-import { useNavigate } from "@tanstack/react-router";
-import {
-	ArrowDown,
-	ArrowLeft,
-	ArrowUp,
-	BookOpen,
-	GripVertical,
-	MoreHorizontal,
-	Play,
-	Plus,
-	Trash2,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, GripVertical, Play, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import BookCover from "../../components/book-cover";
-import { CollectionActions } from "../../components/collections/collection-actions";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
+import { EmptyState } from "../../components/empty-state";
 import { PageContainer } from "../../components/page-container";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
@@ -41,7 +29,6 @@ import {
 
 type Props = {
 	collection: CollectionWithCount;
-	collections: CollectionWithCount[];
 	books: readonly Book[];
 	covers: ReadonlyMap<string, string>;
 	onOpenBook: (book: Book) => void;
@@ -58,14 +45,12 @@ type DropTarget = { index: number; after: boolean };
  */
 const OrderedCollectionView: React.FC<Props> = ({
 	collection,
-	collections,
 	books,
 	covers,
 	onOpenBook,
 	onAddBooks,
 	canDrag,
 }) => {
-	const navigate = useNavigate();
 	const members = queryHooks.useCollectionMembers(collection.id);
 	const reorder = queryHooks.useReorderCollection();
 	const remove = queryHooks.useRemoveBooksFromCollection();
@@ -86,7 +71,6 @@ const OrderedCollectionView: React.FC<Props> = ({
 	const [dragFrom, setDragFrom] = useState<number | null>(null);
 	const [dropAt, setDropAt] = useState<DropTarget | null>(null);
 	const [menuFor, setMenuFor] = useState<number | null>(null);
-	const [actionsOpen, setActionsOpen] = useState(false);
 
 	const commit = (next: OrderedRow[]) => {
 		const order = renumber(next);
@@ -113,27 +97,8 @@ const OrderedCollectionView: React.FC<Props> = ({
 
 	return (
 		<PageContainer width="grid" data-testid="ordered-collection">
-			<div className="px-4 pt-1 pb-4">
-				<div className="-mx-3 flex items-center">
-					<IconButton
-						aria-label="Back to Library"
-						onClick={() => navigate({ to: "/tabs/library", search: {} })}
-					>
-						<ArrowLeft />
-					</IconButton>
-					<span className="flex-1" />
-					<IconButton aria-label="Add books" onClick={onAddBooks}>
-						<Plus />
-					</IconButton>
-					<IconButton
-						aria-label={`${collection.name} options`}
-						onClick={() => setActionsOpen(true)}
-					>
-						<MoreHorizontal />
-					</IconButton>
-				</div>
-				<h2 className="m-0 mt-1 truncate font-semibold text-2xl">{collection.name}</h2>
-				<p className="m-0 mt-1 text-muted-foreground text-sm" data-testid="ordered-summary">
+			<div className="px-4 pt-3 pb-4">
+				<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
 					{[seriesAuthor(rows), summaryLabel(orderedSummary(rows))].filter(Boolean).join(" · ")}
 				</p>
 				{next && (
@@ -149,15 +114,17 @@ const OrderedCollectionView: React.FC<Props> = ({
 			</div>
 
 			{members.isSuccess && rows.length === 0 ? (
-				<div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
-						No books in this {noun} yet
-					</h2>
-					<Button className="mt-4" onClick={onAddBooks}>
-						<Plus className="size-4" />
-						Add books
-					</Button>
-				</div>
+				<EmptyState
+					icon={BookOpen}
+					title={`No books in this ${noun} yet`}
+					className="min-h-[50vh]"
+					action={
+						<Button onClick={onAddBooks}>
+							<Plus className="size-4" />
+							Add books
+						</Button>
+					}
+				/>
 			) : (
 				<ol className="m-0 list-none p-4 pb-24" aria-label={`${collection.name} books`}>
 					{rows.map((row, index) => (
@@ -238,12 +205,6 @@ const OrderedCollectionView: React.FC<Props> = ({
 						},
 					},
 				]}
-			/>
-			<CollectionActions
-				collection={actionsOpen ? collection : null}
-				collections={isSeries ? [collection] : collections.filter((c) => c.seriesKey === null)}
-				allCollections={collections}
-				onClose={() => setActionsOpen(false)}
 			/>
 		</PageContainer>
 	);

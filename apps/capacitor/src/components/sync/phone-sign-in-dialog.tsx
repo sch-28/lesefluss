@@ -55,14 +55,7 @@ export function PhoneSignInDialog({
 			onOpenChange={onOpenChange}
 			title="Sign in with your phone"
 			description="Scan the code with your phone's camera, or open the link on any device where you are signed in, and confirm there."
-			footer={
-				<>
-					{state.phase === "failed" && <Button onClick={restart}>New code</Button>}
-					<Button variant="ghost" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
-				</>
-			}
+			footer={state.phase === "failed" && <Button onClick={restart}>New code</Button>}
 		>
 			{state.phase === "requesting" && (
 				<p className="m-0 text-center text-muted-foreground text-sm">Getting a code…</p>

@@ -76,7 +76,6 @@ async function mount(canDrag = true) {
 	rendered = await render(
 		<OrderedCollectionView
 			collection={series}
-			collections={[series]}
 			books={books}
 			covers={new Map()}
 			onOpenBook={() => {}}
@@ -107,7 +106,7 @@ describe("OrderedCollectionView", () => {
 	});
 	afterEach(() => rendered.unmount());
 
-	it("lists the books in #N order, the number inline with the title, the name once", async () => {
+	it("lists the books in #N order, the number inline with the title, no name of its own", async () => {
 		await mount();
 		expect(order()).toEqual(["a", "b", "c"]);
 		const numbers = [...rendered.container.querySelectorAll('[data-testid="ordered-number"]')];
@@ -115,9 +114,10 @@ describe("OrderedCollectionView", () => {
 		expect(numbers.every((n) => !/\bw-\d/.test(n.className))).toBe(true);
 		expect(rows()[0]?.querySelector("button")?.textContent).toContain("#1 Dune");
 		expect(rendered.container.querySelector("nav[aria-label=Breadcrumb]")).toBeNull();
-		expect(rendered.container.querySelector("h2")?.textContent).toBe("Dune");
+		// The page header carries the name, back and actions.
+		expect(rendered.container.querySelector("h2")).toBeNull();
+		expect(rendered.queryButton("Back to Library")).toBeNull();
 		expect(rendered.text()).toContain("3 books");
-		expect(rendered.getButton("Back to Library")).toBeTruthy();
 		expect(rendered.container.querySelector('[data-testid="ordered-next"]')?.textContent).toBe(
 			"Start #1",
 		);

@@ -95,9 +95,21 @@ const allSeriesLink = () =>
 	rendered?.container.querySelector<HTMLAnchorElement>("a[href='/tabs/library/all-series']");
 
 describe("SidebarSeries", () => {
-	it("renders nothing without a non-empty series", async () => {
+	it("without a non-empty series, shows only the heading and its New series button", async () => {
 		collections = [series("empty", 0), { ...series("plain"), seriesKey: null }];
 		rendered = await render(<SidebarSeries isCollapsed={false} />);
+		expect(rendered.container.querySelectorAll("li")).toHaveLength(0);
+		expect(allSeriesLink()).toBeNull();
+		await click(rendered.getButton("New series"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/new",
+			search: { series: true },
+		});
+	});
+
+	it("collapsed without a non-empty series, renders nothing", async () => {
+		collections = [series("empty", 0)];
+		rendered = await render(<SidebarSeries isCollapsed />);
 		expect(rendered.container.innerHTML).toBe("");
 	});
 

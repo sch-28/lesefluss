@@ -2,13 +2,14 @@ import type React from "react";
 import { useState } from "react";
 import { proxyImageUrl } from "../services/catalog/client";
 import { useReconnectEpoch } from "../utils/reconnect";
+import { TextCover } from "./text-cover";
 
 const preventDragStart = (e: React.DragEvent<HTMLImageElement>) => e.preventDefault();
 
 type Props = {
 	src: string | null | undefined;
 	alt: string;
-	/** Shown while loading and on decode error. Defaults to a generic "BOOK" stub. */
+	/** Shown while loading and on decode error. Defaults to a TextCover of `alt`, or a "BOOK" stub when `alt` is empty. */
 	fallback?: React.ReactNode;
 	/** Add to the outer wrapper. The wrapper fills its parent (needs sized parent). */
 	className?: string;
@@ -44,9 +45,13 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 	const resolvedSrc = proxyImageUrl(src);
 	const showImage = !!resolvedSrc && state !== "error";
 	const showFallback = !resolvedSrc || state === "error";
-	const placeholder = fallback ?? (
-		<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
-	);
+	const placeholder =
+		fallback ??
+		(alt ? (
+			<TextCover title={alt} />
+		) : (
+			<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
+		));
 
 	return (
 		<div className={`cover-image ${className ?? ""}`.trim()}>

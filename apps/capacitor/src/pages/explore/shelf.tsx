@@ -46,7 +46,7 @@ const Shelf: React.FC<Props> = ({
 			<div className="[grid-area:1/1]">
 				<ShelfStripSkeleton isSpacer />
 			</div>
-			<p className="m-0 self-center text-[0.8rem] text-muted-foreground [grid-area:1/1]">
+			<p className="m-0 self-center text-muted-foreground text-xs [grid-area:1/1]">
 				{emptyLabel ?? "Nothing here yet."}
 			</p>
 		</div>

@@ -47,7 +47,7 @@ import {
 	Loader2,
 	Maximize,
 	Minimize,
-	MoreVertical,
+	MoreHorizontal,
 	Pause,
 	PictureInPicture,
 	Search,
@@ -2905,7 +2905,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<IconButton aria-label="More actions" title="More actions">
-									<MoreVertical />
+									<MoreHorizontal />
 									{/* Text, not aria-label alone: Android reads a menu button's text and drops its
 									    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
 									<span className="sr-only">More actions</span>

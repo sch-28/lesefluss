@@ -38,10 +38,7 @@ const ShelfFrame: React.FC<Props> = ({
 			{/* Wraps: at a large font scale the title takes its own line rather than truncate.
 			    min-h-7 is See all's height, so the header keeps one height with or without it. */}
 			<header className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
-				<h2
-					id={titleId}
-					className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-[0.95rem]"
-				>
+				<h2 id={titleId} className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-sm">
 					{title}
 				</h2>
 				<div className="ml-auto flex shrink-0 items-center gap-1">

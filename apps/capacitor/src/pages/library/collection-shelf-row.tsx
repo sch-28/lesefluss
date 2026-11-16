@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Hash, Layers, type LucideIcon, MoreHorizontal, Plus, ScrollText } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { ActionSheet } from "../../components/action-sheet";
 import { CollectionActions } from "../../components/collections/collection-actions";
 import { openShelf, ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { queryHooks } from "../../services/db/hooks";
@@ -143,6 +144,7 @@ const CollectionShelfRow: React.FC<{
 	const navigate = useNavigate();
 	const [menuFor, setMenuFor] = useState<CollectionWithCount | null>(null);
 	const [isMoreOpen, setIsMoreOpen] = useState(false);
+	const [isNewOpen, setIsNewOpen] = useState(false);
 
 	const open = (id: string | undefined) =>
 		navigate({ to: "/tabs/library", search: id ? { collection: id } : {} });
@@ -205,6 +207,14 @@ const CollectionShelfRow: React.FC<{
 				// The fade tells the row scrolls on; the right padding lets the last chip clear it.
 				className="flex gap-2 overflow-x-auto py-2 pr-8 pl-4 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 			>
+				<button
+					type="button"
+					onClick={() => setIsNewOpen(true)}
+					className={cn(CHIP_BASE, "text-muted-foreground")}
+				>
+					<Plus aria-hidden className="size-4" />
+					New
+				</button>
 				<FilterChip selected={!activeId && !activeShelfId} onClick={() => open(undefined)}>
 					All
 				</FilterChip>
@@ -276,20 +286,28 @@ const CollectionShelfRow: React.FC<{
 								<span className="text-muted-foreground text-sm tabular-nums">{series.length}</span>
 							</button>
 						)}
-						<button
-							type="button"
-							onClick={() => {
-								setIsMoreOpen(false);
-								navigate({ to: "/tabs/library/collections/new" });
-							}}
-							className="flex h-12 w-full items-center gap-3 rounded-md px-3 text-left text-base text-muted-foreground hover:bg-muted"
-						>
-							<Plus aria-hidden className="size-4 shrink-0" />
-							New collection
-						</button>
 					</div>
 				</DrawerContent>
 			</Drawer>
+			<ActionSheet
+				open={isNewOpen}
+				onOpenChange={setIsNewOpen}
+				title="New"
+				items={[
+					{
+						label: "New collection",
+						icon: Plus,
+						onSelect: () => navigate({ to: "/tabs/library/collections/new" }),
+					},
+					{
+						label: "New series",
+						hint: "Series are also found from book metadata",
+						icon: Layers,
+						onSelect: () =>
+							navigate({ to: "/tabs/library/collections/new", search: { series: true } }),
+					},
+				]}
+			/>
 			<CollectionActions
 				collection={menuFor}
 				collections={menuSiblings}

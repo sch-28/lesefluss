@@ -42,7 +42,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 					<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
 						{result.title}
 					</div>
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.8rem] text-muted-foreground">
+					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 						{[result.author, result.language ? languageLabel(result.language) : null]
 							.filter(Boolean)
 							.join(" · ")}

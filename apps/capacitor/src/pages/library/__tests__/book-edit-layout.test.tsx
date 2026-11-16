@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type Rendered, render } from "../../../test/render";
+import { click, type Rendered, render } from "../../../test/render";
 
+vi.mock("@tanstack/react-router", () => ({
+	useRouter: () => ({ history: { canGoBack: () => true, back: vi.fn() } }),
+}));
 vi.mock("../../../hooks/use-media-query", () => ({ useMediaQuery: () => true }));
 const mac = vi.hoisted(() => ({ isMac: false }));
 vi.mock("../../../commands/keys", async (importOriginal) => {
@@ -20,15 +23,15 @@ afterEach(() => {
 	view = undefined;
 });
 
+const onCancel = vi.fn();
 const show = () =>
 	render(
 		<BookEditLayout
 			title="Edit"
-			closeIcon="close"
 			status=""
 			cancelLabel="Cancel"
 			saveLabel="Save"
-			onCancel={vi.fn()}
+			onCancel={onCancel}
 			onSave={vi.fn()}
 			canSave
 			isSaving={false}
@@ -50,5 +53,19 @@ describe("BookEditLayout keyboard hint", () => {
 		mac.isMac = true;
 		view = await show();
 		expect(view.text()).toContain("⌘+S save · Esc cancel");
+	});
+});
+
+describe("BookEditLayout header", () => {
+	it("has one Back and one Cancel, both leaving through the page's cancel", async () => {
+		onCancel.mockClear();
+		view = await show();
+		const names = [...view.container.querySelectorAll("button")].map(
+			(b) => b.getAttribute("aria-label") ?? b.textContent,
+		);
+		expect(names.filter((n) => n === "Cancel")).toHaveLength(1);
+		expect(names.filter((n) => n === "Back")).toHaveLength(1);
+		await click(view.getButton("Back"));
+		expect(onCancel).toHaveBeenCalledTimes(1);
 	});
 });

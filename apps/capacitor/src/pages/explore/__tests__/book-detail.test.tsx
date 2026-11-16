@@ -185,9 +185,10 @@ describe("catalog book detail", () => {
 		expect(view?.text()).not.toContain("Volume 2");
 		expect(view?.text()).toContain("Similar books");
 		expect(view?.text()).toContain("Dracula");
-		const shelfTitles = [...(view?.container.querySelectorAll("h2") ?? [])].map(
-			(h) => h.textContent,
-		);
+		const hero = view?.container.querySelector("section.flex-wrap h2");
+		const shelfTitles = [...(view?.container.querySelectorAll("h2") ?? [])]
+			.filter((h) => h !== hero)
+			.map((h) => h.textContent);
 		expect(shelfTitles.filter((t) => t?.includes("Frankenstein"))).toEqual([]);
 	});
 

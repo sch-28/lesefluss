@@ -17,9 +17,16 @@ vi.mock("@lesefluss/ui/drawer", () => {
 		DrawerTitle: Pass,
 	};
 });
+let modalAutoFocus: ((e: Event) => void) | undefined;
 vi.mock("../modal", () => ({
-	Modal: (p: { open: boolean; children?: React.ReactNode }) =>
-		p.open ? <div data-testid="dialog">{p.children}</div> : null,
+	Modal: (p: {
+		open: boolean;
+		children?: React.ReactNode;
+		onOpenAutoFocus?: (e: Event) => void;
+	}) => {
+		modalAutoFocus = p.onOpenAutoFocus;
+		return p.open ? <div data-testid="dialog">{p.children}</div> : null;
+	},
 }));
 
 const { EntryDialog } = await import("../entry-dialog");
@@ -53,6 +60,20 @@ describe("EntryDialog", () => {
 		expect(await shape()).toBe("sheet");
 		isWide = true;
 		expect(await shape()).toBe("dialog");
+	});
+
+	it("opens the dialog with the dialog focused, not its first field", async () => {
+		isWide = true;
+		await shape();
+		const dialog = document.createElement("div");
+		dialog.tabIndex = -1;
+		document.body.append(dialog);
+		const open = new Event("focusScope.autoFocusOnMount", { cancelable: true });
+		dialog.addEventListener(open.type, (e) => modalAutoFocus?.(e));
+		dialog.dispatchEvent(open);
+		expect(open.defaultPrevented).toBe(true);
+		expect(document.activeElement).toBe(dialog);
+		dialog.remove();
 	});
 
 	it("is a centred dialog on a wide screen with a mouse, else a sheet", async () => {

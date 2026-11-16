@@ -1,4 +1,4 @@
-import { bookStatus, COLLECTION_NAME_MAX } from "@lesefluss/core";
+import { bookStatus, COLLECTION_NAME_MAX, normalizeSeriesKey } from "@lesefluss/core";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -27,7 +27,7 @@ import type { Book } from "../../services/db/schema";
 import { BookEditLayout, UnsavedMark, useIsWideLayout } from "./book-edit-layout";
 
 export type CollectionPageMode =
-	| { kind: "create" }
+	| { kind: "create"; series?: boolean }
 	| { kind: "add"; id: string }
 	| { kind: "edit"; id: string };
 
@@ -83,15 +83,22 @@ const CollectionBooksLoading: React.FC<{ mode: CollectionPageMode }> = ({ mode }
 		<BookEditLayout
 			title={
 				mode.kind === "create"
-					? "New collection"
+					? mode.series
+						? "New series"
+						: "New collection"
 					: mode.kind === "add"
 						? "Add books"
 						: "Edit collection"
 			}
-			closeIcon={mode.kind === "create" ? "close" : "back"}
 			cancelLabel="Cancel"
 			saveLabel={
-				mode.kind === "create" ? "Create collection" : mode.kind === "add" ? "Add books" : "Save"
+				mode.kind === "create"
+					? mode.series
+						? "Create series"
+						: "Create collection"
+					: mode.kind === "add"
+						? "Add books"
+						: "Save"
 			}
 			onCancel={() =>
 				router.history.canGoBack()
@@ -129,7 +136,11 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 	const isWide = useIsWideLayout();
 	const [memberIds] = useState(() => new Set(members));
 	const [name, setName] = useState(collection?.name ?? "");
-	const [ordered, setOrdered] = useState(collection?.ordered ?? false);
+	const opensAsSeries = mode.kind === "create" && mode.series === true;
+	const [asSeries, setAsSeries] = useState(opensAsSeries);
+	const [keepOrder, setKeepOrder] = useState(collection?.ordered ?? false);
+	// A series is always numbered.
+	const ordered = keepOrder || asSeries;
 	const [selected, setSelected] = useState<Set<string>>(() =>
 		mode.kind === "edit" ? new Set(members) : new Set(),
 	);
@@ -151,10 +162,14 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 	const pickCount = added.length + removed.length;
 	const isDirty =
 		mode.kind === "create"
-			? trimmed !== "" || selected.size > 0 || ordered
+			? trimmed !== "" || selected.size > 0 || keepOrder || asSeries !== opensAsSeries
 			: pickCount > 0 || nameChanged || orderChanged;
 	const canSave =
-		mode.kind === "add" ? selected.size > 0 : trimmed !== "" && (mode.kind === "create" || isDirty);
+		mode.kind === "add"
+			? selected.size > 0
+			: trimmed !== "" &&
+				(!asSeries || !!normalizeSeriesKey(trimmed)) &&
+				(mode.kind === "create" || isDirty);
 
 	// A ref, not state: the save navigates in the same tick it finishes, before
 	// a re-render could tell the blocker the changes are stored.
@@ -197,7 +212,12 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 		if (!canSave || isSaving) return;
 		try {
 			if (mode.kind === "create") {
-				const row = await create.mutateAsync({ name: trimmed, bookIds: [...selected], ordered });
+				const row = await create.mutateAsync({
+					name: trimmed,
+					bookIds: [...selected],
+					ordered,
+					series: asSeries,
+				});
 				isLeavingRef.current = true;
 				void showCollection(row.id);
 				return;
@@ -238,9 +258,10 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 		[collection, memberIds, memberships],
 	);
 
+	const noun = asSeries ? "series" : "collection";
 	const title =
 		mode.kind === "create"
-			? "New collection"
+			? `New ${noun}`
 			: mode.kind === "add"
 				? `Add to ${collection?.name}`
 				: collection?.seriesKey
@@ -250,20 +271,21 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 		mode.kind === "create"
 			? selected.size > 0
 				? `Create with ${books(selected.size)}`
-				: "Create collection"
+				: `Create ${noun}`
 			: mode.kind === "add"
 				? selected.size > 0
 					? `Add ${books(selected.size)}`
 					: "Add books"
 				: "Save";
 	const onlyPicks =
-		mode.kind === "create" ? trimmed === "" && !ordered : !nameChanged && !orderChanged;
+		mode.kind === "create"
+			? trimmed === "" && !keepOrder && asSeries === opensAsSeries
+			: !nameChanged && !orderChanged;
 	const picksPending = mode.kind === "edit" ? pickCount : selected.size;
 
 	return (
 		<BookEditLayout
 			title={title}
-			closeIcon={mode.kind === "create" ? "close" : "back"}
 			status={isDirty ? <UnsavedMark isWide={isWide} /> : null}
 			cancelLabel="Cancel"
 			saveLabel={saveLabel}
@@ -288,10 +310,9 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 							<InputHitArea>
 								<Input
 									id="collection-name"
-									autoFocus={mode.kind === "create"}
 									value={name}
 									maxLength={COLLECTION_NAME_MAX}
-									placeholder="Collection name"
+									placeholder={asSeries ? "Series name" : "Collection name"}
 									enterKeyHint="done"
 									onChange={(e) => setName(e.target.value)}
 								/>
@@ -306,8 +327,25 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 										: "Numbers books in reading order; new ones go last"}
 								</p>
 							</div>
-							<Switch id="collection-ordered" checked={ordered} onCheckedChange={setOrdered} />
+							<Switch
+								id="collection-ordered"
+								checked={ordered}
+								disabled={asSeries}
+								onCheckedChange={setKeepOrder}
+							/>
 						</div>
+						{mode.kind === "create" && (
+							<div className="flex items-center justify-between gap-3">
+								<div className="min-w-0">
+									<Label htmlFor="collection-series">As series</Label>
+									<p className="m-0 text-muted-foreground text-xs">
+										Kept in order and listed under Series. Series are also found from book metadata
+										on import.
+									</p>
+								</div>
+								<Switch id="collection-series" checked={asSeries} onCheckedChange={setAsSeries} />
+							</div>
+						)}
 					</form>
 				)}
 
@@ -359,7 +397,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{mode.kind === "create"
-								? "The collection isn't created yet."
+								? `The ${noun} isn't created yet.`
 								: "Your changes to this collection aren't saved yet."}
 						</AlertDialogDescription>
 					</AlertDialogHeader>

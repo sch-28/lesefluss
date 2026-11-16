@@ -39,7 +39,7 @@ const WebNovelsSection: React.FC = () => {
 	return (
 		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
-				<h2 id={titleId} className="m-0 font-semibold text-[0.95rem]">
+				<h2 id={titleId} className="m-0 font-semibold text-sm">
 					Web novels
 				</h2>
 				<Button

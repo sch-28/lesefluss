@@ -174,7 +174,7 @@ export function CommentDraft({
 				placeholder={placeholder}
 				rows={3}
 				disabled={isPending}
-				className="w-full rounded-md border border-border bg-background p-2 text-foreground text-sm"
+				className="w-full rounded-md border border-border bg-background p-2 text-foreground text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 			/>
 			{tooLong && (
 				<p className="m-0 text-destructive text-xs">

@@ -176,7 +176,7 @@ function DeviceSettings() {
 	if (isPending || !settings) {
 		return (
 			<div className="bg-background">
-				<PageHeader title="Device" icon={Cpu} />
+				<PageHeader width="text" title="Device" icon={Cpu} />
 				<div className="flex items-center justify-center py-20">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />
 				</div>
@@ -191,7 +191,7 @@ function DeviceSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Device" icon={Cpu} />
+			<PageHeader width="text" title="Device" icon={Cpu} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{isMultiBookConnected && connectedDescriptorId && (
 					<DeviceSync descriptorId={connectedDescriptorId} />

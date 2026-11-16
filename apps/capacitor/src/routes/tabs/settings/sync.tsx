@@ -43,7 +43,7 @@ function SyncSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Cloud sync" icon={isLoggedIn ? CloudCheck : Cloud} />
+			<PageHeader width="text" title="Cloud sync" icon={isLoggedIn ? CloudCheck : Cloud} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{isLoggedIn ? (
 					<>

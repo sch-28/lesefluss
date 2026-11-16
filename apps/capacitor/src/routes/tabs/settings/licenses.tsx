@@ -23,7 +23,7 @@ const NOTICES = [
 function Licenses() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Open source licenses" icon={Scale} />
+			<PageHeader width="text" title="Open source licenses" icon={Scale} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Reader fonts">
 					{NOTICES.map(({ title, license }) => (

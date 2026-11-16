@@ -83,7 +83,7 @@ export const SeriesPickList: React.FC<Props> = ({
 						onChange={(e) => setNewName(e.target.value)}
 					/>
 				</InputHitArea>
-				<Button type="submit" variant="secondary" disabled={!newName.trim()}>
+				<Button type="submit" disabled={!newName.trim()}>
 					<Plus />
 					Create
 				</Button>

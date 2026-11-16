@@ -72,27 +72,29 @@ const Onboarding: React.FC = () => {
 	return (
 		<OnboardingFooterContext.Provider value={ctxValue}>
 			<div className="flex h-[100dvh] flex-col bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-foreground">
-				<div className="flex h-12 items-center justify-between px-4">
-					{step > 0 ? (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={back}
-							disabled={anyDisabled}
-							aria-label="Back"
-						>
-							<ChevronLeft className="size-4" />
-							Back
-						</Button>
-					) : (
-						<div />
-					)}
-					{/* The last step's own "Not now" already finishes. */}
-					{step < totalSteps - 1 && (
-						<Button variant="ghost" size="sm" onClick={finish}>
-							Skip setup
-						</Button>
-					)}
+				<div className="px-6">
+					<PageContainer width="flow" className="flex h-12 items-center justify-between">
+						{step > 0 ? (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={back}
+								disabled={anyDisabled}
+								aria-label="Back"
+							>
+								<ChevronLeft className="size-4" />
+								Back
+							</Button>
+						) : (
+							<div />
+						)}
+						{/* The last step's own "Not now" already finishes. */}
+						{step < totalSteps - 1 && (
+							<Button variant="ghost" size="sm" onClick={finish}>
+								Skip setup
+							</Button>
+						)}
+					</PageContainer>
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">

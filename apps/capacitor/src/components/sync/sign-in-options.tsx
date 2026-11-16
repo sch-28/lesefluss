@@ -265,7 +265,7 @@ export function SignInOptions({
 							then sign in here with the new password.
 						</p>
 					) : (
-						<Button type="submit" variant="outline" className="w-full" disabled={!canSubmit}>
+						<Button type="submit" className="w-full" disabled={!canSubmit}>
 							{submitLabel}
 						</Button>
 					)}

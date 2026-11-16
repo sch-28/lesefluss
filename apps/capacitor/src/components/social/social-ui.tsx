@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import CoverImage from "@/components/cover-image";
+import { SectionHeader } from "@/components/section-header";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
 import { pickNowReading } from "./now-reading";
@@ -30,19 +31,7 @@ export function SocialSection({
 			transition={{ duration: 0.4 }}
 			className={cn("mt-8 first:mt-4", className)}
 		>
-			{(title || action) && (
-				<header className="mb-3 flex items-end justify-between gap-3">
-					<div className="min-w-0">
-						{title && <h2 className="m-0 font-semibold text-foreground text-lg">{title}</h2>}
-						{subtitle && (
-							<p className="m-0 mt-0.5 text-[11px] text-muted-foreground uppercase tracking-wider">
-								{subtitle}
-							</p>
-						)}
-					</div>
-					{action}
-				</header>
-			)}
+			{(title || action) && <SectionHeader title={title} subtitle={subtitle} aside={action} />}
 			{children}
 		</motion.section>
 	);
@@ -110,7 +99,7 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 				>
 					<div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-muted">
 						<CoverImage src={item.coverSrc} alt={item.title} />
-						<div className="absolute inset-0 bg-gradient-to-t from-foreground/50 via-transparent" />
+						<div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/40 to-transparent" />
 						{item.percent !== undefined && item.percent > 0 && item.percent < 100 && (
 							<div className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
 								<div className="h-full bg-primary" style={{ width: `${item.percent}%` }} />

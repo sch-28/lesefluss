@@ -8,7 +8,6 @@ import { PageContainer } from "@/components/page-container";
 import { VoiceSheet } from "@/components/read-aloud/voice-sheet";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { SliderRow } from "@/components/settings/slider-row";
 import { SpeedRow } from "@/components/settings/speed-row";
 import { StepperRow } from "@/components/settings/stepper-row";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
@@ -63,7 +62,7 @@ function ReadAloudSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Listen" icon={Headphones} />
+			<PageHeader width="text" title="Listen" icon={Headphones} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Voice">
 					<SpeedRow
@@ -72,7 +71,7 @@ function ReadAloudSettings() {
 						range={TTS_WPM_RANGE}
 						onChange={(wpm) => updateSetting("ttsWpm", wpm)}
 					/>
-					<SliderRow
+					<StepperRow
 						label="Pitch"
 						value={speech.pitch}
 						display={`${speech.pitch.toFixed(1)}×`}

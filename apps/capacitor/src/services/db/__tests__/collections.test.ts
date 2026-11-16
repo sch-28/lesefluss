@@ -128,6 +128,31 @@ describe("collections", () => {
 		]);
 	});
 
+	it("creates a series with its picked books numbered, after a live series' last #N", async () => {
+		const series = await collections.createCollectionWithBooks(
+			"Dune",
+			["bbbbbbbb", "aaaaaaaa"],
+			{ series: true },
+			1,
+		);
+		const row = (await collections.getCollections()).find((c) => c.id === series.id);
+		expect(row?.seriesKey).not.toBeNull();
+		expect(row?.ordered).toBe(true);
+		const again = await collections.createCollectionWithBooks(
+			"Dune",
+			["cccccccc"],
+			{ series: true },
+			2,
+		);
+		expect(again.id).toBe(series.id);
+		const members = await collections.getCollectionMembers(series.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["bbbbbbbb", 1],
+			["aaaaaaaa", 2],
+			["cccccccc", 3],
+		]);
+	});
+
 	it("creates an empty collection when nothing is picked", async () => {
 		const c = await collections.createCollectionWithBooks("Empty", [], {}, 1);
 		expect(await count(c.id)).toBe(0);

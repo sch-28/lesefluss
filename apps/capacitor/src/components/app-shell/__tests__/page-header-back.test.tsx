@@ -6,11 +6,12 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, flush, type Rendered, render } from "../../../test/render";
 import { NotFound } from "../not-found";
 import { PageHeader } from "../page-header";
 
+const onCustomBack = vi.fn();
 let rendered: Rendered | undefined;
 afterEach(() => {
 	rendered?.unmount();
@@ -28,15 +29,15 @@ function makeRouter(entry: string, basepath?: string) {
 	return createRouter({
 		routeTree: root.addChildren([
 			page("/tabs/settings"),
-			page("/tabs/settings/licenses", <PageHeader title="Licenses" />),
+			page("/tabs/settings/licenses", <PageHeader title="Licenses" width="text" />),
 			page("/tabs/social"),
 			page("/tabs/social/buddy-reads"),
 			page(
 				"/tabs/social/buddy-read/$id",
-				<PageHeader title="Buddy read" backTo="/tabs/social/buddy-reads" />,
+				<PageHeader title="Buddy read" width="text" backTo="/tabs/social/buddy-reads" />,
 			),
 			page("/tabs/stats"),
-			page("/speed-test", <PageHeader title="Speed test" />),
+			page("/speed-test", <PageHeader title="Speed test" width="flow" />),
 			page("/tabs/library"),
 			page(
 				"/tabs/library/book/$id/edit",
@@ -47,7 +48,10 @@ function makeRouter(entry: string, basepath?: string) {
 					backTo="/tabs/library"
 				/>,
 			),
-			page("/detail/hidden", <PageHeader title="Dune" titleShown={false} />),
+			page(
+				"/tabs/library/all-series",
+				<PageHeader title="All series" width="grid" onBack={onCustomBack} />,
+			),
 		]),
 		history: createMemoryHistory({ initialEntries: [entry] }),
 		basepath,
@@ -113,16 +117,23 @@ describe("NotFound", () => {
 	});
 });
 
-describe("PageHeader title echo", () => {
-	it("keeps the page's one h1 out of the header when the page draws its own", async () => {
-		const router = makeRouter("/detail/hidden");
+describe("PageHeader layout", () => {
+	it("puts back, title and actions in the page's content column", async () => {
+		const router = makeRouter("/tabs/settings/licenses");
 		rendered = await render(<RouterProvider router={router} />);
 		await flush();
-		expect(rendered.container.querySelector("h1")).toBeNull();
-		const echo = [...rendered.container.querySelectorAll("p")].find(
-			(p) => p.textContent === "Dune",
-		);
-		expect(echo?.getAttribute("aria-hidden")).toBe("true");
-		expect(echo?.className).toContain("opacity-0");
+		const row = rendered.getButton("Back").parentElement;
+		expect(row?.className).toContain("max-w-[768px]");
+		expect(row?.className).toContain("mx-auto");
+		expect(row?.querySelector("h1")?.textContent).toBe("Licenses");
+	});
+
+	it("runs the page's own Back instead of history", async () => {
+		onCustomBack.mockClear();
+		const router = makeRouter("/tabs/settings");
+		await router.navigate({ to: "/tabs/library/all-series" });
+		await pressBack(router);
+		expect(onCustomBack).toHaveBeenCalledTimes(1);
+		expect(router.state.location.pathname).toBe("/tabs/library/all-series");
 	});
 });

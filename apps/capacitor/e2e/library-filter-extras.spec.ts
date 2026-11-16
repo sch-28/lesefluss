@@ -85,7 +85,7 @@ test("Length and Collection are facets", async ({ page }) => {
 		.first()
 		.click();
 	await page.getByRole("textbox", { name: "Name" }).fill("Shore");
-	await page.getByRole("button", { name: "EPUB Northlight Ada Vance" }).click();
+	await page.getByRole("button", { name: "Northlight Ada Vance" }).click();
 	await page.getByRole("button", { name: "Create with 1 book" }).click();
 	await expect(page).toHaveURL(/collection=/);
 	await page.getByRole("link", { name: "Library", exact: true }).click();

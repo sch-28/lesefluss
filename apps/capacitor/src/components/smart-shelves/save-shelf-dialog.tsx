@@ -76,7 +76,6 @@ export const SaveShelfDialog: React.FC<Props> = ({ open, onOpenChange, filter })
 			>
 				<InputHitArea>
 					<Input
-						autoFocus
 						value={name}
 						maxLength={SMART_SHELF_NAME_MAX}
 						placeholder="Shelf name"

@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
@@ -100,6 +100,7 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 	return (
 		<div className="bg-background">
 			<PageHeader
+				width="grid"
 				title="Web novels"
 				icon={BookOpen}
 				right={
@@ -132,50 +133,39 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 				</InputHitArea>
 
 				<div className="mt-3 flex flex-wrap gap-2">
-					<Button
-						variant={!provider ? "default" : "outline"}
-						size="sm"
-						onClick={() => setProvider(undefined)}
-					>
+					<FilterChip selected={!provider} onClick={() => setProvider(undefined)}>
 						All
-					</Button>
+					</FilterChip>
 					{VISIBLE_PROVIDERS.map((id) => (
-						<Button
-							key={id}
-							variant={provider === id ? "default" : "outline"}
-							size="sm"
-							onClick={() => setProvider(id)}
-						>
+						<FilterChip key={id} selected={provider === id} onClick={() => setProvider(id)}>
 							{providerLabel(id)}
-						</Button>
+						</FilterChip>
 					))}
 				</div>
 
 				{caps.statusFilter && query.trim() && (
 					<fieldset className="m-0 mt-2 flex flex-wrap gap-2 border-0 p-0" aria-label="Status">
 						{STATUS_OPTIONS.map((o) => (
-							<Button
+							<FilterChip
 								key={o.label}
-								variant={search.status === o.value ? "secondary" : "ghost"}
-								size="sm"
+								selected={search.status === o.value}
 								onClick={() => navigateSearch({ status: o.value })}
 							>
 								{o.label}
-							</Button>
+							</FilterChip>
 						))}
 					</fieldset>
 				)}
 				{windows.length > 0 && !query.trim() && (
 					<fieldset className="m-0 mt-2 flex flex-wrap gap-2 border-0 p-0" aria-label="Popular">
 						{windows.map((w) => (
-							<Button
+							<FilterChip
 								key={w}
-								variant={(search.window ?? windows[0]) === w ? "secondary" : "ghost"}
-								size="sm"
+								selected={(search.window ?? windows[0]) === w}
 								onClick={() => navigateSearch({ window: w })}
 							>
 								{WINDOW_LABELS[w]}
-							</Button>
+							</FilterChip>
 						))}
 					</fieldset>
 				)}

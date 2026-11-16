@@ -1,51 +1,27 @@
-import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, type Rendered, render } from "../../../test/render";
 
 vi.mock("../../../components/app-shell/page-header", () => ({
-	PageHeader: ({ title, titleShown }: { title: string; titleShown?: boolean }) => (
-		<header data-title-shown={String(titleShown)}>{title}</header>
-	),
+	PageHeader: ({ title }: { title: string }) => <header>{title}</header>,
 }));
 
 const { DetailShell } = await import("../detail-shell");
-
-let report: ((isIntersecting: boolean) => void) | undefined;
-beforeEach(() => {
-	vi.stubGlobal(
-		"IntersectionObserver",
-		class {
-			constructor(cb: (entries: { isIntersecting: boolean }[]) => void) {
-				report = (isIntersecting) => cb([{ isIntersecting }]);
-			}
-			observe() {}
-			disconnect() {}
-		},
-	);
-});
 
 let view: Rendered | undefined;
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
-	report = undefined;
-	vi.unstubAllGlobals();
 });
 
-const headerShown = () => view?.container.querySelector("header")?.dataset.titleShown;
+const headerTitle = () => view?.container.querySelector("header")?.textContent;
 
 describe("DetailShell title", () => {
-	it("keeps the header title hidden until the hero heading scrolls away, the heading staying in place", async () => {
+	it("names the page in the header at rest, beside the hero's own heading", async () => {
 		view = await render(
 			<DetailShell cover={null} title="Dune" primaryAction={{ label: "Read", onClick: vi.fn() }} />,
 		);
-		expect(view.container.querySelector("h1")?.textContent).toBe("Dune");
-		expect(headerShown()).toBe("false");
-		act(() => report?.(false));
-		expect(headerShown()).toBe("true");
-		act(() => report?.(true));
-		expect(headerShown()).toBe("false");
-		expect(view.container.querySelector("h1")?.textContent).toBe("Dune");
+		expect(headerTitle()).toBe("Dune");
+		expect(view.container.querySelector("section h2")?.textContent).toBe("Dune");
 	});
 
 	it("offers the primary action as the way on from an error", async () => {
@@ -61,6 +37,6 @@ describe("DetailShell title", () => {
 		expect(view.text()).toContain("Book not found.");
 		await click(view.getButton("Back to library"));
 		expect(back).toHaveBeenCalledTimes(1);
-		expect(headerShown()).toBe("undefined");
+		expect(headerTitle()).toBe("Book not found");
 	});
 });

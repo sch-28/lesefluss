@@ -14,25 +14,22 @@ const ExploreWishlist: React.FC = () => {
 	const { data: items } = queryHooks.useWishlist();
 	return (
 		<div className="bg-background">
-			<PageHeader title="Wishlist" icon={Heart} backTo="/tabs/explore" />
+			<PageHeader width="grid" title="Wishlist" icon={Heart} backTo="/tabs/explore" />
 			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				{items === undefined ? (
 					<CardGridSkeleton count={6} />
 				) : items.length === 0 ? (
 					<EmptyState
 						icon={Heart}
+						title="Nothing on your wishlist yet"
 						action={
-							<Button
-								variant="outline"
-								className="h-11 px-4"
-								onClick={() => router.navigate({ to: "/tabs/explore" })}
-							>
+							<Button variant="outline" onClick={() => router.navigate({ to: "/tabs/explore" })}>
 								<Compass />
 								Browse Explore
 							</Button>
 						}
 					>
-						Nothing on your wishlist yet. Save a title from its page in Explore to find it here.
+						Save a title from its page in Explore to find it here.
 					</EmptyState>
 				) : (
 					<ul className={`m-0 list-none p-0 ${EXPLORE_GRID_CLASS}`}>

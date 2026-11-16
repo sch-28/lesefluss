@@ -15,7 +15,7 @@ import {
 	Cpu,
 	Image as ImageIcon,
 	Layers,
-	MoreVertical,
+	MoreHorizontal,
 	Pencil,
 	Plus,
 	Users,
@@ -171,7 +171,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			},
 			{
 				label: "More actions",
-				icon: MoreVertical,
+				icon: MoreHorizontal,
 				onClick: () => {
 					if (book) openBookMenu(book);
 				},

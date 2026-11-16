@@ -75,7 +75,7 @@ function BlockedContent() {
 export default function BlockedUsersPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Blocked users" icon={ShieldOff} backTo="/tabs/social" />
+			<PageHeader width="text" title="Blocked users" icon={ShieldOff} backTo="/tabs/social" />
 			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/blocked">
 					<BlockedContent />

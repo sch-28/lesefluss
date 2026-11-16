@@ -1,9 +1,10 @@
 import { Button } from "@lesefluss/ui/button";
-import { ChevronLeft, Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasOpenOverlay } from "../../commands/guard";
 import { formatKey, matchesKey } from "../../commands/keys";
+import { PageHeader } from "../../components/app-shell/page-header";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { PageContainer } from "../../components/page-container";
 import { useMediaQuery } from "../../hooks/use-media-query";
@@ -57,7 +58,6 @@ function useSaveCancelKeys(onSave: () => void, onCancel: () => void) {
 
 type Props = {
 	title: string;
-	closeIcon: "back" | "close";
 	/** Beside the title: "● Unsaved", "1 of 3". */
 	status?: React.ReactNode;
 	cancelLabel: string;
@@ -76,7 +76,6 @@ type Props = {
  */
 export const BookEditLayout: React.FC<Props> = ({
 	title,
-	closeIcon,
 	status,
 	cancelLabel,
 	saveLabel,
@@ -102,7 +101,6 @@ export const BookEditLayout: React.FC<Props> = ({
 		return () => tabBarHidden.set(false);
 	}, [isWide]);
 
-	const CloseIcon = closeIcon === "back" ? ChevronLeft : X;
 	const actions = (
 		<>
 			<Button
@@ -126,22 +124,20 @@ export const BookEditLayout: React.FC<Props> = ({
 
 	return (
 		<div className="flex min-h-full flex-col">
-			<header className="sticky top-0 z-20 border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
-				<PageContainer width="text" className="flex h-12 items-center gap-2 px-2 md:h-14 md:px-4">
-					<button
-						type="button"
-						onClick={onCancel}
-						disabled={isBusy}
-						aria-label={cancelLabel}
-						className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-					>
-						<CloseIcon className="size-5" />
-					</button>
-					<h1 className="m-0 font-semibold text-base leading-5">{title}</h1>
-					<div className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{status}</div>
-					{isWide && <div className="flex gap-2">{actions}</div>}
-				</PageContainer>
-			</header>
+			{/* Back asks first when there are unsaved changes, as Cancel does: one Cancel, on the bar. */}
+			<PageHeader
+				title={title}
+				width="text"
+				onBack={() => {
+					if (!isBusy) onCancel();
+				}}
+				right={
+					<>
+						<div className="min-w-0 shrink truncate text-muted-foreground text-xs">{status}</div>
+						{isWide && <div className="flex shrink-0 gap-2">{actions}</div>}
+					</>
+				}
+			/>
 			<PageContainer as="main" width="text" className="flex-1 px-4 py-4 pb-24 md:pb-8">
 				{children}
 				{isWide && (

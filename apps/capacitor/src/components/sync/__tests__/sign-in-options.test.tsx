@@ -142,6 +142,9 @@ describe("SignInOptions", () => {
 		await openEmailForm();
 		expect(input("Email")).toBeTruthy();
 		expect(toggle.getAttribute("aria-expanded")).toBe("true");
+		expect(
+			view.container.querySelector("button[type='submit']")?.getAttribute("data-variant"),
+		).toBe("default");
 	});
 
 	it("leads with the browser normally and with the phone in e-ink mode", async () => {

@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { SearchX } from "lucide-react";
 import type React from "react";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import CoverImage from "../../components/cover-image";
@@ -90,7 +91,9 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	}
 
 	if (results.length === 0 && challengeProviders.length === 0) {
-		return <EmptyState>No results for "{trimmed}". Try a different title.</EmptyState>;
+		return (
+			<EmptyState icon={SearchX}>No results for "{trimmed}". Try a different title.</EmptyState>
+		);
 	}
 
 	return (
@@ -141,7 +144,11 @@ const PagedSearch: React.FC<{
 		);
 	}
 	if (results.length === 0 && challengeProviders.length === 0) {
-		return <EmptyState>No results for "{query.trim()}". Try a different title.</EmptyState>;
+		return (
+			<EmptyState icon={SearchX}>
+				No results for "{query.trim()}". Try a different title.
+			</EmptyState>
+		);
 	}
 	return (
 		<div className="flex flex-col gap-3 pt-3">
@@ -292,7 +299,7 @@ const ResultListItem: React.FC<{
 						{result.title}
 					</div>
 					{result.author && (
-						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.8rem] text-muted-foreground">
+						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 							{result.author}
 						</div>
 					)}

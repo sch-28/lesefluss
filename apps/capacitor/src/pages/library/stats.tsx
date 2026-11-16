@@ -43,7 +43,7 @@ const Stats: React.FC = () => {
 
 	return (
 		<div className="bg-background text-foreground">
-			<TabHeader title="Stats" icon={BarChart3} />
+			<TabHeader width="text" title="Stats" icon={BarChart3} />
 			<PageContainer width="text">
 				<Tabs
 					value={tab}

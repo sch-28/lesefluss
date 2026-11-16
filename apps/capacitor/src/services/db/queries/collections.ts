@@ -391,15 +391,22 @@ async function highestSeriesIndex(collectionId: string): Promise<number> {
 
 /**
  * A new collection holding `bookIds`; an ordered one numbers them in the order
- * given. The adapter commits each statement on its own, so a failure part way
- * leaves the collection with the books written so far.
+ * given. A series is always ordered and is the series `name` derives, so a live
+ * one of that name takes the books after its last #N. The adapter commits each
+ * statement on its own, so a failure part way leaves the collection with the
+ * books written so far.
  */
 export async function createCollectionWithBooks(
 	name: string,
 	bookIds: readonly string[],
-	options: { ordered?: boolean } = {},
+	options: { ordered?: boolean; series?: boolean } = {},
 	now = serverNow(),
 ): Promise<Collection> {
+	if (options.series) {
+		const series = await createSeriesCollection(name, now);
+		if (bookIds.length > 0) await appendBooksToCollection(series.id, bookIds, now);
+		return series;
+	}
 	const ordered = options.ordered ?? false;
 	const row = await createCollection(name, now);
 	if (ordered) await setCollectionOrdered(row.id, true, now);

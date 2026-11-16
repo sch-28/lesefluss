@@ -21,6 +21,12 @@ type Props = {
 	children: React.ReactNode;
 };
 
+/** The first field would open with its focus ring lit; the sheet on touch already skips it (vaul). */
+function focusDialogNotField(e: Event) {
+	e.preventDefault();
+	(e.currentTarget as HTMLElement | null)?.focus();
+}
+
 /**
  * A short text-entry dialog: a bottom sheet on touch, a centred dialog on a wide
  * screen with a mouse, web or native. On touch the native shell resizes the
@@ -47,6 +53,7 @@ export const EntryDialog: React.FC<Props> = ({
 				description={description}
 				dismissable={dismissable}
 				contentClassName={contentClassName}
+				onOpenAutoFocus={focusDialogNotField}
 			>
 				{children}
 			</Modal>

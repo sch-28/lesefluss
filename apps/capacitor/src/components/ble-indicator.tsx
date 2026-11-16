@@ -1,3 +1,4 @@
+import { Button } from "@lesefluss/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { Bluetooth } from "lucide-react";
 import type React from "react";
@@ -23,13 +24,14 @@ const BLEIndicator: React.FC = () => {
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
-				<button
-					type="button"
+				<Button
+					variant="ghost"
+					size="icon"
 					aria-label="Bluetooth device status"
-					className={`relative mr-3 inline-flex size-7 items-center justify-center text-foreground transition-opacity before:absolute before:-inset-2 before:content-[''] ${isTransitioning ? "opacity-40" : "opacity-60"}`}
+					className={isTransitioning ? "opacity-40" : "opacity-60"}
 				>
-					<Bluetooth className="size-[18px]" />
-				</button>
+					<Bluetooth />
+				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-auto min-w-[200px]">
 				<div className="flex flex-col gap-1">

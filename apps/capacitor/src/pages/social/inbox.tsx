@@ -448,7 +448,7 @@ function InboxContent() {
 export default function InboxPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Inbox" icon={Inbox} backTo="/tabs/social" />
+			<PageHeader width="text" title="Inbox" icon={Inbox} backTo="/tabs/social" />
 			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/inbox">
 					<InboxContent />

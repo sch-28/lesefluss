@@ -85,7 +85,7 @@ describe("Stats cards while their query loads", () => {
 				<PersonalBests />
 			</>,
 		);
-		const headed = [...view.container.querySelectorAll("section > header:first-child > h2")];
+		const headed = [...view.container.querySelectorAll("section > header:first-child h2")];
 		expect(headed.map((h) => h.textContent)).toEqual(["Totals", "Records", "Personal bests"]);
 		expect(view.container.querySelectorAll("h2")).toHaveLength(3);
 	});

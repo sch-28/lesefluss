@@ -9,6 +9,7 @@ import type React from "react";
 import { queryHooks } from "../services/db/hooks";
 import type { Book } from "../services/db/schema";
 import CoverImage from "./cover-image";
+import { TextCover } from "./text-cover";
 
 interface Props {
 	book: Book;
@@ -42,11 +43,7 @@ const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => 
 			<CoverImage
 				src={cover}
 				alt={book.title}
-				fallback={
-					<span className="font-semibold text-[0.6rem] text-muted-foreground tracking-wide">
-						{book.fileFormat.toUpperCase()}
-					</span>
-				}
+				fallback={<TextCover title={book.title} author={book.author} compact={size === "sm"} />}
 			/>
 		</div>
 	);

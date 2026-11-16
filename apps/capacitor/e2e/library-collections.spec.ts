@@ -20,8 +20,8 @@ async function openHolidayCollection(page: Page) {
 	await expect(page).toHaveURL(/\/tabs\/library\/collections\/new/);
 
 	await page.getByRole("textbox", { name: "Name" }).fill("Holiday");
-	await page.getByRole("button", { name: "EPUB Riverkeep Bo Lind" }).click();
-	await page.getByRole("button", { name: "EPUB Tidewater Ada Vance" }).click();
+	await page.getByRole("button", { name: "Riverkeep Bo Lind" }).click();
+	await page.getByRole("button", { name: "Tidewater Ada Vance" }).click();
 	await page.getByRole("button", { name: "Create with 2 books" }).click();
 
 	// Every row keeps its book count and its options button.
@@ -68,7 +68,7 @@ test.describe("on desktop", () => {
 		await expect(series.getByRole("link", { name: "Tide 2" })).toBeVisible();
 		await series.getByRole("link", { name: "Tide 2" }).click();
 
-		await expect(page.getByRole("heading", { name: "Tide", level: 2 })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Tide", level: 1 })).toBeVisible();
 		const first = page.getByRole("button", { name: "Northlight", exact: true });
 		const second = page.getByRole("button", { name: "Tidewater", exact: true });
 		await expect(first).toBeVisible();
@@ -93,7 +93,7 @@ test.describe("on a phone", () => {
 			.getByTestId("shelf-series")
 			.filter({ hasText: "Tide" })
 			.click();
-		await expect(page.getByRole("heading", { name: "Tide", level: 2 })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Tide", level: 1 })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Riverkeep", exact: true })).toHaveCount(0);
 	});
 

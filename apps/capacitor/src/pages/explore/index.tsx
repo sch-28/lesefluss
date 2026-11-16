@@ -148,7 +148,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 
 	return (
 		<div className="bg-background">
-			<TabHeader>
+			<TabHeader width="grid">
 				<Compass className="size-5 shrink-0 text-muted-foreground" />
 				<h1 className="m-0 flex-1 font-semibold text-base leading-none">Explore</h1>
 				{mode === "catalog" && (

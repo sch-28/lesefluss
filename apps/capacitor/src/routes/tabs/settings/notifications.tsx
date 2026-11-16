@@ -144,7 +144,7 @@ function NotificationSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Notifications" icon={Bell} />
+			<PageHeader width="text" title="Notifications" icon={Bell} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{body}
 			</PageContainer>

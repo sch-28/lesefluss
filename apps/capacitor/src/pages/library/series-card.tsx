@@ -12,8 +12,9 @@
 import type React from "react";
 import { useId } from "react";
 import CoverImage from "../../components/cover-image";
+import { TextCover } from "../../components/text-cover";
 import type { Series } from "../../services/db/schema";
-import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
+import { chapterCountLabel } from "../../services/serial-scrapers";
 import type { SeriesChapterLength } from "../../services/stats/what-if";
 import { type CardFieldId, CardFieldSlot, DEFAULT_CARD_FIELDS } from "./card-fields";
 import { SeriesCardTime } from "./series-reading-time";
@@ -58,11 +59,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
-					fallback={
-						<span className="px-1 text-center font-semibold text-[0.6rem] text-muted-foreground">
-							{providerLabel(series.provider)}
-						</span>
-					}
+					fallback={<TextCover title={series.title} />}
 				/>
 				{/* Chapter-count badge */}
 				{hasChapterBadge && (

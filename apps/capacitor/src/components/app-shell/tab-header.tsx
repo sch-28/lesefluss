@@ -1,7 +1,11 @@
 import type { ComponentType, ReactNode } from "react";
+import { PageContainer, type PageWidth } from "../page-container";
+import { HEADER_SHELL, HEADER_TITLE } from "./page-header";
 
 interface TabHeaderProps {
 	title?: string;
+	/** The page's content width, so the header lines up with the content column. */
+	width: PageWidth;
 	icon?: ComponentType<{ className?: string }>;
 	logo?: string;
 	right?: ReactNode;
@@ -13,35 +17,25 @@ interface TabHeaderProps {
  * safe-area-inset-top padding so its background covers the status bar.
  * Detail pages use PageHeader instead, which renders a back chevron.
  */
-export function TabHeader({ title, icon: Icon, logo, right, children }: TabHeaderProps) {
-	const shellClass =
-		"sticky top-0 z-20 flex flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur";
-	const innerClass = "flex h-12 items-center gap-2 px-3";
-
-	if (children) {
-		return (
-			<header className={shellClass}>
-				<div className={innerClass}>{children}</div>
-			</header>
-		);
-	}
+export function TabHeader({ title, width, icon: Icon, logo, right, children }: TabHeaderProps) {
 	return (
-		<header className={shellClass}>
-			<div className={innerClass}>
-				{logo && <img src={logo} alt="" className="size-5 shrink-0" />}
-				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-				{/* `min-w-0` so the title gives way first: without it the flex item cannot
-				    shrink below the width of its longest word, and Library's row of six
-				    actions is pushed off the right edge on a narrow phone. */}
-				{/* data-clips-text: the truncation is meant (e2e layout check). */}
-				<h1
-					data-clips-text
-					className="m-0 min-w-0 flex-1 truncate font-semibold text-base leading-5"
-				>
-					{title}
-				</h1>
-				{right}
-			</div>
+		<header className={HEADER_SHELL}>
+			<PageContainer width={width} className="flex h-12 items-center gap-2 px-4">
+				{children ?? (
+					<>
+						{logo && <img src={logo} alt="" className="size-5 shrink-0" />}
+						{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
+						{/* `min-w-0` so the title gives way first: without it the flex item cannot
+						    shrink below the width of its longest word, and Library's row of six
+						    actions is pushed off the right edge on a narrow phone. */}
+						{/* data-clips-text: the truncation is meant (e2e layout check). */}
+						<h1 data-clips-text className={HEADER_TITLE}>
+							{title}
+						</h1>
+						{right}
+					</>
+				)}
+			</PageContainer>
 		</header>
 	);
 }

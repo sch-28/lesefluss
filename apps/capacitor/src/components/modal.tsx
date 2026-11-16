@@ -18,6 +18,7 @@ export interface ModalProps {
 	/** When false, suppresses backdrop/escape dismiss. Default true. */
 	dismissable?: boolean;
 	contentClassName?: string;
+	onOpenAutoFocus?: (e: Event) => void;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -29,11 +30,13 @@ export const Modal: React.FC<ModalProps> = ({
 	footer,
 	dismissable = true,
 	contentClassName,
+	onOpenAutoFocus,
 }) => {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange} dismissible={dismissable}>
 			<DialogContent
 				showCloseButton={dismissable}
+				onOpenAutoFocus={onOpenAutoFocus}
 				onInteractOutside={(e) => {
 					if (!dismissable) e.preventDefault();
 				}}

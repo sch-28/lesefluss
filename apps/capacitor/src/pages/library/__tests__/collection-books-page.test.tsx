@@ -67,7 +67,10 @@ function makeRouter(at: string) {
 	const create = createRoute({
 		getParentRoute: () => root,
 		path: "/tabs/library/collections/new",
-		component: () => <CollectionBooksPage mode={{ kind: "create" }} />,
+		validateSearch: (s: Record<string, unknown>) => ({ series: s.series === true }),
+		component: () => (
+			<CollectionBooksPage mode={{ kind: "create", series: create.useSearch().series }} />
+		),
 	});
 	const add = createRoute({
 		getParentRoute: () => root,
@@ -133,6 +136,7 @@ describe("CollectionBooksPage", () => {
 			name: "Sci-fi",
 			bookIds: ["b3", "b1"],
 			ordered: false,
+			series: false,
 		});
 		expect(body()).not.toContain("Discard");
 		expect(location().pathname).toBe("/tabs/library");
@@ -143,7 +147,12 @@ describe("CollectionBooksPage", () => {
 		await open("/tabs/library/collections/new");
 		await type("collection-name", "Later");
 		await click(button("Create collection"));
-		expect(createWithBooks).toHaveBeenCalledWith({ name: "Later", bookIds: [], ordered: false });
+		expect(createWithBooks).toHaveBeenCalledWith({
+			name: "Later",
+			bookIds: [],
+			ordered: false,
+			series: false,
+		});
 	});
 
 	it("creates from the keyboard's action key, which submits the name's form", async () => {
@@ -154,7 +163,77 @@ describe("CollectionBooksPage", () => {
 			form.requestSubmit();
 		});
 		await flush();
-		expect(createWithBooks).toHaveBeenCalledWith({ name: "Later", bookIds: [], ordered: false });
+		expect(createWithBooks).toHaveBeenCalledWith({
+			name: "Later",
+			bookIds: [],
+			ordered: false,
+			series: false,
+		});
+	});
+
+	it("opened as a series, creates a numbered series and leaves without asking when untouched", async () => {
+		await open("/tabs/library/collections/new?series=true");
+		expect(body()).toContain("New series");
+		expect((document.getElementById("collection-ordered") as HTMLButtonElement).disabled).toBe(
+			true,
+		);
+		await type("collection-name", "Dune");
+		await click(row("b1"));
+		await click(button("Create with 1 book"));
+		expect(createWithBooks).toHaveBeenCalledWith({
+			name: "Dune",
+			bookIds: ["b1"],
+			ordered: true,
+			series: true,
+		});
+	});
+
+	it("As series turns a new collection into a series", async () => {
+		await open("/tabs/library/collections/new");
+		await click(document.getElementById("collection-series") as HTMLElement);
+		expect(body()).toContain("also found from book metadata");
+		await type("collection-name", "Foundation");
+		await click(button("Create series"));
+		expect(createWithBooks).toHaveBeenCalledWith({
+			name: "Foundation",
+			bookIds: [],
+			ordered: true,
+			series: true,
+		});
+	});
+
+	it("opened as a series and left untouched, Cancel leaves without a prompt", async () => {
+		await open("/tabs/library/collections/new?series=true");
+		await click(button("Cancel"));
+		expect(body()).not.toContain("Discard");
+	});
+
+	it("opened as a series, unticking As series asks before leaving and saves a plain collection", async () => {
+		await open("/tabs/library/collections/new?series=true");
+		await click(document.getElementById("collection-series") as HTMLElement);
+		await click(button("Cancel"));
+		expect(body()).toContain("Discard changes?");
+		await click(button("Keep editing"));
+		await type("collection-name", "Mixed");
+		await click(button("Create collection"));
+		expect(createWithBooks).toHaveBeenCalledWith({
+			name: "Mixed",
+			bookIds: [],
+			ordered: false,
+			series: false,
+		});
+	});
+
+	it("ticking and unticking As series leaves a new collection clean and unordered", async () => {
+		await open("/tabs/library/collections/new");
+		const asSeries = document.getElementById("collection-series") as HTMLElement;
+		await click(asSeries);
+		await click(asSeries);
+		expect(document.getElementById("collection-ordered")?.getAttribute("aria-checked")).toBe(
+			"false",
+		);
+		await click(button("Cancel"));
+		expect(body()).not.toContain("Discard");
 	});
 
 	it("asks about changes, not picks, when only Keep in order was switched on", async () => {

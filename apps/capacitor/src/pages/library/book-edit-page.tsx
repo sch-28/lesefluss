@@ -158,7 +158,6 @@ const EditBookForm: React.FC<{
 	return (
 		<BookEditLayout
 			title="Edit book"
-			closeIcon="back"
 			status={isDirty ? <UnsavedMark isWide={isWide} /> : null}
 			cancelLabel="Cancel"
 			saveLabel="Save"

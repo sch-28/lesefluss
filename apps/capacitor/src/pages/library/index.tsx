@@ -15,6 +15,7 @@ import {
 	Plus,
 	RefreshCcw,
 	Search,
+	SearchX,
 	X,
 } from "lucide-react";
 import type React from "react";
@@ -23,12 +24,14 @@ import { importRequest } from "../../commands/global";
 import { withKey } from "../../commands/keys";
 import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
+import { PageHeader } from "../../components/app-shell/page-header";
 import { addButtonShown, tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
 import { CollectionMenuButton } from "../../components/collections/collection-actions";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { EmptyState } from "../../components/empty-state";
 import { HeaderGoalRing } from "../../components/header-goal-ring";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
@@ -619,105 +622,185 @@ const Library: React.FC = () => {
 		setBooksDragData(e.dataTransfer, ids);
 	};
 
+	const isSubPage = !!activeCollection || !!activeShelf;
+	const leaveSubPage = () => navigate({ to: "/tabs/library", search: {} });
+	const viewControls = (
+		<>
+			{controls.search && (
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Search library"
+					title={withKey("Search library", searchKey)}
+					onClick={toggleSearch}
+				>
+					<Search />
+				</Button>
+			)}
+			{controls.filter && (
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label={filterCount > 0 ? `Filter, ${filterCount} active` : "Filter"}
+					title="Filter"
+					className="relative"
+					onClick={() => setIsFilterOpen(true)}
+				>
+					<FilterIcon />
+					{filterCount > 0 && (
+						<span
+							aria-hidden
+							className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
+						>
+							{filterCount}
+						</span>
+					)}
+				</Button>
+			)}
+			{controls.sort && (
+				<SortPopover
+					trigger={
+						<Button variant="ghost" size="icon" aria-label="Sort" title="Sort">
+							<ArrowUpDown />
+						</Button>
+					}
+					sortBy={sortBy}
+					onSort={(s) => setSort({ sortBy: s, reversed: false })}
+					reversed={sort.reversed}
+					onReversed={(r) => setSort({ reversed: r })}
+					thenBy={sort.thenBy ?? "none"}
+					onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
+				/>
+			)}
+			{controls.view && (
+				<ViewSheet
+					isDesktop={isDesktop}
+					view={shownView}
+					onView={setViewMode}
+					canTable={isDesktop}
+					cardFields={{
+						settings: cardFields.settings,
+						onToggle: cardFields.toggle,
+						renderPreview: renderCardPreview,
+					}}
+					columns={{
+						ids: columnIds,
+						onToggle: libraryView.toggleColumn,
+						onMove: libraryView.moveColumn,
+					}}
+					groupBy={groupBy}
+					onGroupBy={setGroupBy}
+					open={isViewOpen}
+					onOpenChange={(open) => {
+						setViewOpen(open);
+						if (!open) setGroupByKeyed(false);
+					}}
+					focusGroupBy={isGroupByKeyed}
+				/>
+			)}
+		</>
+	);
+
+	// Beside the title on wider screens; on a phone the header row has no room, so it drops below.
+	const updateShelfButton = (className?: string) =>
+		activeShelf && (
+			<Button
+				size="sm"
+				variant="outline"
+				className={className}
+				disabled={!canSaveFilter || updateShelf.isPending}
+				onClick={() =>
+					updateShelf.mutate({
+						id: activeShelf.id,
+						conditions: serializeTree(filterToTree(activeFilter)),
+					})
+				}
+			>
+				Update shelf
+			</Button>
+		);
+
 	return (
 		// The grid's virtualizer observes this root for header changes, so the
 		// drag handler lives here rather than on a wrapper around the grid.
 		<div className="bg-background" onDragStart={canDragBooks ? handleBookDragStart : undefined}>
-			<TabHeader
-				icon={LibraryIcon}
-				title="Library"
-				right={
-					// 12px apart, so each icon's 44px hit area stays whole between its neighbours.
-					<div className="flex items-center gap-3">
-						<HeaderGoalRing />
-						{controls.search && (
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label="Search library"
-								title={withKey("Search library", searchKey)}
-								onClick={toggleSearch}
-							>
-								<Search />
-							</Button>
-						)}
-						{controls.filter && (
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label={filterCount > 0 ? `Filter, ${filterCount} active` : "Filter"}
-								title="Filter"
-								className="relative"
-								onClick={() => setIsFilterOpen(true)}
-							>
-								<FilterIcon />
-								{filterCount > 0 && (
-									<span
-										aria-hidden
-										className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
-									>
-										{filterCount}
-									</span>
-								)}
-							</Button>
-						)}
-						{controls.sort && (
-							<SortPopover
-								trigger={
-									<Button variant="ghost" size="icon" aria-label="Sort" title="Sort">
-										<ArrowUpDown />
-									</Button>
-								}
-								sortBy={sortBy}
-								onSort={(s) => setSort({ sortBy: s, reversed: false })}
-								reversed={sort.reversed}
-								onReversed={(r) => setSort({ reversed: r })}
-								thenBy={sort.thenBy ?? "none"}
-								onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
+			{activeCollection ? (
+				<PageHeader
+					title={activeCollection.name}
+					width="grid"
+					onBack={leaveSubPage}
+					right={
+						<div className="flex shrink-0 items-center gap-3">
+							{activeCollection.ordered ? (
+								<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
+									<Plus />
+								</Button>
+							) : (
+								<>
+									<SubPageCount count={activeCollection.bookCount} />
+									{viewControls}
+								</>
+							)}
+							<CollectionMenuButton
+								collection={activeCollection}
+								allCollections={collectionsQuery.data ?? []}
 							/>
-						)}
-						{controls.view && (
-							<ViewSheet
-								isDesktop={isDesktop}
-								view={shownView}
-								onView={setViewMode}
-								canTable={isDesktop}
-								cardFields={{
-									settings: cardFields.settings,
-									onToggle: cardFields.toggle,
-									renderPreview: renderCardPreview,
-								}}
-								columns={{
-									ids: columnIds,
-									onToggle: libraryView.toggleColumn,
-									onMove: libraryView.moveColumn,
-								}}
-								groupBy={groupBy}
-								onGroupBy={setGroupBy}
-								open={isViewOpen}
-								onOpenChange={(open) => {
-									setViewOpen(open);
-									if (!open) setGroupByKeyed(false);
-								}}
-								focusGroupBy={isGroupByKeyed}
-							/>
-						)}
-						{!IS_WEB && <BLEIndicator />}
-						{showSync && (
-							<Button
-								variant="ghost"
-								size="icon"
-								disabled={isSyncing || isTransferring}
-								onClick={handleRefresh}
-								aria-label="Sync"
-								title="Sync"
-							>
-								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-							</Button>
-						)}
-					</div>
-				}
-			/>
+						</div>
+					}
+				/>
+			) : activeShelf ? (
+				<>
+					<PageHeader
+						title={activeShelf.name}
+						width="grid"
+						onBack={leaveSubPage}
+						right={
+							<div className="flex shrink-0 items-center gap-3" data-testid="smart-shelf-header">
+								<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
+								{!activeShelf.isBuiltIn && shelfIsEdited && updateShelfButton("max-sm:hidden")}
+								{viewControls}
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label={`${activeShelf.name} options`}
+									onClick={() => setShelfMenuFor(activeShelf)}
+								>
+									<MoreHorizontal />
+								</Button>
+							</div>
+						}
+					/>
+					{!activeShelf.isBuiltIn && shelfIsEdited && (
+						<div className="flex justify-end px-4 pt-2 sm:hidden">{updateShelfButton()}</div>
+					)}
+				</>
+			) : (
+				<TabHeader
+					width="grid"
+					icon={LibraryIcon}
+					title="Library"
+					right={
+						// 12px apart, so each icon's 44px hit area stays whole between its neighbours.
+						<div className="flex items-center gap-3">
+							<HeaderGoalRing />
+							{viewControls}
+							{!IS_WEB && <BLEIndicator />}
+							{showSync && (
+								<Button
+									variant="ghost"
+									size="icon"
+									disabled={isSyncing || isTransferring}
+									onClick={handleRefresh}
+									aria-label="Sync"
+									title="Sync"
+								>
+									{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+								</Button>
+							)}
+						</div>
+					}
+				/>
+			)}
 
 			{selection.isSelecting && <BulkActionBar selection={selection} />}
 
@@ -743,73 +826,6 @@ const Library: React.FC = () => {
 				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
 			)}
 
-			{activeCollection && !activeCollection.ordered && (
-				<div className="flex items-center gap-2 border-border border-b px-4 py-2">
-					<h2 className="m-0 min-w-0 flex-1 truncate font-semibold text-base">
-						{activeCollection.name}
-						<span className="ml-2 font-normal text-muted-foreground text-sm tabular-nums">
-							{activeCollection.bookCount}
-						</span>
-					</h2>
-					<CollectionMenuButton
-						collection={activeCollection}
-						allCollections={collectionsQuery.data ?? []}
-					/>
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label="Show all books"
-						onClick={() => navigate({ to: "/tabs/library", search: {} })}
-					>
-						<X />
-					</Button>
-				</div>
-			)}
-
-			{activeShelf && (
-				<div
-					className="flex items-center gap-2 border-border border-b px-4 py-2"
-					data-testid="smart-shelf-header"
-				>
-					<h2 className="m-0 min-w-0 flex-1 truncate font-semibold text-base">
-						{activeShelf.name}
-						<span className="ml-2 font-normal text-muted-foreground text-sm tabular-nums">
-							{smart.counts.get(activeShelf.id) ?? 0}
-						</span>
-					</h2>
-					{!activeShelf.isBuiltIn && shelfIsEdited && (
-						<Button
-							size="sm"
-							variant="outline"
-							disabled={!canSaveFilter || updateShelf.isPending}
-							onClick={() =>
-								updateShelf.mutate({
-									id: activeShelf.id,
-									conditions: serializeTree(filterToTree(activeFilter)),
-								})
-							}
-						>
-							Update shelf
-						</Button>
-					)}
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label={`${activeShelf.name} options`}
-						onClick={() => setShelfMenuFor(activeShelf)}
-					>
-						<MoreHorizontal />
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label="Show all books"
-						onClick={() => navigate({ to: "/tabs/library", search: {} })}
-					>
-						<X />
-					</Button>
-				</div>
-			)}
 			<ShelfActions
 				shelf={shelfMenuFor}
 				onClose={() => setShelfMenuFor(null)}
@@ -899,7 +915,7 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
+			{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && !isSubPage && (
 				<div className="flex items-start gap-3 border-border border-b bg-muted/60 px-4 py-3 text-sm">
 					<span className="flex-1 text-muted-foreground">
 						Your books are stored locally in this browser only and will be lost if you clear browser
@@ -923,12 +939,11 @@ const Library: React.FC = () => {
 				</div>
 			)}
 
-			{IS_WEB && <WebLimitsLine />}
+			{IS_WEB && !isSubPage && <WebLimitsLine />}
 
 			{activeCollection?.ordered ? (
 				<OrderedCollectionView
 					collection={activeCollection}
-					collections={collectionsQuery.data ?? []}
 					books={books}
 					covers={covers}
 					onOpenBook={openBook}
@@ -936,45 +951,76 @@ const Library: React.FC = () => {
 					canDrag={canDragBooks}
 				/>
 			) : isCollectionEmpty ? (
-				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
-						No books in this collection yet
-					</h2>
-					<p className="m-0">Pick books you already have, or import new ones straight into it.</p>
-					<div className="mt-5 flex flex-col items-center gap-2">
-						<Button onClick={openAddBooks}>
-							<Plus className="size-4" />
-							Add books
-						</Button>
-						<Button
-							variant="ghost"
-							onClick={() => setImportSheetOpen(true)}
-							disabled={imports.isImporting || isTransferring}
-						>
-							Import files
-						</Button>
-					</div>
-				</div>
+				<EmptyState
+					icon={BookOpen}
+					title="No books in this collection yet"
+					className="min-h-[60vh]"
+					action={
+						<>
+							<Button onClick={openAddBooks}>
+								<Plus className="size-4" />
+								Add books
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setImportSheetOpen(true)}
+								disabled={imports.isImporting || isTransferring}
+							>
+								Import files
+							</Button>
+						</>
+					}
+				>
+					Pick books you already have, or import new ones straight into it.
+				</EmptyState>
 			) : books.length === 0 && series.length === 0 ? (
-				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<BookOpen className="mb-4 size-16 opacity-40" />
-					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">No books yet</h2>
-					<p className="m-0">Import a file or paste text to start reading.</p>
-					<Button
-						className="mt-5"
-						onClick={() => setImportSheetOpen(true)}
-						disabled={imports.isImporting || isTransferring}
-					>
-						<Plus className="size-4" />
-						Import books
-					</Button>
-					{isGlobalImporting && <p className="m-0 mt-4">Importing...</p>}
-				</div>
+				<EmptyState
+					icon={BookOpen}
+					title="No books yet"
+					className="min-h-[60vh]"
+					action={
+						<>
+							<Button
+								onClick={() => setImportSheetOpen(true)}
+								disabled={imports.isImporting || isTransferring}
+							>
+								<Plus className="size-4" />
+								Import books
+							</Button>
+							{isGlobalImporting && (
+								<p className="m-0 text-muted-foreground text-sm">Importing...</p>
+							)}
+						</>
+					}
+				>
+					Import a file or paste text to start reading.
+				</EmptyState>
 			) : visibleItems.length === 0 ? (
 				collectionId && !membersQuery.isSuccess ? null : (
-					<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-						<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
-					</div>
+					<EmptyState
+						icon={isNarrowed ? SearchX : BookOpen}
+						title={isNarrowed ? "No books match" : "Nothing to show"}
+						className="min-h-[60vh]"
+						action={
+							isNarrowed &&
+							!activeShelf && (
+								<Button
+									variant="outline"
+									onClick={() => {
+										setFilter({});
+										closeSearch();
+									}}
+								>
+									Clear search and filters
+								</Button>
+							)
+						}
+					>
+						{isNarrowed &&
+							(activeShelf
+								? "No book fits this shelf's rules yet."
+								: "Try another search, or clear the filters.")}
+					</EmptyState>
 				)
 			) : shownView === "table" ? (
 				<LibraryTable
@@ -1144,3 +1190,7 @@ const Library: React.FC = () => {
 };
 
 export default Library;
+
+const SubPageCount: React.FC<{ count: number }> = ({ count }) => (
+	<span className="text-muted-foreground text-sm tabular-nums max-sm:hidden">{count}</span>
+);

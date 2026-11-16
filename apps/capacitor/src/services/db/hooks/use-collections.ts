@@ -101,8 +101,11 @@ function useCreateCollection() {
 
 function useCreateCollectionWithBooks() {
 	return useCollectionMutation(
-		(vars: { name: string; bookIds: readonly string[]; ordered?: boolean }) =>
-			queries.createCollectionWithBooks(vars.name, vars.bookIds, { ordered: vars.ordered }),
+		(vars: { name: string; bookIds: readonly string[]; ordered?: boolean; series?: boolean }) =>
+			queries.createCollectionWithBooks(vars.name, vars.bookIds, {
+				ordered: vars.ordered,
+				series: vars.series,
+			}),
 	);
 }
 

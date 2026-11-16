@@ -369,7 +369,12 @@ export default function SocialPage() {
 	const { isLoggedIn } = useSyncContext();
 	return (
 		<div className="bg-background">
-			<TabHeader title="Social" icon={Users} right={isLoggedIn ? <SocialMenu /> : undefined} />
+			<TabHeader
+				width="text"
+				title="Social"
+				icon={Users}
+				right={isLoggedIn ? <SocialMenu /> : undefined}
+			/>
 			<PageContainer width="text" className="px-4 pb-10">
 				<SocialGate returnTo="/tabs/social">
 					<SocialContent />

@@ -28,7 +28,7 @@ function GeneralSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="General" icon={SlidersHorizontal} />
+			<PageHeader width="text" title="General" icon={SlidersHorizontal} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Theme">
 					<SettingsRow stacked>

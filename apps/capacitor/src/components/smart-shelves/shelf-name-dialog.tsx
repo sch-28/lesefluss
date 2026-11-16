@@ -49,7 +49,6 @@ export const ShelfNameDialog: React.FC<Props> = ({
 			>
 				<InputHitArea>
 					<Input
-						autoFocus
 						value={name}
 						maxLength={SMART_SHELF_NAME_MAX}
 						placeholder="Shelf name"

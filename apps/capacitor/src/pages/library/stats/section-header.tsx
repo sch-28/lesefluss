@@ -1,26 +1,7 @@
 import { cn } from "@lesefluss/ui/utils";
+import { SectionHeader } from "../../../components/section-header";
 
-/** The one section header on the Stats tabs: a title and an optional muted aside. */
-export function SectionHeader({
-	title,
-	aside,
-	className,
-}: {
-	title: string;
-	aside?: React.ReactNode;
-	className?: string;
-}) {
-	return (
-		<header className={cn("mb-3 flex items-baseline justify-between gap-3", className)}>
-			<h2 className="m-0 font-semibold text-[1.0625rem]">{title}</h2>
-			{aside != null && (
-				<span className="shrink-0 text-[0.8125rem] text-muted-foreground tabular-nums">
-					{aside}
-				</span>
-			)}
-		</header>
-	);
-}
+export { SectionHeader };
 
 /** A Stats section: page gutter and the one vertical rhythm between sections. */
 export function StatsSection({

@@ -1,7 +1,5 @@
 import { MIN_MODEL_ACTIVE_MS, type SpeedModel } from "@lesefluss/core";
-import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
-import { useNavigate } from "@tanstack/react-router";
 import {
 	BookOpen,
 	Gauge,
@@ -13,6 +11,7 @@ import {
 	Type,
 } from "lucide-react";
 import { ReservedCard } from "../../../../components/reserved-card";
+import { SpeedTestButton } from "../../../../components/speed-test-button";
 import { queryHooks } from "../../../../services/db/hooks";
 import type { Insight, InsightId, LockedInsight } from "../../../../services/stats/insights";
 import { type SpeedView, timeSavedMs } from "../../../../services/stats/speed-tab";
@@ -202,7 +201,6 @@ export function SpeedInsights({ model, view }: { model: SpeedModel; view: SpeedV
 const PERSONAL_BESTS_HEIGHT = 2 * STAT_ROW_HEIGHT + 2;
 
 function SpeedTestRow() {
-	const navigate = useNavigate();
 	const latest = queryHooks.useSpeedTests().data?.[0];
 	return (
 		<StatRow
@@ -213,17 +211,7 @@ function SpeedTestRow() {
 					? `${formatDate(latest.createdAt)} · ${latest.readingWpm} wpm`
 					: "Not taken yet · 1 minute"
 			}
-			action={
-				<Button
-					variant="outline"
-					className="h-11"
-					aria-label="Test my speed"
-					onClick={() => void navigate({ to: "/speed-test" })}
-				>
-					<Gauge />
-					Test
-				</Button>
-			}
+			action={<SpeedTestButton className="w-auto" />}
 		/>
 	);
 }

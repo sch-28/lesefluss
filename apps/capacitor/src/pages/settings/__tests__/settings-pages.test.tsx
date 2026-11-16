@@ -258,10 +258,9 @@ describe("Speed & estimates page", () => {
 		// 81,000 words left at 300 wpm.
 		expect(preview?.textContent).toContain("Book a4h 30m left");
 		expect(preview?.textContent).toContain("5h of reading");
-		expect(view.container.querySelector("[data-testid=speed-test-link]")).toBeNull();
 	});
 
-	it("links the average-reader note to the speed test", async () => {
+	it("offers the speed test as a button, as the RSVP page does", async () => {
 		state.model = {
 			window: "30d",
 			reading: { wpm: 238, source: "default", activeMs: 0 },
@@ -272,8 +271,7 @@ describe("Speed & estimates page", () => {
 		view = await renderPage(speedPage);
 		const preview = view.container.querySelector("[data-testid=speed-preview]");
 		expect(preview?.textContent).toContain("Based on the average reader");
-		const link = view.container.querySelector("[data-testid=speed-test-link]");
-		expect(link?.getAttribute("href")).toBe("/speed-test");
+		expect(view.getButton("Test my speed")).toBeTruthy();
 	});
 
 	it("holds the preview's place while the speed loads", async () => {
@@ -394,5 +392,15 @@ describe("Speed controls", () => {
 		).toEqual(rsvpButtons);
 		await click(listen?.querySelector("button:last-of-type") as HTMLElement);
 		expect(updateSetting).toHaveBeenCalledWith("ttsWpm", 190);
+	});
+
+	it("steps the Listen pitch with the shared stepper", async () => {
+		state.settings = { ...state.settings, ttsPitch: 1 };
+		view = await renderPage(listenPage);
+		expect(
+			view.container.querySelector("[data-slot=stepper][aria-label=Pitch]")?.textContent,
+		).toContain("1.0×");
+		await click(view.getButton("Increase Pitch"));
+		expect(updateSetting).toHaveBeenCalledWith("ttsPitch", 1.1);
 	});
 });

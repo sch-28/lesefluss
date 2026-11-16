@@ -123,7 +123,7 @@ function SettingsLanding() {
 
 	return (
 		<div className="bg-background">
-			<TabHeader title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
+			<TabHeader width="text" title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Reading">
 					<NavRow

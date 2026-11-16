@@ -1,7 +1,7 @@
 import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Layers, ScrollText } from "lucide-react";
+import { Layers, Plus, ScrollText } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -36,8 +36,6 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 	const addNumbered = queryHooks.useAddNumberedBooks();
 	const [dropId, setDropId] = useState<string | null>(null);
 
-	if (entries.length === 0) return null;
-
 	const takesBooks = (e: React.DragEvent, entry: SeriesEntry) =>
 		entry.kind === "book" && carries(e.dataTransfer, BOOKS_DRAG_TYPE);
 
@@ -63,6 +61,7 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 	};
 
 	if (isCollapsed) {
+		if (entries.length === 0) return null;
 		return (
 			<button
 				type="button"
@@ -85,10 +84,21 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 
 	return (
 		<section aria-label="Series" className="mt-4 flex shrink-0 flex-col">
-			<div className="py-1 pr-3 pl-5">
+			<div className="flex items-center justify-between py-1 pr-3 pl-5">
 				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
 					Series
 				</h2>
+				<button
+					type="button"
+					onClick={() =>
+						navigate({ to: "/tabs/library/collections/new", search: { series: true } })
+					}
+					aria-label="New series"
+					title="New series"
+					className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+				>
+					<Plus className="size-4" />
+				</button>
 			</div>
 			<ul className="m-0 list-none p-0">
 				{shown.map((e) => (
@@ -133,17 +143,19 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 						</Link>
 					</li>
 				))}
-				{/* Always, not only past the limit: All series is where search and sort live. */}
-				<li className="flex">
-					<Link
-						to={ALL_SERIES_PATH}
-						data-active={activeKey === "all" || activeHidden}
-						className={ROW}
-					>
-						<span className="min-w-0 flex-1 truncate">All series</span>
-						<span className={COUNT}>{entries.length}</span>
-					</Link>
-				</li>
+				{/* Not only past the limit: All series is where search and sort live. */}
+				{entries.length > 0 && (
+					<li className="flex">
+						<Link
+							to={ALL_SERIES_PATH}
+							data-active={activeKey === "all" || activeHidden}
+							className={ROW}
+						>
+							<span className="min-w-0 flex-1 truncate">All series</span>
+							<span className={COUNT}>{entries.length}</span>
+						</Link>
+					</li>
+				)}
 			</ul>
 		</section>
 	);

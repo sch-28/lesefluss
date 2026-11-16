@@ -1,7 +1,7 @@
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { Tag } from "lucide-react";
+import { SearchX, Tag } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { PageContainer } from "@/components/page-container";
@@ -51,7 +51,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Browse by tag" icon={Tag} />
+			<PageHeader width="grid" title="Browse by tag" icon={Tag} />
 			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<InputHitArea>
 					<Input
@@ -76,7 +76,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 				) : tags.isError ? (
 					<ErrorState error={tags.error} onRetry={() => tags.refetch()} />
 				) : tags.data.tags.length === 0 ? (
-					<EmptyState>No tags match "{filter}".</EmptyState>
+					<EmptyState icon={SearchX}>No tags match "{filter}".</EmptyState>
 				) : (
 					<ul className="m-0 mt-4 flex list-none flex-col divide-y divide-border p-0">
 						{tags.data.tags.map((t) => (

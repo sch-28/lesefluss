@@ -10,9 +10,10 @@ import {
 } from "@lesefluss/ui/select";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Highlighter, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { PageContainer } from "@/components/page-container";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -51,7 +52,7 @@ function ExportSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Export highlights" icon={Download} />
+			<PageHeader width="text" title="Export highlights" icon={Download} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				{hasNoHighlights ? (
 					<NoHighlights />
@@ -76,15 +77,18 @@ function ExportSettings() {
 function NoHighlights() {
 	const navigate = useNavigate();
 	return (
-		<div className="flex flex-col items-center gap-3 py-12 text-center" data-testid="export-empty">
-			<p className="m-0 font-semibold">No highlights yet</p>
-			<p className="m-0 max-w-xs text-muted-foreground text-sm">
-				Select text while reading to highlight it, then export your highlights here.
-			</p>
-			<Button variant="outline" onClick={() => void navigate({ to: "/tabs/library" })}>
-				Open library
-			</Button>
-		</div>
+		<EmptyState
+			icon={Highlighter}
+			title="No highlights yet"
+			data-testid="export-empty"
+			action={
+				<Button variant="outline" onClick={() => void navigate({ to: "/tabs/library" })}>
+					Open library
+				</Button>
+			}
+		>
+			Select text while reading to highlight it, then export your highlights here.
+		</EmptyState>
 	);
 }
 

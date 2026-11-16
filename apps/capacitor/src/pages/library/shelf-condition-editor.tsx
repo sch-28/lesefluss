@@ -435,7 +435,6 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 				<InputHitArea>
 					<Input
 						id={nameId}
-						autoFocus={!shelf}
 						value={name}
 						maxLength={SMART_SHELF_NAME_MAX}
 						placeholder="Shelf name"

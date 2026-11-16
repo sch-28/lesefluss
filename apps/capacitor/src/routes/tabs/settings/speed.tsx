@@ -1,12 +1,13 @@
 import { bookPace, DEFAULT_SETTINGS, SPEED_WINDOWS, type SpeedWindow } from "@lesefluss/core";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Gauge } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { PageContainer } from "@/components/page-container";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { WINDOW_LABELS } from "@/components/speed-chip/speed-chip-model";
+import { SpeedTestButton } from "@/components/speed-test-button";
 import { useContinueReading } from "@/hooks/use-continue-reading";
 import { queryHooks } from "@/services/db/hooks";
 import { formatDuration } from "@/utils/date-utils";
@@ -37,7 +38,7 @@ function SpeedSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Speed & estimates" icon={Gauge} />
+			<PageHeader width="text" title="Speed & estimates" icon={Gauge} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
 				<SettingsSection title="Window">
 					<RadioGroup
@@ -69,6 +70,7 @@ function SpeedSettings() {
 				</p>
 				<div className="mt-3 px-4">
 					<SpeedPreview />
+					<SpeedTestButton className="mt-3" />
 				</div>
 			</PageContainer>
 		</div>
@@ -109,13 +111,6 @@ function SpeedPreview() {
 					{data.reading.source === "default" ? (
 						<div className="flex justify-between gap-3 text-muted-foreground text-sm">
 							<span>Based on the average reader</span>
-							<Link
-								to="/speed-test"
-								className="font-medium text-primary underline underline-offset-4"
-								data-testid="speed-test-link"
-							>
-								Test my speed
-							</Link>
 						</div>
 					) : (
 						<div className="flex justify-between gap-3 text-muted-foreground text-sm">
