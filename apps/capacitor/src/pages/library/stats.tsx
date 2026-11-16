@@ -1,7 +1,9 @@
 import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { cn } from "@lesefluss/ui/utils";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { EMPTY_STATE_PAGE } from "@/components/empty-state";
 import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ReservedCard } from "../../components/reserved-card";
@@ -73,9 +75,11 @@ const Stats: React.FC = () => {
 				) : isInitialLoading ? (
 					<ReservedCard isPending height="60vh" />
 				) : !hasSessions ? (
-					<div className="pt-2">
+					// The goal card sits above the empty state, so the pair takes the page's free
+					// height and the empty state centres in what the card leaves.
+					<div className={cn("flex flex-col pt-2", EMPTY_STATE_PAGE)}>
 						<TodayGoalCard />
-						<EmptyState />
+						<EmptyState page={false} className="flex-1 pb-20" />
 					</div>
 				) : (
 					<div className="pt-2">

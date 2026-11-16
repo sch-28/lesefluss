@@ -16,8 +16,7 @@ import type { BookActionEntry } from "./use-book-actions";
 /** The book menu inside a dropdown, with Set status and Rate as submenus. */
 export const BookActionsMenuItems: React.FC<{
 	entries: BookActionEntry[];
-	itemClassName: string;
-}> = ({ entries, itemClassName }) => (
+}> = ({ entries }) => (
 	<>
 		{entries.map((entry, i) => {
 			const Icon = entry.icon;
@@ -28,7 +27,7 @@ export const BookActionsMenuItems: React.FC<{
 					<Fragment key={entry.id}>
 						{startsDanger && <DropdownMenuSeparator />}
 						<DropdownMenuItem
-							className={cn(itemClassName, entry.destructive && "text-destructive")}
+							className={cn(entry.destructive && "text-destructive")}
 							disabled={entry.disabled}
 							// After the menu has closed, so a dialog it opens does not inherit
 							// the menu's pointer-events lock on <body>.
@@ -42,18 +41,14 @@ export const BookActionsMenuItems: React.FC<{
 			}
 			return (
 				<DropdownMenuSub key={entry.id}>
-					<DropdownMenuSubTrigger className={itemClassName}>
+					<DropdownMenuSubTrigger>
 						<Icon />
 						<span>{entry.label}</span>
 					</DropdownMenuSubTrigger>
 					<DropdownMenuSubContent className="w-60 p-1.5">
 						{entry.kind === "status" ? (
 							statusChoices(entry.stored, entry.automatic).map((choice) => (
-								<DropdownMenuItem
-									key={choice.label}
-									className={itemClassName}
-									onSelect={() => entry.onPick(choice.status)}
-								>
+								<DropdownMenuItem key={choice.label} onSelect={() => entry.onPick(choice.status)}>
 									<span className="flex-1">{choice.label}</span>
 									{choice.isCurrent && <Check className="text-primary" />}
 								</DropdownMenuItem>
@@ -64,7 +59,6 @@ export const BookActionsMenuItems: React.FC<{
 									<RatingInput rating={entry.rating} onRate={entry.onRate} />
 								</div>
 								<DropdownMenuItem
-									className={itemClassName}
 									disabled={entry.rating === null}
 									onSelect={() => entry.onRate(null)}
 								>

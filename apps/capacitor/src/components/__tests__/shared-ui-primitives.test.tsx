@@ -1,7 +1,7 @@
 import { SearchX } from "lucide-react";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Rendered, render } from "../../test/render";
-import { EmptyState } from "../empty-state";
+import { EMPTY_STATE_PAGE, EmptyState } from "../empty-state";
 import { SectionHeader } from "../section-header";
 import { TextCover, titleHue } from "../text-cover";
 
@@ -25,6 +25,21 @@ describe("EmptyState", () => {
 		expect(view.container.querySelector("h2")?.textContent).toBe("No books match");
 		expect(view.text()).toContain("Try another search.");
 		expect(view.getButton("Clear")).toBeTruthy();
+	});
+
+	it("as a page's only content, takes the free height on desktop so it sits centred", async () => {
+		view = await render(<EmptyState page title="No highlights yet" />);
+		const root = view.container.firstElementChild as HTMLElement;
+		expect(root.dataset.emptyState).toBe("page");
+		expect(root.className).toContain(EMPTY_STATE_PAGE);
+		expect(root.className).toContain("justify-center");
+	});
+
+	it("inline keeps its natural height", async () => {
+		view = await render(<EmptyState title="Nothing yet" />);
+		const root = view.container.firstElementChild as HTMLElement;
+		expect(root.dataset.emptyState).toBe("inline");
+		expect(root.className).not.toContain(EMPTY_STATE_PAGE);
 	});
 
 	it("renders without a title", async () => {

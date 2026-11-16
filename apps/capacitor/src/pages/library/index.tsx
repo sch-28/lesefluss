@@ -1019,7 +1019,7 @@ const Library: React.FC = () => {
 				<EmptyState
 					icon={BookOpen}
 					title="No books in this collection yet"
-					className="min-h-[60vh]"
+					page
 					action={
 						<>
 							<Button onClick={openAddBooks}>
@@ -1042,7 +1042,7 @@ const Library: React.FC = () => {
 				<EmptyState
 					icon={BookOpen}
 					title="No books yet"
-					className="min-h-[60vh]"
+					page
 					action={
 						<>
 							{/* Outline: the header's Add book (the FAB on a phone) is the page's one primary action. */}
@@ -1071,7 +1071,7 @@ const Library: React.FC = () => {
 					<EmptyState
 						icon={isNarrowed ? SearchX : BookOpen}
 						title={isNarrowed ? "No books match" : "Nothing to show"}
-						className="min-h-[60vh]"
+						page
 						action={
 							isNarrowed &&
 							!activeShelf && (

@@ -1,4 +1,6 @@
+import { MENU_ROW } from "@lesefluss/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { cn } from "@lesefluss/ui/utils";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
@@ -40,7 +42,10 @@ function Row({
 			type="button"
 			data-selected={isSelected || undefined}
 			onClick={onSelect}
-			className="flex h-9 items-center justify-between gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-muted"
+			className={cn(
+				MENU_ROW,
+				"flex items-center justify-between gap-3 rounded-md px-2 text-left transition-colors hover:bg-muted",
+			)}
 		>
 			<span className="truncate">{label}</span>
 			{isSelected && <Check className="size-4 shrink-0" />}

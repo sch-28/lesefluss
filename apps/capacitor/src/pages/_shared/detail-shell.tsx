@@ -172,7 +172,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 				</DetailFrame>
 			) : error !== undefined ? (
 				<ErrorState
-					className="min-h-[60vh]"
+					page
 					error={error}
 					message={errorMessage}
 					onRetry={onRetry}
@@ -181,7 +181,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 			) : errorMessage ? (
 				<EmptyState
 					icon={SearchX}
-					className="min-h-[60vh]"
+					page
 					action={
 						<Button
 							variant="outline"

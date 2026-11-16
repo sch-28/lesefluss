@@ -31,9 +31,20 @@ export function useNavItems(): readonly NavTarget[] {
 
 export function useActiveNavTo(): NavTarget["to"] | null {
 	const { pathname } = useLocation();
+	return activeNavTo(pathname);
+}
+
+function activeNavTo(pathname: string): NavTarget["to"] | null {
 	return (
 		NAV_ITEMS.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))?.to ?? null
 	);
+}
+
+/** A page the desktop sidebar lists as its own row (a collection, shelf or series); that row
+ *  carries the highlight, not Library as well. */
+export function isSidebarListPage(pathname: string, search: Record<string, unknown>): boolean {
+	if (pathname === "/tabs/library") return !!(search.collection || search.shelf);
+	return pathname === "/tabs/library/all-series" || pathname.startsWith("/tabs/library/series/");
 }
 
 /** Badges per tab. Hidden while signed out, when sync is off, and when the count request fails. */

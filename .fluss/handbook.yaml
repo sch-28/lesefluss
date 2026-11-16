@@ -39,7 +39,7 @@ solutions:
         grids (library, collections, series, smart shelves, Explore) at most 1280 px, with more
         columns on wide screens; the reader's text column is at most 700 px and a line of about
         65-70 characters (narrower at small text sizes), with its header row and footer on the
-        same column.
+        same column; the header and footer stay on the text column across scroll, page and RSVP.
       - Every page is centred in the space beside the sidebar, and its header aligns with the same
         column.
       - Library, collection, smart shelf and series pages share one book view.
@@ -58,6 +58,25 @@ solutions:
       - No menu with a single item: show that action directly.
       - A menu trigger is always visible, never hover-only.
       - On a fine pointer a menu opens anchored at its trigger, never as a bottom sheet.
+      - Near a viewport edge a menu or popover flips or shifts to stay fully on screen, keeping at
+        least the page gutter to the edge; never clipped, never off screen.
+      - All desktop menus and popovers share one row height and text size.
+
+      **Create flows**
+      - One presentation (page or dialog) per create kind: collection, series and smart shelf are
+        created the same way.
+      - A page's create action uses one button variant across pages.
+      - A "New X" screen offers no toggle that turns it into another kind.
+
+      **Desktop sidebar:** at 1280x720 and 1262x606 every section heading (Smart shelves,
+      Collections, Series) and its + are visible without scrolling the sidebar; the footer yields
+      space, and long lists scroll inside their section.
+
+      **States**
+      - A failed load never also shows "nothing here" rows derived from it; the error replaces
+        them.
+      - Content that expands below the fold (a form opened in place, a disclosure) scrolls itself
+        into view.
 
       **Discoverability:** every create or manage action for a kind of thing is reachable from
       where that thing is listed.
@@ -71,7 +90,13 @@ solutions:
       (`apps/capacitor/src/theme/`). Every screen works in all of them. The reader theme is the
       app theme: picking one in the reader changes the whole app (LESE-190.7). The four themes
       change colours only, never font size, weight or spacing; e-ink mode may add borders, bold
-      and underline cues.
+      and underline cues. High contrast shows no non-HC accent colours (today rings, avatars,
+      badges keep the yellow palette).
+
+      **UI check viewports:** a short laptop (1262x606 or 1280x720), 1280x800, 1920x1080,
+      2560x1440, tall 1280x1600 and a 390 px phone. Real pointer clicks (Playwright mouse or
+      `locator.click`), never programmatic `element.click()`, decide whether a menu opens and
+      where.
 
       **Gap scale:** the fluss standard as Tailwind steps `1`, `2`, `3`, `4`, `6`, `8` (4, 8, 12,
       16, 24, 32 px at the default 16 px App font size; spacing scales with it, as it is in rem);

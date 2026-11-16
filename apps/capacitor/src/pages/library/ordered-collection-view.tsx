@@ -204,7 +204,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 				<EmptyState
 					icon={BookOpen}
 					title={`No books in this ${noun} yet`}
-					className="min-h-[60vh]"
+					page
 					action={
 						<Button onClick={onAddBooks}>
 							<Plus className="size-4" />

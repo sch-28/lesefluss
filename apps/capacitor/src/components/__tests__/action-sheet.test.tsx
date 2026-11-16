@@ -1,7 +1,7 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flush, type Rendered, render } from "../../test/render";
-import { ActionSheet, type ActionSheetItem } from "../action-sheet";
+import { ActionSheet, type ActionSheetItem, anchorPlacement } from "../action-sheet";
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -31,6 +31,10 @@ function pointer(kind: "fine" | "coarse") {
 }
 
 const menu = () => document.querySelector('[data-testid="action-menu"]');
+const anchorBox = () => {
+	const style = document.querySelector<HTMLElement>("body > span.pointer-events-none.fixed")?.style;
+	return style && { left: style.left, top: style.top, width: style.width, height: style.height };
+};
 const drawer = () => document.querySelector('[data-slot="drawer-content"]');
 
 describe("ActionSheet placement", () => {
@@ -88,6 +92,51 @@ describe("ActionSheet placement", () => {
 		await flush();
 		expect(drawer()).toBeNull();
 		expect(menu()).not.toBeNull();
+	});
+
+	it("hangs the menu from the pressed button's box, in a span on <body>", async () => {
+		pointer("fine");
+		const header = document.createElement("header");
+		const trigger = document.createElement("button");
+		header.append(trigger);
+		document.body.append(header);
+		vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({ x: 900, y: 10, width: 32, height: 32 }),
+		);
+		trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(3)} />);
+		await flush();
+		expect(anchorBox()).toEqual({ left: "900px", top: "10px", width: "32px", height: "32px" });
+		expect(menu()).not.toBeNull();
+	});
+
+	it("anchors a click with no pointerdown before it (keyboard or script) at its button", async () => {
+		pointer("fine");
+		const trigger = document.createElement("button");
+		document.body.append(trigger);
+		vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({ x: 40, y: 100, width: 32, height: 32 }),
+		);
+		trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(3)} />);
+		await flush();
+		expect(drawer()).toBeNull();
+		expect(anchorBox()?.left).toBe("40px");
+	});
+
+	it("falls back to the press point when the pressed control is a large area", async () => {
+		pointer("fine");
+		const card = document.createElement("button");
+		document.body.append(card);
+		vi.spyOn(card, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({ x: 0, y: 0, width: 400, height: 300 }),
+		);
+		card.dispatchEvent(
+			new PointerEvent("pointerdown", { clientX: 150, clientY: 120, bubbles: true }),
+		);
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(3)} />);
+		await flush();
+		expect(anchorBox()).toMatchObject({ left: "150px", top: "120px", width: "0px" });
 	});
 
 	it("shows an item's hint under its label", async () => {
@@ -150,5 +199,27 @@ describe("ActionSheet danger group", () => {
 		view = await render(<ActionSheet open onOpenChange={() => {}} items={mixed.slice(2)} />);
 		await flush();
 		expect(document.querySelectorAll('[role="separator"], hr')).toHaveLength(0);
+	});
+});
+
+describe("anchorPlacement", () => {
+	it("opens a press point's menu from its start, a little away from the finger", () => {
+		expect(anchorPlacement({ x: 900, y: 10, width: 0, height: 0 })).toEqual({
+			align: "start",
+			sideOffset: 12,
+		});
+	});
+
+	it("aligns a trigger's menu to the trigger's edge nearer the middle of the window", () => {
+		const left = window.innerWidth / 4;
+		const right = (window.innerWidth * 3) / 4;
+		expect(anchorPlacement({ x: left, y: 10, width: 32, height: 32 })).toEqual({
+			align: "start",
+			sideOffset: 4,
+		});
+		expect(anchorPlacement({ x: right, y: 10, width: 32, height: 32 })).toEqual({
+			align: "end",
+			sideOffset: 4,
+		});
 	});
 });

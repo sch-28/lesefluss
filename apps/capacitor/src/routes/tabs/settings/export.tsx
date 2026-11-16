@@ -80,7 +80,7 @@ function NoHighlights() {
 		<EmptyState
 			icon={Highlighter}
 			title="No highlights yet"
-			className="min-h-[60vh]"
+			page
 			data-testid="export-empty"
 			action={
 				<Button variant="outline" onClick={() => void navigate({ to: "/tabs/library" })}>

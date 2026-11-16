@@ -11,6 +11,7 @@ import { cn } from "@lesefluss/ui/utils";
 import type { LucideIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { FINE_POINTER_QUERY, useMediaQuery } from "../hooks/use-media-query";
 
 export interface ActionSheetItem {
@@ -35,15 +36,36 @@ export interface ActionSheetProps {
 export const ANCHORED_MAX_ITEMS = 6;
 /** A press older than this did not open the sheet (a keyboard or programmatic open did). */
 const ANCHOR_MAX_AGE_MS = 1500;
+/** A control at most this big is a trigger the menu hangs from; a bigger one (a card) is not. */
+const TRIGGER_MAX = { width: 240, height: 64 };
 
-type Point = { x: number; y: number; at: number };
-let lastPress: Point | null = null;
+/** Where a menu hangs, in viewport px: a trigger's box, or a zero-size press point. */
+export type Anchor = { x: number; y: number; width: number; height: number };
+
+type Press = { x: number | null; y: number | null; at: number; target: EventTarget | null };
+let lastPress: Press | null = null;
 
 if (typeof window !== "undefined") {
 	window.addEventListener(
 		"pointerdown",
 		(e) => {
-			lastPress = { x: e.clientX, y: e.clientY, at: Date.now() };
+			lastPress = { x: e.clientX, y: e.clientY, at: Date.now(), target: e.target };
+		},
+		{ capture: true, passive: true },
+	);
+	// A keyboard or scripted click has no pointerdown before it, but still names its trigger.
+	window.addEventListener(
+		"click",
+		(e) => {
+			const fromPress = lastPress && lastPress.target === e.target && isRecent(lastPress);
+			if (fromPress) return;
+			const isPointer = e.detail > 0;
+			lastPress = {
+				x: isPointer ? e.clientX : null,
+				y: isPointer ? e.clientY : null,
+				at: Date.now(),
+				target: e.target,
+			};
 		},
 		{ capture: true, passive: true },
 	);
@@ -54,45 +76,76 @@ function startsDangerGroup(items: readonly ActionSheetItem[], index: number): bo
 	return !!items[index].destructive && index > 0 && !items[index - 1].destructive;
 }
 
-function recentPress(): Point | null {
-	if (!lastPress || Date.now() - lastPress.at > ANCHOR_MAX_AGE_MS) return null;
-	return lastPress;
+function isRecent(press: Press): boolean {
+	return Date.now() - press.at <= ANCHOR_MAX_AGE_MS;
 }
 
-/** A keyboard open: just under the focused trigger, offset for the menu's finger gap. */
-function focusedTrigger(): Point | null {
-	const el = document.activeElement;
-	if (!(el instanceof HTMLElement) || el === document.body) return null;
+function boxOf(el: Element): Anchor | null {
+	if (!el.isConnected) return null;
 	const rect = el.getBoundingClientRect();
 	if (rect.width === 0 && rect.height === 0) return null;
-	return { x: rect.left, y: rect.bottom - 8, at: Date.now() };
+	return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
 }
 
-/** Where a menu opened by `open` should sit: the press that opened it, or on a fine
- *  pointer the focused trigger. Null means no anchor (show a sheet). */
-export function useOpenAnchor(open: boolean): { anchor: Point | null; isFinePointer: boolean } {
+function triggerBox(target: EventTarget | null): Anchor | null {
+	if (!(target instanceof Element)) return null;
+	const control = target.closest("button, [role='button'], a");
+	const box = control && boxOf(control);
+	if (!box || box.width > TRIGGER_MAX.width || box.height > TRIGGER_MAX.height) return null;
+	return box;
+}
+
+function recentAnchor(): Anchor | null {
+	if (!lastPress || !isRecent(lastPress)) return null;
+	const trigger = triggerBox(lastPress.target);
+	if (trigger) return trigger;
+	if (lastPress.x === null || lastPress.y === null) return null;
+	return { x: lastPress.x, y: lastPress.y, width: 0, height: 0 };
+}
+
+function focusedTrigger(): Anchor | null {
+	const el = document.activeElement;
+	if (!(el instanceof HTMLElement) || el === document.body) return null;
+	return boxOf(el);
+}
+
+/** Where a menu opened by `open` should sit: the trigger or press that opened it, or on a
+ *  fine pointer the focused trigger. Null means no anchor (show a sheet). */
+export function useOpenAnchor(open: boolean): { anchor: Anchor | null; isFinePointer: boolean } {
 	const isFinePointer = useMediaQuery(FINE_POINTER_QUERY);
 	// Captured once per opening so the menu does not jump when a later tap lands.
-	const [anchor, setAnchor] = useState<Point | null>(null);
+	const [anchor, setAnchor] = useState<Anchor | null>(null);
 	const [openedFor, setOpenedFor] = useState(false);
 	if (open !== openedFor) {
 		setOpenedFor(open);
-		if (open) setAnchor(recentPress() ?? (isFinePointer ? focusedTrigger() : null));
+		if (open) setAnchor(recentAnchor() ?? (isFinePointer ? focusedTrigger() : null));
 	}
 	return { anchor, isFinePointer };
 }
 
-/** An invisible trigger at a point, for a DropdownMenu opened from elsewhere. */
-export const AnchorPoint: React.FC<{ anchor: Point }> = ({ anchor }) => (
-	<DropdownMenuTrigger asChild>
-		<span
-			aria-hidden
-			tabIndex={-1}
-			className="pointer-events-none fixed size-0"
-			style={{ left: anchor.x, top: anchor.y }}
-		/>
-	</DropdownMenuTrigger>
-);
+/** The menu content's placement for an anchor: below a trigger, lined up with whichever of
+ *  its edges faces the middle of the screen; a press point keeps a finger's gap. */
+export function anchorPlacement(anchor: Anchor): { align: "start" | "end"; sideOffset: number } {
+	if (anchor.width === 0) return { align: "start", sideOffset: 12 };
+	const isRightHalf = anchor.x + anchor.width / 2 > window.innerWidth / 2;
+	return { align: isRightHalf ? "end" : "start", sideOffset: 4 };
+}
+
+/** An invisible trigger over the anchor, for a DropdownMenu opened from elsewhere. Portalled to
+ *  <body>: a fixed box inside a blurred or transformed header would be placed against that
+ *  header instead of the viewport. */
+export const AnchorPoint: React.FC<{ anchor: Anchor }> = ({ anchor }) =>
+	createPortal(
+		<DropdownMenuTrigger asChild>
+			<span
+				aria-hidden
+				tabIndex={-1}
+				className="pointer-events-none fixed"
+				style={{ left: anchor.x, top: anchor.y, width: anchor.width, height: anchor.height }}
+			/>
+		</DropdownMenuTrigger>,
+		document.body,
+	);
 
 export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
 	const { open, items } = props;
@@ -103,7 +156,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
 	return <ActionDrawer {...props} />;
 };
 
-const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
+const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Anchor }> = ({
 	open,
 	onOpenChange,
 	title,
@@ -114,9 +167,7 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 		<AnchorPoint anchor={anchor} />
 		<DropdownMenuContent
 			data-testid="action-menu"
-			align="start"
-			sideOffset={12}
-			collisionPadding={8}
+			{...anchorPlacement(anchor)}
 			className="w-auto min-w-48 max-w-[calc(100vw-2rem)]"
 			// The trigger is an invisible point; focus goes back to the page instead.
 			onCloseAutoFocus={(e) => e.preventDefault()}
@@ -138,7 +189,6 @@ const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Point }> = ({
 						// Runs after the menu has closed, so a dialog it opens does not inherit
 						// the menu's pointer-events lock on <body>.
 						onSelect={() => setTimeout(item.onSelect, 0)}
-						className="py-2 text-base"
 					>
 						{Icon && <Icon className="size-4" />}
 						<ItemText item={item} />

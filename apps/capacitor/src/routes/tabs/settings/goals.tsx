@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { EMPTY_STATE_PAGE, EmptyState } from "@/components/empty-state";
 import { PageContainer } from "@/components/page-container";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -19,30 +20,34 @@ export const Route = createFileRoute("/tabs/settings/goals")({
 	component: Goals,
 });
 
-/** Must match the "No active goals." row. */
-const NO_GOALS_ROW_HEIGHT = "calc(1.5rem + 1.25rem)";
-
 function Goals() {
 	const plans = queryHooks.useActiveGoalPlans();
 	const goals = editableGoals(plans.data ?? []);
+	const addGoal = (
+		<AddGoal goalBookIds={plans.data?.map((p) => p.goal.bookId) ?? []} isDisabled={!plans.data} />
+	);
 
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Goals" icon={Target} />
 			<PageContainer width="text" className="px-4 pt-4 pb-10">
-				<SettingsSection>
-					{!plans.data && <ReservedCard isPending height={NO_GOALS_ROW_HEIGHT} />}
-					{plans.data && goals.length === 0 && (
-						<p className="m-0 px-4 py-3 text-muted-foreground text-sm">No active goals.</p>
-					)}
-					{goals.map((entry) => (
-						<GoalRow key={entry.goal.id} entry={entry} />
-					))}
-				</SettingsSection>
-				<AddGoal
-					goalBookIds={plans.data?.map((p) => p.goal.bookId) ?? []}
-					isDisabled={!plans.data}
-				/>
+				{!plans.data ? (
+					// Either loaded state can follow, so the spinner holds the empty state's page height.
+					<ReservedCard isPending height="12rem" className={EMPTY_STATE_PAGE} />
+				) : goals.length === 0 ? (
+					<EmptyState page icon={Target} title="No active goals" action={addGoal}>
+						Set a daily reading target for a book you are reading.
+					</EmptyState>
+				) : (
+					<>
+						<SettingsSection>
+							{goals.map((entry) => (
+								<GoalRow key={entry.goal.id} entry={entry} />
+							))}
+						</SettingsSection>
+						{addGoal}
+					</>
+				)}
 			</PageContainer>
 		</div>
 	);

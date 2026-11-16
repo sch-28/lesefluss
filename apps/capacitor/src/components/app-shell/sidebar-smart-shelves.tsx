@@ -7,6 +7,7 @@ import { decodeFilterParam, encodeFilterParam } from "../../pages/library/filter
 import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
 import { type ShelfEntry, useSmartShelves } from "../../pages/library/use-smart-shelves";
 import { ShelfActions } from "../smart-shelves/shelf-actions";
+import { useActiveRowInView } from "./use-active-row-in-view";
 
 const ROW_BUTTON =
 	"mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground";
@@ -26,6 +27,7 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 	const search = location.search as { shelf?: string; f?: string };
 	const activeId = onLibrary ? search.shelf : undefined;
 	const currentFilter = (onLibrary && decodeFilterParam(search.f)) || {};
+	const listRef = useActiveRowInView(activeId, shelves.length);
 
 	if (isCollapsed) {
 		return (
@@ -42,8 +44,8 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 	}
 
 	return (
-		<section aria-label="Smart shelves" className="mt-4 flex shrink-0 flex-col">
-			<div className="flex items-center justify-between py-1 pr-3 pl-5">
+		<section aria-label="Smart shelves" className="mt-4 short:mt-2 flex min-h-8 flex-col">
+			<div className="flex shrink-0 items-center justify-between py-1 pr-3 pl-5">
 				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
 					Smart shelves
 				</h2>
@@ -57,7 +59,7 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 					<Plus className="size-4" />
 				</button>
 			</div>
-			<ul className="m-0 list-none p-0">
+			<ul ref={listRef} className="m-0 min-h-0 list-none overflow-y-auto overflow-x-hidden p-0">
 				{shelves.map((s) => (
 					<li
 						key={s.id}

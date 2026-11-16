@@ -244,8 +244,7 @@ type ReadAloudHandle = Pick<
 	isPlaying: boolean;
 };
 
-// Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
-const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
+const MENU_ITEM_CLASS = "gap-3 px-3";
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsvpStart }) => {

@@ -99,6 +99,7 @@ const ExploreLanding: React.FC<Props> = ({
 		return (
 			<PageContainer width="grid" className="px-4 pt-4 pb-20">
 				<ErrorState
+					page
 					error={landingQuery.error}
 					onRetry={() => {
 						void landingQuery.refetch();

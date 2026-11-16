@@ -10,7 +10,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { AnchorPoint, useOpenAnchor } from "../../../components/action-sheet";
+import { AnchorPoint, anchorPlacement, useOpenAnchor } from "../../../components/action-sheet";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import type { Book } from "../../../services/db/schema";
 import { isDangerAction, statusChoices } from "./book-action-items";
@@ -45,15 +45,13 @@ export const BookActionsSheet: React.FC<Props> = (props) => {
 			<AnchorPoint anchor={anchor} />
 			<DropdownMenuContent
 				data-testid="book-actions-menu"
-				align="start"
-				sideOffset={12}
-				collisionPadding={8}
+				{...anchorPlacement(anchor)}
 				className="w-60 p-1.5"
 				onCloseAutoFocus={(e) => e.preventDefault()}
 			>
 				<DropdownMenuLabel className="truncate">{book.title}</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<BookActionsMenuItems entries={entries} itemClassName="py-2 text-base" />
+				<BookActionsMenuItems entries={entries} />
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

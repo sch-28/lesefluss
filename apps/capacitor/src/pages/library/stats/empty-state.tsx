@@ -15,13 +15,15 @@ function PulsingBook({ className }: { className?: string }) {
 	);
 }
 
-export function EmptyState() {
+/** `page` false when something sits above it; the caller then gives it the free height. */
+export function EmptyState({ page = true, className }: { page?: boolean; className?: string }) {
 	const navigate = useNavigate();
 	return (
 		<SharedEmptyState
 			icon={PulsingBook}
 			title="No stats yet"
-			className="py-16"
+			page={page}
+			className={className}
 			action={
 				<Button variant="outline" onClick={() => navigate({ to: "/tabs/library" })}>
 					Open library

@@ -81,7 +81,6 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor, onOpen
 				key={`${isEinkMode}|${isMotionReduced}`}
 				aria-label="Appearance"
 				align="end"
-				collisionPadding={8}
 				// A small phone, landscape or a large app font can still outgrow it.
 				className="appearance-popover-content max-h-[calc(var(--radix-popover-content-available-height)-var(--safe-bottom))] w-80 max-w-(--radix-popover-content-available-width) overflow-y-auto overscroll-contain p-0"
 			>

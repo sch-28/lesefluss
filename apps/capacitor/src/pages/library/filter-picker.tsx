@@ -8,6 +8,7 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
+import { MENU_ROW } from "@lesefluss/ui/dropdown-menu";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
@@ -191,7 +192,10 @@ const FacetSection: React.FC<PanelProps & { facet: Facet }> = ({
 										aria-label={`${FACET_LABELS[facet]} ${option.label}, ${STATE_NAMES[state]}`}
 										data-state={state}
 										onClick={() => onChange(cycleValue(filter, facet, option.value))}
-										className="flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left text-sm hover:bg-muted"
+										className={cn(
+											MENU_ROW,
+											"flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left hover:bg-muted",
+										)}
 									>
 										<StateBox state={state} />
 										<span

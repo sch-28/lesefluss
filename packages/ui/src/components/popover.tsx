@@ -3,6 +3,7 @@ import type * as React from "react";
 
 import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { PAGE_GUTTER } from "./dropdown-menu";
 
 function Popover({
 	open,
@@ -29,6 +30,7 @@ function PopoverContent({
 	className,
 	align = "center",
 	sideOffset = 4,
+	collisionPadding = PAGE_GUTTER,
 	...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
 	return (
@@ -37,6 +39,7 @@ function PopoverContent({
 				data-slot="popover-content"
 				align={align}
 				sideOffset={sideOffset}
+				collisionPadding={collisionPadding}
 				className={cn(
 					"z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-xl outline-none",
 					"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=open]:animate-in",

@@ -1,7 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
-import { cn } from "@lesefluss/ui/utils";
 import { AlertCircle, ExternalLink, WifiOff } from "lucide-react";
 import type React from "react";
+import { EmptyState } from "../../components/empty-state";
 import { useIsOnline } from "../../services/social/cache";
 import { isNetworkError } from "../../utils/network-error";
 
@@ -36,6 +36,8 @@ type ErrorStateProps = {
 	onRetry?: () => void;
 	/** Shown under Retry, for pages whose content also lives somewhere else. */
 	sourceLink?: { href: string; label: string };
+	/** The page's main content failed: centre it like a page-level empty state. */
+	page?: boolean;
 	className?: string;
 };
 
@@ -44,41 +46,44 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 	message,
 	onRetry,
 	sourceLink,
+	page,
 	className,
 }) => {
 	const isOnline = useIsOnline();
 	const kind = describeLoadError(error, isOnline);
 	const copy = ERROR_COPY[kind];
-	const Icon = kind === "server" ? AlertCircle : WifiOff;
 
 	return (
-		<div
+		<EmptyState
 			role="alert"
 			data-error-kind={kind}
-			className={cn("flex flex-col items-center justify-center gap-3 p-8 text-center", className)}
+			icon={kind === "server" ? AlertCircle : WifiOff}
+			title={copy.title}
+			page={page}
+			className={className}
+			action={
+				(onRetry || sourceLink) && (
+					<>
+						{onRetry && (
+							<Button variant="outline" size="sm" onClick={onRetry}>
+								Retry
+							</Button>
+						)}
+						{sourceLink && (
+							<Button asChild variant="ghost" size="sm">
+								<a href={sourceLink.href} target="_blank" rel="noopener noreferrer">
+									<ExternalLink />
+									{sourceLink.label}
+								</a>
+							</Button>
+						)}
+					</>
+				)
+			}
 		>
-			<Icon className="size-8 text-muted-foreground" />
-			<div>
-				<p className="m-0 font-medium text-foreground">{copy.title}</p>
-				<p className="m-0 mt-1 text-muted-foreground text-sm">
-					{kind === "server" && message ? message : copy.body}
-				</p>
-			</div>
-			{onRetry && (
-				<Button variant="outline" size="sm" onClick={onRetry}>
-					Retry
-				</Button>
-			)}
-			{sourceLink && (
-				<Button asChild variant="ghost" size="sm">
-					<a href={sourceLink.href} target="_blank" rel="noopener noreferrer">
-						<ExternalLink />
-						{sourceLink.label}
-					</a>
-				</Button>
-			)}
-		</div>
+			{kind === "server" && message ? message : copy.body}
+		</EmptyState>
 	);
 };
 
-export { EmptyState } from "../../components/empty-state";
+export { EmptyState };

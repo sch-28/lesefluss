@@ -13,6 +13,7 @@ import {
 	readBooksDragData,
 } from "../collections/drag-data";
 import { toast } from "../toast";
+import { useActiveRowInView } from "./use-active-row-in-view";
 
 type Props = {
 	isCollapsed: boolean;
@@ -38,6 +39,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 		location.pathname === "/tabs/library"
 			? (location.search as { collection?: string }).collection
 			: undefined;
+	const listRef = useActiveRowInView(activeId, collections.length);
 
 	if (isCollapsed) {
 		return (
@@ -89,8 +91,8 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 	};
 
 	return (
-		<section aria-label="Collections" className="mt-4 flex shrink-0 flex-col">
-			<div className="flex items-center justify-between py-1 pr-3 pl-5">
+		<section aria-label="Collections" className="mt-4 short:mt-2 flex min-h-8 flex-col">
+			<div className="flex shrink-0 items-center justify-between py-1 pr-3 pl-5">
 				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
 					Collections
 				</h2>
@@ -104,7 +106,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 					<Plus className="size-4" />
 				</button>
 			</div>
-			<ul className="m-0 list-none p-0">
+			<ul ref={listRef} className="m-0 min-h-0 list-none overflow-y-auto overflow-x-hidden p-0">
 				{collections.map((c) => {
 					const hint = dropHint?.id === c.id ? dropHint.kind : null;
 					return (

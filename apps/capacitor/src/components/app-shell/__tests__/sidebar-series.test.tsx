@@ -53,6 +53,10 @@ vi.mock("../../../services/db/hooks", () => ({
 vi.mock("../../../services/db/queries", () => ({
 	queries: { getCollectionMembers: async () => memberRows },
 }));
+vi.mock("../../collections/collection-actions", () => ({
+	CollectionActions: ({ collection }: { collection: CollectionWithCount | null }) =>
+		collection ? <div data-testid="collection-actions">{collection.id}</div> : null,
+}));
 vi.mock("../../toast", () => ({ toast: { success: vi.fn() } }));
 
 const { SidebarSeries } = await import("../sidebar-series");
@@ -127,6 +131,18 @@ describe("SidebarSeries", () => {
 			expect.stringContaining("lucide-scroll-text"),
 		]);
 		expect(allSeriesLink()?.textContent).toBe("All series2");
+	});
+
+	it("gives a book series the collection menu, a serial none", async () => {
+		collections = [series("dune", 6)];
+		serials = [{ id: "wn", title: "Worm", author: null, coverImage: null }];
+		chapterCounts = new Map([["wn", 304]]);
+		rendered = await render(<SidebarSeries isCollapsed={false} />);
+		expect(rendered.container.querySelector("[aria-label='Worm options']")).toBeNull();
+		await click(rendered.getButton("Series dune options"));
+		expect(rendered.container.querySelector("[data-testid=collection-actions]")?.textContent).toBe(
+			"dune",
+		);
 	});
 
 	it("shows the first five, then All series", async () => {

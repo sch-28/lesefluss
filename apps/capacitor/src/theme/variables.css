@@ -16,6 +16,9 @@
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
+/* A short laptop window (1280x720, 1262x606): the desktop sidebar packs its chrome tighter. */
+@custom-variant short (@media (max-height: 760px));
+
 /* Reading-goal colours, chosen per theme for contrast against its background.
  * E-ink overrides them in eink.css. */
 :root {

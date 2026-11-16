@@ -349,8 +349,9 @@ describe("Goals page", () => {
 
 	it("offers Add goal with no goal set yet", async () => {
 		view = await renderPage(goalsPage);
-		expect(view.text()).toContain("No active goals.");
-		expect(view.container.querySelector("[data-testid=add-goal]")).not.toBeNull();
+		expect(view.text()).toContain("No active goals");
+		const empty = view.container.querySelector("[data-empty-state=page]");
+		expect(empty?.querySelector("[data-testid=add-goal]")).not.toBeNull();
 	});
 });
 
