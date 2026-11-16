@@ -18,7 +18,7 @@ function buttonTags(): { where: string; className: string }[] {
 		const source = readFileSync(file, "utf8");
 		return [...source.matchAll(/<Button\b([^>]|=>)*?>/g)].map((match) => ({
 			where: `${relative(SRC, file)}:${source.slice(0, match.index).split("\n").length}`,
-			className: match[0].match(/className="([^"]*)"/)?.[1] ?? "",
+			className: match[0].match(/className=\{?"([^"]*)"/)?.[1] ?? "",
 		}));
 	});
 }
@@ -26,7 +26,7 @@ function buttonTags(): { where: string; className: string }[] {
 describe("Button rules (LESE-211.9)", () => {
 	it("no Button sets a height or radius of its own", () => {
 		const offenders = buttonTags().filter(({ className }) =>
-			/(^|\s)(md:)?(h-\d|min-h-1[1-9]|rounded-)/.test(className),
+			/(^|\s)(md:)?(h-\d|h-auto|min-h-\d|rounded-)/.test(className),
 		);
 		expect(offenders.map((o) => o.where)).toEqual([]);
 	});

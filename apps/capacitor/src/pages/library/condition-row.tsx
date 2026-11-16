@@ -1,5 +1,12 @@
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@lesefluss/ui/select";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import {
@@ -14,8 +21,31 @@ import {
 import type { Condition } from "./condition-tree";
 import type { FacetOptions } from "./filter-picker";
 
-export const SELECT =
-	"h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+type Choice = { value: string; label: string };
+
+/** The app's own select, so a row reads the same in every theme and opens at its field. */
+const ChoiceSelect: React.FC<{
+	label: string;
+	value: string;
+	choices: readonly Choice[];
+	onChange: (value: string) => void;
+	placeholder?: string;
+}> = ({ label, value, choices, onChange, placeholder }) => (
+	<Select value={value === "" ? undefined : value} onValueChange={onChange}>
+		<SelectTrigger aria-label={label} className="min-w-0 px-2">
+			<SelectValue placeholder={placeholder} />
+		</SelectTrigger>
+		<SelectContent>
+			{choices.map((c) => (
+				<SelectItem key={c.value} value={c.value}>
+					{c.label}
+				</SelectItem>
+			))}
+		</SelectContent>
+	</Select>
+);
+
+const FIELD_CHOICES: Choice[] = CONDITION_FIELDS.map((f) => ({ value: f.field, label: f.label }));
 
 const numberOrNull = (text: string): number | null => {
 	if (text.trim() === "") return null;
@@ -78,20 +108,13 @@ const PickValue: React.FC<{
 	// A value no book carries any more (a tag's last book edited) stays selectable.
 	const isMissing = current !== "" && !choices.some((c) => c.value === current);
 	return (
-		<select
-			aria-label={`${spec.label} value`}
-			className={SELECT}
+		<ChoiceSelect
+			label={`${spec.label} value`}
 			value={current}
-			onChange={(e) => onChange(e.target.value)}
-		>
-			<option value="">Choose…</option>
-			{isMissing && <option value={current}>{current}</option>}
-			{choices.map((c) => (
-				<option key={c.value} value={c.value}>
-					{c.label}
-				</option>
-			))}
-		</select>
+			placeholder="Choose…"
+			choices={isMissing ? [{ value: current, label: current }, ...choices] : choices}
+			onChange={onChange}
+		/>
 	);
 };
 
@@ -197,32 +220,20 @@ export const ConditionRow: React.FC<Props> = ({
 	}
 
 	const fieldSelect = (
-		<select
-			aria-label="Field"
-			className={SELECT}
+		<ChoiceSelect
+			label="Field"
 			value={cond.field}
-			onChange={(e) => onChange(withField(e.target.value))}
-		>
-			{CONDITION_FIELDS.map((f) => (
-				<option key={f.field} value={f.field}>
-					{f.label}
-				</option>
-			))}
-		</select>
+			choices={FIELD_CHOICES}
+			onChange={(field) => onChange(withField(field))}
+		/>
 	);
 	const opSelect = (
-		<select
-			aria-label="Operator"
-			className={SELECT}
+		<ChoiceSelect
+			label="Operator"
 			value={cond.op}
-			onChange={(e) => onChange(withOperator(cond, e.target.value))}
-		>
-			{spec.ops.map((o) => (
-				<option key={o.op} value={o.op}>
-					{o.label}
-				</option>
-			))}
-		</select>
+			choices={spec.ops.map((o) => ({ value: o.op, label: o.label }))}
+			onChange={(op) => onChange(withOperator(cond, op))}
+		/>
 	);
 	const value = (
 		<ValueInput

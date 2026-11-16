@@ -104,7 +104,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 					<Plus className="size-4" />
 				</button>
 			</div>
-			<ul className="m-0 max-h-64 list-none overflow-y-auto p-0">
+			<ul className="m-0 list-none p-0">
 				{collections.map((c) => {
 					const hint = dropHint?.id === c.id ? dropHint.kind : null;
 					return (

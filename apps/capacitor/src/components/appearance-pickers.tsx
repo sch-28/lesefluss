@@ -51,6 +51,9 @@ export function ThemeCards({
 						className={cn(
 							cardClass(value === t.value, compact),
 							compact ? "min-w-0 gap-1" : "gap-2",
+							// One column: a row per theme, swatch beside its name, so four
+							// themes do not run several screens long.
+							"@max-[12rem]:flex-row @max-[12rem]:gap-3 @max-[12rem]:py-2",
 							disabled && "opacity-50",
 						)}
 					>
@@ -65,7 +68,7 @@ export function ThemeCards({
 						</span>
 						<span
 							className={cn(
-								"max-w-full text-balance break-words text-center font-medium text-foreground",
+								"max-w-full text-balance break-words @max-[12rem]:text-left text-center font-medium text-foreground",
 								compact ? "text-xs leading-tight" : "text-sm",
 							)}
 						>

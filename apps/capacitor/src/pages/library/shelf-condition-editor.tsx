@@ -33,6 +33,7 @@ import type { FacetOptions } from "./filter-picker";
 import {
 	append,
 	canAddGroup,
+	completePart,
 	type DraftGroup,
 	type DraftNode,
 	fromDraft,
@@ -326,7 +327,7 @@ function useLiveCount(root: DraftGroup, items: ReturnType<typeof useShelfLibrary
 		return () => clearTimeout(timer);
 	}, [root]);
 	return useMemo(() => {
-		const tree = fromDraft(counted);
+		const tree = fromDraft(completePart(counted));
 		return items.filter((item) => matchesTree(item.facets, tree.root, now)).length;
 	}, [counted, items, now]);
 }
@@ -471,17 +472,12 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 					title={<DrawerTitle className="truncate">{trimmed || "New smart shelf"}</DrawerTitle>}
 					subtitle={<DrawerDescription>Edit conditions</DrawerDescription>}
 					action={
-						<>
-							<SheetDoneButton
-								className="font-medium text-muted-foreground"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</SheetDoneButton>
-							<SheetDoneButton disabled={!canSave} onClick={save}>
-								Save
-							</SheetDoneButton>
-						</>
+						<SheetDoneButton
+							className="font-medium text-muted-foreground"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</SheetDoneButton>
 					}
 				/>
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" data-vaul-no-drag>

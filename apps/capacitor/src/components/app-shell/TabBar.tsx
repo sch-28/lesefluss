@@ -1,3 +1,4 @@
+import { cn } from "@lesefluss/ui/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { NavBadge } from "./nav-badge";
 import { useNavBadges, useNavItems } from "./nav-items";
@@ -14,12 +15,17 @@ export function TabBar() {
 			data-slot="tab-bar"
 			className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden"
 		>
-			<div className="pb-[var(--safe-bottom)]">
+			{/* Narrower than about five labels (large system text): only the active tab
+			    keeps its label on screen, as Material's selected-label mode does. */}
+			<div className="@container pb-[var(--safe-bottom)]">
 				<ul className="m-0 flex h-[var(--tab-bar-h)] list-none p-0">
 					{items.map((tab) => {
 						const isActive = pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 						return (
-							<li key={tab.to} className="min-w-0 flex-1">
+							<li
+								key={tab.to}
+								className={cn("min-w-0 flex-1", isActive && "@max-[20em]:flex-[1.75]")}
+							>
 								<Link
 									to={tab.to}
 									style={isActive ? { color: "var(--primary)" } : undefined}
@@ -30,7 +36,14 @@ export function TabBar() {
 										<tab.icon className="size-5" />
 										<NavBadge value={badges[tab.to]} />
 									</span>
-									<span className="w-full truncate px-0.5 text-center">{tab.label}</span>
+									<span
+										className={cn(
+											"w-full truncate px-0.5 text-center",
+											!isActive && "@max-[20em]:sr-only",
+										)}
+									>
+										{tab.label}
+									</span>
 								</Link>
 							</li>
 						);

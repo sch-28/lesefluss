@@ -48,6 +48,8 @@ export type UseLibrarySelection = {
 	/** Books in the current view, rendered or not: the N of "Select all N". */
 	visibleCount: number;
 	begin: (bookId: string) => void;
+	/** Enters selection mode with nothing picked yet. */
+	start: () => void;
 	exit: () => void;
 	/** Toggles one book, entering selection mode if needed, and makes it the range anchor. */
 	toggle: (bookId: string) => void;
@@ -178,6 +180,10 @@ export function useLibrarySelection(
 		isSelected: useCallback((bookId) => selection?.has(bookId) ?? false, [selection]),
 		allVisibleSelected: isAllVisibleSelected(selection ?? new Set(), visibleItems),
 		visibleCount: useMemo(() => selectableIds(visibleItems).length, [visibleItems]),
+		start: useCallback(() => {
+			anchorRef.current = null;
+			setSelection((current) => current ?? new Set());
+		}, []),
 		begin: useCallback((bookId) => {
 			anchorRef.current = bookId;
 			setSelection(new Set([bookId]));

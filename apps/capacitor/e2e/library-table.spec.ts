@@ -67,7 +67,6 @@ test("a tag added in its cell filters like any other tag", async ({ page }) => {
 	await tagInTable(page, "Tidewater", ["sea"]);
 	await expect(page.getByRole("button", { name: "Edit tags of Tidewater" })).toHaveText("sea");
 
-	await page.getByRole("button", { name: "Search library" }).click();
 	await page.getByRole("combobox", { name: "Search library" }).fill("tag:sea ");
 	await expect.poll(() => tableTitles(page)).toEqual(["Tidewater"]);
 });

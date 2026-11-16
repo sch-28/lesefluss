@@ -43,7 +43,7 @@ describe("FilterBar shelf conditions", () => {
 		expect(onEdit).toHaveBeenCalledTimes(1);
 	});
 
-	it("stays hidden with no chips, no shelf and no Add filter", async () => {
+	it("stays hidden with no chips and no shelf", async () => {
 		view = await render(<FilterBar filter={{}} onChange={() => {}} options={options} />);
 		expect(view.container.querySelector("[data-testid=filter-bar]")).toBeNull();
 	});

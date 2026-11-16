@@ -33,7 +33,15 @@ const buttonVariants = cva(
 				"icon-sm": "relative size-7 before:absolute before:-inset-[9px] before:content-['']",
 				"icon-lg": "relative size-9 before:absolute before:-inset-[5px] before:content-['']",
 			},
+			// For a label that may outgrow the width at a large system text size: the height becomes a minimum.
+			wrapLabel: {
+				true: "h-auto whitespace-normal",
+			},
 		},
+		compoundVariants: [
+			{ wrapLabel: true, size: "default", className: "min-h-10 py-2" },
+			{ wrapLabel: true, size: "sm", className: "min-h-8 py-1" },
+		],
 		defaultVariants: {
 			variant: "default",
 			size: "default",
@@ -45,6 +53,7 @@ function Button({
 	className,
 	variant = "default",
 	size = "default",
+	wrapLabel,
 	asChild = false,
 	...props
 }: React.ComponentProps<"button"> &
@@ -58,7 +67,7 @@ function Button({
 			data-slot="button"
 			data-variant={variant}
 			data-size={size}
-			className={cn(buttonVariants({ variant, size, className }))}
+			className={cn(buttonVariants({ variant, size, wrapLabel, className }))}
 			{...props}
 		/>
 	);

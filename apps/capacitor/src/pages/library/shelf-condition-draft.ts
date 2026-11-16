@@ -191,6 +191,21 @@ export function isDraftComplete(group: DraftGroup): boolean {
 	);
 }
 
+/** The draft without its unfinished rows and the groups they leave empty, so a row
+ *  still being filled in does not empty the live count. */
+export function completePart(group: DraftGroup): DraftGroup {
+	const items: DraftNode[] = [];
+	for (const n of group.items) {
+		if (!isDraftGroup(n)) {
+			if (isConditionComplete(n)) items.push(n);
+			continue;
+		}
+		const part = completePart(n);
+		if (part.items.length > 0) items.push(part);
+	}
+	return { ...group, items };
+}
+
 export function hasEmptyGroup(group: DraftGroup): boolean {
 	return group.items.some((n) => isDraftGroup(n) && (n.items.length === 0 || hasEmptyGroup(n)));
 }

@@ -9,19 +9,13 @@ export type HeaderControls = {
 	view: boolean;
 };
 
-/** Which of the library header's view controls show. The ordered (series)
+/** Which of the library toolbar's view controls show. The ordered (series)
  *  view keeps its members in #N order, so only its layout can change; an empty
  *  library has nothing to search, sort or lay out. */
 export function headerControls(view: {
 	isOrderedView: boolean;
-	isDesktop: boolean;
 	isEmptyLibrary?: boolean;
 }): HeaderControls {
 	const listed = !view.isOrderedView && !view.isEmptyLibrary;
-	return {
-		search: listed,
-		filter: listed && !view.isDesktop,
-		sort: listed,
-		view: !view.isEmptyLibrary,
-	};
+	return { search: listed, filter: listed, sort: listed, view: !view.isEmptyLibrary };
 }

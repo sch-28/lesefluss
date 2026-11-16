@@ -1,7 +1,7 @@
 import { act, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { tabBarHidden } from "../../../components/app-shell/tab-bar-visibility";
-import { type Rendered, render } from "../../../test/render";
+import { click, type Rendered, render } from "../../../test/render";
 import BulkActionBar from "../bulk-action-bar";
 import { useDragSelect } from "../use-drag-select";
 import type { UseLibrarySelection } from "../use-library-selection";
@@ -76,5 +76,30 @@ describe("BulkActionBar", () => {
 		view.unmount();
 		view = undefined;
 		expect(tabBarHidden.get()).toBe(false);
+	});
+
+	it("names each bulk action on the bar, with Delete apart and the rare ones under More", async () => {
+		const selection = {
+			isRunning: false,
+			picked: [{ id: "a" }],
+			progress: { done: 0, total: 0 },
+			exit: vi.fn(),
+			allVisibleSelected: false,
+			visibleCount: 1,
+			toggleAllVisible: vi.fn(),
+			openSheet: vi.fn(),
+			setDeleteOpen: vi.fn(),
+		} as unknown as UseLibrarySelection;
+		view = await render(<BulkActionBar selection={selection} />);
+		await click(view.getButton("Status"));
+		expect(selection.openSheet).toHaveBeenCalledWith("status");
+		await click(view.getButton("Collection"));
+		expect(selection.openSheet).toHaveBeenCalledWith("collection");
+		await click(view.getButton("Series"));
+		expect(selection.openSheet).toHaveBeenCalledWith("series");
+		await click(view.getButton("Delete"));
+		expect(selection.setDeleteOpen).toHaveBeenCalledWith(true);
+		await click(view.getButton("More bulk actions"));
+		expect(selection.openSheet).toHaveBeenCalledWith("actions");
 	});
 });

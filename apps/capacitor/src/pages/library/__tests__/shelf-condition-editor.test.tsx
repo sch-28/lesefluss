@@ -26,6 +26,10 @@ vi.mock(
 	"@lesefluss/ui/drawer",
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,
 );
+vi.mock(
+	"@lesefluss/ui/select",
+	async () => (await import("../../../test/overlay-mocks")).selectModule,
+);
 vi.mock("@lesefluss/ui/dialog", async () => {
 	const { MockOverlay } = await import("../../../test/overlay-mocks");
 	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
@@ -135,6 +139,8 @@ function setValue(el: HTMLInputElement | HTMLSelectElement, value: string) {
 	});
 }
 const settle = () => act(() => vi.advanceTimersByTime(150));
+/** On the phone the live count is the save button. */
+const saveButton = () => q<HTMLButtonElement>("[data-testid=shelf-live-count]");
 const count = () => q("[data-testid=shelf-live-count]")?.textContent;
 const savedTree = (call: unknown[]) => parseTree((call[0] as { conditions: string }).conditions);
 
@@ -154,14 +160,14 @@ describe("ShelfConditionEditor", () => {
 		await open(null);
 		expect(rows()).toHaveLength(1);
 		expect(rows()[0].hasAttribute("data-incomplete")).toBe(true);
-		expect(view?.getButton("Save").disabled).toBe(true);
+		expect(saveButton().disabled).toBe(true);
 
 		setValue(q("input[placeholder='Shelf name']"), "Now");
-		expect(view?.getButton("Save").disabled).toBe(true);
+		expect(saveButton().disabled).toBe(true);
 		setValue(q("select[aria-label='Status value']"), "reading");
-		expect(view?.getButton("Save").disabled).toBe(false);
+		expect(saveButton().disabled).toBe(false);
 
-		press("Save");
+		act(() => saveButton().click());
 		expect(create).toHaveBeenCalledTimes(1);
 		const [input, { onSuccess }] = create.mock.calls[0];
 		expect(input).toMatchObject({ name: "Now", pinned: true });
@@ -195,6 +201,19 @@ describe("ShelfConditionEditor", () => {
 		press("Any", 1);
 		settle();
 		expect(count()).toBe("Show 3 books");
+		// A row still being filled in leaves the count alone.
+		press("Condition", 0);
+		settle();
+		expect(count()).toBe("Show 3 books");
+	});
+
+	it("keeps one save action on the phone: the live count", async () => {
+		await open(custom);
+		const labels = [...(view?.container.querySelectorAll("button") ?? [])].map((b) =>
+			b.textContent?.trim(),
+		);
+		expect(labels).not.toContain("Save");
+		expect(saveButton().disabled).toBe(false);
 	});
 
 	it("adds, moves and removes rows and groups", async () => {
@@ -226,15 +245,15 @@ describe("ShelfConditionEditor", () => {
 		expect([...(inner?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).not.toContain(
 			"Group",
 		);
-		expect(view?.getButton("Save").disabled).toBe(true);
+		expect(saveButton().disabled).toBe(true);
 		press("Remove group", 1);
-		expect(view?.getButton("Save").disabled).toBe(false);
+		expect(saveButton().disabled).toBe(false);
 	});
 
 	it("blocks Save and outlines a nested group once its last row is gone", async () => {
 		await open(custom);
 		const group = () => q<HTMLElement>("[data-testid=condition-group]");
-		expect(view?.getButton("Save").disabled).toBe(false);
+		expect(saveButton().disabled).toBe(false);
 		expect(group().dataset.incomplete).toBeUndefined();
 
 		press("Remove condition", 2);
@@ -242,7 +261,7 @@ describe("ShelfConditionEditor", () => {
 		expect(group().querySelectorAll("[data-testid=condition-row]")).toHaveLength(0);
 		expect(group().dataset.incomplete).toBe("true");
 		expect(group().className).toContain("outline-dashed");
-		expect(view?.getButton("Save").disabled).toBe(true);
+		expect(saveButton().disabled).toBe(true);
 		expect(view?.container.textContent).toContain("Add a condition to every group");
 
 		press("Condition", 0);
@@ -251,7 +270,7 @@ describe("ShelfConditionEditor", () => {
 		expect(view?.container.textContent).not.toContain("Add a condition to every group");
 
 		press("Remove group");
-		expect(view?.getButton("Save").disabled).toBe(false);
+		expect(saveButton().disabled).toBe(false);
 	});
 
 	it("saves an edited shelf in place, and Cancel writes nothing", async () => {
@@ -261,7 +280,7 @@ describe("ShelfConditionEditor", () => {
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 		expect(update).not.toHaveBeenCalled();
 
-		press("Save");
+		act(() => saveButton().click());
 		expect(update).toHaveBeenCalledTimes(1);
 		expect(update.mock.calls[0][0]).toMatchObject({ id: "s1", name: "Reading, short" });
 		expect(savedTree(update.mock.calls[0])).toEqual(nested);

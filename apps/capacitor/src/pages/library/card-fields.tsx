@@ -42,8 +42,13 @@ const CARD_FIELD_IDS: readonly CardFieldId[] = [
 ];
 
 const COLUMN_LABELS = new Map(TABLE_COLUMNS.map((c) => [c.id, c.label]));
+/** Where a card shows more than its column: the progress slot is the whole status line. */
+const CARD_LABELS: Partial<Record<CardFieldId, string>> = {
+	series: "Series and #N",
+	progress: "Progress or time to read",
+};
 export const CARD_FIELDS: readonly { id: CardFieldId; label: string }[] = CARD_FIELD_IDS.map(
-	(id) => ({ id, label: COLUMN_LABELS.get(id) ?? id }),
+	(id) => ({ id, label: CARD_LABELS[id] ?? COLUMN_LABELS.get(id) ?? id }),
 );
 
 /** Title, author and the status line (decision 183c96c2 on LESE-190.6); the rest is opt-in. */

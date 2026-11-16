@@ -68,7 +68,7 @@ export function TodayGoalCard() {
 								onClick={() =>
 									target === "goals" ? navigate({ to: "/tabs/settings/goals" }) : setSheetOpen(true)
 								}
-								className="-m-1 flex min-w-0 flex-1 items-center gap-3 rounded-[10px] p-1 text-left hover:bg-muted"
+								className="-m-1 flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-[10px] p-1 text-left hover:bg-muted"
 							>
 								<GoalRing
 									size={RING_SIZE}
@@ -79,7 +79,13 @@ export function TodayGoalCard() {
 										<Target className="size-5 text-muted-foreground" />
 									)}
 								</GoalRing>
-								<span className={cn("flex min-w-0 flex-col", isPending && "invisible")}>
+								{/* Below the ring once a line holds no more than a few letters (large system text). */}
+								<span
+									className={cn(
+										"flex min-w-0 flex-1 basis-[7em] flex-col",
+										isPending && "invisible",
+									)}
+								>
 									<span className="break-words font-semibold text-[1.0625rem] tabular-nums">
 										{primary}
 									</span>

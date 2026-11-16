@@ -45,30 +45,34 @@ export function useLeaveMissingShelf(shelfId: string | undefined, isMissing: boo
 /**
  * The library filter. The URL's `f` param is the source of truth, so a view can
  * be bookmarked, reloaded or shared; this device's last filter fills the URL
- * when the library opens without one.
+ * when All books opens without one. A collection or shelf opens unfiltered and
+ * never changes that stored filter (LESE-211.12).
  */
 export function useLibraryFilter(): [LibraryFilter, (filter: LibraryFilter) => void] {
-	const { f, shelf } = useSearch({ from: "/tabs/library/" });
+	const { f, shelf, collection } = useSearch({ from: "/tabs/library/" });
+	const isScoped = !!shelf || !!collection;
 	const navigate = useNavigate({ from: "/tabs/library/" });
 	const fromUrl = useMemo(() => decodeFilterParam(f), [f]);
-	// An open shelf's chips are its own, never the device's last filter.
-	const filter = useMemo(() => fromUrl ?? (shelf ? {} : readStoredFilter()), [fromUrl, shelf]);
+	const filter = useMemo(
+		() => fromUrl ?? (isScoped ? {} : readStoredFilter()),
+		[fromUrl, isScoped],
+	);
 
 	const setFilter = useCallback(
 		(next: LibraryFilter) => {
-			if (!shelf) storeFilter(next);
+			if (!isScoped) storeFilter(next);
 			navigate({ search: (prev) => ({ ...prev, f: encodeFilterParam(next) }), replace: true });
 		},
-		[navigate, shelf],
+		[navigate, isScoped],
 	);
 
 	useEffect(() => {
-		if (fromUrl && !shelf) storeFilter(fromUrl);
+		if (fromUrl && !isScoped) storeFilter(fromUrl);
 		const canonical = encodeFilterParam(filter);
 		if (canonical !== f) {
 			navigate({ search: (prev) => ({ ...prev, f: canonical }), replace: true });
 		}
-	}, [f, fromUrl, filter, navigate, shelf]);
+	}, [f, fromUrl, filter, navigate, isScoped]);
 
 	return [filter, setFilter];
 }

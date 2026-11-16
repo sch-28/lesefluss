@@ -34,20 +34,21 @@ const SortPopover: React.FC<Props> = ({
 	thenBy,
 	onThenBy,
 }) => {
+	// Order first: two options above the long field list, so it never sits below the fold.
 	const sections: PopoverSection<string>[] = [
-		{
-			heading: "Sort by",
-			options: SORT_OPTIONS,
-			labels: SORT_LABELS,
-			selected: sortBy,
-			onSelect: (v) => onSort(v as SortBy),
-		},
 		{
 			heading: "Order",
 			options: DIR_OPTIONS,
 			labels: DIR_LABELS,
 			selected: sortDirection(sortBy, reversed),
 			onSelect: (v) => onReversed(v !== NATURAL_DIR[sortBy]),
+		},
+		{
+			heading: "Sort by",
+			options: SORT_OPTIONS,
+			labels: SORT_LABELS,
+			selected: sortBy,
+			onSelect: (v) => onSort(v as SortBy),
 		},
 		{
 			heading: "Then by",

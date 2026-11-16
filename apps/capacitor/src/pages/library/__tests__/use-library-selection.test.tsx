@@ -61,6 +61,14 @@ describe("useLibrarySelection", () => {
 		expect(selection.picked.map((b) => b.id)).toEqual(["a", "b", "c"]);
 	});
 
+	it("starts an empty selection from the Select button", async () => {
+		await act(async () => selection.exit());
+		expect(selection.isSelecting).toBe(false);
+		await act(async () => selection.start());
+		expect(selection.isSelecting).toBe(true);
+		expect(selection.picked).toEqual([]);
+	});
+
 	it("ends the selection after a delete", async () => {
 		await act(() => selection.run({ kind: "delete" }));
 		expect(selection.isSelecting).toBe(false);

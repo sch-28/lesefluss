@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildEpubBuffer } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page, test } from "@playwright/test";
+import { openFilterPicker } from "./helpers/library-books";
 import { resetStorage } from "./helpers/seed";
 
 /**
@@ -82,8 +83,10 @@ test("deleting a selection names the books and removes exactly those", async ({ 
 	await enterSelectionMode(page, "Tidewater");
 	await card(page, "Northlight").click();
 
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+	await page
+		.getByRole("toolbar", { name: "Selection" })
+		.getByRole("button", { name: "Delete", exact: true })
+		.click();
 
 	// Named, not just counted: some of a selection can be off screen.
 	const dialog = page.getByRole("alertdialog");
@@ -104,7 +107,7 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await enterSelectionMode(page, "Tidewater");
 	await card(page, "Northlight").click();
 
-	await page.getByRole("button", { name: "Bulk actions" }).click();
+	await page.getByRole("button", { name: "More bulk actions" }).click();
 	await page.getByRole("menuitem", { name: "Edit tags" }).click();
 
 	await page.getByPlaceholder("New tag").fill("summer");
@@ -116,7 +119,7 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await page.getByRole("button", { name: "Done", exact: true }).click();
 
 	// The tag filter is the proof: it reads the committed rows, not the sheet.
-	await page.getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	await page.getByTestId("filter-picker").getByRole("button", { name: /^Tag/ }).first().click();
 	await page.getByRole("button", { name: "Tag summer, off" }).click();
 
@@ -162,7 +165,7 @@ test("Shift-click selects the run, Ctrl-click toggles one, Select all N takes th
 });
 
 test("Select all takes only the books the filter shows", async ({ page }) => {
-	await page.getByTestId("filter-bar").getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	const picker = page.getByTestId("filter-picker");
 	await picker.getByRole("button", { name: "Author", exact: false }).first().click();
 	await picker.getByRole("button", { name: "Author Ada Vance, off" }).click();

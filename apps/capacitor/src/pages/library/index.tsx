@@ -14,8 +14,8 @@ import {
 	MoreHorizontal,
 	Plus,
 	RefreshCcw,
-	Search,
 	SearchX,
+	SquareCheck,
 	X,
 } from "lucide-react";
 import type React from "react";
@@ -33,6 +33,7 @@ import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { EmptyState } from "../../components/empty-state";
 import { HeaderGoalRing } from "../../components/header-goal-ring";
+import { PageContainer } from "../../components/page-container";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { toast } from "../../components/toast";
@@ -42,7 +43,7 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { useLocalDayNow } from "../../hooks/use-local-day";
-import { useMediaQuery } from "../../hooks/use-media-query";
+import { useMediaQuery, WIDE_QUERY } from "../../hooks/use-media-query";
 import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
@@ -69,7 +70,7 @@ import {
 import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
 import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
-import FilterBar, { AddFilterButton } from "./filter-bar";
+import FilterBar from "./filter-bar";
 import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import { displayOrder, groupLibrary, type SeriesMemberships, seriesBadge } from "./group-by";
@@ -191,16 +192,20 @@ const Library: React.FC = () => {
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	// Native drag needs a mouse; on touch a held card starts drag-select instead.
 	const canDragBooks = useMediaQuery("(hover: hover) and (pointer: fine)");
-	const { search, setSearch, isSearchOpen, setIsSearchOpen, closeSearch, toggleSearch } =
-		useLibrarySearch();
+	const { search, setSearch, isSearchOpen, setIsSearchOpen, closeSearch } = useLibrarySearch();
 	const [isSearchFocused, setSearchFocused] = useState(false);
+	// A collection, shelf or series opens with all its books, so a query typed elsewhere goes.
+	useEffect(() => {
+		if (collectionId || shelfId) closeSearch();
+	}, [collectionId, shelfId, closeSearch]);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
-	// The table needs the width; a narrow window shows a stored table as the list.
-	// A series' #N order and its drag-reorder live on the cards, so it shows the table as the list.
-	const shownView: LibraryViewMode =
-		viewMode === "table" && (!isDesktop || isOrderedView) ? "list" : viewMode;
+	// The table needs the width (its default columns fit from 1024 px beside the
+	// sidebar rail); a narrower window shows a stored table as the list. A series'
+	// #N order and its drag-reorder live on the cards, so it shows the table as the list.
+	const canTable = useMediaQuery(WIDE_QUERY) && !isOrderedView;
+	const shownView: LibraryViewMode = viewMode === "table" && !canTable ? "list" : viewMode;
 	const isEmptyLibrary = !isPending && books.length === 0 && series.length === 0;
-	const controls = headerControls({ isOrderedView, isDesktop, isEmptyLibrary });
+	const controls = headerControls({ isOrderedView, isEmptyLibrary });
 	const cardFields = useCardFields();
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
 		(shownView === "table" && columnIds.includes("highlights")) ||
@@ -337,7 +342,6 @@ const Library: React.FC = () => {
 	};
 
 	importRequest.useHandler(() => setImportSheetOpen(true));
-	const searchKey = useCommandKey("library.search");
 	const importKey = useCommandKey("global.import");
 	useRegisterCommands(
 		libraryCommands({
@@ -506,7 +510,8 @@ const Library: React.FC = () => {
 		tabBarHidden.set(true);
 		return () => tabBarHidden.set(false);
 	}, [isTypingSearch]);
-	const isAddButtonShown = !selection.isSelecting && !isOrderedView;
+	const isAddButtonShown =
+		!selection.isSelecting && !isOrderedView && !isDesktop && (!!activeCollection || !activeShelf);
 	useEffect(() => {
 		if (!isAddButtonShown) return;
 		addButtonShown.set(true);
@@ -608,7 +613,13 @@ const Library: React.FC = () => {
 				onOpen={() => openBook(book)}
 				onMenu={ordered ? ordered.onMenu : () => openBookMenu(book)}
 				draggable={canDragBooks}
-				seriesNumber={ordered ? ordered.seriesNumber : seriesBadge(book.id, seriesMemberships)}
+				seriesNumber={
+					ordered
+						? ordered.seriesNumber
+						: fields.includes("series")
+							? seriesBadge(book.id, seriesMemberships)
+							: null
+				}
 				fields={fields}
 				values={cardFieldValues(item, cellContext, fields)}
 			/>
@@ -634,80 +645,157 @@ const Library: React.FC = () => {
 
 	const isSubPage = !!activeCollection || !!activeShelf;
 	const leaveSubPage = () => navigate({ to: "/tabs/library", search: {} });
-	const viewControls = (
+	const filterLabel = filterCount > 0 ? `Filter, ${filterCount} active` : "Filter";
+	const filterButton = (
+		<Button
+			variant="ghost"
+			size={isDesktop ? "sm" : "icon"}
+			aria-label={filterLabel}
+			title="Filter"
+			className="relative"
+			onClick={isDesktop ? undefined : () => setIsFilterOpen(true)}
+		>
+			<FilterIcon />
+			{isDesktop && "Filter"}
+			{filterCount > 0 && (
+				<span
+					aria-hidden
+					className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
+				>
+					{filterCount}
+				</span>
+			)}
+		</Button>
+	);
+	const hasToolbar = controls.search || controls.filter || controls.sort || controls.view;
+	const toolbar = hasToolbar && (
+		<PageContainer
+			width="grid"
+			role="toolbar"
+			aria-label="Library view"
+			className="flex flex-wrap items-center gap-2 px-4 pt-2"
+		>
+			{controls.search ? (
+				// Takes its own row once a large system text size leaves it less than ~10 characters.
+				<div
+					className="min-w-0 flex-1 basis-[10em] md:max-w-md"
+					// Only the input counts: the syntax help popover takes focus without a keyboard.
+					onFocus={(e) => {
+						if (e.target !== searchInputRef.current) return;
+						setIsSearchOpen(true);
+						setSearchFocused(true);
+					}}
+					onBlur={(e) => {
+						if (e.target !== searchInputRef.current) return;
+						setSearchFocused(false);
+						// An empty search left behind must not swallow the next back or Escape.
+						if (search === "") setIsSearchOpen(false);
+					}}
+				>
+					<SearchAutocomplete
+						value={search}
+						onValueChange={setSearch}
+						filter={activeFilter}
+						onFilterChange={setFilter}
+						options={options}
+						inputRef={searchInputRef}
+						onEscape={closeSearch}
+					/>
+				</div>
+			) : (
+				<div className="flex-1" />
+			)}
+			<div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
+				{controls.filter &&
+					(isDesktop ? (
+						<FilterPopover
+							open={isFilterOpen}
+							onOpenChange={setIsFilterOpen}
+							filter={activeFilter}
+							onChange={setFilter}
+							options={options}
+							resultCount={visibleItems.length}
+							trigger={filterButton}
+						/>
+					) : (
+						filterButton
+					))}
+				{controls.sort && (
+					<SortPopover
+						trigger={
+							<Button
+								variant="ghost"
+								size={isDesktop ? "sm" : "icon"}
+								aria-label="Sort"
+								title="Sort"
+							>
+								<ArrowUpDown />
+								{isDesktop && "Sort"}
+							</Button>
+						}
+						sortBy={sortBy}
+						onSort={(s) => setSort({ sortBy: s, reversed: false })}
+						reversed={sort.reversed}
+						onReversed={(r) => setSort({ reversed: r })}
+						thenBy={sort.thenBy ?? "none"}
+						onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
+					/>
+				)}
+				{controls.view && (
+					<ViewSheet
+						isDesktop={isDesktop}
+						view={shownView}
+						onView={setViewMode}
+						canTable={canTable}
+						canGroup={!isOrderedView}
+						cardFields={{
+							settings: cardFields.settings,
+							onToggle: cardFields.toggle,
+							renderPreview: renderCardPreview,
+						}}
+						columns={{
+							ids: columnIds,
+							onToggle: libraryView.toggleColumn,
+							onMove: libraryView.moveColumn,
+						}}
+						groupBy={groupBy}
+						onGroupBy={setGroupBy}
+						open={isViewOpen}
+						onOpenChange={(open) => {
+							setViewOpen(open);
+							if (!open) setGroupByKeyed(false);
+						}}
+						focusGroupBy={isGroupByKeyed}
+					/>
+				)}
+			</div>
+		</PageContainer>
+	);
+	const addLabel = collectionId ? "Add books" : "Add book";
+	const headerActions = (
 		<>
-			{controls.search && (
+			{!isOrderedView && !isEmptyLibrary && !isCollectionEmpty && !selection.isSelecting && (
 				<Button
 					variant="ghost"
-					size="icon"
-					aria-label="Search library"
-					title={withKey("Search library", searchKey)}
-					onClick={toggleSearch}
+					size={isDesktop ? "sm" : "icon"}
+					aria-label="Select books"
+					title="Select books"
+					onClick={selection.start}
 				>
-					<Search />
+					<SquareCheck />
+					{isDesktop && "Select"}
 				</Button>
 			)}
-			{controls.filter && (
+			{isDesktop && !selection.isSelecting && (activeCollection || !activeShelf) && (
 				<Button
-					variant="ghost"
-					size="icon"
-					aria-label={filterCount > 0 ? `Filter, ${filterCount} active` : "Filter"}
-					title="Filter"
-					className="relative"
-					onClick={() => setIsFilterOpen(true)}
+					size="sm"
+					onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
+					disabled={imports.isImporting || isTransferring}
+					title={collectionId ? addLabel : withKey(addLabel, importKey)}
 				>
-					<FilterIcon />
-					{filterCount > 0 && (
-						<span
-							aria-hidden
-							className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
-						>
-							{filterCount}
-						</span>
-					)}
+					{imports.isImporting ? <Loader2 className="animate-spin" /> : <Plus />}
+					{addLabel}
 				</Button>
-			)}
-			{controls.sort && (
-				<SortPopover
-					trigger={
-						<Button variant="ghost" size="icon" aria-label="Sort" title="Sort">
-							<ArrowUpDown />
-						</Button>
-					}
-					sortBy={sortBy}
-					onSort={(s) => setSort({ sortBy: s, reversed: false })}
-					reversed={sort.reversed}
-					onReversed={(r) => setSort({ reversed: r })}
-					thenBy={sort.thenBy ?? "none"}
-					onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
-				/>
-			)}
-			{controls.view && (
-				<ViewSheet
-					isDesktop={isDesktop}
-					view={shownView}
-					onView={setViewMode}
-					canTable={isDesktop && !isOrderedView}
-					canGroup={!isOrderedView}
-					cardFields={{
-						settings: cardFields.settings,
-						onToggle: cardFields.toggle,
-						renderPreview: renderCardPreview,
-					}}
-					columns={{
-						ids: columnIds,
-						onToggle: libraryView.toggleColumn,
-						onMove: libraryView.moveColumn,
-					}}
-					groupBy={groupBy}
-					onGroupBy={setGroupBy}
-					open={isViewOpen}
-					onOpenChange={(open) => {
-						setViewOpen(open);
-						if (!open) setGroupByKeyed(false);
-					}}
-					focusGroupBy={isGroupByKeyed}
-				/>
 			)}
 		</>
 	);
@@ -742,18 +830,12 @@ const Library: React.FC = () => {
 					onBack={leaveSubPage}
 					right={
 						<div className="flex shrink-0 items-center gap-3">
-							{activeCollection.ordered ? (
-								<>
-									{viewControls}
-									<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
-										<Plus />
-									</Button>
-								</>
-							) : (
-								<>
-									<SubPageCount count={activeCollection.bookCount} />
-									{viewControls}
-								</>
+							{!activeCollection.ordered && <SubPageCount count={activeCollection.bookCount} />}
+							{headerActions}
+							{!isDesktop && activeCollection.ordered && (
+								<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
+									<Plus />
+								</Button>
 							)}
 							<CollectionMenuButton
 								collection={activeCollection}
@@ -772,7 +854,7 @@ const Library: React.FC = () => {
 							<div className="flex shrink-0 items-center gap-3" data-testid="smart-shelf-header">
 								<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
 								{!activeShelf.isBuiltIn && shelfIsEdited && updateShelfButton("max-sm:hidden")}
-								{viewControls}
+								{headerActions}
 								<Button
 									variant="ghost"
 									size="icon"
@@ -797,7 +879,7 @@ const Library: React.FC = () => {
 						// 12px apart, so each icon's 44px hit area stays whole between its neighbours.
 						<div className="flex items-center gap-3">
 							<HeaderGoalRing />
-							{viewControls}
+							{headerActions}
 							{!IS_WEB && <BLEIndicator />}
 							{showSync && (
 								<Button
@@ -818,23 +900,7 @@ const Library: React.FC = () => {
 
 			{selection.isSelecting && <BulkActionBar selection={selection} />}
 
-			{controls.search && isSearchOpen && (
-				<div
-					className="border-border border-b px-4 py-2"
-					onFocus={() => setSearchFocused(true)}
-					onBlur={() => setSearchFocused(false)}
-				>
-					<SearchAutocomplete
-						value={search}
-						onValueChange={setSearch}
-						filter={activeFilter}
-						onFilterChange={setFilter}
-						options={options}
-						inputRef={searchInputRef}
-						onEscape={closeSearch}
-					/>
-				</div>
-			)}
+			{toolbar}
 
 			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
 				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
@@ -870,19 +936,6 @@ const Library: React.FC = () => {
 						activeShelf && !activeShelf.isBuiltIn && activeShelf.tree
 							? { isCustom: !activeShelf.filter, onEdit: () => setIsEditingShelf(true) }
 							: undefined
-					}
-					addFilter={
-						isDesktop ? (
-							<FilterPopover
-								open={isFilterOpen}
-								onOpenChange={setIsFilterOpen}
-								filter={activeFilter}
-								onChange={setFilter}
-								options={options}
-								resultCount={visibleItems.length}
-								trigger={<AddFilterButton />}
-							/>
-						) : undefined
 					}
 				/>
 			)}
@@ -1085,7 +1138,7 @@ const Library: React.FC = () => {
 				aria-label={collectionId ? "Add books" : "Add book"}
 				data-toast-clear
 				title={collectionId ? "Add books" : withKey("Add book", importKey)}
-				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50 md:hidden"
 				style={FAB_STYLE}
 			>
 				{imports.isImporting ? (

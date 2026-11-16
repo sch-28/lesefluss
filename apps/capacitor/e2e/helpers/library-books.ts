@@ -63,6 +63,13 @@ export function visibleTitles(page: Page): Promise<string[]> {
 		.evaluateAll((els) => els.map((el) => el.getAttribute("data-book-title") ?? ""));
 }
 
+export async function openFilterPicker(page: Page): Promise<void> {
+	await page
+		.getByRole("toolbar", { name: "Library view" })
+		.getByRole("button", { name: /^Filter/ })
+		.click();
+}
+
 /** Desktop only: the View popover offers the table. */
 export async function openTable(page: Page): Promise<void> {
 	await page.getByRole("button", { name: "View", exact: true }).click();

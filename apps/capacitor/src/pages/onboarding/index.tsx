@@ -3,7 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { isValidElement, useCallback, useMemo, useState } from "react";
 import { PageContainer } from "@/components/page-container";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useBackHandler } from "../../hooks/use-back-handler";
@@ -20,6 +20,8 @@ import WelcomeStep from "./steps/welcome";
 
 /** The height of a button. */
 const SECONDARY_SLOT = "h-10";
+/** Room for the speed test's tallest round; on a shorter screen it fills what there is. */
+const SPEED_BOX = "flex-1 max-h-[43rem]";
 
 const Onboarding: React.FC = () => {
 	const router = useRouter();
@@ -59,6 +61,8 @@ const Onboarding: React.FC = () => {
 		<SyncStep key="sync" />,
 	];
 	const totalSteps = stepNodes.length;
+	const current = stepNodes[step];
+	const isSpeedStep = isValidElement(current) && current.key === "speed";
 	const dotCount = totalSteps - 1;
 
 	const primary = footer?.primary;
@@ -73,7 +77,7 @@ const Onboarding: React.FC = () => {
 		<OnboardingFooterContext.Provider value={ctxValue}>
 			<div className="flex h-[100dvh] flex-col bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-foreground">
 				<div className="px-6">
-					<PageContainer width="flow" className="flex h-12 items-center justify-between">
+					<PageContainer width="flow" className="flex h-12 items-center justify-between md:h-16">
 						{step > 0 ? (
 							<Button
 								variant="ghost"
@@ -98,10 +102,14 @@ const Onboarding: React.FC = () => {
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">
-					{/* Top-anchored, not centred: every step's heading starts at the same height,
-					    and the speed test can change height between its rounds without a jump. */}
-					<PageContainer width="flow" className="pt-[min(8dvh,4rem)]" data-testid="onboarding-step">
-						{stepNodes[step]}
+					{/* Centred between header and footer. The speed test changes height between its
+					    rounds, so it starts at the top of a box of fixed height that is centred instead. */}
+					<PageContainer
+						width="flow"
+						className={cn("my-auto", isSpeedStep && SPEED_BOX)}
+						data-testid="onboarding-step"
+					>
+						{current}
 					</PageContainer>
 				</main>
 

@@ -30,7 +30,7 @@ const SETTINGS_PAGES = [
 ];
 
 const SCALES = [
-	{ name: "200 % on a 412 px phone", factor: 2, viewport: { width: 412, height: 915 } },
+	{ name: "200 % on a 390 px phone", factor: 2, viewport: { width: 390, height: 844 } },
 	{ name: "100 % on a 360 px phone", factor: 1, viewport: { width: 360, height: 740 } },
 ];
 

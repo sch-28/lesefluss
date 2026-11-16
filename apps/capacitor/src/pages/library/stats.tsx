@@ -50,10 +50,11 @@ const Stats: React.FC = () => {
 					onValueChange={(v) => {
 						if (isStatsTab(v)) setSearch(v === "overview" ? {} : { tab: v });
 					}}
-					className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background px-4 py-2"
+					className="@container sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background px-4 py-2"
 				>
-					{/* Wraps: at a large system font the three labels are wider than a phone. */}
-					<TabsList className="min-h-11 w-full flex-wrap group-data-[orientation=horizontal]/tabs:h-auto">
+					{/* Stacks where the three labels no longer fit one row (large system text):
+					    one tab a row reads better than a 2+1 wrap. */}
+					<TabsList className="min-h-11 w-full @max-[13.5em]:flex-col @max-[13.5em]:items-stretch group-data-[orientation=horizontal]/tabs:h-auto">
 						{STATS_TABS.map((t) => (
 							<TabsTrigger key={t} value={t} className="min-h-[calc(2.75rem-7px)]">
 								{STATS_TAB_LABELS[t]}

@@ -66,12 +66,14 @@ describe("onboarding Android back", () => {
 });
 
 describe("onboarding layout", () => {
-	it("keeps the step and the footer's rows in place on every step", async () => {
+	it("centres every step, the speed test in a box of fixed height, and keeps the footer's rows in place", async () => {
 		view = await render(<Onboarding />);
 		const rows: string[][] = [];
 		for (let i = 0; i < 7; i++) {
 			const step = view.container.querySelector("[data-testid=onboarding-step]");
-			expect(step?.className, `step ${i}`).toContain("pt-[min(8dvh,4rem)]");
+			expect(step?.className, `step ${i}`).toContain("my-auto");
+			const isSpeed = view.text().includes("Speed step");
+			expect(step?.className.includes("max-h-[43rem]"), `step ${i}`).toBe(isSpeed);
 			const footer = view.container.querySelector("main")?.nextElementSibling?.firstElementChild;
 			rows.push(
 				[...(footer?.children ?? [])].map((el) =>

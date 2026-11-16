@@ -8,9 +8,9 @@ import {
 	serializeFilter,
 } from "../filter-model";
 
-type Search = { collection?: string; f?: string };
+type Search = { collection?: string; f?: string; shelf?: string };
 const router = vi.hoisted(() => ({
-	search: {} as { collection?: string; f?: string },
+	search: {} as Search,
 	navigate: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -53,7 +53,7 @@ afterEach(() => {
 describe("useLibraryFilter", () => {
 	it("applies the filter a link carries and keeps it for this device", async () => {
 		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(stored));
-		router.search = { collection: "c1", f: encodeFilterParam(tags) };
+		router.search = { f: encodeFilterParam(tags) };
 		view = await render(<Probe />);
 		expect(result[0]).toEqual(tags);
 		expect(router.navigate).not.toHaveBeenCalled();
@@ -74,14 +74,39 @@ describe("useLibraryFilter", () => {
 		expect(navigatedTo()).toEqual({ f: undefined });
 	});
 
-	it("writes a change to the address, keeping the other params, and to storage", async () => {
-		router.search = { collection: "c1" };
+	it("writes a change to the address and to storage", async () => {
 		view = await render(<Probe />);
 		result[1](tags);
-		expect(navigatedTo()).toEqual({ collection: "c1", f: encodeFilterParam(tags) });
+		expect(navigatedTo()).toEqual({ f: encodeFilterParam(tags) });
 		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter(tags));
 		result[1]({});
-		expect(navigatedTo()).toEqual({ collection: "c1", f: undefined });
+		expect(navigatedTo()).toEqual({ f: undefined });
+	});
+
+	it("opens a collection unfiltered and leaves the library's own filter for All books", async () => {
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(stored));
+		router.search = { collection: "c1" };
+		view = await render(<Probe />);
+		expect(result[0]).toEqual({});
+		expect(router.navigate).not.toHaveBeenCalled();
+
+		result[1](tags);
+		expect(navigatedTo()).toEqual({ collection: "c1", f: encodeFilterParam(tags) });
+		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter(stored));
+
+		view.unmount();
+		router.search = {};
+		view = await render(<Probe />);
+		expect(result[0]).toEqual(stored);
+	});
+
+	it("opens a shelf on its own chips, never the device's last filter", async () => {
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(stored));
+		router.search = { shelf: "s1" };
+		view = await render(<Probe />);
+		expect(result[0]).toEqual({});
+		result[1](tags);
+		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter(stored));
 	});
 });
 

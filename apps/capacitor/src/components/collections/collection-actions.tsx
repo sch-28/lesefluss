@@ -56,6 +56,37 @@ export const CollectionActions: React.FC<Props> = ({
 			]
 		: [];
 
+	const moveItems: ActionSheetItem[] = [
+		{
+			label: "Move up",
+			icon: ArrowUp,
+			disabled: index <= 0,
+			onSelect: () => {
+				const above = collections[index - 1];
+				if (collection && above) {
+					move.mutate({
+						id: collection.id,
+						toIndex: indexBeside(allCollections, collection.id, above.id, "before"),
+					});
+				}
+			},
+		},
+		{
+			label: "Move down",
+			icon: ArrowDown,
+			disabled: index < 0 || index >= collections.length - 1,
+			onSelect: () => {
+				const below = collections[index + 1];
+				if (collection && below) {
+					move.mutate({
+						id: collection.id,
+						toIndex: indexBeside(allCollections, collection.id, below.id, "after"),
+					});
+				}
+			},
+		},
+	];
+
 	const confirmDelete = () => {
 		if (!deleting) return;
 		const id = deleting.id;
@@ -89,34 +120,7 @@ export const CollectionActions: React.FC<Props> = ({
 						},
 					},
 					...resetViewItems,
-					{
-						label: "Move up",
-						icon: ArrowUp,
-						disabled: index <= 0,
-						onSelect: () => {
-							const above = collections[index - 1];
-							if (collection && above) {
-								move.mutate({
-									id: collection.id,
-									toIndex: indexBeside(allCollections, collection.id, above.id, "before"),
-								});
-							}
-						},
-					},
-					{
-						label: "Move down",
-						icon: ArrowDown,
-						disabled: index < 0 || index >= collections.length - 1,
-						onSelect: () => {
-							const below = collections[index + 1];
-							if (collection && below) {
-								move.mutate({
-									id: collection.id,
-									toIndex: indexBeside(allCollections, collection.id, below.id, "after"),
-								});
-							}
-						},
-					},
+					...(collections.length > 1 ? moveItems : []),
 					{
 						label: `Delete ${noun}`,
 						icon: Trash2,

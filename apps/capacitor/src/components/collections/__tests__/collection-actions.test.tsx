@@ -120,6 +120,14 @@ describe("CollectionActions", () => {
 		expect(setCollectionView).toHaveBeenCalledWith({ id: "c1", view: null });
 	});
 
+	it("offers no Move up or down with nothing to move past", async () => {
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={vi.fn()} />,
+		);
+		expect(view.queryButton("Move up")).toBeNull();
+		expect(view.queryButton("Move down")).toBeNull();
+	});
+
 	it("leaves the back press to the router while nothing is open", async () => {
 		view = await render(<CollectionActions collection={null} collections={[]} onClose={vi.fn()} />);
 		expect(consumeBackPress()).toBe(false);

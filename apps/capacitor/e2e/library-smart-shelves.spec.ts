@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { seedLibrary } from "./helpers/library-books";
+import { openFilterPicker, seedLibrary } from "./helpers/library-books";
 import { resetStorage } from "./helpers/seed";
 
 const BOOKS = [
@@ -11,7 +11,7 @@ const BOOKS = [
 test.use({ viewport: { width: 1400, height: 900 } });
 
 async function filterByAuthor(page: Page, author: string) {
-	await page.getByTestId("filter-bar").getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	const picker = page.getByTestId("filter-picker");
 	await picker.getByRole("button", { name: "Author", exact: false }).first().click();
 	await picker.getByRole("button", { name: `Author ${author}, off` }).click();

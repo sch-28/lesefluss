@@ -1,5 +1,7 @@
 import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
+import { CircleHelp } from "lucide-react";
 import type React from "react";
 import { useId, useMemo, useState } from "react";
 import { chipsOf, type LibraryFilter, removeValue, setWordRange } from "./filter-model";
@@ -16,6 +18,44 @@ type Props = {
 	onEscape?: () => void;
 	inputRef?: React.Ref<HTMLInputElement>;
 };
+
+const SYNTAX_HELP: [string, string][] = [
+	["tag:scifi", "books with that tag"],
+	["status:reading", "want, reading, finished or dropped"],
+	["author:le guin", "by that author"],
+	["series:dune", "in that series"],
+	["in:favourites", "in that collection"],
+	["rating:>=4", "rated 4 stars or more"],
+	["words:<50k", "shorter than 50,000 words"],
+];
+
+const SyntaxHelp: React.FC = () => (
+	<Popover>
+		<PopoverTrigger asChild>
+			<button
+				type="button"
+				aria-label="Search help"
+				title="Search help"
+				className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground before:absolute before:-inset-2 before:content-[''] hover:text-foreground"
+			>
+				<CircleHelp className="size-4" />
+			</button>
+		</PopoverTrigger>
+		<PopoverContent align="end" className="w-72 text-sm">
+			<p className="m-0 mb-2 text-muted-foreground">
+				Type words to search title and author. A field turns into a filter chip:
+			</p>
+			<dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+				{SYNTAX_HELP.map(([example, meaning]) => (
+					<div key={example} className="contents">
+						<dt className="font-mono text-xs leading-5">{example}</dt>
+						<dd className="m-0 text-muted-foreground text-xs leading-5">{meaning}</dd>
+					</div>
+				))}
+			</dl>
+		</PopoverContent>
+	</Popover>
+);
 
 /** The chip shown last: Length, else the last facet chip. */
 function withoutLastChip(filter: LibraryFilter): LibraryFilter {
@@ -86,12 +126,12 @@ export const SearchAutocomplete: React.FC<Props> = ({
 
 	return (
 		<div className="relative flow-root">
-			<InputHitArea>
+			<InputHitArea className="relative">
 				<Input
 					ref={inputRef}
-					autoFocus
 					value={value}
-					placeholder="Search, or tag: status: rating:>=4 in: words:<50k"
+					className="pr-9"
+					placeholder="Search title, author, tag…"
 					aria-label="Search library"
 					role="combobox"
 					aria-expanded={suggestions.length > 0}
@@ -109,6 +149,7 @@ export const SearchAutocomplete: React.FC<Props> = ({
 					onBlur={() => setDismissed(true)}
 					onFocus={() => setDismissed(false)}
 				/>
+				<SyntaxHelp />
 			</InputHitArea>
 			{suggestions.length > 0 && (
 				<div

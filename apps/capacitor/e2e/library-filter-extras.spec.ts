@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { openTable, seedLibrary, tableTitles, tagInTable } from "./helpers/library-books";
+import {
+	openFilterPicker,
+	openTable,
+	seedLibrary,
+	tableTitles,
+	tagInTable,
+} from "./helpers/library-books";
 import { resetStorage } from "./helpers/seed";
 
 /** Riverkeep alone is past 50k words (six words a paragraph). */
@@ -15,7 +21,7 @@ const picker = (page: Page) => page.getByTestId("filter-picker");
 const bar = (page: Page) => page.getByTestId("filter-bar");
 
 async function openFacet(page: Page, facet: string) {
-	await bar(page).getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	await picker(page)
 		.getByRole("button", { name: new RegExp(`^${facet} `) })
 		.first()
@@ -24,7 +30,6 @@ async function openFacet(page: Page, facet: string) {
 
 async function search(page: Page, text: string) {
 	const box = page.getByRole("combobox", { name: "Search library" });
-	if (!(await box.isVisible())) await page.getByRole("button", { name: "Search library" }).click();
 	await box.fill(text);
 	await box.press("Enter");
 }
@@ -127,7 +132,6 @@ test.describe("search syntax", () => {
 	});
 
 	test("a field prefix offers its completions", async ({ page }) => {
-		await page.getByRole("button", { name: "Search library" }).click();
 		await page.getByRole("combobox", { name: "Search library" }).fill("author:B");
 		const suggestions = page.getByTestId("search-suggestions");
 		await expect(suggestions).toContainText("Bo Lind");

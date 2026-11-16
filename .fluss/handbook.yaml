@@ -45,6 +45,11 @@ solutions:
       - Library, collection, smart shelf and series pages share one book view.
       - The check compares page widths across pages at 1280, 1920 and 2560 px, side by side; a
         page that is wider, narrower or off-centre against its kind is a finding, not taste.
+      - Short single-column flows (onboarding, dialogs shown as pages, empty states) centre
+        vertically between their header and footer on tall screens; content that changes height
+        in place (the speed test) sits at the top of a centred box of fixed height instead. The
+        check looks at tall windows too (1280x1600, 1920x1080, 2560x1440), not only phone height
+        (LESE-211.18).
 
       **Desktop buttons:** a button is as wide as its label on desktop; full width is for phones
       only (sheets, forms and a page's primary action).

@@ -84,7 +84,7 @@ const LibraryTable: React.FC<Props> = ({
 	const rows = useMemo(() => layoutRows(items, groups, 1, collapsed), [items, groups, collapsed]);
 	const tokens = useMemo(() => rowTokens(rows), [rows]);
 	const virtualizer = useScrollToFocused(tokens, focusedKey);
-	const template = `2.5rem ${columns.map((c) => c.width).join(" ")} 2.5rem`;
+	const template = `2rem ${columns.map((c) => c.width).join(" ")} 2.5rem`;
 	const isTwoLevel = sort.thenBy !== null && sort.thenBy !== sort.sortBy;
 	const rankOf = (key: SortBy | undefined): { rank: 1 | 2; dir: "asc" | "desc" } | null => {
 		if (key === undefined) return null;
@@ -243,7 +243,7 @@ const LibraryTable: React.FC<Props> = ({
 											className={cn(
 												"size-4 cursor-pointer accent-primary",
 												!selection.isSelecting &&
-													"opacity-0 focus-visible:opacity-100 group-hover:opacity-100",
+													"[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:focus-visible:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
 											)}
 										/>
 									)}

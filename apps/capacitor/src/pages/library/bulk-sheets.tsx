@@ -1,5 +1,5 @@
 import { BOOK_STATUS_LABELS, BOOK_STATUSES } from "@lesefluss/core";
-import { BookOpen, FolderPlus, Layers, Star, Tag as TagIcon } from "lucide-react";
+import { Star, Tag as TagIcon } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
 import { ActionSheet } from "../../components/action-sheet";
@@ -58,12 +58,6 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 				title={title}
 				items={[
 					{
-						label: "Set reading status",
-						icon: BookOpen,
-						// A submenu is impossible: ActionSheet closes on select.
-						onSelect: () => selection.openSheet("status"),
-					},
-					{
 						label: "Set rating",
 						icon: Star,
 						onSelect: () => selection.openSheet("rating"),
@@ -72,21 +66,6 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 						label: "Edit tags",
 						icon: TagIcon,
 						onSelect: () => selection.openSheet("tags"),
-					},
-					{
-						label: "Add to series…",
-						icon: Layers,
-						onSelect: () => selection.openSheet("series"),
-					},
-					{
-						label: "Add to collection…",
-						icon: FolderPlus,
-						onSelect: () => selection.openSheet("collection"),
-					},
-					{
-						label: "Delete",
-						destructive: true,
-						onSelect: () => selection.setDeleteOpen(true),
 					},
 				]}
 			/>

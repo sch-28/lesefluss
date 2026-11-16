@@ -48,7 +48,6 @@ test.describe("on desktop", () => {
 		await openHolidayCollection(page);
 
 		const box = page.getByRole("combobox", { name: "Search library" });
-		await page.getByRole("button", { name: "Search library" }).click();
 		await box.fill("river");
 		await expect(page.locator("[data-book-title]")).toHaveCount(1);
 		await expect(bookCard(page, "Riverkeep")).toBeVisible();

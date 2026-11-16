@@ -48,21 +48,21 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 	{
 		id: "title",
 		label: "Title",
-		width: "minmax(12rem, 3fr)",
+		width: "minmax(9rem, 3fr)",
 		sortBy: "title",
 		text: (item) => item.sortKey.title,
 	},
 	{
 		id: "author",
 		label: "Author",
-		width: "minmax(8rem, 2fr)",
+		width: "minmax(5.5rem, 2fr)",
 		sortBy: "author",
 		text: (item) => displayAuthor(item.sortKey.author),
 	},
 	{
 		id: "series",
 		label: "Series",
-		width: "minmax(8rem, 2fr)",
+		width: "minmax(5.5rem, 2fr)",
 		sortBy: "series",
 		text: bookOnly(({ book }, ctx) =>
 			(ctx.seriesMemberships.get(book.id) ?? [])
@@ -78,14 +78,14 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 	{
 		id: "status",
 		label: "Status",
-		width: "minmax(6rem, 1fr)",
+		width: "minmax(6.5rem, 1fr)",
 		sortBy: "status",
 		text: (item) => BOOK_STATUS_LABELS[item.sortKey.status],
 	},
 	{
 		id: "progress",
 		label: "Progress",
-		width: "5.5rem",
+		width: "4.5rem",
 		align: "end",
 		sortBy: "progress",
 		text: (item) => formatPercent(item.sortKey.progress),

@@ -14,6 +14,8 @@ export function useMediaQuery(query: string): boolean {
 }
 
 export const FINE_POINTER_QUERY = "(pointer: fine)";
+/** Room for the full sidebar beside a page; below it a tablet gets the rail and no table. */
+export const WIDE_QUERY = "(min-width: 1024px)";
 export const DESKTOP_OVERLAY_QUERY = "(min-width: 768px) and (pointer: fine)";
 
 /**

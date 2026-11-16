@@ -1,5 +1,5 @@
 import { cn } from "@lesefluss/ui/utils";
-import { Plus, SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import type React from "react";
 import { PageContainer } from "../../components/page-container";
 import {
@@ -17,8 +17,6 @@ type Props = {
 	filter: LibraryFilter;
 	onChange: (filter: LibraryFilter) => void;
 	options: FacetOptions;
-	/** The desktop Add filter trigger; the phone opens its sheet from the header. */
-	addFilter?: React.ReactNode;
 	/** Shown when the current filter can be saved as a smart shelf. */
 	onSaveShelf?: () => void;
 	/** The open user shelf: one that is not chips shows as one chip, and either opens the editor. */
@@ -56,13 +54,12 @@ const FilterBar: React.FC<Props> = ({
 	filter,
 	onChange,
 	options,
-	addFilter,
 	onSaveShelf,
 	shelfConditions,
 }) => {
 	const chips = chipsOf(filter);
 	const count = activeFilterCount(filter);
-	if (count === 0 && !addFilter && !shelfConditions) return null;
+	if (count === 0 && !shelfConditions) return null;
 	const matchesAllTags = filter.tags?.mode === "all";
 	return (
 		<PageContainer
@@ -102,7 +99,6 @@ const FilterBar: React.FC<Props> = ({
 					onRemove={() => onChange(setWordRange(filter, null))}
 				/>
 			)}
-			{addFilter}
 			{count > 0 && (
 				<button
 					type="button"
@@ -137,20 +133,5 @@ const FilterBar: React.FC<Props> = ({
 		</PageContainer>
 	);
 };
-
-export const AddFilterButton = ({
-	ref,
-	...props
-}: React.ComponentProps<"button">): React.ReactElement => (
-	<button
-		ref={ref}
-		type="button"
-		className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-border border-dashed px-2.5 text-muted-foreground text-xs hover:text-foreground"
-		{...props}
-	>
-		<Plus className="size-3" />
-		Add filter
-	</button>
-);
 
 export default FilterBar;

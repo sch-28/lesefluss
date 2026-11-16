@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildEpubBuffer } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page, test } from "@playwright/test";
+import { openFilterPicker } from "./helpers/library-books";
 import { resetStorage } from "./helpers/seed";
 
 const BOOKS = [
@@ -46,7 +47,7 @@ test("a value cycles through include, exclude and off, and the filter survives n
 	const picker = page.getByTestId("filter-picker");
 	const cards = page.locator("[data-book-title]");
 
-	await bar.getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	await picker.getByRole("button", { name: "Author", exact: false }).first().click();
 
 	await picker.getByRole("button", { name: "Author Ada Vance, off" }).click();
@@ -66,7 +67,7 @@ test("a value cycles through include, exclude and off, and the filter survives n
 		bar.getByRole("button", { name: "Remove filter − Author: Ada Vance" }),
 	).toBeVisible();
 
-	await bar.getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	await picker.getByRole("button", { name: "Author Ada Vance, excluded" }).click();
 	await expect(cards).toHaveCount(BOOKS.length);
 	await expect(bar.getByRole("button", { name: /^Remove filter/ })).toHaveCount(0);
@@ -77,7 +78,7 @@ test("a chip's X removes its value and Clear removes them all", async ({ page })
 	const picker = page.getByTestId("filter-picker");
 	const cards = page.locator("[data-book-title]");
 
-	await bar.getByRole("button", { name: "Add filter" }).click();
+	await openFilterPicker(page);
 	await picker.getByRole("button", { name: "Author", exact: false }).first().click();
 	await picker.getByRole("button", { name: "Author Ada Vance, off" }).click();
 	await picker.getByRole("button", { name: "Author Bo Lind, off" }).click();

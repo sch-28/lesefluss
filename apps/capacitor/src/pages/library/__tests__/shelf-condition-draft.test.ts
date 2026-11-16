@@ -3,6 +3,7 @@ import type { ConditionGroup } from "../condition-tree";
 import {
 	append,
 	canAddGroup,
+	completePart,
 	type DraftGroup,
 	type DraftNode,
 	fromDraft,
@@ -126,5 +127,14 @@ describe("shelf condition draft", () => {
 		expect(isDraftComplete(removeNode(emptied, group.id))).toBe(true);
 		expect(hasEmptyGroup(root)).toBe(false);
 		expect(isDraftComplete(toDraft({ op: "and", items: [] }))).toBe(true);
+	});
+
+	it("counts only the finished part: unfinished rows and the groups they empty drop out", () => {
+		const draft = toDraft({
+			op: "and",
+			items: [tag("a"), { op: "or", items: [tag("b"), tag("")] }],
+		} as ConditionGroup);
+		draft.items.push(newCondition(), newGroup());
+		expect(shape(completePart(draft))).toEqual(["a", ["|", "b"]]);
 	});
 });
