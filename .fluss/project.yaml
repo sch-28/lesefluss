@@ -24,3 +24,7 @@ gate:
   # The capacitor package ("lesefluss") already runs its tests inside check-types.
   full: pnpm check-types && pnpm -r --filter '!lesefluss' --if-present test
   e2e: false
+ui:
+  # Counts both refs: 36 screens at the two round sizes and both themes are 288 cells.
+  shots:
+    cap: 320

@@ -44,6 +44,7 @@ sed -i "s/^VERSION_CODE=.*/VERSION_CODE=$NEW_CODE/" "$ENV_FILE"
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT_PKG" "$APP_PKG"
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
 
 echo
 echo "✓ Bumped to v$VERSION (versionCode $NEW_CODE)"
@@ -54,5 +55,8 @@ echo
 echo "Next:"
 echo "  git add $ROOT_PKG $APP_PKG"
 echo "  git commit -m \"chore: release v$VERSION\""
+if [[ -n "$LAST_TAG" ]]; then
+	echo "  fluss shots $LAST_TAG HEAD   # screenshot every screen against the last release; does not block it"
+fi
 echo "  git tag v$VERSION"
 echo "  git push origin $BRANCH && git push origin v$VERSION"
