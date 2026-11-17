@@ -102,11 +102,12 @@ export function DiscussionPanel({ id }: { id: string }) {
 				</p>
 				<Button
 					variant="ghost"
-					size="icon"
+					size="sm"
 					aria-label="Discussion settings"
 					onClick={() => setIsSettingsOpen(true)}
 				>
-					<SlidersHorizontal className="size-4" />
+					<SlidersHorizontal />
+					Settings
 				</Button>
 			</div>
 			{isComposing ? (
@@ -168,7 +169,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 			)}
 
 			{groups.length === 0 ? (
-				<SocialSection title="Discussion">
+				<SocialSection className="mt-4">
 					<ListCard>
 						<EmptyRow>
 							{page.hiddenAhead > 0

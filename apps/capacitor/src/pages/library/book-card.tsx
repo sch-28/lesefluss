@@ -92,7 +92,7 @@ const BookCard: React.FC<BookCardProps> = ({
 					.filter(Boolean)
 					.join(" ")}
 				aria-pressed={selectable ? selected : undefined}
-				className="flex w-full cursor-pointer select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
+				className="flex w-full cursor-pointer select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:opacity-70"
 				{...handlers}
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">

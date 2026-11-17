@@ -31,8 +31,9 @@ const AllSeriesPage: React.FC = () => {
 				width="grid"
 				backTo="/tabs/library"
 				right={
-					<Button variant="ghost" size="icon" aria-label="New series" onClick={newSeries}>
+					<Button size="sm" onClick={newSeries}>
 						<Plus />
+						New series
 					</Button>
 				}
 			/>

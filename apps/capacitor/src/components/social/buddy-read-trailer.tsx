@@ -108,7 +108,10 @@ export function BuddyReadTrailer({
 				name,
 				avatarUrl: null,
 				percent,
-				toneClassName: BUDDY_TRAILER_READER_TONES[name],
+				toneClassName: cn(
+					BUDDY_TRAILER_READER_TONES[name],
+					"high-contrast:border high-contrast:border-primary high-contrast:bg-background high-contrast:text-primary",
+				),
 				label: formatPercent(percent),
 				steps,
 			};

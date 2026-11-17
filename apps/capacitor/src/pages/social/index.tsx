@@ -2,7 +2,7 @@ import type { OwnSocialProfile, SocialIdentity, SocialRelationships } from "@les
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
-import { Ban, Flag, Inbox, MoreHorizontal, ShieldOff, UserCog, Users } from "lucide-react";
+import { Ban, Flag, Inbox, MoreHorizontal, Plus, ShieldOff, UserCog, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
@@ -12,7 +12,7 @@ import { PageContainer } from "@/components/page-container";
 import { ActivityFeed } from "@/components/social/activity-feed";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
-import { ListCard, SocialSection } from "@/components/social/social-ui";
+import { ListCard, SECTION_ACTION, SocialSection } from "@/components/social/social-ui";
 import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picker";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -66,17 +66,14 @@ function BuddyReadsPreview() {
 			action={
 				<div className="flex items-center gap-4">
 					{active.length > 0 && (
-						<button
-							type="button"
-							onClick={() => setIsPickerOpen(true)}
-							className="text-primary text-xs"
-						>
+						<button type="button" onClick={() => setIsPickerOpen(true)} className={SECTION_ACTION}>
+							<Plus className="size-4" />
 							Start one
 						</button>
 					)}
 					{reads.data && reads.data.length > 0 && (
-						<Link to="/tabs/social/buddy-reads" className="no-underline">
-							<span className="text-primary text-xs">See all</span>
+						<Link to="/tabs/social/buddy-reads" className={SECTION_ACTION}>
+							See all
 						</Link>
 					)}
 				</div>

@@ -115,13 +115,13 @@ function BookReadingTimeCard({ book }: Props) {
 
 	return (
 		<section className="book-detail-card mt-4" data-testid="book-reading-time">
-			<h2 className="book-detail-section-title">Reading time</h2>
+			<h2 className="book-detail-section-title">Time to read</h2>
 			<div className="mt-3">
 				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
 					{formatReadingTime(minutesLeft ?? 0)}
 				</div>
 				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-					total{!isPaceEstimated && " · at your pace"}
+					whole book{!isPaceEstimated && " · at your pace"}
 				</div>
 			</div>
 			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
@@ -209,7 +209,9 @@ export function BookStatsCard({ book }: Props) {
 						<div className="font-semibold text-xl tabular-nums leading-none">
 							{formatReadingTime(restartMinutes)}
 						</div>
-						<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">total</div>
+						<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+							to read
+						</div>
 					</div>
 				)}
 				{isFinished && (

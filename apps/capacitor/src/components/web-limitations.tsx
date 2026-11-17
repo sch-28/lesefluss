@@ -4,17 +4,23 @@ import { Info, Smartphone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NoticeBar } from "@/components/notice-bar";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { batchPickerKind } from "@/services/book-import/sources/folder-scan";
 import { PLAY_STORE_URL } from "@/services/store-links";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
 import { openLink } from "@/utils/open-link";
 
-export const WEB_LIMITATIONS = [
-	"rsvpnano device",
-	"Listening in the background and on the lock screen",
-	"Reading reminders and notifications",
-	"Turning pages with the volume keys",
-	"Scanning a folder for books",
-] as const;
+const FOLDER_SCAN = "Scanning a folder for books";
+
+/** A desktop browser can pick a folder for the batch import; phone and tablet browsers cannot. */
+export function webLimitations(): string[] {
+	return [
+		"rsvpnano device",
+		"Listening in the background and on the lock screen",
+		"Reading reminders and notifications",
+		"Turning pages with the volume keys",
+		...(batchPickerKind() === "files" ? [FOLDER_SCAN] : []),
+	];
+}
 
 export const ON_THE_WEB_HASH = "on-the-web";
 const DISMISSED_KEY = "lesefluss:web-limits-dismissed";
@@ -113,7 +119,7 @@ export function OnTheWebCard() {
 						The web app has everything for reading, syncing and social. These need the Android app:
 					</p>
 					<ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-foreground">
-						{WEB_LIMITATIONS.map((item) => (
+						{webLimitations().map((item) => (
 							<li key={item}>{item}</li>
 						))}
 					</ul>

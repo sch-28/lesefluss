@@ -34,6 +34,11 @@ export const MISSED_DAY_LABEL: Record<ReadingGoal["mode"], string> = {
 	pace: "push finish date",
 };
 
+export const MISSED_DAY_SENTENCE: Record<ReadingGoal["mode"], string> = {
+	deadline: "If you miss a day, the daily target goes up so you still finish on time.",
+	pace: "If you miss a day, the finish date moves back and the daily amount stays.",
+};
+
 export function lockToMode(lock: GoalLock): ReadingGoal["mode"] {
 	return lock === "date" ? "deadline" : "pace";
 }

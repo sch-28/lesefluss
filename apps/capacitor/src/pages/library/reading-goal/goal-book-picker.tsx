@@ -26,9 +26,14 @@ export function GoalBookPicker({
 				onOpenChange={(open) => {
 					if (!open) onClose();
 				}}
-				title="Set a goal for"
+				title="Set a reading goal"
 				drawerClassName="sm:mx-auto sm:max-w-lg"
 			>
+				{candidates.length > 0 && (
+					<p className="m-0 px-4 pb-2 text-muted-foreground text-sm">
+						A goal is for one book. Pick the book you want to finish.
+					</p>
+				)}
 				<div className="flex flex-col divide-y divide-border overflow-y-auto px-4 pb-4">
 					{candidates.map((book) => (
 						<button

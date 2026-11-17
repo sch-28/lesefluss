@@ -9,6 +9,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 vi.mock("@/services/tts", () => ({ IS_READ_ALOUD_SUPPORTED: true }));
 const openLink = vi.hoisted(() => vi.fn());
 vi.mock("@/utils/open-link", () => ({ openLink }));
+const isMobile = vi.hoisted(() => vi.fn(() => false));
+vi.mock("@/utils/mobile-browser", () => ({ isMobileNavigator: isMobile }));
 
 const { OnTheWebCard, WebLimitsLine, keepInView } = await import("../web-limitations");
 
@@ -18,21 +20,28 @@ afterEach(() => {
 	rendered = undefined;
 	localStorage.clear();
 	navigate.mockReset();
+	isMobile.mockReturnValue(false);
 });
 
 describe("On the web card", () => {
-	it("lists the five things the web app lacks, and not browser read aloud", async () => {
+	it("lists what a desktop browser lacks, and not browser read aloud", async () => {
 		rendered = await render(<OnTheWebCard />);
 		const items = [...rendered.container.querySelectorAll("li")].map((li) => li.textContent);
-		expect(items).toEqual([
+		expect(items, "a desktop browser imports a folder itself").toEqual([
 			"rsvpnano device",
 			"Listening in the background and on the lock screen",
 			"Reading reminders and notifications",
 			"Turning pages with the volume keys",
-			"Scanning a folder for books",
 		]);
 		expect(rendered.text()).toContain("Listen works while the app is open.");
 		expect(rendered.container.querySelector("#on-the-web")).not.toBeNull();
+	});
+
+	it("adds folder scanning on a phone browser, which picks files only", async () => {
+		isMobile.mockReturnValue(true);
+		rendered = await render(<OnTheWebCard />);
+		const items = [...rendered.container.querySelectorAll("li")].map((li) => li.textContent);
+		expect(items.at(-1)).toBe("Scanning a folder for books");
 	});
 
 	it("sends Get the Android app to the Play Store listing", async () => {

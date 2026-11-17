@@ -86,7 +86,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				aria-label={book.title}
 				aria-describedby={detailsId}
 				aria-pressed={selectable ? selected : undefined}
-				className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
+				className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:opacity-70"
 				{...handlers}
 			>
 				{/* Leading pip rather than the grid's scrim: a wash over a thumbnail this

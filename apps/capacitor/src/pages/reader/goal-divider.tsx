@@ -13,7 +13,7 @@ export type ReaderGoalDivider = { paragraphIndex: number; divider: GoalDividerPr
  * a page would push the divider to the top of the next column, over its first
  * line, and the last paragraph of a chunk would gain a blank page for it. The
  * divider is hidden in that case. Checked in a layout effect, which runs before
- * the chunk measures its pages, and again whenever the paragraph reflows.
+ * the chunk measures its pages, and again whenever the paragraph or its chunk resizes.
  *
  * Only a pass seen happening is celebrated and announced: virtualized scroll
  * and mode switches remount the divider already passed.
@@ -42,6 +42,9 @@ export function GoalDivider({ label, passed }: GoalDividerProp) {
 		check();
 		const observer = new ResizeObserver(check);
 		observer.observe(paragraph);
+		// A shorter page moves the paragraph's end to a page bottom without resizing the paragraph.
+		const chunk = paragraph.closest("[data-chunk-index]");
+		if (chunk) observer.observe(chunk);
 		return () => observer.disconnect();
 	}, []);
 	const celebrating = passed && celebrate;

@@ -35,7 +35,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			type="button"
 			aria-label={series.title}
 			aria-describedby={detailsId}
-			className="flex min-h-16 w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 border-border border-b bg-transparent py-1 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
+			className="flex min-h-16 w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 border-border border-b bg-transparent py-1 text-left text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:opacity-70"
 			style={{ WebkitTouchCallout: "none" }}
 			{...handlers}
 		>

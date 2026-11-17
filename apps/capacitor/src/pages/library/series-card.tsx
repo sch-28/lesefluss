@@ -50,7 +50,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 			aria-label={series.title}
 			// The details wrapper always renders; its lines come and go with the data.
 			aria-describedby={hasChapterBadge ? `${chaptersId} ${detailsId}` : detailsId}
-			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
+			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			{...handlers}
 		>

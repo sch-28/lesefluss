@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { Separator } from "@lesefluss/ui/separator";
 import { cn } from "@lesefluss/ui/utils";
 import {
 	BookOpen,
@@ -79,18 +80,22 @@ const BulkActionBar: React.FC<Props> = ({ selection }) => {
 						/>
 					))}
 					<BarAction
-						label="Delete"
-						icon={Trash2}
-						destructive
-						disabled={isIdle}
-						onClick={() => selection.setDeleteOpen(true)}
-					/>
-					<BarAction
 						label="More"
 						ariaLabel="More bulk actions"
 						icon={MoreHorizontal}
 						disabled={isIdle}
 						onClick={() => selection.openSheet("actions")}
+					/>
+					<Separator
+						orientation="vertical"
+						className="my-2 md:mx-1 md:my-0 md:h-6 md:self-center"
+					/>
+					<BarAction
+						label="Delete"
+						icon={Trash2}
+						destructive
+						disabled={isIdle}
+						onClick={() => selection.setDeleteOpen(true)}
 					/>
 				</div>
 			</div>

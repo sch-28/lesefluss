@@ -9,6 +9,9 @@ import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
 import { pickNowReading } from "./now-reading";
 
+export const SECTION_ACTION =
+	"flex min-h-11 min-w-11 items-center justify-center gap-1 text-primary text-sm no-underline";
+
 /** A content section in the style of the stats page: large title, fade-in. */
 export function SocialSection({
 	title,

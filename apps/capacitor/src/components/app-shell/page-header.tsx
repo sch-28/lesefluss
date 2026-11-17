@@ -29,11 +29,11 @@ export function PageHeader({
 	const router = useRouter();
 	return (
 		<header ref={ref} className={HEADER_SHELL}>
-			<PageContainer width={width} className="flex h-12 items-center gap-2 px-2">
+			<PageContainer width={width} className="flex h-12 items-center gap-2 px-4">
 				<IconButton
 					onClick={onBack ?? (() => goBack(router, backTo))}
 					aria-label="Back"
-					className="-my-1 text-muted-foreground hover:text-foreground"
+					className="-my-1 -ml-3 text-muted-foreground hover:text-foreground"
 				>
 					<ChevronLeft />
 				</IconButton>

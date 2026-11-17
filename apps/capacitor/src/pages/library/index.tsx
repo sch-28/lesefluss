@@ -61,6 +61,7 @@ import BookCard from "./book-card";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
+import { bookCount } from "./bulk-summary";
 import {
 	type CardFieldId,
 	type CardSurface,
@@ -1315,5 +1316,7 @@ const Library: React.FC = () => {
 export default Library;
 
 const SubPageCount: React.FC<{ count: number }> = ({ count }) => (
-	<span className="text-muted-foreground text-sm tabular-nums max-sm:hidden">{count}</span>
+	<span className="whitespace-nowrap text-muted-foreground text-sm tabular-nums max-sm:hidden">
+		{bookCount(count)}
+	</span>
 );

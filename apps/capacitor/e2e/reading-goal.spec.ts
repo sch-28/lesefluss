@@ -37,7 +37,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();
 	const sheet = page.getByRole("dialog");
 	await sheet.getByRole("button", { name: "1 month" }).click();
-	await expect(sheet.getByText("raise daily target")).toBeVisible();
+	await expect(sheet.getByTestId("goal-missed-day")).toContainText("the daily target goes up");
 	// Local notifications need the native shell; the web build has no reminder row.
 	await expect(sheet.getByText("Reminder")).toHaveCount(0);
 	await sheet.getByRole("button", { name: "Start goal" }).click();

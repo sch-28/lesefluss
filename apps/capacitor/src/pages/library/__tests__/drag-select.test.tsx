@@ -101,5 +101,9 @@ describe("BulkActionBar", () => {
 		expect(selection.setDeleteOpen).toHaveBeenCalledWith(true);
 		await click(view.getButton("More bulk actions"));
 		expect(selection.openSheet).toHaveBeenCalledWith("actions");
+		const actions = [...view.container.querySelectorAll("[role=toolbar] button")].map(
+			(b) => b.getAttribute("aria-label") ?? b.textContent?.trim(),
+		);
+		expect(actions.slice(-2), "Delete stands apart, last").toEqual(["More bulk actions", "Delete"]);
 	});
 });

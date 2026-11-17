@@ -65,6 +65,20 @@ describe("GoalSetupSheet", () => {
 		expect(unitChip("Min a day").getAttribute("aria-pressed")).toBe("false");
 	});
 
+	it("says what a missed day does for the value the reader keeps", async () => {
+		view = await render(
+			<GoalSetupSheet isOpen onClose={() => {}} book={makeBook()} wpm={250} existing={null} />,
+		);
+		const missedDay = () => document.querySelector('[data-testid="goal-missed-day"]')?.textContent;
+		expect(missedDay()).toContain("the daily target goes up");
+		const keepDaily = document.querySelector<HTMLButtonElement>(
+			'button[aria-label$="Keep daily amount"]',
+		);
+		if (!keepDaily) throw new Error("No Keep daily amount card");
+		await click(keepDaily);
+		expect(missedDay()).toContain("the finish date moves back");
+	});
+
 	it("removes the goal at once and offers an undo that writes it back", async () => {
 		const goal = makeGoal();
 		const plan = makePlan({ position: 100, sessions: [session(1, 0, 100)], now: at(2, 8) });

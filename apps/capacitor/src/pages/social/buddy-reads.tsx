@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { PageContainer } from "@/components/page-container";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
-import { SocialSection } from "@/components/social/social-ui";
+import { SECTION_ACTION, SocialSection } from "@/components/social/social-ui";
 import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picker";
 import { useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
@@ -38,12 +38,8 @@ function BuddyReadsContent() {
 				title="In progress"
 				action={
 					active.length > 0 ? (
-						<button
-							type="button"
-							onClick={() => setIsPickerOpen(true)}
-							className="flex items-center gap-1 text-primary text-xs"
-						>
-							<Plus className="size-3.5" />
+						<button type="button" onClick={() => setIsPickerOpen(true)} className={SECTION_ACTION}>
+							<Plus className="size-4" />
 							Start one
 						</button>
 					) : undefined

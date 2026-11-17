@@ -1,3 +1,4 @@
+import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
@@ -51,12 +52,12 @@ export default function FriendsPage() {
 				icon={Users}
 				backTo="/tabs/social"
 				right={
-					<Link to="/tabs/social/invite-link" className="no-underline">
-						<span className="flex min-h-11 items-center gap-1 text-primary text-sm">
-							<UserPlus className="size-4" />
+					<Button size="sm" asChild>
+						<Link to="/tabs/social/invite-link" className="no-underline">
+							<UserPlus />
 							Invite
-						</span>
-					</Link>
+						</Link>
+					</Button>
 				}
 			/>
 			<PageContainer width="text" className="px-4 pb-10">

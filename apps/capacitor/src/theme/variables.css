@@ -18,6 +18,7 @@
 
 /* A short laptop window (1280x720, 1262x606): the desktop sidebar packs its chrome tighter. */
 @custom-variant short (@media (max-height: 760px));
+@custom-variant high-contrast (&:is(.high-contrast *));
 
 /* Reading-goal colours, chosen per theme for contrast against its background.
  * E-ink overrides them in eink.css. */
@@ -130,4 +131,22 @@ body.sidebar-collapsed {
 }
 .high-contrast .text-muted-foreground\/70 {
 	color: var(--muted-foreground);
+}
+
+/* The sepia sidebar is mid-tone, so faded sidebar text drops under 4.5:1; there it keeps the full colour.
+ * Unlayered, so it beats every utility: the active item is left out to keep its primary colour. */
+.theme-sepia
+:is(.text-sidebar-foreground\/50, .text-sidebar-foreground\/60, .text-sidebar-foreground\/70):not(
+	[data-active="true"]
+) {
+	color: var(--sidebar-foreground);
+}
+
+/* With the resting colour already full, hover needs another cue; the sepia sidebar accent equals its background. */
+.theme-sepia
+:is(.text-sidebar-foreground\/50, .text-sidebar-foreground\/60, .text-sidebar-foreground\/70):not(
+	[data-active="true"]
+):hover {
+	text-decoration: underline;
+	text-underline-offset: 4px;
 }

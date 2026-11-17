@@ -124,7 +124,9 @@ export function StreakWeekStrip() {
 						</span>
 						<span
 							className={`flex h-6 w-9 items-center justify-center rounded-full ${
-								isToday ? "bg-[color-mix(in_oklab,var(--goal-pending)_18%,transparent)]" : ""
+								isToday
+									? "bg-[color-mix(in_oklab,var(--goal-pending)_18%,transparent)] high-contrast:bg-primary/20"
+									: ""
 							}`}
 						>
 							<WeekMark day={day} isToday={isToday} />
@@ -137,10 +139,15 @@ export function StreakWeekStrip() {
 }
 
 function WeekMark({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
-	if (day.isFrozen) return <Snowflake aria-hidden="true" className="size-3 text-sky-500" />;
+	if (day.isFrozen)
+		return (
+			<Snowflake aria-hidden="true" className="size-3 high-contrast:text-primary text-sky-500" />
+		);
 	if (day.intensity > 0) return <span className="size-3 rounded-full bg-[var(--goal-met)]" />;
 	if (isToday)
-		return <span className="size-3 rounded-full border-2 border-[var(--goal-pending)]" />;
+		return (
+			<span className="size-3 rounded-full border-2 border-[var(--goal-pending)] high-contrast:border-primary" />
+		);
 	return <span className="size-3 rounded-full bg-muted" />;
 }
 
@@ -189,7 +196,7 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 				className={cn(
 					"relative flex size-6 items-center justify-center rounded-full text-[0.625rem] tabular-nums",
 					day.isFrozen
-						? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
+						? "bg-sky-500/20 high-contrast:bg-primary/20 high-contrast:text-primary text-sky-700 dark:text-sky-300"
 						: [
 								INTENSITY_CLASS[day.intensity],
 								day.intensity >= 2 ? "font-semibold text-white" : "text-muted-foreground",
@@ -202,7 +209,7 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 				{day.isFrozen && (
 					<Snowflake
 						aria-hidden="true"
-						className="absolute -top-0.5 -right-0.5 size-2.5 text-sky-500"
+						className="absolute -top-0.5 -right-0.5 size-2.5 high-contrast:text-primary text-sky-500"
 					/>
 				)}
 			</span>

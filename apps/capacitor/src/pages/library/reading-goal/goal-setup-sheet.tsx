@@ -28,7 +28,7 @@ import {
 	isMinuteSetup,
 	lockToMode,
 	MINUTE_PRESETS,
-	MISSED_DAY_LABEL,
+	MISSED_DAY_SENTENCE,
 	minutesForDays,
 	newGoalSetup,
 	presetDays,
@@ -294,10 +294,9 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 					</div>
 				)}
 
-				<div className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm">
-					<span className="text-muted-foreground">Missed day</span>
-					<span className="font-semibold">{MISSED_DAY_LABEL[lockToMode(setup.lock)]}</span>
-				</div>
+				<p className="m-0 text-muted-foreground text-sm" data-testid="goal-missed-day">
+					{MISSED_DAY_SENTENCE[lockToMode(setup.lock)]}
+				</p>
 
 				{areRemindersSupported() && (
 					<GoalReminderRow value={reminderTime} onChange={setReminderTime} />

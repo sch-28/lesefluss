@@ -52,7 +52,7 @@ describe("BookStatsCard before the first sitting", () => {
 	it("shows an unread book's total time at the pace", async () => {
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
 		expect(view.container.querySelector("[data-testid=book-reading-time]")?.textContent).toContain(
-			"1h 40mtotal",
+			"1h 40mwhole book",
 		);
 		expect(view.text()).toContain("RSVP at 400 wpm (your setting): 56 min");
 		// The headline is the only place the time left appears at the starting speed.
@@ -144,6 +144,6 @@ describe("BookStatsCard on a reset book", () => {
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
 		expect(view.text()).toContain("time read");
 		expect(view.text().match(/1h 40m/g)).toHaveLength(1);
-		expect(view.text()).toContain("1h 40mtotal");
+		expect(view.text()).toContain("1h 40mto read");
 	});
 });
