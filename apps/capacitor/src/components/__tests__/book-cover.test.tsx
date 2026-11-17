@@ -17,8 +17,17 @@ afterEach(() => {
 });
 
 describe("BookCover", () => {
-	it("keeps room at the text cover's bottom for a badge over it", async () => {
-		view = await render(<BookCover book={book} size="full" textCoverClassName="pb-7" />);
-		expect(view.container.querySelector("[data-testid=text-cover]")?.classList).toContain("pb-7");
+	it("stands in a tinted cover without the title, which the card prints already", async () => {
+		view = await render(<BookCover book={book} size="full" />);
+		const cover = view.container.querySelector("[data-testid=tinted-cover]");
+		expect(cover).not.toBeNull();
+		expect(cover?.textContent).toBe("");
+		expect(cover?.querySelector("svg")?.getAttribute("class")).toContain("size-6");
+	});
+
+	it("shrinks the glyph on a small cover", async () => {
+		view = await render(<BookCover book={book} size="sm" />);
+		const glyph = view.container.querySelector("[data-testid=tinted-cover] svg");
+		expect(glyph?.getAttribute("class")).toContain("size-4");
 	});
 });

@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
 import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
+import { TintedCover } from "../../../components/tinted-cover";
 import { queryHooks } from "../../../services/db/hooks";
 import { useBookActions } from "../book-actions/use-book-actions";
 import { SectionHeader } from "./section-header";
-import { TitleCover } from "./title-cover";
 
 /** One row: a 72px cover inside the card's padding and border. */
 const BOOK_ROW_HEIGHT = 98;
@@ -64,7 +64,7 @@ export function CurrentlyReading() {
 										<CoverImage
 											src={book.coverImage}
 											alt={book.title}
-											fallback={<TitleCover title={book.title} />}
+											fallback={<TintedCover title={book.title} compact />}
 										/>
 									</div>
 									<div className="min-w-0 flex-1">

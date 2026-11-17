@@ -96,12 +96,7 @@ const BookCard: React.FC<BookCardProps> = ({
 				{...handlers}
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
-					<BookCover
-						book={book}
-						cover={cover}
-						size="full"
-						textCoverClassName={seriesNumber !== null ? "pb-7" : undefined}
-					/>
+					<BookCover book={book} cover={cover} size="full" />
 					<span id={deviceId}>
 						<DeviceBadge bookId={book.id} />
 					</span>
@@ -131,8 +126,7 @@ const BookCard: React.FC<BookCardProps> = ({
 				</div>
 
 				<div className="px-0.5 pt-2">
-					{/* Two lines held for every title, so a grid row's height does not depend on its titles. */}
-					<div className="line-clamp-2 min-h-[2.5em] overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
+					<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 						{book.title}
 					</div>
 					<div id={detailsId}>

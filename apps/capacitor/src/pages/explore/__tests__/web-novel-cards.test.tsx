@@ -95,11 +95,11 @@ describe.each(["grid", "list"] as const)("web-novel cards (%s)", (viewMode) => {
 		expect(view.queryButton("Add Fresh Series to library")).not.toBeNull();
 	});
 
-	it("stands in a typographic cover for series without art", async () => {
+	it("stands in a titleless tinted cover for series without art", async () => {
 		view = await render(<WebNovelSearchPanel query="" viewMode={viewMode} onPick={vi.fn()} />);
-		const covers = view.container.querySelectorAll('[data-testid="text-cover"]');
+		const covers = view.container.querySelectorAll('[data-testid="tinted-cover"]');
 		expect(covers.length).toBe(2);
-		expect(covers[0]?.textContent).toContain("Owned Series");
+		expect(covers[0]?.textContent).toBe("");
 	});
 
 	it("quick add imports the series without opening the preview", async () => {
@@ -136,5 +136,14 @@ describe("web-novel grid card lines", () => {
 			"Fresh Series",
 			expect.stringContaining("2h 12m"),
 		]);
+	});
+
+	it("reserves no second title line and still clamps at two", async () => {
+		const { WebNovelCard } = await import("../web-novel-card");
+		view = await render(<WebNovelCard result={fresh} onPick={vi.fn()} showProvider={false} />);
+		const title = view.container.querySelector("[data-clips-text]");
+		expect(title?.textContent).toBe("Fresh Series");
+		expect(title?.className).toContain("[-webkit-line-clamp:2]");
+		expect(title?.className).not.toMatch(/min-h-/);
 	});
 });

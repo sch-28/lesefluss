@@ -1,3 +1,4 @@
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogSearchResponse, CatalogSearchResult } from "../../../services/catalog/client";
 import { click, flush, type Rendered, render, setOnline } from "../../../test/render";
@@ -162,6 +163,30 @@ describe("catalog card membership and quick add", () => {
 		expect(addButton()).not.toBeNull();
 		expect(author?.closest(".pr-9")).toBeNull();
 		expect(card()?.querySelector(".pr-9")).not.toBeNull();
+	});
+
+	it("reserves no second title line and still clamps at two", async () => {
+		view = await renderCard();
+		await flush();
+		const title = [...(card()?.querySelectorAll("div") ?? [])].find(
+			(el) => el.textContent === "Frankenstein",
+		);
+		expect(title?.className).toContain("[-webkit-line-clamp:2]");
+		expect(title?.className).not.toMatch(/min-h-/);
+	});
+
+	it("falls back from a failed cover to a tinted one that does not repeat the title", async () => {
+		view = await renderCard({ coverUrl: "https://covers.example/84.jpg" });
+		await flush();
+		const img = card()?.querySelector("img");
+		expect(img).not.toBeNull();
+		act(() => {
+			img?.dispatchEvent(new Event("error"));
+		});
+		const fallback = card()?.querySelector('[data-testid="tinted-cover"]');
+		expect(fallback).not.toBeNull();
+		expect(fallback?.textContent).toBe("");
+		expect(card()?.textContent?.split("Frankenstein").length).toBe(2);
 	});
 
 	it("offers no quick add when there is no EPUB", async () => {

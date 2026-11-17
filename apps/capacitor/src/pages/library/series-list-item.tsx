@@ -1,7 +1,7 @@
 import type React from "react";
 import { useId } from "react";
 import CoverImage from "../../components/cover-image";
-import { TextCover } from "../../components/text-cover";
+import { TintedCover } from "../../components/tinted-cover";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
 import type { SeriesChapterLength } from "../../services/stats/what-if";
@@ -43,7 +43,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
-					fallback={<TextCover title={series.title} compact />}
+					fallback={<TintedCover title={series.title} compact />}
 				/>
 			</div>
 

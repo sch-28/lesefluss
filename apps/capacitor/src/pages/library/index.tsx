@@ -17,6 +17,7 @@ import {
 	RefreshCcw,
 	SearchX,
 	SquareCheck,
+	X,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -76,7 +77,7 @@ import FilterBar from "./filter-bar";
 import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import { displayOrder, groupLibrary, type SeriesMemberships, seriesBadge } from "./group-by";
-import { headerControls, type LibraryViewMode } from "./header-controls";
+import { headerControls, type LibraryViewMode, selectControl } from "./header-controls";
 import ImportSheet from "./import-sheet";
 import { libraryNotice } from "./library-notice";
 import LibraryTable from "./library-table";
@@ -725,7 +726,7 @@ const Library: React.FC = () => {
 			width="grid"
 			role="toolbar"
 			aria-label="Library view"
-			className="flex flex-wrap items-center gap-2 px-4 pt-2"
+			className="flex flex-wrap items-center gap-2 px-4 pt-6 md:pt-4"
 		>
 			{controls.search ? (
 				// Takes its own row once a large system text size leaves it less than ~10 characters.
@@ -825,20 +826,13 @@ const Library: React.FC = () => {
 		</PageContainer>
 	);
 	const addLabel = collectionId ? "Add books" : "Add book";
+	const selectMode = selectControl({
+		isDesktop,
+		isSelecting: selection.isSelecting,
+		canSelect: !isOrderedView && !isEmptyLibrary && !isCollectionEmpty,
+	});
 	const headerActions = (
 		<>
-			{!isOrderedView && !isEmptyLibrary && !isCollectionEmpty && !selection.isSelecting && (
-				<Button
-					variant="ghost"
-					size={isDesktop ? "sm" : "icon"}
-					aria-label="Select books"
-					title="Select books"
-					onClick={selection.start}
-				>
-					<SquareCheck />
-					{isDesktop && "Select"}
-				</Button>
-			)}
 			{isDesktop && !selection.isSelecting && (activeCollection || !activeShelf) && (
 				<Button
 					size="sm"
@@ -850,6 +844,30 @@ const Library: React.FC = () => {
 					{addLabel}
 				</Button>
 			)}
+			{/* After Add book, which hides while selecting, so this one never moves. */}
+			{selectMode === "done" ? (
+				<Button
+					variant="ghost"
+					size="sm"
+					aria-label="Done selecting"
+					disabled={selection.isRunning}
+					onClick={selection.exit}
+				>
+					<X />
+					Done
+				</Button>
+			) : selectMode === "select" ? (
+				<Button
+					variant="ghost"
+					size="sm"
+					aria-label="Select books"
+					title="Select books"
+					onClick={selection.start}
+				>
+					<SquareCheck />
+					Select
+				</Button>
+			) : null}
 		</>
 	);
 

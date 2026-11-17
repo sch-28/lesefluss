@@ -8,7 +8,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "@/components/cover-image";
-import { TextCover } from "@/components/text-cover";
+import { TintedCover } from "@/components/tinted-cover";
 import { queryHooks } from "@/services/db/hooks";
 import { formatDeadline, paceText } from "@/services/social/buddy-reads";
 import { formatPercent } from "@/utils/format-percent";
@@ -96,7 +96,7 @@ export function BuddyReadCard({
 							<CoverImage
 								src={cover}
 								alt=""
-								fallback={<TextCover title={read.title} compact={!isFeatured} />}
+								fallback={<TintedCover title={read.title} compact={!isFeatured} />}
 							/>
 						</div>
 						<div className="min-w-0 flex-1">

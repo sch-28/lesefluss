@@ -9,7 +9,7 @@ import type React from "react";
 import { queryHooks } from "../services/db/hooks";
 import type { Book } from "../services/db/schema";
 import CoverImage from "./cover-image";
-import { TextCover } from "./text-cover";
+import { TintedCover } from "./tinted-cover";
 
 interface Props {
 	book: Book;
@@ -17,8 +17,6 @@ interface Props {
 	size?: "sm" | "md" | "full";
 	/** Optionally pass a pre-loaded cover string to skip the cache lookup. */
 	cover?: string | null;
-	/** Room the text cover keeps clear at its bottom, for a badge over it. */
-	textCoverClassName?: string;
 }
 
 const DIMS: Record<"sm" | "md", React.CSSProperties> = {
@@ -26,12 +24,7 @@ const DIMS: Record<"sm" | "md", React.CSSProperties> = {
 	md: { width: "5.5rem", minWidth: "5.5rem", height: "8.25rem" },
 };
 
-const BookCover: React.FC<Props> = ({
-	book,
-	size = "md",
-	cover: coverProp,
-	textCoverClassName,
-}) => {
+const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => {
 	// When no cover prop is passed, read from the useBooks() cache.
 	// The Library page already fetched this, so it's a zero-cost cache read.
 	const { data } = queryHooks.useBooks();
@@ -50,14 +43,7 @@ const BookCover: React.FC<Props> = ({
 			<CoverImage
 				src={cover}
 				alt={book.title}
-				fallback={
-					<TextCover
-						title={book.title}
-						author={book.author}
-						compact={size === "sm"}
-						className={textCoverClassName}
-					/>
-				}
+				fallback={<TintedCover title={book.title} compact={size === "sm"} />}
 			/>
 		</div>
 	);

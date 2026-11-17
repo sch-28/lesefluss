@@ -17,8 +17,8 @@ import {
 import { EmptyState, ErrorState } from "../_shared/load-states";
 import { InLibraryBadge, LengthText, QuickAddButton } from "./card-badges";
 import { describeLength } from "./length";
+import ProviderCover from "./provider-cover";
 import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
-import TextCover from "./text-cover";
 import { useReadingSpeed } from "./use-reading-speed";
 import { useWebNovelImport } from "./use-web-novel-import";
 import { WebNovelCard, webNovelCardExtraLines } from "./web-novel-card";
@@ -290,7 +290,7 @@ const ResultListItem: React.FC<{
 						<CoverImage
 							src={result.coverImage}
 							alt={result.title}
-							fallback={<TextCover result={result} compact />}
+							fallback={<ProviderCover result={result} compact />}
 						/>
 					</div>
 				)}

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import CoverImage from "../../components/cover-image";
-import { TextCover } from "../../components/text-cover";
+import { TintedCover } from "../../components/tinted-cover";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 
 type Props = {
@@ -109,7 +109,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 					src={getCoverUrl(book.id, book.coverUrl)}
 					alt=""
 					priority
-					fallback={<TextCover title={book.title} author={book.author} />}
+					fallback={<TintedCover title={book.title} />}
 				/>
 			</button>
 			<div className="flex min-w-0 flex-[1_1_10rem] flex-col" aria-live="off">

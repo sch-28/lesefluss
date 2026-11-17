@@ -1,4 +1,3 @@
-import { Button } from "@lesefluss/ui/button";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { useQuery } from "@tanstack/react-query";
 import { Tag } from "lucide-react";
@@ -41,14 +40,14 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 			aria-label="Browse"
 			className={
 				hasFinePointer
-					? `flex min-w-0 flex-1 gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`
-					: `-mx-4 -mt-2 mb-5 flex gap-2 px-4 py-2 ${HIDDEN_SCROLLBAR_X}`
+					? `flex min-w-0 flex-1 items-center gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`
+					: `-mx-4 -mt-2 mb-5 flex items-center gap-2 px-4 py-2 ${HIDDEN_SCROLLBAR_X}`
 			}
 		>
-			<Button variant="secondary" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
-				<Tag className="size-3.5" />
+			<FilterChip selected={false} action onClick={onBrowseTags}>
+				<Tag className="size-4" />
 				Browse by tag
-			</Button>
+			</FilterChip>
 			{withBooks.map((g) => (
 				<FilterChip key={g.id} selected={false} action onClick={() => onGenreTap(g.id)}>
 					{g.label}

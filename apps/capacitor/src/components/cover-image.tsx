@@ -2,14 +2,14 @@ import type React from "react";
 import { useState } from "react";
 import { proxyImageUrl } from "../services/catalog/client";
 import { useReconnectEpoch } from "../utils/reconnect";
-import { TextCover } from "./text-cover";
+import { TintedCover } from "./tinted-cover";
 
 const preventDragStart = (e: React.DragEvent<HTMLImageElement>) => e.preventDefault();
 
 type Props = {
 	src: string | null | undefined;
 	alt: string;
-	/** Shown while loading and on decode error. Defaults to a TextCover of `alt`, or a "BOOK" stub when `alt` is empty. */
+	/** Shown while loading and on decode error. Defaults to a TintedCover of `alt`, or a "BOOK" stub when `alt` is empty. */
 	fallback?: React.ReactNode;
 	/** Add to the outer wrapper. The wrapper fills its parent (needs sized parent). */
 	className?: string;
@@ -48,7 +48,7 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 	const placeholder =
 		fallback ??
 		(alt ? (
-			<TextCover title={alt} />
+			<TintedCover title={alt} />
 		) : (
 			<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
 		));

@@ -296,7 +296,7 @@ describe("Goals page", () => {
 			[...row.children].filter((el) => !el.hasAttribute("aria-hidden")).map((el) => el.textContent);
 		expect(candidates.map(visibleText)).toEqual([["Book a"]]);
 		expect(
-			candidates[0]?.firstElementChild?.querySelector("[data-testid=text-cover], img"),
+			candidates[0]?.firstElementChild?.querySelector("[data-testid=tinted-cover], img"),
 		).not.toBeNull();
 		expect(candidates[0]?.lastElementChild?.classList).toContain("lucide-chevron-right");
 		await click(candidates[0] as HTMLElement);

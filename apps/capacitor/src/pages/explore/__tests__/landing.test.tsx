@@ -113,6 +113,19 @@ describe("Explore landing", () => {
 		expect(view.text()).not.toContain("Browse genres");
 	});
 
+	it("makes Browse by tag the same chip as the genres, with a tag icon", async () => {
+		getLanding.mockResolvedValue(LANDING);
+		view = await renderLanding();
+		await flush();
+		const nav = view.container.querySelector('nav[aria-label="Browse"]');
+		const chips = [...(nav?.querySelectorAll("button") ?? [])];
+		expect(chips.length).toBeGreaterThan(1);
+		expect(chips[0]?.textContent).toBe("Browse by tag");
+		expect(chips[0]?.querySelector("svg.lucide-tag")).not.toBeNull();
+		expect(new Set(chips.map((c) => c.className)).size).toBe(1);
+		expect(nav?.className).toContain("items-center");
+	});
+
 	it("shows recently added, trending web novels and every shelf with See all", async () => {
 		getLanding.mockResolvedValue(LANDING);
 		getRandomShelf.mockResolvedValue({ results: LANDING.most_read });

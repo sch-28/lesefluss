@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { type Rendered, render } from "../../test/render";
 import { EMPTY_STATE_PAGE, EmptyState } from "../empty-state";
 import { SectionHeader } from "../section-header";
-import { TextCover, titleHue } from "../text-cover";
+import { TintedCover, titleHue } from "../tinted-cover";
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -60,15 +60,13 @@ describe("SectionHeader", () => {
 	});
 });
 
-describe("TextCover", () => {
-	it("shows title and author", async () => {
-		view = await render(<TextCover title="Dune" author="Frank Herbert" />);
-		expect(view.text()).toBe("DuneFrank Herbert");
-	});
-
-	it("drops the author when compact", async () => {
-		view = await render(<TextCover title="Dune" author="Frank Herbert" compact />);
-		expect(view.text()).toBe("Dune");
+describe("TintedCover", () => {
+	it("prints no text, only a hidden glyph", async () => {
+		view = await render(<TintedCover title="Dune" />);
+		const cover = view.container.querySelector('[data-testid="tinted-cover"]');
+		expect(view.text()).toBe("");
+		expect(cover?.getAttribute("aria-hidden")).toBe("true");
+		expect(cover?.querySelector("svg")).not.toBeNull();
 	});
 
 	it("derives a stable hue per title", () => {
@@ -79,9 +77,9 @@ describe("TextCover", () => {
 	});
 
 	it("uses a given tint", async () => {
-		view = await render(<TextCover title="Dune" tint="#ff0000" />);
+		view = await render(<TintedCover title="Dune" tint="#ff0000" />);
 		expect(
-			view.container.querySelector('[data-testid="text-cover"]')?.getAttribute("style"),
+			view.container.querySelector('[data-testid="tinted-cover"]')?.getAttribute("style"),
 		).toContain("#ff0000");
 	});
 });

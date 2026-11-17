@@ -8,11 +8,11 @@ import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { useState } from "react";
 import CoverImage from "../../../../components/cover-image";
 import { ReservedCard } from "../../../../components/reserved-card";
+import { TintedCover } from "../../../../components/tinted-cover";
 import { queryHooks } from "../../../../services/db/hooks";
 import { type BookSort, sortBookRows } from "../../../../services/stats/speed-tab";
 import { formatDuration } from "../../../../utils/date-utils";
 import { STAT_ROW_HEIGHT, StatRow, StatsSection } from "../section-header";
-import { TitleCover } from "../title-cover";
 
 export const BOOK_LIST_PREVIEW = 4;
 /** The header and a full preview. */
@@ -64,7 +64,7 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 									<CoverImage
 										src={row.coverImage}
 										alt=""
-										fallback={<TitleCover title={row.title} />}
+										fallback={<TintedCover title={row.title} compact />}
 									/>
 								</div>
 							}

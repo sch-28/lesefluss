@@ -1,3 +1,7 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildEpubBuffer } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page, test } from "@playwright/test";
 import { textLayoutProblems } from "./helpers/layout-check";
 import { bookCard, openTable, seedLibrary } from "./helpers/library-books";
@@ -25,7 +29,15 @@ test.describe("desktop at 1024 px", () => {
 	});
 
 	test("the header Select starts an empty selection with labelled actions", async ({ page }) => {
-		await page.getByRole("button", { name: "Select books" }).click();
+		const select = page.getByRole("button", { name: "Select books" });
+		const before = await select.boundingBox();
+		await select.click();
+		const done = page.getByRole("button", { name: "Done selecting" });
+		await expect(done).toBeVisible();
+		const after = await done.boundingBox();
+		expect(
+			Math.abs((after?.x ?? 0) + (after?.width ?? 0) - (before?.x ?? 0) - (before?.width ?? 0)),
+		).toBeLessThan(2);
 		const bar = selectionBar(page);
 		await expect(bar.getByText("0 selected")).toBeVisible();
 		for (const name of ["Status", "Collection", "Series", "Delete"]) {
@@ -34,6 +46,9 @@ test.describe("desktop at 1024 px", () => {
 		await bookCard(page, "Riverkeep").click();
 		await expect(bar.getByText("1 selected")).toBeVisible();
 		await expect(bar.getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
+		await done.click();
+		await expect(bar).toHaveCount(0);
+		await expect(page.getByRole("button", { name: "Select books" })).toBeVisible();
 	});
 
 	test("one Add book in the header and no floating button", async ({ page }) => {
@@ -109,9 +124,59 @@ test.describe("200 % text on a 390 px phone", () => {
 		await emulateTextZoom(page, 2);
 		await resetStorage(page);
 		await seedLibrary(page, BOOKS);
-		await page.getByRole("button", { name: "Select books" }).click();
-		await bookCard(page, "Riverkeep").click();
+		await expect(page.getByRole("button", { name: "Select books" })).toHaveCount(0);
+		await bookCard(page, "Riverkeep").click({ button: "right" });
+		await page.getByRole("menuitem", { name: "Select", exact: true }).click();
 		await expect(selectionBar(page).getByText("1 selected")).toBeVisible();
 		expect(await textLayoutProblems(page, '[role="toolbar"][aria-label="Selection"]')).toEqual([]);
+	});
+});
+
+test.describe("touch phone at 390 px", () => {
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: false });
+
+	/** Touch gets the Add book sheet, not the folder menu seedLibrary drives. */
+	async function seedOnTouch(page: Page) {
+		const dir = await mkdtemp(join(tmpdir(), "lesefluss-touch-"));
+		const files: string[] = [];
+		for (const book of BOOKS) {
+			const buffer = await buildEpubBuffer({
+				title: book.title,
+				creator: book.creator,
+				chapters: [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Body.</p>" }],
+			});
+			const file = join(dir, `${book.title.toLowerCase()}.epub`);
+			await writeFile(file, buffer);
+			files.push(file);
+		}
+		await page.goto("/tabs/library");
+		await page.getByRole("button", { name: "Add book" }).click();
+		const chooser = page.waitForEvent("filechooser");
+		await page.getByRole("button", { name: /^Import multiple files/ }).click();
+		await (await chooser).setFiles(files);
+		await page.getByRole("button", { name: `Import ${BOOKS.length} books` }).click();
+		await expect(page.getByText(`Added ${BOOKS.length} books`)).toBeVisible({ timeout: 30_000 });
+		await page.getByRole("button", { name: "Done" }).click();
+		await expect(page.locator("[data-book-title]")).toHaveCount(BOOKS.length);
+	}
+
+	test("offers no Select button, and a held finger on a card starts the selection", async ({
+		page,
+	}) => {
+		await resetStorage(page);
+		await seedOnTouch(page);
+		await expect(page.getByRole("button", { name: "Select books" })).toHaveCount(0);
+
+		const box = await bookCard(page, "Riverkeep").boundingBox();
+		if (!box) throw new Error("no card");
+		const point = { x: box.x + box.width / 2, y: box.y + box.height / 3 };
+		const cdp = await page.context().newCDPSession(page);
+		await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+		await page.waitForTimeout(900);
+		await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+		await expect(selectionBar(page).getByText("1 selected")).toBeVisible();
+		await expect(bookCard(page, "Riverkeep")).toHaveAttribute("data-selected", "true");
+		await expect(page).toHaveURL(/\/tabs\/library/);
 	});
 });

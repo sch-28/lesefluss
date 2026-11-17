@@ -5,9 +5,7 @@ import { makeBook } from "../../../test/book-fixture";
 import { click, type Rendered, render } from "../../../test/render";
 
 vi.mock("../../../components/book-cover", () => ({
-	default: ({ textCoverClassName }: { textCoverClassName?: string }) => (
-		<span data-testid="cover" data-text-cover={textCoverClassName ?? ""} />
-	),
+	default: () => <span data-testid="cover" />,
 }));
 vi.mock("../../../components/cover-image", () => ({ default: () => null }));
 vi.mock("../../../components/device-sync", () => ({ DeviceBadge: () => <span>On device</span> }));
@@ -367,13 +365,11 @@ describe.each([
 });
 
 describe("BookCard #N badge", () => {
-	it("sits at the bottom of the cover and lifts the text cover's author line above it", async () => {
+	it("sits at the bottom of the cover", async () => {
 		view = await render(<BookCard {...bookProps()} seriesNumber={3} />);
 		const badge = view.container.querySelector('[data-testid="series-number-badge"]');
 		expect(badge?.className).toContain("bottom-1.5");
 		expect(badge?.className).not.toContain("top-1.5");
-		const cover = view.container.querySelector('[data-testid="cover"]');
-		expect(cover?.getAttribute("data-text-cover")).toBe("pb-7");
 	});
 
 	it("keeps the badge clear of the selection check while selecting", async () => {
@@ -383,11 +379,15 @@ describe("BookCard #N badge", () => {
 		const badge = view.container.querySelector('[data-testid="series-number-badge"]');
 		expect(badge?.className).toContain("bottom-1.5");
 	});
+});
 
-	it("leaves the text cover's padding alone without a badge", async () => {
-		view = await render(<BookCard {...bookProps()} seriesNumber={null} />);
-		expect(
-			view.container.querySelector('[data-testid="cover"]')?.getAttribute("data-text-cover"),
-		).toBe("");
+describe("BookCard title", () => {
+	it("reserves no second line for a one-line title and still clamps at two", async () => {
+		view = await render(<BookCard {...bookProps()} />);
+		const title = [...view.container.querySelectorAll("div")].find(
+			(el) => el.textContent === "Middlemarch",
+		);
+		expect(title?.className).toContain("line-clamp-2");
+		expect(title?.className).not.toMatch(/min-h-/);
 	});
 });

@@ -2,7 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Library, X } from "lucide-react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
-import { TextCover } from "../../components/text-cover";
+import { TintedCover } from "../../components/tinted-cover";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
@@ -51,16 +51,12 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 			className="flex w-full cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left text-foreground active:opacity-70"
 		>
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
-				<CoverImage
-					src={cover}
-					alt={item.title}
-					fallback={<TextCover title={item.title} author={item.author} />}
-				/>
+				<CoverImage src={cover} alt={item.title} fallback={<TintedCover title={item.title} />} />
 			</div>
 			<div className="px-0.5 pt-1">
 				<div
 					data-clips-text
-					className="min-h-[2lh] overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+					className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 				>
 					{item.title}
 				</div>

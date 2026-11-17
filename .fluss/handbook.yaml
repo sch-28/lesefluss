@@ -101,7 +101,8 @@ solutions:
 
       **Gap scale:** the fluss standard as Tailwind steps `1`, `2`, `3`, `4`, `6`, `8` (4, 8, 12,
       16, 24, 32 px at the default 16 px App font size; spacing scales with it, as it is in rem);
-      `packages/ui` defines no spacing tokens of its own.
+      `packages/ui` defines no spacing tokens of its own. Related items sit closer than unrelated
+      ones, and no space is reserved for content that isn't there.
 
       **Beyond the standard**
       - Every screen is reviewed in its empty, few-data and full states, in dark and light.

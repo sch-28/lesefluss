@@ -29,15 +29,16 @@ describe("CoverImage", () => {
 });
 
 describe("CoverImage default fallback", () => {
-	it("shows a TextCover of the alt text when there is no cover", async () => {
+	it("shows a titleless tinted cover when there is no cover", async () => {
 		view = await render(<CoverImage src={null} alt="Dune" />);
-		const cover = view.container.querySelector('[data-testid="text-cover"]');
-		expect(cover?.textContent).toBe("Dune");
+		const cover = view.container.querySelector('[data-testid="tinted-cover"]');
+		expect(cover).not.toBeNull();
+		expect(cover?.textContent).toBe("");
 	});
 
 	it("keeps the BOOK stub when the image is decorative", async () => {
 		view = await render(<CoverImage src={null} alt="" />);
-		expect(view.container.querySelector('[data-testid="text-cover"]')).toBeNull();
+		expect(view.container.querySelector('[data-testid="tinted-cover"]')).toBeNull();
 		expect(view.text()).toBe("BOOK");
 	});
 });

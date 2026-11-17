@@ -2,9 +2,9 @@ import { useRouter } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
+import { TintedCover } from "../../../components/tinted-cover";
 import type { ShelfBook } from "../../../services/db/queries/stats";
 import { SectionHeader } from "./section-header";
-import { TitleCover } from "./title-cover";
 
 /** A 120px cover row with its title, author and detail lines, as it renders loaded. */
 const SHELF_ROW_HEIGHT = 253;
@@ -63,7 +63,7 @@ export function BookShelf({
 									<CoverImage
 										src={book.coverImage}
 										alt={book.title}
-										fallback={<TitleCover title={book.title} />}
+										fallback={<TintedCover title={book.title} />}
 									/>
 									<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
 									{badgeFor?.(book, index)}

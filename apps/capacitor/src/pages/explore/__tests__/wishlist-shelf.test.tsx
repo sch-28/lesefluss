@@ -104,6 +104,17 @@ describe("wishlist shelf", () => {
 		view = undefined;
 	});
 
+	it("reserves no second title line on its cards", async () => {
+		view = await render(<WishlistShelf />);
+		await flush();
+		const titles = cards(view).map((c) => c.querySelector("[data-clips-text]"));
+		expect(titles.length).toBeGreaterThan(0);
+		for (const title of titles) {
+			expect(title?.className).toContain("[-webkit-line-clamp:2]");
+			expect(title?.className).not.toMatch(/min-h-/);
+		}
+	});
+
 	it("opens each title's detail page from its card", async () => {
 		view = await render(<WishlistShelf />);
 		expect(view.text()).toContain("Wishlist");
