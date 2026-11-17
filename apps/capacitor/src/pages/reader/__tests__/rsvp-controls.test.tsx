@@ -38,6 +38,13 @@ describe("RsvpControls", () => {
 		expect(onToggle).toHaveBeenCalledOnce();
 	});
 
+	it("puts Listen in the speed row, not a row of its own", async () => {
+		view = await render(controls({ audio: { isOn: false, onToggle: noop } }));
+		const listen = view.getButton("Listen");
+		expect(listen.parentElement?.classList.contains("rsvp-wpm-stepper")).toBe(true);
+		expect(listen.textContent).toBe("");
+	});
+
 	it("names the stepper the voice speed with Listen on and steps it within the given range", async () => {
 		const onWpmChange = vi.fn();
 		view = await render(
@@ -63,7 +70,7 @@ describe("RsvpControls", () => {
 		]) {
 			expect(view.getButton(name).className).toContain("size-11");
 		}
-		expect(view.getButton("Listen").className).toContain("min-h-11");
+		expect(view.getButton("Listen").className).toContain("size-11");
 	});
 
 	it("steps the RSVP speed by 25 within the RSVP limits by default", async () => {

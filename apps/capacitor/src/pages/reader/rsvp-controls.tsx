@@ -43,7 +43,11 @@ const RsvpControls: React.FC<Props> = ({
 	return (
 		// No onClick here: React would give the div a native onclick, making it a
 		// clickable node for screen readers. The display ignores clicks from inside.
-		<div className="rsvp-controls" data-toast-clear onPointerDown={stop}>
+		<div
+			className={cn("rsvp-controls", audio?.isOn && "rsvp-controls--voice")}
+			data-toast-clear
+			onPointerDown={stop}
+		>
 			<div className="rsvp-controls-row">
 				<IconButton onClick={onBackSentence} aria-label="Back to sentence start">
 					<ChevronsLeft />
@@ -64,18 +68,14 @@ const RsvpControls: React.FC<Props> = ({
 
 			<div className="rsvp-wpm-stepper">
 				{audio && (
-					<button
-						type="button"
+					<IconButton
 						onClick={audio.onToggle}
+						aria-label="Listen"
 						aria-pressed={audio.isOn}
-						className={cn(
-							"inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm hover:bg-muted",
-							audio.isOn && "text-primary",
-						)}
+						className={cn(audio.isOn && "text-primary")}
 					>
-						<Headphones className="size-5" />
-						Listen
-					</button>
+						<Headphones />
+					</IconButton>
 				)}
 				<RsvpSpeedControl
 					wpm={wpm}

@@ -1,4 +1,3 @@
-import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
@@ -33,19 +32,19 @@ const ResultCard: React.FC<Props> = ({
 
 	return (
 		<div
-			className="relative flex h-full w-full flex-col"
+			className="relative w-full self-start"
 			data-testid="catalog-card"
 			data-in-library={!!isInLibrary}
 		>
 			<button
 				type="button"
 				onClick={onOpen}
-				className="flex w-full flex-1 cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left text-foreground active:opacity-70"
+				className="flex w-full cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left text-foreground active:opacity-70"
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={cover} alt={result.title} />
 				</div>
-				<div className="flex flex-1 flex-col px-0.5 pt-1">
+				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
@@ -56,8 +55,7 @@ const ResultCard: React.FC<Props> = ({
 					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 						{result.author}
 					</div>
-					{/* In a row of cards the meta and quick add line up whatever each title's length. */}
-					<div className={cn("mt-auto", onQuickAdd && QUICK_ADD_CLEARANCE)}>
+					<div className={onQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
 						<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
 					</div>
 				</div>

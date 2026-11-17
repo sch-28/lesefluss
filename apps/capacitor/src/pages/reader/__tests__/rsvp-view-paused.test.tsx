@@ -78,7 +78,7 @@ describe("RsvpView paused", () => {
 		expect(word?.style.getPropertyValue("--reader-text-align")).toBe("justify");
 	});
 
-	it("puts Voice, Sleep timer, RSVP settings and Look up in one row", async () => {
+	it("stacks Voice above RSVP settings and Sleep timer above Look up", async () => {
 		view = await render(
 			<RsvpView
 				content={content}
@@ -92,16 +92,20 @@ describe("RsvpView paused", () => {
 				audio={audio}
 			/>,
 		);
-		const rows = view.container.querySelectorAll(".rsvp-pills");
-		expect(rows).toHaveLength(1);
-		const labels = [...rows[0].querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
-		expect(labels).toEqual(["Voice", "Sleep timer", "RSVP settings", "Look up"]);
+		const stacks = [...view.container.querySelectorAll(".rsvp-pills > .rsvp-pill-stack")].map(
+			(stack) => [...stack.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")),
+		);
+		expect(stacks).toEqual([
+			["Voice", "RSVP settings"],
+			["Sleep timer", "Look up"],
+		]);
+		expect(view.container.querySelector(".rsvp-controls--voice")).not.toBeNull();
 	});
 
 	it("keeps RSVP settings before Look up when there is no voice, and labels them in full", async () => {
 		view = await render(<RsvpView {...props} />);
 		expect(pillLabels(view)).toEqual(["RSVP settings", "Look up"]);
-		expect(view.container.querySelector(".rsvp-pills--four")).toBeNull();
+		expect(view.container.querySelector(".rsvp-controls--voice")).toBeNull();
 	});
 
 	const layout = (rects: Record<string, Partial<DOMRect>>) =>

@@ -19,12 +19,20 @@ const px = (selector: string, prop: string) => {
 };
 
 describe("RSVP paused controls layout", () => {
-	it("sit above the one row of secondary pills, with or without the read-aloud pills", () => {
+	it("sit above the secondary pills, and above both stacked rows with the read-aloud pills", () => {
 		const PILL = 44;
 		const GAP = 8;
 		const pillsTop = px(".rsvp-pills", "bottom") + PILL;
 		expect(px(".rsvp-controls", "bottom")).toBeGreaterThanOrEqual(pillsTop + GAP);
+		const stackGap = CSS.match(/\.rsvp-pill-stack \{[^}]*gap: (\d+)px;/)?.[1];
+		expect(px(".rsvp-controls--voice", "bottom")).toBeGreaterThanOrEqual(
+			pillsTop + Number(stackGap) + PILL + GAP,
+		);
 		expect(CSS).not.toMatch(/\.rsvp-controls:has/);
+	});
+
+	it("keeps Listen beside the speed instead of wrapping it onto its own row", () => {
+		expect(CSS).toMatch(/\.rsvp-controls \.rsvp-wpm-stepper \{[^}]*flex-wrap: nowrap;/);
 	});
 
 	it("give the RSVP word, Quick RSVP, the speed test and the settings preview one focal font", () => {

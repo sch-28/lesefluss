@@ -67,8 +67,20 @@ describe("DetailShell subjects", () => {
 });
 
 describe("DetailShell actions", () => {
-	it("groups the primary and secondary actions beside the cover, secondary as wide as its label", async () => {
-		view = await render(
+	const atWidth = (isWide: boolean) =>
+		vi.spyOn(window, "matchMedia").mockImplementation(
+			(query: string) =>
+				({
+					matches: isWide,
+					media: query,
+					addEventListener: () => {},
+					removeEventListener: () => {},
+				}) as unknown as MediaQueryList,
+		);
+	afterEach(() => vi.restoreAllMocks());
+
+	const renderActions = () =>
+		render(
 			<DetailShell
 				cover={null}
 				title="Book"
@@ -76,11 +88,27 @@ describe("DetailShell actions", () => {
 				secondaryActions={[{ label: "Add to wishlist", onClick: vi.fn() }]}
 			/>,
 		);
+
+	it("groups the primary and secondary actions beside the cover on desktop, secondary as wide as its label", async () => {
+		atWidth(true);
+		view = await renderActions();
 		const group = view.container.querySelector('[data-testid="detail-actions"]');
 		expect(group?.contains(view.getButton("Read now"))).toBe(true);
 		expect(group?.contains(view.getButton("Add to wishlist"))).toBe(true);
 		expect(group?.closest("section")).not.toBeNull();
 		expect(view.getButton("Add to wishlist").className).not.toMatch(/(^|\s)w-full(\s|$)/);
+	});
+
+	it("puts the secondary actions full width below the cover on a phone, as in 2.2.0", async () => {
+		atWidth(false);
+		view = await renderActions();
+		const hero = view.container.querySelector('[data-testid="detail-actions"]');
+		expect(hero?.contains(view.getButton("Read now"))).toBe(true);
+		expect(hero?.contains(view.getButton("Add to wishlist"))).toBe(false);
+		const below = view.container.querySelector('[data-testid="detail-actions-below"]');
+		expect(below?.closest("section")).toBeNull();
+		expect(below?.contains(view.getButton("Add to wishlist"))).toBe(true);
+		expect(view.getButton("Add to wishlist").className).toMatch(/(^|\s)w-full(\s|$)/);
 	});
 });
 

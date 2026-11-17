@@ -28,6 +28,18 @@ describe("page-level empty states", () => {
 		expect(tag).toMatch(/\spage(?!={false})\b/);
 	});
 
+	it("Library centres its empty states on a phone too, not only from md up", () => {
+		const source = readFileSync(resolve(SRC, "pages/library/index.tsx"), "utf8");
+		expect(source).toMatch(/const LIBRARY_EMPTY_ON_PHONE = "min-h-\[60vh\]";/);
+		for (const marker of [
+			'title="No books yet"',
+			'title="No books in this collection yet"',
+			'title={isNarrowed ? "No books match" : "Nothing to show"}',
+		]) {
+			expect(openingTag(source, marker), marker).toContain("className={LIBRARY_EMPTY_ON_PHONE}");
+		}
+	});
+
 	it("Stats Overview gives the goal card and the empty state the page height together", () => {
 		const source = readFileSync(resolve(SRC, "pages/library/stats.tsx"), "utf8");
 		expect(source).toMatch(

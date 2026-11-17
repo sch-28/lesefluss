@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -11,7 +12,8 @@ type Props = {
 	trackClassName?: string;
 };
 
-/** The goal chip's ring at any size, with an optional label in its middle. */
+/** The goal chip's ring at any size, with an optional label in its middle; a met ring with no
+ *  label shows a check, so a full ring never reads as an empty circle. */
 export function GoalRing({
 	size,
 	fraction,
@@ -24,6 +26,17 @@ export function GoalRing({
 	const radius = (size - stroke) / 2;
 	const length = 2 * Math.PI * radius;
 	const center = size / 2;
+	const label =
+		children != null && children !== false ? (
+			children
+		) : isMet ? (
+			<Check
+				data-testid="goal-ring-check"
+				className="text-[var(--goal-met)]"
+				style={{ width: size * 0.45, height: size * 0.45 }}
+				strokeWidth={2.5}
+			/>
+		) : null;
 	return (
 		<span
 			className={`relative inline-flex shrink-0 items-center justify-center ${className ?? ""}`}
@@ -53,9 +66,9 @@ export function GoalRing({
 					/>
 				)}
 			</svg>
-			{children != null && (
+			{label != null && (
 				<span className="absolute inset-0 flex items-center justify-center font-semibold text-[0.5625rem] tabular-nums">
-					{children}
+					{label}
 				</span>
 			)}
 		</span>

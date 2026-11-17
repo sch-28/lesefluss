@@ -175,6 +175,15 @@ describe("catalog card membership and quick add", () => {
 		expect(title?.className).not.toMatch(/min-h-/);
 	});
 
+	it("keeps the length and quick add right under the author, not pushed to the row's bottom", async () => {
+		view = await renderCard();
+		await flush();
+		// A grid item stretches to the row; self-start keeps the corner quick add on the length line.
+		expect(card()?.className).toContain("self-start");
+		expect(card()?.className).not.toMatch(/\bh-full\b/);
+		expect(card()?.querySelector(".mt-auto")).toBeNull();
+	});
+
 	it("falls back from a failed cover to a tinted one that does not repeat the title", async () => {
 		view = await renderCard({ coverUrl: "https://covers.example/84.jpg" });
 		await flush();

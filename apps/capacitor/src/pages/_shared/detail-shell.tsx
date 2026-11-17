@@ -15,6 +15,7 @@ import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucid
 import type React from "react";
 import { useState } from "react";
 import { PageContainer } from "@/components/page-container";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
@@ -86,6 +87,9 @@ export interface DetailShellProps {
 	errorSourceLink?: { href: string; label: string };
 }
 
+/** Tailwind's md: from here the secondary actions sit beside the cover with the primary. */
+const WIDE_DETAIL_QUERY = "(min-width: 48rem)";
+
 const COLLAPSED_TAG_COUNT = 8;
 /** The app's chip at hero size; a coarse pointer still gets the 44px hit area. */
 const SMALL_CHIP = "h-8 px-3 text-xs";
@@ -115,6 +119,12 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	errorSourceLink,
 }) => {
 	const hasHero = !isLoading && error === undefined && !errorMessage;
+	const isWide = useMediaQuery(WIDE_DETAIL_QUERY);
+	const secondaries = secondaryActions?.map((a, i) => (
+		// Index key safe: array reconstructed each render, never reordered.
+		// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+		<ActionButton key={i} action={a} primary={false} fullWidth={!isWide} />
+	));
 	return (
 		<>
 			<PageHeader
@@ -259,14 +269,17 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 							    block rather than text floating above dead space. */}
 							<div className="mt-auto flex flex-wrap gap-2 pt-3" data-testid="detail-actions">
 								<ActionButton action={primaryAction} primary />
-								{secondaryActions?.map((a, i) => (
-									// Index key safe: array reconstructed each render, never reordered.
-									// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-									<ActionButton key={i} action={a} primary={false} />
-								))}
+								{isWide && secondaries}
 							</div>
 						</div>
 					</section>
+
+					{/* A phone column beside the cover is too narrow for them: full width below it, as in 2.2.0. */}
+					{!isWide && secondaryActions && secondaryActions.length > 0 && (
+						<div className="mt-3 flex flex-col gap-2" data-testid="detail-actions-below">
+							{secondaries}
+						</div>
+					)}
 
 					{tagLinks && tagLinks.tags.length > 0 ? (
 						<TagList tags={tagLinks.tags} onTagTap={tagLinks.onTap} />
@@ -354,9 +367,10 @@ const TagList: React.FC<{
 	);
 };
 
-const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
+const ActionButton: React.FC<{ action: DetailAction; primary: boolean; fullWidth?: boolean }> = ({
 	action,
 	primary,
+	fullWidth = false,
 }) => {
 	const Icon = action.icon;
 	return (
@@ -366,11 +380,13 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			onClick={action.onClick}
 			// The primary fills the phone column, where its container query hides the detail when
 			// narrow; desktop drops the container, as inline-size containment would collapse a
-			// label-width button. Secondary actions are label-width everywhere.
+			// label-width button. Secondary actions fill the phone's row below the cover, else label-width.
 			className={
 				primary
 					? "@container w-full md:w-auto md:max-w-full md:[container-type:normal]"
-					: "max-w-full"
+					: fullWidth
+						? "w-full"
+						: "max-w-full"
 			}
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}

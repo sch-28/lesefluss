@@ -302,25 +302,23 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 					<GoalReminderRow value={reminderTime} onChange={setReminderTime} />
 				)}
 
-				<div className="flex gap-2 md:justify-end">
-					{existing && (
-						<Button
-							variant="destructive"
-							className="flex-1 md:flex-none"
-							disabled={isBusy}
-							onClick={() => removeGoal(existing.goal)}
-						>
-							Remove goal
-						</Button>
-					)}
+				<Button
+					className="md:pointer-fine:self-end"
+					onClick={() => save().catch((err) => log.warn("goals", "saving the goal failed:", err))}
+					disabled={isBusy || book.wordCount <= 0}
+				>
+					{existing ? "Save goal" : "Start goal"}
+				</Button>
+				{existing && (
 					<Button
-						className="flex-1 md:flex-none"
-						onClick={() => save().catch((err) => log.warn("goals", "saving the goal failed:", err))}
-						disabled={isBusy || book.wordCount <= 0}
+						variant="ghost"
+						className="text-destructive md:pointer-fine:self-end"
+						disabled={isBusy}
+						onClick={() => removeGoal(existing.goal)}
 					>
-						{existing ? "Save goal" : "Start goal"}
+						Remove goal
 					</Button>
-				</div>
+				)}
 			</div>
 		</SheetOrDialog>
 	);

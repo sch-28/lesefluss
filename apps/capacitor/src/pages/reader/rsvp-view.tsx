@@ -574,9 +574,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									onForwardSentence={forwardSentence}
 									onWpmChange={speed.onChange}
 								/>
-								<div className={cn("rsvp-pills", voice && "rsvp-pills--four")}>
-									{voice && (
-										<>
+								<div className="rsvp-pills">
+									<div className="rsvp-pill-stack">
+										{voice && (
 											<button
 												type="button"
 												className="rsvp-voice-button"
@@ -589,6 +589,19 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												<AudioLines className="size-5" />
 												<span>Voice</span>
 											</button>
+										)}
+										<button
+											type="button"
+											className="rsvp-settings-button"
+											aria-label="RSVP settings"
+											onClick={handleSettingsClick}
+										>
+											<Settings className="size-5" />
+											<span>RSVP settings</span>
+										</button>
+									</div>
+									<div className="rsvp-pill-stack">
+										{voice && (
 											<button
 												type="button"
 												className={
@@ -606,26 +619,17 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												<Moon className="size-5" />
 												<span>Sleep timer</span>
 											</button>
-										</>
-									)}
-									<button
-										type="button"
-										className="rsvp-settings-button"
-										aria-label="RSVP settings"
-										onClick={handleSettingsClick}
-									>
-										<Settings className="size-5" />
-										<span>RSVP settings</span>
-									</button>
-									<button
-										type="button"
-										className="rsvp-dict-button"
-										aria-label="Look up"
-										onClick={handleDictClick}
-									>
-										<BookOpen className="size-5" />
-										<span>Look up</span>
-									</button>
+										)}
+										<button
+											type="button"
+											className="rsvp-dict-button"
+											aria-label="Look up"
+											onClick={handleDictClick}
+										>
+											<BookOpen className="size-5" />
+											<span>Look up</span>
+										</button>
+									</div>
 								</div>
 							</>
 						)}

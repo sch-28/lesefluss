@@ -96,6 +96,10 @@ describe("GoalSetupSheet", () => {
 			(b) => b.textContent === "Remove goal",
 		);
 		if (!button) throw new Error("no Remove goal button");
+		// The quiet red text action under Save goal, as in 2.2.0, not a filled button beside it.
+		expect(button.dataset.variant).toBe("ghost");
+		expect(button.className).toContain("text-destructive");
+		expect(button.previousElementSibling?.textContent).toBe("Save goal");
 		await click(button);
 
 		expect(remove.mutate).toHaveBeenCalledWith({ id: goal.id }, expect.anything());
