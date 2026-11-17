@@ -1,5 +1,9 @@
+import { Button } from "@lesefluss/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { UserPlus } from "lucide-react";
 import type React from "react";
+import { useEffect } from "react";
 import { useSyncContext } from "../../contexts/sync-context";
 import { type CatalogSearchResult, getSimilarBooks } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -13,6 +17,24 @@ import Shelf from "./shelf";
 import { SHELF_STALE_TIME_MS, useAuthorBooks } from "./use-author-books";
 
 const AUTHOR_BOOKS = 8;
+const FRIENDS_EMPTY_KEY = "explore-friends-reading-empty";
+
+/** Whether the friends shelf was empty last time, so a cold start reserves the line, not a strip. */
+function readFriendsWasEmpty(): boolean {
+	try {
+		return localStorage.getItem(FRIENDS_EMPTY_KEY) === "1";
+	} catch {
+		return false;
+	}
+}
+
+function storeFriendsWasEmpty(isEmpty: boolean): void {
+	try {
+		localStorage.setItem(FRIENDS_EMPTY_KEY, isEmpty ? "1" : "0");
+	} catch {
+		// Only a loading hint; without it the strip's skeleton holds the slot.
+	}
+}
 
 type Props = {
 	onOpen: (result: CatalogSearchResult) => void;
@@ -75,9 +97,16 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const authorsError =
 		authorBooks.length === 0 ? (byAuthors.find((q) => q.error)?.error ?? null) : null;
 	const feedError = friends.length === 0 && isLoggedIn ? (feed.error ?? null) : null;
+	const hasFeedLoaded = isLoggedIn && !!feed.data && !isFeedLoading;
+	const isFriendsEmpty = hasFeedLoaded && !feedError && friends.length === 0;
+	useEffect(() => {
+		if (hasFeedLoaded) storeFriendsWasEmpty(friends.length === 0);
+	}, [hasFeedLoaded, friends.length]);
+	const showFriendsLine = isFriendsEmpty || (isFeedLoading && readFriendsWasEmpty());
 
-	// A shelf's slot follows local facts only (the library, being signed in), never
-	// what the catalog sends back: a shelf that loads empty keeps its height.
+	// A catalog shelf's slot follows local facts only (the library, being signed in),
+	// never what the catalog sends back: a shelf that loads empty keeps its height.
+	// The friends shelf is the exception: with no friends reading it shrinks to one line.
 	return (
 		<>
 			{seed && (
@@ -105,7 +134,8 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 					emptyLabel="Nothing else by your authors in the catalog yet."
 				/>
 			)}
-			{isLoggedIn && (
+			{isLoggedIn && showFriendsLine && <NoFriendsReading />}
+			{isLoggedIn && !showFriendsLine && (
 				<Shelf
 					title="Friends are reading"
 					books={friends}
@@ -119,5 +149,22 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 		</>
 	);
 };
+
+const NoFriendsReading: React.FC = () => (
+	<section
+		aria-label="Friends are reading"
+		className="mb-6 flex min-h-7 items-center justify-between gap-2"
+	>
+		<p className="m-0 min-w-0 text-muted-foreground text-xs">
+			Books your friends read show up here.
+		</p>
+		<Button variant="ghost" size="sm" className="shrink-0" asChild>
+			<Link to="/tabs/social" className="no-underline">
+				<UserPlus />
+				Find friends
+			</Link>
+		</Button>
+	</section>
+);
 
 export default PersonalShelves;

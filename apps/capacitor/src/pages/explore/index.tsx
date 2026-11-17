@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 import type React from "react";
@@ -6,12 +5,7 @@ import { useEffect } from "react";
 import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ViewModeToggle } from "../../components/view-mode-toggle";
-import {
-	CATALOG_ENABLED,
-	type CatalogSearchResult,
-	getGenres,
-} from "../../services/catalog/client";
-import { catalogKeys } from "../../services/catalog/query-keys";
+import { CATALOG_ENABLED, type CatalogSearchResult } from "../../services/catalog/client";
 import type { ProviderId, SearchResult } from "../../services/serial-scrapers";
 import CatalogResults from "./catalog-results";
 import {
@@ -34,13 +28,12 @@ import { recordRecentSearch } from "./recent-searches";
 import SearchField from "./search-field";
 import { CardGridSkeleton } from "./skeletons";
 import { tagLabel } from "./tag-labels";
+import { useCatalogGenres } from "./use-catalog-genres";
 import { useCatalogSearch } from "./use-catalog-search";
 import { storeLang, useCatalogLanguages, useExploreLang } from "./use-explore-lang";
 import { useQueryText } from "./use-query-text";
 import { useReadingSpeed } from "./use-reading-speed";
 import WishlistShelf from "./wishlist-shelf";
-
-const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
 type Props = { search: ExploreSearch };
 
@@ -71,12 +64,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 		update((s) => withSearch(s, { q: q || undefined, scope: undefined })),
 	);
 
-	const genresQuery = useQuery({
-		queryKey: catalogKeys.genres(lang ?? "en"),
-		queryFn: ({ signal }) => getGenres(lang ?? "en", signal),
-		enabled: mode === "catalog" && lang !== undefined,
-		staleTime: GENRES_STALE_TIME_MS,
-	});
+	const genresQuery = useCatalogGenres(lang ?? "en", mode === "catalog" && lang !== undefined);
 	const languagesQuery = useCatalogLanguages(mode === "catalog");
 
 	const filters = toCatalogFilters(search, lang ?? "en", speed.wpm);

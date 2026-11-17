@@ -1,10 +1,7 @@
 import { FilterChip } from "@lesefluss/ui/filter-chip";
-import { useQuery } from "@tanstack/react-query";
 import { Tag } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
-import { getGenres } from "../../services/catalog/client";
-import { catalogKeys } from "../../services/catalog/query-keys";
 import { StripArrows } from "./strip-arrows";
 import {
 	HIDDEN_SCROLLBAR_X,
@@ -12,8 +9,7 @@ import {
 	useStripEdges,
 	useStripScroll,
 } from "./strip-scroll";
-
-const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
+import { useCatalogGenres } from "./use-catalog-genres";
 
 type Props = {
 	lang: string;
@@ -23,11 +19,7 @@ type Props = {
 
 /** Ways into the catalog, first thing on the landing. Hidden genres never block the tag entry. */
 const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
-	const genres = useQuery({
-		queryKey: catalogKeys.genres(lang),
-		queryFn: ({ signal }) => getGenres(lang, signal),
-		staleTime: GENRES_STALE_TIME_MS,
-	});
+	const genres = useCatalogGenres(lang);
 	const withBooks = (genres.data?.genres ?? []).filter((g) => g.count > 0);
 	const stripRef = useRef<HTMLElement>(null);
 	const hasFinePointer = useHasFinePointer();

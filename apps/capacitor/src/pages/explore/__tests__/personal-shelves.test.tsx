@@ -42,7 +42,22 @@ vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../../../components/toast", () => ({
 	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
+vi.mock("@tanstack/react-router", () => ({
+	useRouter: () => ({ navigate: vi.fn() }),
+	Link: ({
+		to,
+		children,
+		className,
+	}: {
+		to: string;
+		children: React.ReactNode;
+		className?: string;
+	}) => (
+		<a href={to} className={className}>
+			{children}
+		</a>
+	),
+}));
 
 const { default: PersonalShelves, usePersonalShelvesPending } = await import("../personal-shelves");
 
@@ -86,6 +101,7 @@ beforeEach(() => {
 	useFeed.mockReturnValue({ data: undefined });
 });
 afterEach(() => {
+	localStorage.clear();
 	view?.unmount();
 	view = undefined;
 	vi.clearAllMocks();
@@ -213,11 +229,51 @@ describe("PersonalShelves", () => {
 		await vi.waitFor(() => expect(searchCatalog).toHaveBeenCalled());
 	});
 
-	it("gives a signed-in reader the friends shelf even before friends read", async () => {
+	const friendsSection = () =>
+		view?.container.querySelector('section[aria-label="Friends are reading"]');
+
+	it("gives a signed-in reader with no friends reading one line with Find friends, not a strip", async () => {
 		state.isLoggedIn = true;
 		useFeed.mockReturnValue({ data: { pages: [{ items: [], nextCursor: null }] } });
 		await renderShelves();
+		const line = friendsSection();
+		expect(line?.textContent).toContain("Books your friends read show up here.");
+		expect(line?.querySelector("a")?.getAttribute("href")).toBe("/tabs/social");
+		expect(line?.querySelector("a")?.textContent).toBe("Find friends");
+		expect(line?.querySelector('[aria-hidden="true"].invisible')).toBeNull();
+		expect(line?.querySelector('[role="status"]')).toBeNull();
+	});
+
+	it("holds the strip's skeleton while the feed loads the first time", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({ data: undefined, isLoading: true });
+		await renderShelves();
+		expect(friendsSection()).toBeNull();
+		const shelves = [...(view?.container.querySelectorAll("section") ?? [])];
+		const friends = shelves.find(
+			(s) => s.querySelector("h2")?.textContent === "Friends are reading",
+		);
+		expect(friends?.querySelector('[role="status"]')).not.toBeNull();
+	});
+
+	it("reserves only the line while loading when the feed was empty last time", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({ data: { pages: [{ items: [], nextCursor: null }] } });
+		await renderShelves();
+		view?.unmount();
+
+		useFeed.mockReturnValue({ data: undefined, isLoading: true });
+		await renderShelves();
+		expect(friendsSection()?.textContent).toContain("Find friends");
+	});
+
+	it("keeps the friends shelf's error with Retry, never the Find friends line", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({ data: undefined, error: new TypeError("Failed to fetch") });
+		await renderShelves();
+		expect(friendsSection()).toBeNull();
 		expect(view?.text()).toContain("Friends are reading");
+		expect(view?.text()).toContain("Retry");
 	});
 
 	it("shows nothing for an empty library and no friends", async () => {

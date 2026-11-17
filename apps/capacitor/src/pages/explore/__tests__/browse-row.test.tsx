@@ -33,6 +33,7 @@ let restoreWidth = () => {};
 
 let view: Rendered | undefined;
 afterEach(() => {
+	localStorage.clear();
 	view?.unmount();
 	view = undefined;
 	vi.unstubAllGlobals();
@@ -89,5 +90,36 @@ describe("BrowseRow", () => {
 		expect(row.queryButton("Scroll genres left")).toBeNull();
 		expect(row.container.querySelector("nav")?.className).toContain("-mx-4");
 		expect(row.text()).toContain("Horror");
+	});
+
+	it("shows the genres last seen on this device at once, while the catalog is slow", async () => {
+		mockPointer(false);
+		getGenres.mockResolvedValue({
+			lang: "en",
+			genres: [{ id: "horror", label: "Horror", count: 3 }],
+		});
+		view = await render(<BrowseRow lang="en" onGenreTap={vi.fn()} onBrowseTags={vi.fn()} />);
+		await flush();
+		view.unmount();
+
+		getGenres.mockReturnValue(new Promise(() => {}));
+		view = await render(<BrowseRow lang="en" onGenreTap={vi.fn()} onBrowseTags={vi.fn()} />);
+		expect(view.text()).toContain("Horror");
+	});
+
+	it("keeps the stored genres per language", async () => {
+		mockPointer(false);
+		getGenres.mockResolvedValue({
+			lang: "en",
+			genres: [{ id: "horror", label: "Horror", count: 3 }],
+		});
+		view = await render(<BrowseRow lang="en" onGenreTap={vi.fn()} onBrowseTags={vi.fn()} />);
+		await flush();
+		view.unmount();
+
+		getGenres.mockReturnValue(new Promise(() => {}));
+		view = await render(<BrowseRow lang="de" onGenreTap={vi.fn()} onBrowseTags={vi.fn()} />);
+		expect(view.text()).not.toContain("Horror");
+		expect(view.text()).toContain("Browse by tag");
 	});
 });

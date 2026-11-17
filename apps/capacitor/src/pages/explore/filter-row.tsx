@@ -98,7 +98,7 @@ const FilterRow: React.FC<Props> = ({
 	];
 
 	return (
-		<div className="flex flex-col gap-2 px-4 pt-2">
+		<div className="flex flex-col gap-1 px-4 pt-2">
 			<ChipRow label="filters" testId="filter-row">
 				<FilterChip
 					label={SORT_LABELS[sort]}
@@ -208,7 +208,7 @@ const ChipRow: React.FC<{ label: string; testId: string; children: React.ReactNo
 	const scroll = useStripScroll(rowRef);
 	if (!hasFinePointer) {
 		return (
-			<div ref={rowRef} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid={testId}>
+			<div ref={rowRef} className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1" data-testid={testId}>
 				{children}
 			</div>
 		);
@@ -217,7 +217,7 @@ const ChipRow: React.FC<{ label: string; testId: string; children: React.ReactNo
 		<div className="flex items-center gap-2">
 			<div
 				ref={rowRef}
-				className={`flex min-w-0 flex-1 gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`}
+				className={`flex min-w-0 flex-1 gap-2 py-1 ${HIDDEN_SCROLLBAR_X}`}
 				data-testid={testId}
 			>
 				{children}
