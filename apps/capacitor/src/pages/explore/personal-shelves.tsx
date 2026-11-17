@@ -158,7 +158,13 @@ const NoFriendsReading: React.FC = () => (
 		<p className="m-0 min-w-0 text-muted-foreground text-xs">
 			Books your friends read show up here.
 		</p>
-		<Button variant="ghost" size="sm" className="shrink-0" asChild>
+		{/* The before: box grows the 32px button to a 44px touch target without a taller line. */}
+		<Button
+			variant="ghost"
+			size="sm"
+			className="relative shrink-0 before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
+			asChild
+		>
 			<Link to="/tabs/social" className="no-underline">
 				<UserPlus />
 				Find friends

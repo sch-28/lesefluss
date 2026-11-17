@@ -8,6 +8,7 @@ import { db } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import { env } from "./env.js";
 import { captureException, flushErrorTracking } from "./lib/error-tracking.js";
+import { warmGenreCounts } from "./lib/genre-counts.js";
 import { coversRateLimit, dictRateLimit, rateLimit } from "./middleware/rate-limit.js";
 import { adminRoute } from "./routes/admin.js";
 import { booksRoute } from "./routes/books.js";
@@ -118,6 +119,7 @@ async function main() {
 	serve({ fetch: app.fetch, port: env.PORT }, (info) => {
 		console.log(`[catalog] listening on :${info.port}`);
 	});
+	void warmGenreCounts();
 
 	// Background initial seed if empty
 	const { rows } = await db.execute<{ count: number }>(

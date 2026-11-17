@@ -6,7 +6,7 @@ import { TintedCover } from "../../components/tinted-cover";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
-import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
+import { CardMeta, QuickAddOnCover } from "./card-badges";
 import { useCatalogImport } from "./use-catalog-import";
 import { useWebNovelImport } from "./use-web-novel-import";
 import { useRemoveFromWishlist } from "./use-wishlist-action";
@@ -60,24 +60,14 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 				>
 					{item.title}
 				</div>
-				<div className={onImport ? QUICK_ADD_CLEARANCE : undefined}>
-					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-						{item.author}
-					</div>
-					<CardMeta isInLibrary={isInLibrary} />
-				</div>
+				<CardMeta author={item.author} isInLibrary={isInLibrary} />
 			</div>
 		</button>
 		<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
 			<RemoveFromWishlistButton item={item} />
 		</div>
 		{onImport && (
-			<QuickAddBesideMeta
-				title={item.title}
-				isAdding={isImporting}
-				onAdd={onImport}
-				icon={Library}
-			/>
+			<QuickAddOnCover title={item.title} isAdding={isImporting} onAdd={onImport} icon={Library} />
 		)}
 	</div>
 );

@@ -1,4 +1,5 @@
 import { captureException } from "../lib/error-tracking.js";
+import { warmGenreCounts } from "../lib/genre-counts.js";
 import { dedupSE } from "./dedup.js";
 import { syncGutenberg } from "./gutenberg.js";
 import { syncStandardEbooks } from "./standard-ebooks.js";
@@ -84,5 +85,6 @@ export async function runSync(source: Source = "all"): Promise<void> {
 		state.currentSource = null;
 		state.phase = null;
 		state.lastFinishedAt = new Date();
+		void warmGenreCounts(true);
 	}
 }

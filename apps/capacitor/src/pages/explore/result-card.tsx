@@ -2,7 +2,7 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
-import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
+import { CardMeta, QuickAddOnCover } from "./card-badges";
 import type { LengthLabels } from "./length";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
 	/** Omit to hide quick add (in library, no EPUB, or not offered here). */
 	onQuickAdd?: () => void;
 	isAdding?: boolean;
-	/** From `describeLength`; its reading time sits under the title. */
+	/** From `describeLength`; its reading time follows the author under the title. */
 	lengthLabels?: LengthLabels | null;
 };
 
@@ -52,16 +52,11 @@ const ResultCard: React.FC<Props> = ({
 					>
 						{result.title}
 					</div>
-					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-						{result.author}
-					</div>
-					<div className={onQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
-						<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
-					</div>
+					<CardMeta author={result.author} labels={lengthLabels} isInLibrary={isInLibrary} />
 				</div>
 			</button>
 			{onQuickAdd && (
-				<QuickAddBesideMeta title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
+				<QuickAddOnCover title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
 			)}
 		</div>
 	);

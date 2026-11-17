@@ -268,6 +268,19 @@ export default defineShots<Page>({
 			wait: text("Pride and Prejudice"),
 		}),
 		screen({
+			id: "explore-search",
+			area: "explore",
+			route: "/tabs/explore/",
+			url: fixed("/tabs/explore?q=the"),
+			paths: [
+				routeFile("tabs/explore/index.tsx"),
+				...pages("explore"),
+				`${SRC}/services/catalog/**`,
+			],
+			before: stubCatalog,
+			wait: text("The Time Machine"),
+		}),
+		screen({
 			id: "explore-book",
 			area: "explore",
 			route: "/tabs/explore/book/$catalogId",

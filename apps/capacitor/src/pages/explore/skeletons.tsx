@@ -7,12 +7,12 @@ const SKELETON_BLOCK = "animate-pulse rounded bg-muted";
 
 /**
  * Same box as `ResultCard`, so content lands without shifting the layout.
- * `extraLines`: small text lines a card has beyond it, like a web novel's chapters.
+ * `extraLines`: small text lines a card has beyond it, like a web novel's provider.
  */
 export const CardSkeleton: React.FC<{ extraLines?: number }> = ({ extraLines = 0 }) => (
 	<div className="flex w-full flex-col" data-testid="card-skeleton">
 		<div className="aspect-2/3 w-full animate-pulse rounded-sm border border-border bg-muted" />
-		{/* The line boxes of ResultCard's title (two lines), author and length, so a
+		{/* The line boxes of ResultCard's title (two lines) and its author and length line, so a
 		    loaded shelf or grid row keeps the skeleton's height. */}
 		<div className="px-0.5 pt-1">
 			<div className="h-[2lh] text-[0.85rem] leading-[1.2]">
@@ -24,7 +24,6 @@ export const CardSkeleton: React.FC<{ extraLines?: number }> = ({ extraLines = 0
 			{skeletonKeys(extraLines).map((key) => (
 				<div key={key} className="mt-0.5 h-[1lh] text-[0.7rem]" />
 			))}
-			<div className="mt-1 h-8" />
 		</div>
 	</div>
 );

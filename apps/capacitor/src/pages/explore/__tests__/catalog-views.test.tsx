@@ -154,15 +154,34 @@ describe("catalog card membership and quick add", () => {
 		expect(addButton()).not.toBeNull();
 	});
 
-	it("keeps the author line full width, clearing only the length line for quick add", async () => {
-		view = await renderCard();
+	it("puts quick add on the cover corner and author and length on one line under the title", async () => {
+		view = await renderCard({
+			author: "A Very Long Author Name That Will Not Fit The Card",
+			wordCount: 75_000,
+		});
 		await flush();
-		const author = [...(card()?.querySelectorAll("div") ?? [])].find(
-			(el) => el.textContent === "Mary Shelley",
+		const overlay = addButton()?.closest(".aspect-2\\/3");
+		// Sized by the cover alone, so the + lines up across a row whatever each title's length.
+		expect(overlay?.className).toContain("absolute");
+		expect(overlay?.closest("button")).toBeNull();
+		const meta = card()?.querySelector('[data-testid="card-meta"]');
+		expect(meta?.className).toContain("whitespace-nowrap");
+		const [author, , length] = [...(meta?.children ?? [])];
+		expect(author?.className).toContain("text-ellipsis");
+		expect(length?.getAttribute("data-testid")).toBe("card-length");
+		expect(length?.className).toContain("shrink-0");
+	});
+
+	it("lets the length give way beside the In library badge so the line stays inside the card", async () => {
+		getLibraryCatalogIds.mockResolvedValue(new Map([["gutenberg:84", "local1"]]));
+		view = await renderCard({ wordCount: 75_000 });
+		await flush();
+		expect(view.text()).toContain("In library");
+		const meta = card()?.querySelector('[data-testid="card-meta"]');
+		expect(meta?.className).toContain("overflow-hidden");
+		expect(meta?.querySelector('[data-testid="card-length"]')?.className).toContain(
+			"text-ellipsis",
 		);
-		expect(addButton()).not.toBeNull();
-		expect(author?.closest(".pr-9")).toBeNull();
-		expect(card()?.querySelector(".pr-9")).not.toBeNull();
 	});
 
 	it("reserves no second title line and still clamps at two", async () => {
@@ -178,7 +197,7 @@ describe("catalog card membership and quick add", () => {
 	it("keeps the length and quick add right under the author, not pushed to the row's bottom", async () => {
 		view = await renderCard();
 		await flush();
-		// A grid item stretches to the row; self-start keeps the corner quick add on the length line.
+		// A grid item stretches to the row; self-start keeps the length right under the title.
 		expect(card()?.className).toContain("self-start");
 		expect(card()?.className).not.toMatch(/\bh-full\b/);
 		expect(card()?.querySelector(".mt-auto")).toBeNull();

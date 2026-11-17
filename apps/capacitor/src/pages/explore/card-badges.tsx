@@ -50,35 +50,58 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 );
 
 /**
- * QuickAddButton in the card's bottom corner, beside the length line: on the cover
- * it hid titles printed into the art, beside the title it cut the title short,
- * beside the author it cut a phone grid's authors to a few letters. `CardMeta`
- * is the button's height and keeps `QUICK_ADD_CLEARANCE` free for it, so the
- * card must always render it.
+ * On the cover's bottom corner, so it lines up across a row whatever each title's length
+ * and the title keeps its full width. The user chose this over keeping the cover clear
+ * (LESE-214.3). The visible 32px button plus its hit slop is a 44px target.
  */
-export const QuickAddBesideMeta: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
-	<QuickAddButton {...props} className="absolute right-0 bottom-0" />
-);
-
-export const QUICK_ADD_CLEARANCE = "pr-9";
-
-/**
- * Under a card's title, off the cover, where corner badges hid titles printed into the art.
- * As tall as the quick-add button, empty or not, so every card in a row, and the skeleton, keeps one height.
- */
-export const CardMeta: React.FC<{ labels?: LengthLabels | null; isInLibrary?: boolean }> = ({
-	labels,
-	isInLibrary,
-}) => (
-	<div className="mt-1 flex min-h-8 flex-wrap items-center gap-1 text-[0.7rem]">
-		{isInLibrary && <InLibraryBadge />}
-		{labels && (
-			<span data-testid="card-length" className="text-muted-foreground tabular-nums">
-				<LengthText labels={labels} variant="time" />
-			</span>
-		)}
+export const QuickAddOnCover: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
+	<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
+		<QuickAddButton {...props} className="pointer-events-auto absolute right-1.5 bottom-1.5" />
 	</div>
 );
+
+/**
+ * The one line under a card's title: the author (cut first) then the length, or the
+ * In library badge in the author's place. Kept when empty so a row's cards and their
+ * skeleton share one height.
+ */
+export const CardMeta: React.FC<{
+	author?: string | null;
+	labels?: LengthLabels | null;
+	/** Stands in for the length when there is none, e.g. a serial's chapter count. */
+	lengthFallback?: string | null;
+	isInLibrary?: boolean;
+}> = ({ author, labels, lengthFallback, isInLibrary }) => {
+	const lead = isInLibrary ? <InLibraryBadge className="shrink-0" /> : author || null;
+	// Beside the badge, or as a wide chapter count, the length must give way too or the line
+	// runs into the next card on a phone grid.
+	const lengthFits = labels && !isInLibrary ? "shrink-0" : "min-w-0 overflow-hidden text-ellipsis";
+	const length = labels ? (
+		<span data-testid="card-length" className={cn(lengthFits, "text-[0.7rem] tabular-nums")}>
+			<LengthText labels={labels} variant="time" />
+		</span>
+	) : lengthFallback ? (
+		<span className={cn(lengthFits, "text-[0.7rem]")}>{lengthFallback}</span>
+	) : null;
+	return (
+		<div
+			data-testid="card-meta"
+			className="mt-0.5 flex h-[1lh] min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[0.75rem] text-muted-foreground"
+		>
+			{typeof lead === "string" ? (
+				<span className="min-w-0 overflow-hidden text-ellipsis">{lead}</span>
+			) : (
+				lead
+			)}
+			{lead && length && (
+				<span aria-hidden className="shrink-0">
+					·
+				</span>
+			)}
+			{length}
+		</div>
+	);
+};
 
 /** Length as text, read out as a sentence rather than "tilde … middle dot". */
 export const LengthText: React.FC<{ labels: LengthLabels; variant?: "text" | "time" }> = ({

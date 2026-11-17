@@ -1,7 +1,7 @@
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { providerLabel, type SearchResult } from "../../services/serial-scrapers";
-import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideMeta } from "./card-badges";
+import { CardMeta, QuickAddOnCover } from "./card-badges";
 import { describeLength } from "./length";
 import ProviderCover from "./provider-cover";
 import { useReadingSpeed } from "./use-reading-speed";
@@ -10,7 +10,7 @@ import { chapterFallback, webNovelLength } from "./web-novel-facts";
 
 /**
  * Vertical card mirroring `pages/explore/result-card.tsx` rhythm: aspect-2/3
- * cover, 2-line title, then only the author, provider and chapter lines that have content.
+ * cover, 2-line title, the author and length line, and the provider where asked.
  */
 export const WebNovelCard: React.FC<{
 	result: SearchResult;
@@ -49,24 +49,21 @@ export const WebNovelCard: React.FC<{
 					>
 						{result.title}
 					</div>
-					{result.author && (
-						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-							{result.author}
-						</div>
-					)}
+					<CardMeta
+						author={result.author}
+						labels={lengthLabels}
+						lengthFallback={chapters}
+						isInLibrary={quickAdd.isInLibrary}
+					/>
 					{showProvider && (
 						<div className="mt-0.5 text-[0.7rem] text-muted-foreground">
 							{providerLabel(result.provider)}
 						</div>
 					)}
-					{chapters && <div className="mt-0.5 text-[0.7rem] text-muted-foreground">{chapters}</div>}
-					<div className={canQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
-						<CardMeta labels={lengthLabels} isInLibrary={quickAdd.isInLibrary} />
-					</div>
 				</div>
 			</button>
 			{canQuickAdd && (
-				<QuickAddBesideMeta
+				<QuickAddOnCover
 					title={result.title}
 					isAdding={quickAdd.isImporting}
 					onAdd={() => quickAdd.start(result.title)}
@@ -77,4 +74,4 @@ export const WebNovelCard: React.FC<{
 };
 
 /** The lines a web novel card has beyond a catalog card's, for `CardSkeleton`'s `extraLines`. */
-export const webNovelCardExtraLines = (showProvider: boolean) => (showProvider ? 2 : 1);
+export const webNovelCardExtraLines = (showProvider: boolean) => (showProvider ? 1 : 0);
