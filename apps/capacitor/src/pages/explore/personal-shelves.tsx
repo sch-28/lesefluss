@@ -96,7 +96,7 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const similarError = becauseYouRead.length === 0 ? similar.error : null;
 	const authorsError =
 		authorBooks.length === 0 ? (byAuthors.find((q) => q.error)?.error ?? null) : null;
-	const feedError = friends.length === 0 && isLoggedIn ? (feed.error ?? null) : null;
+	const feedError = friends.length === 0 && isLoggedIn && !feed.data ? (feed.error ?? null) : null;
 	const hasFeedLoaded = isLoggedIn && !!feed.data && !isFeedLoading;
 	const isFriendsEmpty = hasFeedLoaded && !feedError && friends.length === 0;
 	useEffect(() => {

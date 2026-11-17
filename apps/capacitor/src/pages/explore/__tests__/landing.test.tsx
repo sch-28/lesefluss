@@ -83,6 +83,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	vi.clearAllMocks();
+	localStorage.clear();
 });
 
 const renderLanding = (onBrowse = vi.fn()) =>

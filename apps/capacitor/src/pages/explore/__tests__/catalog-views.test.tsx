@@ -194,7 +194,7 @@ describe("catalog card membership and quick add", () => {
 		expect(title?.className).not.toMatch(/min-h-/);
 	});
 
-	it("keeps the length and quick add right under the author, not pushed to the row's bottom", async () => {
+	it("keeps the author and length line right under the title, not pushed to the row's bottom", async () => {
 		view = await renderCard();
 		await flush();
 		// A grid item stretches to the row; self-start keeps the length right under the title.

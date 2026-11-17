@@ -28,10 +28,9 @@ function storeGenres(lang: string, data: CatalogGenresResponse): void {
 }
 
 /**
- * Genre ids, labels and counts for a language. The catalog counts them with a
- * full-table scan that it caches for only ten minutes, so a cold request can
- * take seconds; the last answer is kept on the device and shown at once while
- * a stale one refreshes in the background.
+ * Genre ids, labels and counts for a language. The last answer is kept on the
+ * device so the chips paint with the page on a cold start or offline, while a
+ * stale one refreshes in the background.
  */
 export function useCatalogGenres(lang: string, enabled = true) {
 	return useQuery({

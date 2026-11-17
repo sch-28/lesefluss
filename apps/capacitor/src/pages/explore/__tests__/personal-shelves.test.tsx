@@ -240,8 +240,8 @@ describe("PersonalShelves", () => {
 		expect(line?.textContent).toContain("Books your friends read show up here.");
 		expect(line?.querySelector("a")?.getAttribute("href")).toBe("/tabs/social");
 		expect(line?.querySelector("a")?.textContent).toBe("Find friends");
-		expect(line?.querySelector('[aria-hidden="true"].invisible')).toBeNull();
-		expect(line?.querySelector('[role="status"]')).toBeNull();
+		const headings = [...(view?.container.querySelectorAll("h2") ?? [])].map((h) => h.textContent);
+		expect(headings).not.toContain("Friends are reading");
 	});
 
 	it("holds the strip's skeleton while the feed loads the first time", async () => {
@@ -274,6 +274,17 @@ describe("PersonalShelves", () => {
 		expect(friendsSection()).toBeNull();
 		expect(view?.text()).toContain("Friends are reading");
 		expect(view?.text()).toContain("Retry");
+	});
+
+	it("keeps the Find friends line when a refetch fails after the feed loaded empty", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({
+			data: { pages: [{ items: [], nextCursor: null }] },
+			error: new TypeError("Failed to fetch"),
+		});
+		await renderShelves();
+		expect(friendsSection()?.textContent).toContain("Find friends");
+		expect(view?.text()).not.toContain("Retry");
 	});
 
 	it("shows nothing for an empty library and no friends", async () => {

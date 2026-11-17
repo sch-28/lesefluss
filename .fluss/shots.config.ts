@@ -271,7 +271,7 @@ export default defineShots<Page>({
 			id: "explore-search",
 			area: "explore",
 			route: "/tabs/explore/",
-			url: fixed("/tabs/explore?q=the"),
+			url: fixed("/tabs/explore?q=the&scope=catalog"),
 			paths: [
 				routeFile("tabs/explore/index.tsx"),
 				...pages("explore"),
