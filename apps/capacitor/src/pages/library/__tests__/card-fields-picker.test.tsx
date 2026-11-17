@@ -42,9 +42,10 @@ describe("CardFieldsPanel", () => {
 		expect(checkbox("Author").checked).toBe(true);
 		expect(checkbox("Author").closest("label")?.className).toContain("min-h-11");
 		expect(checkbox("Words").checked).toBe(false);
-		// Labels say what the card shows: the series badge with its number, the bar or the time.
+		// Labels say what the card shows: the series badge with its number; progress and time to read apart.
 		expect(checkbox("Series and #N").checked).toBe(false);
-		expect(checkbox("Progress or time to read").checked).toBe(false);
+		expect(checkbox("Progress").checked).toBe(false);
+		expect(checkbox("Time to read").checked).toBe(false);
 		expect(view.text()).toContain("grid: author,rating");
 		await click(checkbox("Time left"));
 		expect(onToggle).toHaveBeenCalledWith("grid", "timeLeft");

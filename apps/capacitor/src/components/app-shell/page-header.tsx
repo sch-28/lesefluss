@@ -5,7 +5,8 @@ import type { ComponentType, ReactNode, Ref } from "react";
 import { PageContainer, type PageWidth } from "../page-container";
 import { resolveBack } from "./resolve-back";
 
-/** The sticky bar every drill-in page shares: Back, the page's title and its actions. */
+/** The sticky bar every drill-in page shares: Back, the page's title and its actions.
+ *  Without a title the page's own heading names it (a book page's hero). */
 export function PageHeader({
 	title,
 	width,
@@ -15,7 +16,7 @@ export function PageHeader({
 	onBack,
 	ref,
 }: {
-	title: string;
+	title?: string;
 	/** The page's content width, so back, title and actions line up with the content column. */
 	width: PageWidth;
 	ref?: Ref<HTMLElement>;
@@ -38,7 +39,7 @@ export function PageHeader({
 					<ChevronLeft />
 				</IconButton>
 				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-				<h1 className={HEADER_TITLE}>{title}</h1>
+				{title ? <h1 className={HEADER_TITLE}>{title}</h1> : <div className="flex-1" />}
 				{right}
 			</PageContainer>
 		</header>

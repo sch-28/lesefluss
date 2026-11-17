@@ -138,8 +138,10 @@ test.describe("on a phone", () => {
 		await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
 		await reader.expectLoaded(page);
 		await page.getByRole("button", { name: "More actions" }).click();
-		await expect(page.getByRole("menuitem", { name: "Book details" })).toBeVisible();
-		await expect(page.getByRole("menuitem", { name: "Quick RSVP" })).toHaveCount(0);
+		// On touch the menu is a bottom sheet (LESE-211.27 d-2).
+		const sheet = page.getByRole("dialog");
+		await expect(sheet.getByRole("button", { name: "Book details" })).toBeVisible();
+		await expect(sheet.getByRole("button", { name: "Quick RSVP" })).toHaveCount(0);
 		await page.keyboard.press("Escape");
 		await page.keyboard.press("Control+k");
 		const palette = page.getByTestId("command-palette");

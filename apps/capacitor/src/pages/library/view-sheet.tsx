@@ -64,12 +64,13 @@ export const ViewSheet: React.FC<Props> = ({
 	const trigger = (
 		<Button
 			variant="ghost"
-			size="icon"
+			size={isDesktop ? "sm" : "icon"}
 			aria-label="View"
 			title="View"
 			onClick={isDesktop ? undefined : () => onOpenChange(true)}
 		>
 			<Icon />
+			{isDesktop && "View"}
 		</Button>
 	);
 	const pickGroup = (groupBy: GroupBy) => {

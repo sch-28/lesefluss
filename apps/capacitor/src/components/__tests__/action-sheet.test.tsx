@@ -38,7 +38,8 @@ const anchorBox = () => {
 const drawer = () => document.querySelector('[data-slot="drawer-content"]');
 
 describe("ActionSheet placement", () => {
-	it("opens a short list as an anchored menu without a dim at the press", async () => {
+	it("opens a short list as an anchored menu without a dim at the press with a mouse", async () => {
+		pointer("fine");
 		press();
 		view = await render(<ActionSheet open onOpenChange={() => {}} title="Book" items={items(5)} />);
 		await flush();
@@ -48,10 +49,10 @@ describe("ActionSheet placement", () => {
 		expect(menu()?.querySelectorAll('[role="menuitem"]')).toHaveLength(5);
 	});
 
-	it("keeps a long list in a bottom sheet on touch", async () => {
+	it.each([2, 7])("opens %i items as a bottom sheet on touch, even at the press", async (count) => {
 		pointer("coarse");
 		press();
-		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(7)} />);
+		view = await render(<ActionSheet open onOpenChange={() => {}} items={items(count)} />);
 		await flush();
 		expect(menu()).toBeNull();
 		expect(drawer()).not.toBeNull();
@@ -156,6 +157,7 @@ describe("ActionSheet placement", () => {
 	it("runs the chosen action once and closes", async () => {
 		const onSelect = vi.fn();
 		const onOpenChange = vi.fn();
+		pointer("fine");
 		press();
 		view = await render(
 			<ActionSheet open onOpenChange={onOpenChange} items={items(2, onSelect)} />,
@@ -180,6 +182,7 @@ describe("ActionSheet danger group", () => {
 	];
 
 	it("sets the destructive items apart with one rule in the menu", async () => {
+		pointer("fine");
 		press();
 		view = await render(<ActionSheet open onOpenChange={() => {}} items={mixed} />);
 		await flush();

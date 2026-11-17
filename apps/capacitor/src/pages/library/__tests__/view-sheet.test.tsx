@@ -154,5 +154,11 @@ describe("ViewSheet opened by G", () => {
 			/>,
 		);
 		expect(view.getButton("View")).toBeTruthy();
+		expect(view.getButton("View").textContent).toBe("");
+	});
+
+	it("labels the trigger on desktop, like Filter and Sort", async () => {
+		view = await render(desktopSheet(false, false));
+		expect(view.getButton("View").textContent).toBe("View");
 	});
 });

@@ -2,13 +2,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
+import { formatPercentChange } from "../../utils/format-percent";
 import { formatReadingTime } from "../../utils/reading-time";
 import {
 	daysMetWithToday,
 	GOAL_TONE_CLASS,
 	goalTone,
 	type LiveToday,
-	signed,
 	todayFigure,
 } from "../library/reading-goal/goal-model";
 import { DayCount, GoalStat } from "../library/reading-goal/goal-stat";
@@ -73,7 +73,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 					/>
 					<GoalStat
 						size="sm"
-						value={signed(plan.aheadBehind.percent, "%")}
+						value={formatPercentChange(plan.aheadBehind.percent)}
 						label="vs plan"
 						className={GOAL_TONE_CLASS[goalTone(plan)]}
 					/>

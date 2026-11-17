@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, type Rendered, render } from "../../../test/render";
 
 vi.mock("../../../components/app-shell/page-header", () => ({
-	PageHeader: ({ title }: { title: string }) => <header>{title}</header>,
+	PageHeader: ({ title }: { title?: string }) => <header>{title}</header>,
 }));
 
 const { DetailShell } = await import("../detail-shell");
@@ -16,12 +16,12 @@ afterEach(() => {
 const headerTitle = () => view?.container.querySelector("header")?.textContent;
 
 describe("DetailShell title", () => {
-	it("names the page in the header at rest, beside the hero's own heading", async () => {
+	it("leaves the title to the hero's heading, not the header, at rest", async () => {
 		view = await render(
 			<DetailShell cover={null} title="Dune" primaryAction={{ label: "Read", onClick: vi.fn() }} />,
 		);
-		expect(headerTitle()).toBe("Dune");
-		expect(view.container.querySelector("section h2")?.textContent).toBe("Dune");
+		expect(headerTitle()).toBe("");
+		expect(view.container.querySelector("section h1")?.textContent).toBe("Dune");
 	});
 
 	it("offers the primary action as the way on from an error", async () => {

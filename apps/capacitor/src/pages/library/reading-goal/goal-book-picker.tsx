@@ -1,4 +1,6 @@
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+import BookCover from "../../../components/book-cover";
 import { SheetOrDialog } from "../../../components/sheet-or-dialog";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
@@ -40,16 +42,22 @@ export function GoalBookPicker({
 							key={book.id}
 							type="button"
 							data-testid="goal-candidate"
-							className="flex min-h-14 cursor-pointer flex-col justify-center py-2 text-left"
+							className="-mx-4 flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 text-left hover:bg-muted/50"
 							onClick={() => {
 								onClose();
 								setPicked(book);
 							}}
 						>
-							<span className="truncate text-foreground text-sm">{book.title}</span>
-							{book.author && (
-								<span className="truncate text-muted-foreground text-xs">{book.author}</span>
-							)}
+							<span aria-hidden className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm">
+								<BookCover book={book} cover={library?.covers.get(book.id)} size="full" />
+							</span>
+							<span className="flex min-w-0 flex-1 flex-col">
+								<span className="truncate text-foreground text-sm">{book.title}</span>
+								{book.author && (
+									<span className="truncate text-muted-foreground text-xs">{book.author}</span>
+								)}
+							</span>
+							<ChevronRight className="size-4 shrink-0 text-muted-foreground" />
 						</button>
 					))}
 					{library && candidates.length === 0 && (

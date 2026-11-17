@@ -987,6 +987,7 @@ const Library: React.FC = () => {
 							? { isCustom: !activeShelf.filter, onEdit: () => setIsEditingShelf(true) }
 							: undefined
 					}
+					shelfRule={activeShelf?.filter ?? undefined}
 				/>
 			)}
 			{!isDesktop && (

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReadingGoal } from "../../../../services/db/schema";
 import type { ReadingGoalPlan } from "../../../../services/stats/reading-goal";
 import { makeBook } from "../../../../test/book-fixture";
-import { type Rendered, render } from "../../../../test/render";
+import { click, type Rendered, render } from "../../../../test/render";
 import { at, makeGoal, makePlan, session } from "./goal-fixtures";
 
 const goalData: { current: { goal: ReadingGoal; plan: ReadingGoalPlan } | null } = {
@@ -60,7 +60,7 @@ describe("GoalCard", () => {
 		expect(text).toMatch(/5% \/ 11\.3%/);
 		expect(text).toContain("today");
 		expect(text).not.toMatch(/\d+ of \d+ min/);
-		expect(text).toContain("−5.0%");
+		expect(text).toContain("−5%vs plan");
 		expect(text).toContain("vs plan · −0.5 d");
 		expect(text).toContain("1 d daydays met");
 		expect(text).toContain("2 d daysdays read");
@@ -73,7 +73,7 @@ describe("GoalCard", () => {
 		const plan = makePlan({ position: 100, sessions: [session(1, 0, 100)], now: at(2, 8) });
 		goalData.current = { goal: makeGoal(), plan };
 		view = await render(<GoalCard book={makeBook({ wordPosition: wordPos(100) })} />);
-		expect(view.text()).toContain("0.0%vs plan · 0.0 d");
+		expect(view.text()).toContain("0%vs plan · 0.0 d");
 		expect(view.container.querySelector(BEHIND)).toBeNull();
 		expect(view.container.querySelector(AHEAD)).toBeNull();
 	});
@@ -82,7 +82,8 @@ describe("GoalCard", () => {
 		const plan = makePlan({ position: 400, sessions: [session(1, 0, 400)], now: at(2, 8) });
 		goalData.current = { goal: makeGoal(), plan };
 		view = await render(<GoalCard book={makeBook({ wordPosition: wordPos(400) })} />);
-		expect(view.text()).toContain("+20.0%");
+		expect(view.text()).toContain("+20%");
+		expect(view.text()).not.toContain("+20.0%");
 		expect(view.container.querySelector(AHEAD)).not.toBeNull();
 	});
 
@@ -113,5 +114,15 @@ describe("GoalChip", () => {
 		expect(chip?.getAttribute("data-met")).toBe("true");
 		expect(chip?.getAttribute("aria-label")).toBe("Today's target met: 10%");
 		expect(chip?.textContent).toBe("Today 10% of 10%");
+	});
+
+	it("shows the plan gap in its details as a whole signed percent", async () => {
+		const plan = { ...makePlan({ position: 0, now: at(1, 13) }) };
+		plan.aheadBehind = { ...plan.aheadBehind, percent: 20.4 };
+		view = await render(
+			<GoalChip plan={plan} today={liveToday(plan, 40, 1000)} onOpenDetails={() => {}} />,
+		);
+		await click(view.container.querySelector('[data-testid="goal-chip"]') as HTMLElement);
+		expect(document.body.textContent).toContain("+20%vs plan");
 	});
 });

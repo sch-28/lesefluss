@@ -6,6 +6,7 @@ import { click, type Rendered, render } from "../../../test/render";
 
 let isDesktop = false;
 vi.mock("../../../hooks/use-media-query", () => ({
+	FINE_POINTER_QUERY: "(pointer: fine)",
 	useMediaQuery: () => isDesktop,
 	useDesktopOverlay: () => isDesktop,
 }));

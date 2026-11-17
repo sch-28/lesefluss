@@ -1,6 +1,6 @@
 import { readingProgress } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { formatPercent } from "../format-percent";
+import { formatPercent, formatPercentChange } from "../format-percent";
 
 describe("formatPercent", () => {
 	it("rounds a whole percent like readingProgress, so every screen shows the same figure", () => {
@@ -20,5 +20,14 @@ describe("formatPercent", () => {
 	it("stays within 0 to 100", () => {
 		expect(formatPercent(-0.2)).toBe("0%");
 		expect(formatPercent(100.4, 1)).toBe("100%");
+	});
+});
+
+describe("formatPercentChange", () => {
+	it("signs a whole-percent change like the rest of the app's percents", () => {
+		expect(formatPercentChange(20.04)).toBe("+20%");
+		expect(formatPercentChange(-2.6)).toBe("−3%");
+		expect(formatPercentChange(0.3)).toBe("0%");
+		expect(formatPercentChange(-0.3)).toBe("0%");
 	});
 });

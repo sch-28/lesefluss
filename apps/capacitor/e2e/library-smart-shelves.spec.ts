@@ -41,7 +41,17 @@ test("the shelf + starts from the current filter and saves a shelf that counts a
 	await expect(page.getByRole("heading", { name: "New smart shelf" })).toBeHidden();
 	await expect(shelves.getByRole("link", { name: /^Ada .*2$/ })).toBeVisible();
 
-	await page.getByTestId("filter-bar").getByRole("button", { name: "Clear", exact: true }).click();
+	// The save opens the shelf: its own rule is shown but not removable (LESE-211.33 d-1).
+	const filterBar = page.getByTestId("filter-bar");
+	const removes = filterBar.getByRole("button", { name: /^Remove filter/ });
+	const clear = filterBar.getByRole("button", { name: "Clear", exact: true });
+	await expect(filterBar).toContainText("Ada Vance");
+	await expect(removes).toHaveCount(0);
+	await expect(clear).toHaveCount(0);
+	await expect(cards).toHaveCount(2);
+
+	await page.goBack();
+	await clear.click();
 	await expect(cards).toHaveCount(BOOKS.length);
 
 	await shelves.getByRole("link", { name: /^Ada .*2$/ }).click();

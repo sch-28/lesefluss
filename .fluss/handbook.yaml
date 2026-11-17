@@ -30,8 +30,8 @@ solutions:
         rare reading actions only.
       - Destructive actions (Delete, Reset progress, Delete all sessions) sit in a separate danger
         group, never last in a reading menu or a list.
-      - The default Library card shows title and author only; series, rating and other fields are
-        opt-in in the View sheet (LESE-190.6).
+      - The default Library card shows title, author and progress (percent, or Finished); series,
+        rating, time to read and other fields are opt-in in the View sheet (LESE-190.6, LESE-211.32).
       - A sheet has a left-aligned title, keeps the page gutter and clears the gesture bar.
 
       **Layout** (the user's numbers, LESE-211)
@@ -58,6 +58,7 @@ solutions:
       - No menu with a single item: show that action directly.
       - A menu trigger is always visible, never hover-only.
       - On a fine pointer a menu opens anchored at its trigger, never as a bottom sheet.
+      - On touch every menu opens as a bottom sheet, whatever its item count.
       - Near a viewport edge a menu or popover flips or shifts to stay fully on screen, keeping at
         least the page gutter to the edge; never clipped, never off screen.
       - All desktop menus and popovers share one row height and text size.

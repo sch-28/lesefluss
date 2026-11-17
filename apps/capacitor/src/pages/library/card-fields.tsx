@@ -11,19 +11,21 @@ import { formatReadingTime } from "../../utils/reading-time";
 import type { LibraryItem } from "./sort-filter";
 import { type CellContext, type ColumnId, TABLE_COLUMNS } from "./table-columns";
 
-/** Card fields are table columns too: one id, label and value per field. */
-export type CardFieldId = Extract<
-	ColumnId,
-	| "author"
-	| "series"
-	| "status"
-	| "progress"
-	| "timeLeft"
-	| "rating"
-	| "tags"
-	| "words"
-	| "lastRead"
->;
+/** Card fields are table columns too, plus time to read, which only a card shows. */
+export type CardFieldId =
+	| Extract<
+			ColumnId,
+			| "author"
+			| "series"
+			| "status"
+			| "progress"
+			| "timeLeft"
+			| "rating"
+			| "tags"
+			| "words"
+			| "lastRead"
+	  >
+	| "timeToRead";
 
 export type CardSurface = "grid" | "list";
 export type CardFieldSettings = Record<CardSurface, CardFieldId[]>;
@@ -35,23 +37,24 @@ const CARD_FIELD_IDS: readonly CardFieldId[] = [
 	"rating",
 	"status",
 	"timeLeft",
+	"timeToRead",
 	"tags",
 	"words",
 	"lastRead",
 	"progress",
 ];
 
-const COLUMN_LABELS = new Map(TABLE_COLUMNS.map((c) => [c.id, c.label]));
-/** Where a card shows more than its column: the progress slot is the whole status line. */
+const COLUMN_LABELS = new Map<string, string>(TABLE_COLUMNS.map((c) => [c.id, c.label]));
 const CARD_LABELS: Partial<Record<CardFieldId, string>> = {
 	series: "Series and #N",
-	progress: "Progress or time to read",
+	timeToRead: "Time to read",
 };
 export const CARD_FIELDS: readonly { id: CardFieldId; label: string }[] = CARD_FIELD_IDS.map(
 	(id) => ({ id, label: CARD_LABELS[id] ?? COLUMN_LABELS.get(id) ?? id }),
 );
 
-/** Title, author and the status line (decision 183c96c2 on LESE-190.6); the rest is opt-in. */
+/** Title, author and progress (decision 183c96c2 on LESE-190.6, LESE-211.32 d-1); the rest is
+ *  opt-in. A choice already saved on the device is kept as it is. */
 export const DEFAULT_CARD_FIELDS: CardFieldSettings = {
 	grid: ["author", "progress"],
 	list: ["author", "progress"],
@@ -118,7 +121,9 @@ export function cardTimeLeft(item: LibraryItem): string {
 
 export type CardFieldValues = Partial<Record<CardFieldId, string>>;
 
-const TEXT_FIELDS = new Map(TABLE_COLUMNS.map((c) => [c.id, c]));
+const TEXT_FIELDS = new Map<string, (typeof TABLE_COLUMNS)[number]>(
+	TABLE_COLUMNS.map((c) => [c.id, c]),
+);
 
 /** Each text field's value for one item, from the table's own cell text. */
 export function cardFieldValues(
@@ -128,7 +133,7 @@ export function cardFieldValues(
 ): CardFieldValues {
 	const values: CardFieldValues = {};
 	for (const id of fields) {
-		if (id === "progress" || id === "rating") continue;
+		if (id === "progress" || id === "rating" || id === "timeToRead") continue;
 		values[id] =
 			id === "timeLeft" ? cardTimeLeft(item) : (TEXT_FIELDS.get(id)?.text(item, ctx) ?? "");
 	}
@@ -160,7 +165,7 @@ export function hasStarted(book: Parameters<typeof bookStatus>[0]): boolean {
 	return bookStatus(book) !== "want";
 }
 
-/** What a card's status line says: progress, finished, or how long the book takes to read. */
+/** A book's state on a card: progress, finished, or how long it takes to read. */
 export type CardStatus =
 	| { kind: "reading"; progress: number }
 	| { kind: "finished" }
@@ -200,27 +205,20 @@ export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ sta
 			</span>
 		);
 	}
-	// A book without a word count has no reading time; it is simply new.
-	return (
-		<span
-			id={id}
-			className="@container flex min-w-0 flex-1 items-center gap-1 text-muted-foreground"
-		>
-			{status.minutes !== null && <Clock aria-hidden className="size-3 shrink-0" />}
-			<span className="truncate tabular-nums">
-				{status.minutes !== null ? (
-					<>
-						{formatReadingTime(status.minutes)}
-						{/* "12h 30m read" with its clock is about 7.75em: a card too narrow for it drops "read", not the time. */}
-						<span className="@max-[7.75em]:sr-only"> read</span>
-					</>
-				) : (
-					"New"
-				)}
-			</span>
-		</span>
-	);
+	return null;
 };
+
+/** An unread book's reading time; a book without a word count has none. */
+export const TimeToReadField: React.FC<{ minutes: number; id?: string }> = ({ minutes, id }) => (
+	<span id={id} className="@container flex min-w-0 flex-1 items-center gap-1 text-muted-foreground">
+		<Clock aria-hidden className="size-3 shrink-0" />
+		<span className="truncate tabular-nums">
+			{formatReadingTime(minutes)}
+			{/* "12h 30m read" with its clock is about 7.75em: a card too narrow for it drops "read", not the time. */}
+			<span className="@max-[7.75em]:sr-only"> read</span>
+		</span>
+	</span>
+);
 
 export const RatingField: React.FC<{ rating: number }> = ({ rating }) => (
 	<RatingStars rating={rating} starClassName="size-3" />
@@ -243,11 +241,18 @@ export const BookFieldLines: React.FC<{
 }> = ({ surface, fields, book, status, values, statusId, seriesBadge }) =>
 	fields.map((field) => {
 		if (field === "progress") {
-			return (
+			return status.kind === "unread" ? null : (
 				<CardFieldSlot key={field} surface={surface} field={field} className="mt-1">
 					<StatusField status={status} id={statusId} />
 				</CardFieldSlot>
 			);
+		}
+		if (field === "timeToRead") {
+			return status.kind === "unread" && status.minutes !== null ? (
+				<CardFieldSlot key={field} surface={surface} field={field}>
+					<TimeToReadField minutes={status.minutes} id={statusId} />
+				</CardFieldSlot>
+			) : null;
 		}
 		if (field === "rating") {
 			// Sorting by rating is offered from the same screen, so a rating has to be visible here.

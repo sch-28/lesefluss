@@ -39,6 +39,7 @@ export function SessionDetailSheet({ session, book, isSkimmed, onClose, onDelete
 			open={session !== null}
 			onOpenChange={(open) => !open && onClose()}
 			title={book?.title ?? "Session"}
+			focusesField={false}
 		>
 			{session && (
 				<SessionDetailForm

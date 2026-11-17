@@ -6,9 +6,11 @@ import {
 	activeFilterCount,
 	chipsOf,
 	FACET_LABELS,
+	type FilterChip,
 	type LibraryFilter,
 	removeValue,
 	setWordRange,
+	type WordRange,
 	wordRangeLabel,
 } from "./filter-model";
 import { type FacetOptions, optionLabel } from "./filter-picker";
@@ -21,45 +23,68 @@ type Props = {
 	onSaveShelf?: () => void;
 	/** The open user shelf: one that is not chips shows as one chip, and either opens the editor. */
 	shelfConditions?: { isCustom: boolean; onEdit: () => void };
+	/** The open shelf's own rule: its chips have no remove control, and Clear keeps it. */
+	shelfRule?: LibraryFilter;
 };
+
+function isInRule(rule: LibraryFilter | undefined, { facet, value, isExcluded }: FilterChip) {
+	const selection = rule?.[facet];
+	return !!selection && (isExcluded ? selection.out : selection.in).includes(value);
+}
+
+const sameWordRange = (a: WordRange | undefined, b: WordRange | undefined) =>
+	!!a && !!b && a.min === b.min && a.max === b.max;
 
 const Chip: React.FC<{
 	name: string;
 	label: string;
 	isExcluded?: boolean;
-	onRemove: () => void;
+	/** Absent for a chip of the shelf's own rule. */
+	onRemove?: () => void;
 }> = ({ name, label, isExcluded = false, onRemove }) => (
 	<span
 		data-excluded={isExcluded || undefined}
 		className={cn(
-			"inline-flex h-7 shrink-0 items-center gap-1 rounded-full border bg-muted py-0 pr-1 pl-2.5 text-xs",
+			"inline-flex h-7 shrink-0 items-center gap-1 rounded-full border bg-muted py-0 pl-2.5 text-xs",
+			onRemove ? "pr-1" : "pr-2.5",
 			isExcluded ? "border-destructive/50" : "border-transparent",
 		)}
 	>
 		<span className={isExcluded ? "text-destructive" : "text-muted-foreground"}>{name}</span>
 		<span className={cn("max-w-40 truncate", isExcluded && "line-through")}>{label}</span>
-		<button
-			type="button"
-			aria-label={`Remove filter ${name} ${label}`}
-			onClick={onRemove}
-			className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
-		>
-			<X className="size-3" />
-		</button>
+		{onRemove && (
+			<button
+				type="button"
+				aria-label={`Remove filter ${name} ${label}`}
+				onClick={onRemove}
+				className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+			>
+				<X className="size-3" />
+			</button>
+		)}
 	</span>
 );
 
-/** The active filter as removable chips, an excluded value marked with − and a red edge. */
+/** The active filter as chips, removable unless they are the shelf's own rule, an excluded value marked with − and a red edge. */
 const FilterBar: React.FC<Props> = ({
 	filter,
 	onChange,
 	options,
 	onSaveShelf,
 	shelfConditions,
+	shelfRule,
 }) => {
 	const chips = chipsOf(filter);
 	const count = activeFilterCount(filter);
-	if (count === 0 && !shelfConditions) return null;
+	const isRuleWords = sameWordRange(shelfRule?.words, filter.words);
+	const hasExtras =
+		chips.some((chip) => !isInRule(shelfRule, chip)) || (!!filter.words && !isRuleWords);
+	// A rule value dropped in the filter sheet has no chip left; Clear brings it back.
+	const isMissingRule =
+		!!shelfRule &&
+		(chipsOf(shelfRule).some((chip) => !isInRule(filter, chip)) ||
+			(!!shelfRule.words && !isRuleWords));
+	if (count === 0 && !shelfConditions && !isMissingRule) return null;
 	const matchesAllTags = filter.tags?.mode === "all";
 	return (
 		<PageContainer
@@ -79,7 +104,8 @@ const FilterBar: React.FC<Props> = ({
 					<span className="text-primary">· Edit</span>
 				</button>
 			)}
-			{chips.map(({ facet, value, isExcluded }) => {
+			{chips.map((chip) => {
+				const { facet, value, isExcluded } = chip;
 				const all = facet === "tags" && matchesAllTags && !isExcluded ? " (all)" : "";
 				const name = `${isExcluded ? "− " : ""}${FACET_LABELS[facet]}${all}:`;
 				return (
@@ -88,7 +114,11 @@ const FilterBar: React.FC<Props> = ({
 						name={name}
 						label={optionLabel(options, facet, value)}
 						isExcluded={isExcluded}
-						onRemove={() => onChange(removeValue(filter, facet, value))}
+						onRemove={
+							isInRule(shelfRule, chip)
+								? undefined
+								: () => onChange(removeValue(filter, facet, value))
+						}
 					/>
 				);
 			})}
@@ -96,13 +126,13 @@ const FilterBar: React.FC<Props> = ({
 				<Chip
 					name="Length:"
 					label={`${wordRangeLabel(filter.words)} words`}
-					onRemove={() => onChange(setWordRange(filter, null))}
+					onRemove={isRuleWords ? undefined : () => onChange(setWordRange(filter, null))}
 				/>
 			)}
-			{count > 0 && (
+			{(hasExtras || isMissingRule) && (
 				<button
 					type="button"
-					onClick={() => onChange({})}
+					onClick={() => onChange(shelfRule ?? {})}
 					className="shrink-0 px-1 text-primary text-xs hover:underline"
 				>
 					Clear

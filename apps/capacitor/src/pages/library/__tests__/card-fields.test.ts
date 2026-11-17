@@ -29,6 +29,22 @@ describe("card fields", () => {
 		expect(parseCardFields('{"grid":[],"list":["words"]}')).toEqual({ grid: [], list: ["words"] });
 	});
 
+	it("defaults to author and progress, keeps a saved choice and reads time to read back", () => {
+		expect(DEFAULT_CARD_FIELDS).toEqual({
+			grid: ["author", "progress"],
+			list: ["author", "progress"],
+		});
+		expect(parseCardFields('{"grid":["progress","timeToRead"],"list":["author"]}')).toEqual({
+			grid: ["timeToRead", "progress"],
+			list: ["author"],
+		});
+		expect(toggleCardField(["author", "progress"], "timeToRead")).toEqual([
+			"author",
+			"timeToRead",
+			"progress",
+		]);
+	});
+
 	it("turns a field on in the card's own order, and off again", () => {
 		expect(toggleCardField(["rating"], "author")).toEqual(["author", "rating"]);
 		expect(toggleCardField(["author", "rating"], "author")).toEqual(["rating"]);

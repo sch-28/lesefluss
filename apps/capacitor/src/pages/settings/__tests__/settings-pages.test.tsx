@@ -101,7 +101,7 @@ vi.mock("@/services/db/hooks", () => ({
 		useSettings: () => ({ data: state.settings, isPending: false }),
 		useSaveSettings: () => ({ mutate, ...state.saving }),
 		useStatsSpeedModel: () => ({ data: state.model }),
-		useBooks: () => ({ data: { books: state.books, covers: {} } }),
+		useBooks: () => ({ data: { books: state.books, covers: new Map() } }),
 		useActiveGoalPlans: () => ({ data: state.plans }),
 		useBook: () => ({ data: undefined }),
 		useLastReadBookId: () => ({ data: null, isPending: false }),
@@ -292,7 +292,13 @@ describe("Goals page", () => {
 		view = await renderPage(goalsPage);
 		await click(view.container.querySelector("[data-testid=add-goal]") as HTMLElement);
 		const candidates = [...document.querySelectorAll("[data-testid=goal-candidate]")];
-		expect(candidates.map((c) => c.textContent)).toEqual(["Book a"]);
+		const visibleText = (row: Element) =>
+			[...row.children].filter((el) => !el.hasAttribute("aria-hidden")).map((el) => el.textContent);
+		expect(candidates.map(visibleText)).toEqual([["Book a"]]);
+		expect(
+			candidates[0]?.firstElementChild?.querySelector("[data-testid=text-cover], img"),
+		).not.toBeNull();
+		expect(candidates[0]?.lastElementChild?.classList).toContain("lucide-chevron-right");
 		await click(candidates[0] as HTMLElement);
 		expect(view.container.querySelector("[data-testid=goal-sheet]")?.textContent).toBe("Book a");
 	});

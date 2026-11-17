@@ -4,7 +4,11 @@ import type { Series } from "../../../services/db/schema";
 import { makeBook } from "../../../test/book-fixture";
 import { click, type Rendered, render } from "../../../test/render";
 
-vi.mock("../../../components/book-cover", () => ({ default: () => null }));
+vi.mock("../../../components/book-cover", () => ({
+	default: ({ textCoverClassName }: { textCoverClassName?: string }) => (
+		<span data-testid="cover" data-text-cover={textCoverClassName ?? ""} />
+	),
+}));
 vi.mock("../../../components/cover-image", () => ({ default: () => null }));
 vi.mock("../../../components/device-sync", () => ({ DeviceBadge: () => <span>On device</span> }));
 vi.mock("../sync-excluded-badge", () => ({ SyncExcludedBadge: () => null }));
@@ -188,8 +192,12 @@ describe.each([
 		expect(view?.text()).not.toContain("–");
 	});
 
-	it("shows an unread book's time to read, a finished one as finished", async () => {
-		view = await render(<Card {...bookProps({ status: { kind: "unread", minutes: 552 } })} />);
+	it("shows an unread book's time to read only when picked, a finished one as finished", async () => {
+		const unread = bookProps({ status: { kind: "unread", minutes: 552 } });
+		view = await render(<Card {...unread} />);
+		expect(view.text()).not.toContain("read");
+		view.unmount();
+		view = await render(<Card {...unread} fields={["author", "timeToRead", "progress"]} />);
 		expect(description(card())).toContain("9h 12m read");
 		expect(description(card())).not.toContain("%");
 		view.unmount();
@@ -355,5 +363,31 @@ describe.each([
 		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
 		expect(view.text()).not.toContain("Total");
 		expect(timeSlot()?.childNodes.length ?? 0).toBe(0);
+	});
+});
+
+describe("BookCard #N badge", () => {
+	it("sits at the bottom of the cover and lifts the text cover's author line above it", async () => {
+		view = await render(<BookCard {...bookProps()} seriesNumber={3} />);
+		const badge = view.container.querySelector('[data-testid="series-number-badge"]');
+		expect(badge?.className).toContain("bottom-1.5");
+		expect(badge?.className).not.toContain("top-1.5");
+		const cover = view.container.querySelector('[data-testid="cover"]');
+		expect(cover?.getAttribute("data-text-cover")).toBe("pb-7");
+	});
+
+	it("keeps the badge clear of the selection check while selecting", async () => {
+		view = await render(
+			<BookCard {...bookProps({ selectable: true, onToggle: vi.fn() })} seriesNumber={3} />,
+		);
+		const badge = view.container.querySelector('[data-testid="series-number-badge"]');
+		expect(badge?.className).toContain("bottom-1.5");
+	});
+
+	it("leaves the text cover's padding alone without a badge", async () => {
+		view = await render(<BookCard {...bookProps()} seriesNumber={null} />);
+		expect(
+			view.container.querySelector('[data-testid="cover"]')?.getAttribute("data-text-cover"),
+		).toBe("");
 	});
 });

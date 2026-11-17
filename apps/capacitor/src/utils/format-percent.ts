@@ -7,3 +7,12 @@ export function formatPercent(value: number, decimals: 0 | 1 = 0): string {
 	const factor = 10 ** decimals;
 	return `${Math.min(100, Math.max(0, Math.round(value * factor) / factor))}%`;
 }
+
+const MINUS = "−";
+
+/** A change in percent points, in the same whole-percent format with its sign: "+20%", "−3%". */
+export function formatPercentChange(value: number): string {
+	const magnitude = formatPercent(Math.abs(value));
+	if (magnitude === "0%") return magnitude;
+	return `${value > 0 ? "+" : MINUS}${magnitude}`;
+}

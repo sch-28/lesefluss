@@ -31,9 +31,6 @@ export interface ActionSheetProps {
 	items: ActionSheetItem[];
 }
 
-/** On touch, a list this short is a menu at the finger, not a sheet (LESE-185.14 overlay rule).
- *  A mouse always gets the menu, whatever the count (LESE-211.8). */
-export const ANCHORED_MAX_ITEMS = 6;
 /** A press older than this did not open the sheet (a keyboard or programmatic open did). */
 const ANCHOR_MAX_AGE_MS = 1500;
 /** A control at most this big is a trigger the menu hangs from; a bigger one (a card) is not. */
@@ -148,9 +145,10 @@ export const AnchorPoint: React.FC<{ anchor: Anchor }> = ({ anchor }) =>
 	);
 
 export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
-	const { open, items } = props;
+	const { open } = props;
 	const { anchor, isFinePointer } = useOpenAnchor(open);
-	if (anchor && (isFinePointer || items.length <= ANCHORED_MAX_ITEMS)) {
+	// Touch always gets the sheet, whatever the count (LESE-211.27 d-2).
+	if (anchor && isFinePointer) {
 		return <AnchoredActionMenu {...props} anchor={anchor} />;
 	}
 	return <ActionDrawer {...props} />;

@@ -96,7 +96,12 @@ const BookCard: React.FC<BookCardProps> = ({
 				{...handlers}
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
-					<BookCover book={book} cover={cover} size="full" />
+					<BookCover
+						book={book}
+						cover={cover}
+						size="full"
+						textCoverClassName={seriesNumber !== null ? "pb-7" : undefined}
+					/>
 					<span id={deviceId}>
 						<DeviceBadge bookId={book.id} />
 					</span>
@@ -104,8 +109,7 @@ const BookCard: React.FC<BookCardProps> = ({
 						<span
 							id={seriesId}
 							data-testid="series-number-badge"
-							// Top, where a text cover has no print; beside the selection check while selecting.
-							className={`absolute top-1.5 rounded-sm bg-background/85 px-1 font-semibold text-[0.7rem] text-foreground tabular-nums ${selectable ? "left-8" : "left-1.5"}`}
+							className="absolute bottom-1.5 left-1.5 rounded-sm bg-background/85 px-1 font-semibold text-[0.7rem] text-foreground tabular-nums"
 						>
 							{formatSeriesNumber(seriesNumber)}
 						</span>

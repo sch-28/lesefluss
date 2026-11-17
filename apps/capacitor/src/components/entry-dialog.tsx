@@ -6,7 +6,7 @@ import {
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
 import type React from "react";
-import { useDesktopOverlay } from "../hooks/use-media-query";
+import { FINE_POINTER_QUERY, useDesktopOverlay, useMediaQuery } from "../hooks/use-media-query";
 import { Modal } from "./modal";
 
 type Props = {
@@ -18,11 +18,26 @@ type Props = {
 	dismissable?: boolean;
 	/** Applies to the desktop dialog only. */
 	contentClassName?: string;
+	/** False for a dialog that mostly shows facts: it opens focused, not its first field. Default true. */
+	focusesField?: boolean;
 	children: React.ReactNode;
 };
 
-/** The first field would open with its focus ring lit; the sheet on touch already skips it (vaul). */
-function focusDialogNotField(e: Event) {
+const TEXT_FIELD = "input:not([type=hidden]):not(:disabled), textarea:not(:disabled)";
+
+/**
+ * With a mouse the user types next, so the first text field takes focus (not a
+ * button above it). On touch focus stays off the field, so the keyboard stays
+ * closed until a field is tapped.
+ */
+function focusFirstField(e: Event) {
+	e.preventDefault();
+	const dialog = e.currentTarget as HTMLElement | null;
+	const field = dialog?.querySelector<HTMLElement>(TEXT_FIELD);
+	(field ?? dialog)?.focus();
+}
+
+function focusDialog(e: Event) {
 	e.preventDefault();
 	(e.currentTarget as HTMLElement | null)?.focus();
 }
@@ -40,9 +55,12 @@ export const EntryDialog: React.FC<Props> = ({
 	description,
 	dismissable = true,
 	contentClassName,
+	focusesField = true,
 	children,
 }) => {
 	const isDesktop = useDesktopOverlay();
+	const isFinePointer = useMediaQuery(FINE_POINTER_QUERY);
+	const onMouseOpen = focusesField ? focusFirstField : focusDialog;
 
 	if (isDesktop) {
 		return (
@@ -53,7 +71,7 @@ export const EntryDialog: React.FC<Props> = ({
 				description={description}
 				dismissable={dismissable}
 				contentClassName={contentClassName}
-				onOpenAutoFocus={focusDialogNotField}
+				onOpenAutoFocus={onMouseOpen}
 			>
 				{children}
 			</Modal>
@@ -62,7 +80,7 @@ export const EntryDialog: React.FC<Props> = ({
 
 	return (
 		<Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissable}>
-			<DrawerContent>
+			<DrawerContent onOpenAutoFocus={isFinePointer ? onMouseOpen : undefined}>
 				<DrawerHeader>
 					<DrawerTitle>{title}</DrawerTitle>
 					{description && <DrawerDescription>{description}</DrawerDescription>}

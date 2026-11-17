@@ -1,15 +1,9 @@
 import { isMeasurableSitting, isSkimmedSitting, type SkimCutoffs, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@lesefluss/ui/dropdown-menu";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ActionSheet } from "../../../components/action-sheet";
 import { tabBarHidden } from "../../../components/app-shell/tab-bar-visibility";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { toast } from "../../../components/toast";
@@ -354,25 +348,30 @@ function SessionItem({
 				</span>
 			</button>
 			{!isSelecting && (
-				<DropdownMenu open={isMenuOpen} onOpenChange={setMenuOpen}>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon-lg" aria-label="Session actions">
-							<MoreHorizontal />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DropdownMenuItem onSelect={onOpen}>Details</DropdownMenuItem>
-						{onOpenBook && <DropdownMenuItem onSelect={onOpenBook}>Open book</DropdownMenuItem>}
-						<DropdownMenuItem onSelect={onStartSelect}>Select</DropdownMenuItem>
-						{onOnlyBook && (
-							<DropdownMenuItem onSelect={onOnlyBook}>Only this book</DropdownMenuItem>
-						)}
-						<DropdownMenuSeparator />
-						<DropdownMenuItem variant="destructive" onSelect={onDelete}>
-							Delete session
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+				<>
+					<Button
+						variant="ghost"
+						size="icon-lg"
+						aria-label="Session actions"
+						aria-haspopup="menu"
+						onClick={() => setMenuOpen(true)}
+					>
+						<MoreHorizontal />
+						{/* Android names a menu button by its text and drops aria-label (TASK-205.13). */}
+						<span className="sr-only">Session actions</span>
+					</Button>
+					<ActionSheet
+						open={isMenuOpen}
+						onOpenChange={setMenuOpen}
+						items={[
+							{ label: "Details", onSelect: onOpen },
+							...(onOpenBook ? [{ label: "Open book", onSelect: onOpenBook }] : []),
+							{ label: "Select", onSelect: onStartSelect },
+							...(onOnlyBook ? [{ label: "Only this book", onSelect: onOnlyBook }] : []),
+							{ label: "Delete session", destructive: true, onSelect: onDelete },
+						]}
+					/>
+				</>
 			)}
 		</li>
 	);

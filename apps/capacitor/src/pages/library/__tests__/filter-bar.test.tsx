@@ -48,3 +48,53 @@ describe("FilterBar shelf conditions", () => {
 		expect(view.container.querySelector("[data-testid=filter-bar]")).toBeNull();
 	});
 });
+
+describe("FilterBar on a shelf page", () => {
+	const rule = { status: { in: ["reading"], out: [] } };
+
+	it("locks the shelf's own rule chip and keeps an extra filter removable", async () => {
+		const onChange = vi.fn();
+		view = await render(
+			<FilterBar
+				filter={{ ...rule, tags: { in: ["sf"], out: [] }, words: { max: 50000 } }}
+				onChange={onChange}
+				options={options}
+				shelfRule={rule}
+			/>,
+		);
+		const removes = [...view.container.querySelectorAll("button")]
+			.map((b) => b.getAttribute("aria-label"))
+			.filter((l) => l?.startsWith("Remove filter"));
+		expect(removes).toEqual([
+			"Remove filter Tag: sf",
+			expect.stringMatching(/^Remove filter Length:/),
+		]);
+		expect(view.text()).toContain("Status:");
+		await click(view.getButton("Remove filter Tag: sf"));
+		expect(onChange).toHaveBeenLastCalledWith({ ...rule, words: { max: 50000 } });
+		await click(view.getButton("Clear"));
+		expect(onChange).toHaveBeenLastCalledWith(rule);
+	});
+
+	it("offers Clear to bring back a rule value dropped elsewhere", async () => {
+		const onChange = vi.fn();
+		view = await render(
+			<FilterBar
+				filter={{ status: { in: [], out: [] } }}
+				onChange={onChange}
+				options={options}
+				shelfRule={rule}
+			/>,
+		);
+		await click(view.getButton("Clear"));
+		expect(onChange).toHaveBeenLastCalledWith(rule);
+	});
+
+	it("offers no Clear while only the rule is on", async () => {
+		view = await render(
+			<FilterBar filter={rule} onChange={() => {}} options={options} shelfRule={rule} />,
+		);
+		expect(view.queryButton("Clear")).toBeNull();
+		expect(view.container.querySelector('[aria-label^="Remove filter"]')).toBeNull();
+	});
+});

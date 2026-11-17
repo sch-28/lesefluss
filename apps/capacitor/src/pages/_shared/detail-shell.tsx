@@ -114,10 +114,11 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	onRetry,
 	errorSourceLink,
 }) => {
+	const hasHero = !isLoading && error === undefined && !errorMessage;
 	return (
 		<>
 			<PageHeader
-				title={title}
+				title={hasHero ? undefined : title}
 				width="text"
 				right={
 					<div className="flex items-center gap-1">
@@ -218,7 +219,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									{eyebrow}
 								</span>
 							)}
-							<h2 className="m-0 mt-1 break-words font-semibold text-xl leading-tight">{title}</h2>
+							<h1 className="m-0 mt-1 break-words font-semibold text-xl leading-tight">{title}</h1>
 							{author &&
 								(onAuthorTap ? (
 									<button

@@ -35,6 +35,13 @@ test("on desktop the header row and the progress footer sit on the text column",
 	expect(column.width).toBeLessThan(1920 / 2);
 	expect(await boxOf('[data-testid="reader-bar"] > div')).toEqual(column);
 	expect(await boxOf(".reader-progress-bar")).toEqual(column);
+	const headerBorders = await page
+		.getByTestId("reader-bar")
+		.evaluate((bar) => [
+			getComputedStyle(bar).borderBottomWidth,
+			getComputedStyle(bar.firstElementChild as Element).borderBottomWidth,
+		]);
+	expect(headerBorders).toEqual(["0px", "1px"]);
 });
 
 type Box = { x: number; y: number; width: number; height: number };

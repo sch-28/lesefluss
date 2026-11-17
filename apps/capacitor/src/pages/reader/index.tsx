@@ -23,13 +23,6 @@ import {
 } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@lesefluss/ui/dropdown-menu";
 import { IconButton } from "@lesefluss/ui/icon-button";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { cn } from "@lesefluss/ui/utils";
@@ -47,7 +40,6 @@ import {
 	Loader2,
 	Maximize,
 	Minimize,
-	MoreHorizontal,
 	Pause,
 	PictureInPicture,
 	Search,
@@ -61,7 +53,7 @@ import { withKey } from "../../commands/keys";
 import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { NotFound } from "../../components/app-shell/not-found";
-import { KeyChips, MenuKey } from "../../components/command-palette";
+import { KeyChips } from "../../components/command-palette";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
 	CommentComposerSheet,
@@ -155,6 +147,7 @@ import { hyphenationLang } from "./hyphenation-lang";
 import { refreshAfterLeaving } from "./leave-invalidation";
 import { useLiveReading } from "./live-board";
 import { LiveWpm } from "./live-wpm";
+import { ReaderMoreMenu } from "./more-menu";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
@@ -244,7 +237,6 @@ type ReadAloudHandle = Pick<
 	isPlaying: boolean;
 };
 
-const MENU_ITEM_CLASS = "gap-3 px-3";
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsvpStart }) => {
@@ -2786,7 +2778,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 				)}
 				<header
 					className={cn(
-						"flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur",
+						"flex shrink-0 flex-col bg-background/95 pt-[var(--safe-top)] backdrop-blur",
 						// An overlay in fullscreen, so revealing it never moves the text (mockup B).
 						fullscreen.isFullscreen &&
 							"fixed inset-x-0 top-0 z-40 shadow-lg transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none",
@@ -2797,7 +2789,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 					data-testid="reader-bar"
 					ref={headerRef}
 				>
-					<div className="mx-auto flex h-12 w-full max-w-[var(--reader-column,none)] items-center gap-0.5 px-1">
+					<div className="mx-auto flex h-12 w-full max-w-[var(--reader-column,none)] items-center gap-0.5 border-border border-b px-1">
 						<IconButton
 							aria-label="Back"
 							title="Back"
@@ -2905,112 +2897,98 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 								<KeyChips spec="f" />
 							</Button>
 						)}
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<IconButton aria-label="More actions" title="More actions">
-									<MoreHorizontal />
-									{/* Text, not aria-label alone: Android reads a menu button's text and drops its
-									    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
-									<span className="sr-only">More actions</span>
-								</IconButton>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-80 p-1.5">
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => openAnnotations(chapters.length > 0)}
-									disabled={!content}
-								>
-									<ListTree />
-									<span>Contents and annotations</span>
-									<MenuKey commandId="reader.annotations" />
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => setSearchOpen(true)}
-									disabled={!content}
-								>
-									<Search />
-									<span>Search in book</span>
-									<MenuKey commandId="reader.search" />
-								</DropdownMenuItem>
-								{isHeaderNarrow && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={readerBookmarks.toggle}
-										disabled={!content}
-									>
-										<Bookmark />
-										<span>
-											{readerBookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here"}
-										</span>
-										<MenuKey commandId="reader.bookmark" />
-									</DropdownMenuItem>
-								)}
-								{isHeaderNarrow && IS_READ_ALOUD_SUPPORTED && readerMode !== "rsvp" && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={readAloud.toggle}
-										disabled={!wordIndex}
-									>
-										<Headphones />
-										<span>{readAloud.status === "playing" ? "Pause listening" : "Listen"}</span>
-										<MenuKey commandId="listen.toggle" />
-									</DropdownMenuItem>
-								)}
-								{isMiniAvailable() && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={mini.isAttached ? closeMini : openMiniWindow}
-										disabled={!content}
-									>
-										<PictureInPicture />
-										<span>{mini.isAttached ? "Quick RSVP · on" : "Quick RSVP"}</span>
-									</DropdownMenuItem>
-								)}
-								{isFullscreenSupported() && (
-									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
-										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
-										<span>{fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen"}</span>
-										<MenuKey commandId="reader.fullscreen" />
-									</DropdownMenuItem>
-								)}
-								{IS_READ_ALOUD_SUPPORTED && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={() => router.navigate({ href: "/tabs/settings/read-aloud" })}
-									>
-										<Headphones />
-										<span>Listen settings</span>
-									</DropdownMenuItem>
-								)}
-								{overflowSourceUrl && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={() => {
-											openLink(overflowSourceUrl);
-										}}
-									>
-										<ExternalLink />
-										<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
-									</DropdownMenuItem>
-								)}
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => router.navigate({ href: `/tabs/library/book/${book.id}` })}
-								>
-									<BookText />
-									<span>Book details</span>
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => bookActions.open(book)}
-								>
-									<Settings2 />
-									<span>Manage book…</span>
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<ReaderMoreMenu
+							title={book.title}
+							items={[
+								{
+									label: "Contents and annotations",
+									icon: ListTree,
+									commandId: "reader.annotations",
+									onSelect: () => openAnnotations(chapters.length > 0),
+									disabled: !content,
+								},
+								{
+									label: "Search in book",
+									icon: Search,
+									commandId: "reader.search",
+									onSelect: () => setSearchOpen(true),
+									disabled: !content,
+								},
+								...(isHeaderNarrow
+									? [
+											{
+												label: readerBookmarks.isOnScreen
+													? "Remove bookmark here"
+													: "Bookmark here",
+												icon: Bookmark,
+												commandId: "reader.bookmark",
+												onSelect: readerBookmarks.toggle,
+												disabled: !content,
+											},
+										]
+									: []),
+								...(isHeaderNarrow && IS_READ_ALOUD_SUPPORTED && readerMode !== "rsvp"
+									? [
+											{
+												label: readAloud.status === "playing" ? "Pause listening" : "Listen",
+												icon: Headphones,
+												commandId: "listen.toggle",
+												onSelect: readAloud.toggle,
+												disabled: !wordIndex,
+											},
+										]
+									: []),
+								...(isMiniAvailable()
+									? [
+											{
+												label: mini.isAttached ? "Quick RSVP · on" : "Quick RSVP",
+												icon: PictureInPicture,
+												onSelect: mini.isAttached ? closeMini : openMiniWindow,
+												disabled: !content,
+											},
+										]
+									: []),
+								...(isFullscreenSupported()
+									? [
+											{
+												label: fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen",
+												icon: fullscreen.isFullscreen ? Minimize : Maximize,
+												commandId: "reader.fullscreen",
+												onSelect: fullscreen.toggle,
+											},
+										]
+									: []),
+								...(IS_READ_ALOUD_SUPPORTED
+									? [
+											{
+												label: "Listen settings",
+												icon: Headphones,
+												onSelect: () => void router.navigate({ href: "/tabs/settings/read-aloud" }),
+											},
+										]
+									: []),
+								...(overflowSourceUrl
+									? [
+											{
+												label: `Open on ${series ? providerLabel(series.provider) : "website"}`,
+												icon: ExternalLink,
+												onSelect: () => openLink(overflowSourceUrl),
+											},
+										]
+									: []),
+								{
+									label: "Book details",
+									icon: BookText,
+									onSelect: () => void router.navigate({ href: `/tabs/library/book/${book.id}` }),
+								},
+								{
+									label: "Manage book…",
+									icon: Settings2,
+									separated: true,
+									onSelect: () => bookActions.open(book),
+								},
+							]}
+						/>
 						{bookActions.overlays}
 					</div>
 				</header>
