@@ -89,8 +89,8 @@ export function BuddyReadCard({
 					<div className="flex gap-3">
 						<div
 							className={cn(
-								"relative aspect-[2/3] shrink-0 overflow-hidden rounded-md bg-muted",
-								isFeatured ? "w-[70px] shadow-lg" : "w-10",
+								"relative aspect-[2/3] shrink-0 overflow-hidden bg-muted",
+								isFeatured ? "w-[70px] rounded-md shadow-lg" : "w-10 rounded-sm",
 							)}
 						>
 							<CoverImage

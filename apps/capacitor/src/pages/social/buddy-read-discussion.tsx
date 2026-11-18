@@ -111,7 +111,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 				</Button>
 			</div>
 			{isComposing ? (
-				<div className="mt-3 rounded-xl border border-current/10 bg-card p-3">
+				<div className="mt-3 rounded-xl border border-border bg-card p-3">
 					<CommentTargetPicker
 						value={target}
 						disabled={isOffline}
@@ -153,7 +153,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 				<button
 					type="button"
 					onClick={() => setIsComposing(true)}
-					className="mt-3 flex w-full items-center gap-2 rounded-xl border border-current/10 bg-card px-3 py-3 text-left text-muted-foreground text-sm"
+					className="mt-3 flex w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 text-left text-muted-foreground text-sm"
 				>
 					<PenLine className="size-4" />
 					Write something about the book…

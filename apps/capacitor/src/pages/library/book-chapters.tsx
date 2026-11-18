@@ -67,7 +67,7 @@ export function BookChapters({
 				</>
 			}
 		>
-			<ol className="space-y-0.5">
+			<ol className="space-y-1">
 				{chapters.slice(from, to).map((chapter, offset) => {
 					const index = from + offset;
 					const isCurrent = hasStarted && index === currentIndex;

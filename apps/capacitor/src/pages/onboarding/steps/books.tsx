@@ -116,7 +116,7 @@ const BooksStep: React.FC = () => {
 							key={i}
 							className="flex flex-col gap-2 rounded-lg border-2 border-border p-2"
 						>
-							<div className="aspect-[2/3] animate-pulse rounded-md bg-muted" />
+							<div className="aspect-[2/3] animate-pulse rounded-sm bg-muted" />
 							<div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
 							<div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
 						</div>
@@ -149,7 +149,7 @@ const BooksStep: React.FC = () => {
 										: "border-border bg-card hover:border-muted-foreground/30",
 								)}
 							>
-								<div className="relative aspect-[2/3] overflow-hidden rounded-md bg-muted">
+								<div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-muted">
 									<CoverImage src={cover} alt={b.title} />
 									{isSelected && (
 										<span className="absolute top-1 right-1 inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">

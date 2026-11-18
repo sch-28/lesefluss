@@ -22,7 +22,7 @@ const RULES = {
 	"font-weight": { pattern: /\bfont-(bold|extrabold|black)\b/ },
 	"off-grid-spacing": {
 		pattern:
-			/(^|[\s"'`:])-?(?:(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([2-9]|1\d)\.5\b)|gap(-[xy])?-(0\.5|1\.5|5)\b)/,
+			/(^|[\s"'`:])-?(?:(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([2-9]|1\d)\.5\b)|(gap|space)(-[xy])?-(0\.5|1\.5|5)\b)/,
 	},
 	"arbitrary-radius": { pattern: /\brounded(-[a-z]{1,2})?-\[/ },
 	"uppercase-tracked": {
@@ -148,13 +148,21 @@ describe("ui rules: the scanner", () => {
 		expect(offendersIn("font-weight", path, source)).toEqual([]);
 	});
 
-	it("catches a 2.5 step and an off-scale gap, but not a gap on the scale", () => {
+	it("catches a 2.5 step and an off-scale gap or stack, but not one on the scale", () => {
 		const source = [
 			'<div className="px-2.5" />',
 			'<div className="gap-1.5" />',
 			'<div className="gap-6 py-0.5" />',
+			'<ol className="space-y-0.5" />',
+			'<div className="space-y-1.5" />',
+			'<div className="space-y-2 space-x-4" />',
 		].join("\n");
-		expect(offendersIn("off-grid-spacing", path, source)).toEqual([`${path}:1`, `${path}:2`]);
+		expect(offendersIn("off-grid-spacing", path, source)).toEqual([
+			`${path}:1`,
+			`${path}:2`,
+			`${path}:4`,
+			`${path}:5`,
+		]);
 	});
 
 	it("catches an arbitrary radius, but not one on the scale", () => {

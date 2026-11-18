@@ -230,11 +230,11 @@ const BatchImportSheet: React.FC<Props> = ({
 									}`}
 								>
 									{folder.result.cancelled ? (
-										<CircleSlash className="size-7" />
+										<CircleSlash className="size-8" />
 									) : folder.result.failures.length > 0 ? (
-										<AlertTriangle className="size-7" />
+										<AlertTriangle className="size-8" />
 									) : (
-										<CheckCircle2 className="size-7" />
+										<CheckCircle2 className="size-8" />
 									)}
 								</span>
 								<div>

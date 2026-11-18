@@ -125,7 +125,7 @@ export function SpeedTab({ now }: { now: number }) {
 	if (!model) {
 		return (
 			<div className="flex min-h-[40vh] items-center justify-center">
-				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+				<Loader2 className="size-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}

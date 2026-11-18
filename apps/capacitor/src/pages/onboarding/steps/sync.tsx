@@ -59,7 +59,7 @@ function HandleStep() {
 			</div>
 			{profile.isPending ? (
 				<div className="flex justify-center py-6">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
+					<Loader2 className="size-8 animate-spin text-muted-foreground" />
 				</div>
 			) : profile.isError ? (
 				<p className="text-center text-muted-foreground text-sm">
@@ -77,7 +77,7 @@ const SyncStep: React.FC = () => {
 	if (!isSessionResolved) {
 		return (
 			<div className="flex justify-center py-16">
-				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+				<Loader2 className="size-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}

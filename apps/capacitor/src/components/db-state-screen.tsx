@@ -54,7 +54,7 @@ export const DbStateScreen: React.FC<Props> = ({
 				{state === "opening" && <Opening />}
 				{state === "in-use" && (
 					<Message
-						icon={<AppWindow aria-hidden="true" className="size-7" />}
+						icon={<AppWindow aria-hidden="true" className="size-8" />}
 						title="Lesefluss is open in another tab"
 						body="Your library can be open in one tab at a time. Use it here and the other tab pauses, with your reading position saved."
 						action="Use it here"
@@ -67,7 +67,7 @@ export const DbStateScreen: React.FC<Props> = ({
 				)}
 				{state === "moved" && (
 					<Message
-						icon={<CirclePause aria-hidden="true" className="size-7" />}
+						icon={<CirclePause aria-hidden="true" className="size-8" />}
 						title="Lesefluss is now open in another tab"
 						body="This tab paused so your library stays safe. Your reading position was saved before it let go."
 						action="Use it here again"
@@ -124,7 +124,7 @@ const Opening: React.FC = () => {
 	return (
 		<>
 			<Glyph>
-				<LoaderCircle aria-hidden="true" className="size-7 motion-safe:animate-spin" />
+				<LoaderCircle aria-hidden="true" className="size-8 motion-safe:animate-spin" />
 			</Glyph>
 			<h1 className="m-0 text-balance font-semibold text-xl" role="status">
 				Opening your library…
@@ -152,7 +152,7 @@ const Unavailable: React.FC<{ onAction?: () => void; busy: boolean; failedAgain:
 }) => (
 	<>
 		<Glyph>
-			<CircleAlert aria-hidden="true" className="size-7" />
+			<CircleAlert aria-hidden="true" className="size-8" />
 		</Glyph>
 		<h1 className="m-0 text-balance font-semibold text-xl">This window can't keep your library</h1>
 		<p className="m-0 text-foreground/80 leading-relaxed">

@@ -148,6 +148,11 @@ solutions:
         `FilterMenuChip`, one `HeaderAction` (32px, 20px glyph) for header icons and one
         `CountBadge`, all in `packages/ui`. Every tappable control has a 44px target on touch,
         from a pseudo-element hit area, never by growing its look.
+      - Icons: one size per role tier, set by the role component, not at the call site: 16 inline
+        and in buttons and chips, 20 in headers, rows and nav (`HeaderAction`, `LIST_ROW`, a
+        dialog or sheet close; a row's trailing chevron 16), 32 for an empty, error or loading
+        state that stands in for content (`EmptyState`, `ReservedCard`). A 12 or 14 glyph next
+        to xs text is fine. The reader and cover art keep their own sizes.
 
       **Beyond the standard**
       - Every screen is reviewed in its empty, few-data and full states, in dark and light.

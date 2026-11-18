@@ -416,7 +416,7 @@ function InboxContent() {
 			<Section>
 				{items.length === 0 ? (
 					<div className="px-4 py-8 text-center">
-						<Inbox className="mx-auto mb-2 size-6 text-muted-foreground" />
+						<Inbox className="mx-auto mb-2 size-8 text-muted-foreground" />
 						<p className="text-muted-foreground text-sm">Nothing here yet.</p>
 					</div>
 				) : (

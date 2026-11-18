@@ -28,7 +28,7 @@ export function ReservedCard({
 			className={cn("flex items-center justify-center", className)}
 			style={{ height }}
 		>
-			<Loader2 aria-hidden="true" className="size-5 animate-spin text-muted-foreground" />
+			<Loader2 aria-hidden="true" className="size-8 animate-spin text-muted-foreground" />
 		</div>
 	);
 }

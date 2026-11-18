@@ -60,7 +60,7 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 							key={row.bookId}
 							data-testid="book-speed-row"
 							icon={
-								<div className="h-14 w-10 shrink-0 overflow-hidden rounded bg-muted">
+								<div className="h-14 w-10 shrink-0 overflow-hidden rounded-sm bg-muted">
 									<CoverImage
 										src={row.coverImage}
 										alt=""

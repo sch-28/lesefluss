@@ -59,7 +59,7 @@ const LengthFact: React.FC<Props> = ({ length, speed, estimateNote = CATALOG_EST
 			<PopoverContent
 				collisionPadding={16}
 				hideWhenDetached
-				className="space-y-1.5 text-sm"
+				className="space-y-2 text-sm"
 				data-testid="length-explainer"
 			>
 				<p className="m-0 font-semibold">

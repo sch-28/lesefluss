@@ -113,7 +113,7 @@ export function ShareSheet({
 						</div>
 					) : friends.length === 0 ? (
 						<div className="flex flex-col items-center gap-2 py-4 text-center">
-							<Users className="size-6 text-muted-foreground" />
+							<Users className="size-8 text-muted-foreground" />
 							<p className="m-0 text-muted-foreground text-sm">
 								Books are shared with friends. Add one first.
 							</p>

@@ -93,7 +93,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4 }}
-				className="mt-3 rounded-2xl border border-current/10 bg-card p-5 text-card-foreground"
+				className="mt-3 rounded-2xl border border-border bg-card p-5 text-card-foreground"
 			>
 				<div className="flex items-start justify-between gap-3">
 					<IdentityCard
@@ -151,8 +151,8 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 
 			{/* The server leaves out bio and sections entirely when the profile is private. */}
 			{view.bio === undefined && (
-				<div className="mt-4 rounded-xl border border-current/10 bg-card px-4 py-5 text-center">
-					<Lock className="mx-auto mb-2 size-5 text-muted-foreground" />
+				<div className="mt-4 rounded-xl border border-border bg-card px-4 py-5 text-center">
+					<Lock className="mx-auto mb-2 size-8 text-muted-foreground" />
 					<p className="m-0 text-muted-foreground text-sm">
 						{isPreview
 							? "Your profile is private, so friends only see your name, handle and picture."
@@ -260,7 +260,7 @@ function ProfileBody({ userId, isPreview }: { userId: string; isPreview: boolean
 		if (isNotFound(view.error)) {
 			return (
 				<div className="mt-2 flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-4 py-8 text-center">
-					<UserRound className="size-6 text-muted-foreground" />
+					<UserRound className="size-8 text-muted-foreground" />
 					<p className="text-muted-foreground text-sm">This profile isn't available.</p>
 					<Button asChild variant="outline" size="sm">
 						<Link to="/tabs/social">Back to Social</Link>

@@ -71,7 +71,7 @@ export function FinishedLabel({ className }: { className?: string }) {
 
 export function StatTile({ value, label }: { value: string; label: string }) {
 	return (
-		<div className="rounded-xl border border-current/10 bg-card p-3 text-card-foreground">
+		<div className="rounded-xl border border-border bg-card p-3 text-card-foreground">
 			<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">{value}</div>
 			<div className={cn("mt-1", STAT_CAPTION)}>{label}</div>
 		</div>
@@ -130,7 +130,7 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 /** Rows of people or actions inside a content section. */
 export function ListCard({ children }: { children: React.ReactNode }) {
 	return (
-		<div className="divide-y divide-border overflow-hidden rounded-xl border border-current/10 bg-card">
+		<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
 			{children}
 		</div>
 	);

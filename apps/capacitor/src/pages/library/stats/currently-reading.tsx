@@ -56,7 +56,7 @@ export function CurrentlyReading() {
 									onClick={() => router.navigate({ href: book.href })}
 									whileTap={{ scale: 0.98 }}
 									className={cn(
-										"flex w-full items-center gap-3 rounded-xl border border-current/10 bg-card p-3 text-left text-card-foreground",
+										"flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left text-card-foreground",
 										row && "pr-12",
 									)}
 								>

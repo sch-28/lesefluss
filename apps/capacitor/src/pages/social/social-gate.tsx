@@ -10,7 +10,7 @@ import { SignedOutSocial } from "./signed-out";
 export function Spinner() {
 	return (
 		<div className="flex min-h-[60vh] items-center justify-center">
-			<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			<Loader2 className="size-8 animate-spin text-muted-foreground" />
 		</div>
 	);
 }
@@ -86,7 +86,7 @@ export function OfflineNotice({
 }) {
 	return (
 		<div className="mt-2 flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-4 py-8 text-center">
-			<CloudOff className="size-6 text-muted-foreground" />
+			<CloudOff className="size-8 text-muted-foreground" />
 			<p className="text-muted-foreground text-sm">{children}</p>
 			{onRetry && (
 				<Button variant="outline" size="sm" onClick={onRetry}>

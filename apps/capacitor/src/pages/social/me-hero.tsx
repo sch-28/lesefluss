@@ -49,7 +49,7 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 							@{me.handle} · Your profile
 						</div>
 					</div>
-					<ChevronRight className="size-[18px] self-start text-muted-foreground" />
+					<ChevronRight className="size-4 self-start text-muted-foreground" />
 				</div>
 
 				<div className="mt-4 grid grid-cols-3">

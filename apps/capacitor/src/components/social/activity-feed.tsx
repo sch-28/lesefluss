@@ -155,7 +155,7 @@ export function ActivityFeed({ isHiddenWhenEmpty = false }: { isHiddenWhenEmpty?
 	} else if (items.length === 0) {
 		body = (
 			<div className="rounded-2xl border border-border border-dashed px-4 py-5 text-center">
-				<Newspaper className="mx-auto mb-2 size-5 text-muted-foreground" />
+				<Newspaper className="mx-auto mb-2 size-8 text-muted-foreground" />
 				<p className="m-0 text-muted-foreground text-sm">
 					When your friends start or finish a book and share their reading, it shows here.
 				</p>

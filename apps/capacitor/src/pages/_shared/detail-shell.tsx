@@ -176,7 +176,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					<section className="flex gap-4" aria-busy="true">
 						<div className="aspect-2/3 w-28 shrink-0 rounded-md border border-border bg-muted" />
 						<div className="flex flex-1 items-center justify-center">
-							<Loader2 className="size-6 animate-spin text-muted-foreground" />
+							<Loader2 className="size-8 animate-spin text-muted-foreground" />
 						</div>
 					</section>
 				</DetailFrame>

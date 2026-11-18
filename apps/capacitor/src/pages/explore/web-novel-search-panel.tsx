@@ -287,7 +287,7 @@ const ResultListItem: React.FC<{
 				className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-3 border-0 bg-transparent px-0 py-3 text-left text-foreground active:opacity-70"
 			>
 				{!(isAo3Only && result.provider === "ao3") && (
-					<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded border border-border bg-muted">
+					<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
 						<CoverImage
 							src={result.coverImage}
 							alt={result.title}

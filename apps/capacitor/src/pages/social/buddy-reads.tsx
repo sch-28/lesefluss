@@ -46,8 +46,8 @@ function BuddyReadsContent() {
 				}
 			>
 				{active.length === 0 ? (
-					<div className="rounded-xl border border-current/10 bg-card px-4 py-6 text-center">
-						<Users className="mx-auto mb-2 size-6 text-muted-foreground" />
+					<div className="rounded-xl border border-border bg-card px-4 py-6 text-center">
+						<Users className="mx-auto mb-2 size-8 text-muted-foreground" />
 						<p className="m-0 text-muted-foreground text-sm">
 							{finished.length > 0
 								? "Nothing in progress right now."

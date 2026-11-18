@@ -119,7 +119,7 @@ export function ShareCardSheet({
 								data-testid="share-card-preview"
 							/>
 						) : (
-							<Loader2 className="size-6 animate-spin text-muted-foreground" />
+							<Loader2 className="size-8 animate-spin text-muted-foreground" />
 						)}
 					</div>
 				</div>

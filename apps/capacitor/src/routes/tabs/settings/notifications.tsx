@@ -21,7 +21,7 @@ export const Route = createFileRoute("/tabs/settings/notifications")({
 function Spinner() {
 	return (
 		<div className="flex justify-center py-16">
-			<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			<Loader2 className="size-8 animate-spin text-muted-foreground" />
 		</div>
 	);
 }

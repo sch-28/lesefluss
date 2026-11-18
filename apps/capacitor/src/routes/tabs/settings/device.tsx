@@ -179,7 +179,7 @@ function DeviceSettings() {
 			<div className="bg-background">
 				<PageHeader width="text" title="Device" icon={Cpu} />
 				<div className="flex items-center justify-center py-20">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
+					<Loader2 className="size-8 animate-spin text-muted-foreground" />
 				</div>
 			</div>
 		);
@@ -294,7 +294,7 @@ function DeviceSettings() {
 						<>
 							{connectionState === "connecting" ? (
 								<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
-									<Loader2 className="size-4 animate-spin" />
+									<Loader2 className="size-5 animate-spin" />
 									<span>Connecting...</span>
 								</div>
 							) : scanBlocker ? (
@@ -315,7 +315,7 @@ function DeviceSettings() {
 								</div>
 							) : scannedDevices.length === 0 ? (
 								<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
-									{isScanning && <Loader2 className="size-4 animate-spin" />}
+									{isScanning && <Loader2 className="size-5 animate-spin" />}
 									<span>{isScanning ? "Scanning for device..." : "Not connected"}</span>
 								</div>
 							) : null}
