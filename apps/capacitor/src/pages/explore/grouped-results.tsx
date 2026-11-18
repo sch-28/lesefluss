@@ -104,7 +104,7 @@ const GroupedResults: React.FC<Props> = ({
 						void catalog.refetch();
 						void serials.refetch();
 					}}
-					className="min-h-[50vh]"
+					page
 				/>
 			</PageBody>
 		);

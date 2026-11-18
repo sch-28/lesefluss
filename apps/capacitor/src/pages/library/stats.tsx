@@ -3,7 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { EMPTY_STATE_PAGE } from "@/components/empty-state";
+import { EMPTY_STATE_PAGE, FillFreeHeight } from "@/components/empty-state";
 import { PageBody, PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
@@ -82,10 +82,10 @@ const Stats: React.FC = () => {
 				) : !hasSessions ? (
 					// The goal card sits above the empty state, so the pair takes the page's free
 					// height and the empty state centres in what the card leaves.
-					<div className={cn("flex flex-col", EMPTY_STATE_PAGE)}>
+					<FillFreeHeight className={cn("flex flex-col", EMPTY_STATE_PAGE)}>
 						<TodayGoalCard />
-						<EmptyState page={false} className="flex-1 pb-20" />
-					</div>
+						<EmptyState page={false} className="flex-1" />
+					</FillFreeHeight>
 				) : (
 					<div>
 						<TodayGoalCard />

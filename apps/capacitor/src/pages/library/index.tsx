@@ -136,10 +136,6 @@ const IN_SERIES_ORDER: SeriesSort = {
 	thenReversed: false,
 };
 
-/** The library's empty states sit centred on a phone too, as they did in 2.2.0; EmptyState's
- *  `page` only centres them from md up. */
-const LIBRARY_EMPTY_ON_PHONE = "min-h-[60vh]";
-
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
 };
@@ -1103,7 +1099,6 @@ const Library: React.FC = () => {
 					icon={BookOpen}
 					title="No books in this collection yet"
 					page
-					className={LIBRARY_EMPTY_ON_PHONE}
 					action={
 						<>
 							<Button onClick={openAddBooks}>
@@ -1127,7 +1122,6 @@ const Library: React.FC = () => {
 					icon={BookOpen}
 					title="No books yet"
 					page
-					className={LIBRARY_EMPTY_ON_PHONE}
 					action={
 						<>
 							{/* Outline: the header's Add book (the FAB on a phone) is the page's one primary action. */}
@@ -1157,7 +1151,6 @@ const Library: React.FC = () => {
 						icon={isNarrowed ? SearchX : BookOpen}
 						title={isNarrowed ? "No books match" : "Nothing to show"}
 						page
-						className={LIBRARY_EMPTY_ON_PHONE}
 						action={
 							isNarrowed &&
 							!activeShelf && (

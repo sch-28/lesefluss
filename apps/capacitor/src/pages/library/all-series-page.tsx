@@ -38,12 +38,14 @@ const AllSeriesPage: React.FC = () => {
 				}
 			/>
 			<PageBody width="grid">
-				<p
-					className="m-0 mb-3 min-h-[1lh] text-muted-foreground text-sm"
-					data-testid="all-series-summary"
-				>
-					{isPending || entries.length === 0 ? null : seriesSummary(entries)}
-				</p>
+				{(isPending || entries.length > 0) && (
+					<p
+						className="m-0 mb-3 min-h-[1lh] text-muted-foreground text-sm"
+						data-testid="all-series-summary"
+					>
+						{isPending ? null : seriesSummary(entries)}
+					</p>
+				)}
 				{!isPending && entries.length === 0 ? (
 					<EmptyState
 						icon={Layers}
