@@ -1,6 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
-import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
@@ -101,14 +100,7 @@ function SeriesRow({
 						<span className="sm:hidden"> · {progressLabel(entry)}</span>
 					</span>
 				</span>
-				<span
-					className={cn(
-						"shrink-0 rounded-full border px-2 py-0.5 text-xs",
-						entry.kind === "serial"
-							? "border-emerald-400/45 text-emerald-500"
-							: "border-border text-muted-foreground",
-					)}
-				>
+				<span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-muted-foreground text-xs">
 					{countLabel(entry)}
 				</span>
 				<span className="hidden w-24 shrink-0 text-right text-muted-foreground text-xs sm:block">

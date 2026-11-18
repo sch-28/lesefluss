@@ -80,7 +80,7 @@ function InsightRow({
 			data-testid={testId}
 			icon={<IconCircle icon={icon} />}
 			label={
-				<span className="text-[0.9375rem]">
+				<span className="text-base">
 					{label}: <b className="font-semibold">{value}</b>
 				</span>
 			}
@@ -94,7 +94,7 @@ function LockedRow({ locked }: { locked: LockedInsight }) {
 		<StatRow
 			data-testid={`insight-locked-${locked.id}`}
 			icon={<IconCircle icon={Lock} isLocked />}
-			label={<span className="text-[0.9375rem] text-muted-foreground">{locked.title}</span>}
+			label={<span className="text-base text-muted-foreground">{locked.title}</span>}
 			sub={`${locked.need} · ${locked.progressLabel}`}
 		/>
 	);
@@ -110,7 +110,7 @@ function SpeedLockedRow({ activeMs }: { activeMs: number }) {
 			data-testid="speed-locked"
 			icon={<IconCircle icon={Gauge} isLocked />}
 			label={
-				<span className="text-[0.9375rem]">
+				<span className="text-base">
 					Read{" "}
 					<b className="font-semibold">
 						{left} more {left === 1 ? "minute" : "minutes"}

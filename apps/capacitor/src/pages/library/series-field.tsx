@@ -195,7 +195,7 @@ const SeriesStatusLine: React.FC<{ detected: DetectedSeries; isKept: boolean }> 
 		);
 	}
 	return (
-		<p className="m-0 mt-1.5 flex items-center gap-1.5 text-emerald-700 text-sm dark:text-emerald-500">
+		<p className="m-0 mt-1.5 flex items-center gap-1.5 text-sm text-success">
 			{status.kind === "joins" ? (
 				<>
 					<Check className="size-3.5 shrink-0" />

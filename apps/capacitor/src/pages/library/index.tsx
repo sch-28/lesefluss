@@ -717,7 +717,7 @@ const Library: React.FC = () => {
 			{filterCount > 0 && (
 				<span
 					aria-hidden
-					className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
+					className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-2xs text-primary-foreground leading-4"
 				>
 					{filterCount}
 				</span>
@@ -1218,7 +1218,7 @@ const Library: React.FC = () => {
 				aria-label={collectionId ? "Add books" : "Add book"}
 				data-toast-clear
 				title={collectionId ? "Add books" : withKey("Add book", importKey)}
-				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50 md:hidden"
+				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 md:hidden"
 				style={FAB_STYLE}
 			>
 				{imports.isImporting ? (

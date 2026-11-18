@@ -76,11 +76,9 @@ export function BookShelf({
 								<div className="mt-2 px-0.5 text-foreground">
 									<div className="line-clamp-1 font-medium text-sm">{book.title}</div>
 									{book.author && (
-										<div className="mt-0.5 line-clamp-1 text-[0.6875rem] opacity-60">
-											{book.author}
-										</div>
+										<div className="mt-0.5 line-clamp-1 text-2xs opacity-60">{book.author}</div>
 									)}
-									<div className="mt-0.5 line-clamp-1 text-[0.6875rem] text-muted-foreground tabular-nums">
+									<div className="mt-0.5 line-clamp-1 text-2xs text-muted-foreground tabular-nums">
 										{book.detail}
 									</div>
 								</div>

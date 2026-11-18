@@ -17,7 +17,7 @@ export function CloudStorageSection() {
 	const share = Math.min(1, quota.usedBytes / quota.quotaBytes);
 	const usage = `${formatBytes(quota.usedBytes)} of ${formatBytes(quota.quotaBytes)} used`;
 	const indicatorClassName =
-		notBackedUp.length > 0 ? "bg-destructive" : share >= NEARLY_FULL ? "bg-amber-500" : undefined;
+		notBackedUp.length > 0 ? "bg-destructive" : share >= NEARLY_FULL ? "bg-warning" : undefined;
 
 	return (
 		<SettingsSection title="Cloud storage">

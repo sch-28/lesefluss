@@ -170,6 +170,7 @@ export function RsvpDial({ model }: { model: SpeedModel }) {
 						x={CX}
 						y={CY - 6}
 						textAnchor="middle"
+						// ui-rules-allow: font-size, font-weight -- SVG text in the chart's user units, scaled with its viewBox
 						className="fill-current font-bold text-[34px] tabular-nums"
 					>
 						{dial}
@@ -178,6 +179,7 @@ export function RsvpDial({ model }: { model: SpeedModel }) {
 						x={CX}
 						y={CY + 18}
 						textAnchor="middle"
+						// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 						className="fill-current text-[12px] opacity-60"
 					>
 						dial wpm

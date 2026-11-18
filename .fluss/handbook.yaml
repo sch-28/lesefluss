@@ -92,7 +92,11 @@ solutions:
       app theme: picking one in the reader changes the whole app (LESE-190.7). The four themes
       change colours only, never font size, weight or spacing; e-ink mode may add borders, bold
       and underline cues. High contrast shows no non-HC accent colours (today rings, avatars,
-      badges keep the yellow palette).
+      badges keep the yellow palette). Status colours are theme tokens (`success`, `warning`,
+      `info`, `heat` for a ramp, `mark` for a search hit) that every theme defines, high contrast
+      in its yellow palette and e-ink in black with a non-colour cue; no screen uses a raw
+      palette or hex colour except a theme swatch or a user-chosen colour. A row icon stays muted
+      and its state is said in the subtitle.
 
       **UI check viewports:** a short laptop (1262x606 or 1280x720), 1280x800, 1920x1080,
       2560x1440, tall 1280x1600 and a 390 px phone. Real pointer clicks (Playwright mouse or
@@ -104,10 +108,27 @@ solutions:
       `packages/ui` defines no spacing tokens of its own. Related items sit closer than unrelated
       ones, and no space is reserved for content that isn't there.
 
+      **Roles:** one role, one value on every screen, from one shared component, token or
+      formatter; a page never rebuilds a role with its own values. The greppable ones are gated by
+      `apps/capacitor/src/components/__tests__/ui-rules.test.ts`; a line that must differ carries
+      `// ui-rules-allow: <rule> -- <reason>`.
+      - Facts with one source and formatter: goal progress, reading time totals, wpm, time left,
+        series counts; sittings under a minute count nowhere. Counts, dates, clock times and
+        relative times are formatted only in `apps/capacitor/src/utils/` (and `packages/ui/src/lib/`),
+        in one locale whatever the device's, with one unit spelling: "12 min ago", "3h ago",
+        "5d ago", "15d", "39 min left". Count columns use tabular figures.
+      - Motion: a transition names its properties (Tailwind's bare `transition`, or
+        `transition-colors`/`-opacity`/`-transform`), never `all`, with the one shared ease-out
+        and 150, 200 or 300 ms. Hover steps the colour or surface and never scales; a press
+        scales to 0.97. Progress fills animate a transform; only layout that must reflow (the
+        sidebar collapse) animates width or padding.
+      - Type: interface sizes come from the scale `2xs` 11, `xs` 12, `sm` 14, `base` 16, `lg` 18,
+        `xl` 20, `2xl` 24, `4xl` 36 (rem, so they follow the App text size), weights 400, 500 and
+        600 only. Reader content, SVG chart text, the RSVP word and cover artwork keep their own
+        sizes with an allow comment; e-ink may add bold as a cue.
+
       **Beyond the standard**
       - Every screen is reviewed in its empty, few-data and full states, in dark and light.
-      - Facts with one source and formatter here: goal progress, reading time totals, wpm, time
-        left, series counts; sittings under a minute count nowhere.
     codePaths:
       - apps/capacitor/src/theme/
       - apps/capacitor/src/contexts/theme-context.tsx

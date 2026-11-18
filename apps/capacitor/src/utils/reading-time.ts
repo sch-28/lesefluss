@@ -7,6 +7,11 @@ export function formatReadingTime(minutes: number): string {
 	return formatDuration(Math.round(minutes) * 60_000);
 }
 
+/** The app's one time-left format: "39 min left", "8h left". */
+export function formatTimeLeft(minutes: number): string {
+	return `${formatReadingTime(minutes)} left`;
+}
+
 /**
  * Words per page. Matches the figure this project already uses for the ESP32's
  * page simulation (AGENTS.md), and is in the range print editions assume.

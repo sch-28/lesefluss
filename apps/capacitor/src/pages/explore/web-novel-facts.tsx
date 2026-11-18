@@ -1,12 +1,11 @@
 import type React from "react";
+import { formatCount } from "@/utils/format-number";
 import {
 	chapterCountLabel,
 	type SearchResult,
 	type SeriesDetails,
 } from "../../services/serial-scrapers";
 import type { BookLength } from "./length";
-
-const fmt = (n: number) => n.toLocaleString("en");
 
 export function webNovelLength(details: SeriesDetails | undefined): BookLength {
 	return { wordCount: details?.wordCount, wordCountEstimated: details?.wordCountEstimated };
@@ -24,10 +23,10 @@ export function webNovelFacts(details: SeriesDetails | undefined): string[] {
 	return [
 		details.status === "completed" ? "Completed" : details.status === "ongoing" ? "Ongoing" : null,
 		details.rating
-			? `★ ${details.rating.toFixed(2)}${details.ratingCount ? ` (${fmt(details.ratingCount)})` : ""}`
+			? `★ ${details.rating.toFixed(2)}${details.ratingCount ? ` (${formatCount(details.ratingCount)})` : ""}`
 			: null,
-		details.followers ? `${fmt(details.followers)} followers` : null,
-		details.kudos ? `${fmt(details.kudos)} kudos` : null,
+		details.followers ? `${formatCount(details.followers)} followers` : null,
+		details.kudos ? `${formatCount(details.kudos)} kudos` : null,
 		details.lastUpdated ? `Updated ${details.lastUpdated}` : null,
 	].filter((fact): fact is string => fact !== null);
 }

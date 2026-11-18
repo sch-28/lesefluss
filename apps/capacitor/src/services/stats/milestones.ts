@@ -4,6 +4,7 @@ import {
 	type NextMilestone,
 	type ReachedMilestone,
 } from "@lesefluss/core";
+import { formatCount } from "@/utils/format-number";
 
 /** "640", "100k", "1.2M": short enough for the inside of a medal. */
 export function compactNumber(n: number): string {
@@ -65,7 +66,7 @@ export function milestoneTitle(kind: MilestoneKind, threshold: number): string {
 		case "words":
 			return threshold >= 1_000_000 && threshold % 1_000_000 === 0
 				? `${threshold / 1_000_000} million words`
-				: `${threshold.toLocaleString("en-US")} words`;
+				: `${formatCount(threshold)} words`;
 		case "hours":
 			return `${threshold} ${threshold === 1 ? "hour" : "hours"} read`;
 		case "books":

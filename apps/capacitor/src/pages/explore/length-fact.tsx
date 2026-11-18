@@ -1,5 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import type React from "react";
+import { formatCount } from "@/utils/format-number";
 import { formatReadingTime, WORDS_PER_PAGE } from "../../utils/reading-time";
 import { type BookLength, describeLength } from "./length";
 import { type ReadingSpeed, useRsvpWpm } from "./use-reading-speed";
@@ -40,7 +41,7 @@ const LengthFact: React.FC<Props> = ({ length, speed, estimateNote = CATALOG_EST
 	const rsvpWpm = useRsvpWpm();
 	const labels = describeLength(length, speed.wpm);
 	if (!labels) return <>Length unknown</>;
-	const words = labels.words.toLocaleString("en");
+	const words = formatCount(labels.words);
 
 	return (
 		<Popover>

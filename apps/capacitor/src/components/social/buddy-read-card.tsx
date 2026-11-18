@@ -80,7 +80,7 @@ export function BuddyReadCard({
 				to="/tabs/social/buddy-read/$id"
 				params={{ id: read.id }}
 				className={cn(
-					"relative block overflow-hidden border border-border bg-card text-card-foreground no-underline active:scale-[0.99]",
+					"relative block overflow-hidden border border-border bg-card text-card-foreground no-underline transition-transform active:scale-[0.97]",
 					isFeatured ? "rounded-3xl p-4" : "rounded-2xl p-3",
 				)}
 			>
@@ -110,7 +110,7 @@ export function BuddyReadCard({
 									{read.author}
 								</div>
 							)}
-							<div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+							<div className="mt-2 flex flex-wrap items-center gap-2 text-2xs">
 								{isFinished ? (
 									<FinishedLabel />
 								) : (
@@ -125,7 +125,7 @@ export function BuddyReadCard({
 						</div>
 					</div>
 					{read.originUnavailable ? (
-						<p className="m-0 mt-3 text-[11px] text-muted-foreground">
+						<p className="m-0 mt-3 text-2xs text-muted-foreground">
 							This book is no longer available.
 						</p>
 					) : (

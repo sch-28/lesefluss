@@ -71,14 +71,12 @@ export function StatRow({
 			{icon}
 			<div className="min-w-0 flex-1">
 				<div className="text-sm">{label}</div>
-				{sub != null && <div className="text-[0.8125rem] text-muted-foreground">{sub}</div>}
+				{sub != null && <div className="text-muted-foreground text-sm">{sub}</div>}
 			</div>
 			{value != null && (
 				<div className="min-w-0 max-w-[55%] text-right">
 					<div className="font-semibold text-sm tabular-nums">{value}</div>
-					{detail != null && (
-						<div className="truncate text-[0.8125rem] text-muted-foreground">{detail}</div>
-					)}
+					{detail != null && <div className="truncate text-muted-foreground text-sm">{detail}</div>}
 				</div>
 			)}
 			{action}

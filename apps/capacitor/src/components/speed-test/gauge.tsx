@@ -35,7 +35,7 @@ export function SpeedGauge({ reading, dial, value, label, animate = true }: Prop
 		const frame = requestAnimationFrame(() => setDrawn(true));
 		return () => cancelAnimationFrame(frame);
 	}, [animate]);
-	const transition = animate ? "stroke-dasharray 0.9s ease-out" : undefined;
+	const transition = animate ? "stroke-dasharray 0.9s var(--ease-out)" : undefined;
 
 	return (
 		<svg viewBox="0 0 300 180" className="mx-auto block w-full max-w-[300px]" aria-hidden="true">

@@ -85,7 +85,7 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({
 							// Says which dictionary answered when it isn't the book's own
 							// language — the one state that stops a wrong-language
 							// definition from looking authoritative.
-							<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium text-[10px] text-foreground uppercase">
+							<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium text-2xs text-foreground uppercase">
 								<span aria-hidden="true">{fallbackLang}</span>
 								<span className="sr-only">Definition from the {fallbackLang} dictionary</span>
 							</span>
@@ -170,7 +170,7 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({
 							{data?.attribution?.url && (
 								<button
 									type="button"
-									className="m-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[11px] text-muted-foreground"
+									className="m-0 cursor-pointer border-0 bg-transparent p-0 text-left text-2xs text-muted-foreground"
 									onClick={() => openLink(data.attribution.url)}
 								>
 									{data.attribution.source} &middot; {data.attribution.license}

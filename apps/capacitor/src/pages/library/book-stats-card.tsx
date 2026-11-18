@@ -117,10 +117,10 @@ function BookReadingTimeCard({ book }: Props) {
 		<section className="book-detail-card mt-4" data-testid="book-reading-time">
 			<h2 className="book-detail-section-title">Time to read</h2>
 			<div className="mt-3">
-				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+				<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
 					{formatReadingTime(minutesLeft ?? 0)}
 				</div>
-				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+				<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
 					whole book{!isPaceEstimated && " · at your pace"}
 				</div>
 			</div>
@@ -197,31 +197,27 @@ export function BookStatsCard({ book }: Props) {
 
 			<div className="mt-3 flex items-end justify-between gap-4">
 				<div>
-					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+					<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
 						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
 					</div>
-					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-						time read
-					</div>
+					<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">time read</div>
 				</div>
 				{restartMinutes !== null && (
 					<div className="text-right">
 						<div className="font-semibold text-xl tabular-nums leading-none">
 							{formatReadingTime(restartMinutes)}
 						</div>
-						<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-							to read
-						</div>
+						<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">to read</div>
 					</div>
 				)}
 				{isFinished && (
 					<div className="text-right">
-						<div className="flex items-center justify-end gap-1.5 font-semibold text-emerald-500 text-xl leading-none">
+						<div className="flex items-center justify-end gap-1.5 font-semibold text-success text-xl leading-none">
 							<CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
 							Finished
 						</div>
 						{book.finishedAt != null && (
-							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
 								{formatRelative(book.finishedAt)}
 							</div>
 						)}
@@ -233,7 +229,7 @@ export function BookStatsCard({ book }: Props) {
 				<div className="mt-4">
 					<div className="h-1.5 overflow-hidden rounded-full bg-current/10">
 						<motion.div
-							className={`h-full rounded-full ${isFinished ? "bg-emerald-500" : "bg-primary"}`}
+							className={`h-full rounded-full ${isFinished ? "bg-success" : "bg-primary"}`}
 							initial={{ width: 0 }}
 							animate={{ width: `${percent}%` }}
 							transition={{ duration: 0.6, ease: "easeOut" }}
@@ -311,7 +307,7 @@ function Stat({ value, label }: { value: React.ReactNode; label: string }) {
 	return (
 		<div>
 			<div className="font-semibold text-lg tabular-nums tracking-tight">{value}</div>
-			<div className="mt-0.5 text-[0.625rem] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-0.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }

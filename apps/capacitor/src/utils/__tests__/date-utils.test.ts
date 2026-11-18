@@ -10,8 +10,8 @@ describe("formatAgo", () => {
 		expect(formatAgo(now - 61_000, now)).toBe("1 min ago");
 		expect(formatAgo(now - 59 * MIN, now)).toBe("59 min ago");
 		// Three hours ago is the previous calendar day here, which formatRelative calls "yesterday".
-		expect(formatAgo(now - 180 * MIN, now)).toBe("3 h ago");
-		expect(formatAgo(now - (24 * 60 - 1) * MIN, now)).toBe("23 h ago");
+		expect(formatAgo(now - 180 * MIN, now)).toBe("3h ago");
+		expect(formatAgo(now - (24 * 60 - 1) * MIN, now)).toBe("23h ago");
 	});
 
 	it("falls back to the calendar wording after a day", () => {

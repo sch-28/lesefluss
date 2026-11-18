@@ -186,9 +186,7 @@ function SettingsLanding() {
 						{SYNC_ENABLED && (
 							<NavRow
 								icon={isLoggedIn ? CloudCheck : Cloud}
-								iconClassName={
-									isLoggedIn ? "size-5 text-emerald-500" : "size-5 text-muted-foreground"
-								}
+								iconClassName="size-5 text-muted-foreground"
 								title="Cloud sync"
 								subtitle={syncSubtitle}
 								to="/tabs/settings/sync"

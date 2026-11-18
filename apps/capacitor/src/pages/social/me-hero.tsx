@@ -13,11 +13,11 @@ import { formatPercent } from "@/utils/format-percent";
 function Stat({ value, label, icon }: { value: number; label: string; icon?: React.ReactNode }) {
 	return (
 		<div className="min-w-0 border-border px-3 first:pl-1 [&:not(:first-child)]:border-l">
-			<div className="flex items-center gap-1 font-bold text-[22px] tabular-nums leading-none">
+			<div className="flex items-center gap-1 font-semibold text-2xl tabular-nums leading-none">
 				{value}
 				{icon}
 			</div>
-			<div className="mt-1.5 truncate font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+			<div className="mt-1.5 truncate font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 				{label}
 			</div>
 		</div>
@@ -46,8 +46,8 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 						className="size-[74px] shrink-0 text-xl"
 					/>
 					<div className="min-w-0 flex-1">
-						<div className="truncate font-bold text-[21px] tracking-tight">{me.name}</div>
-						<div className="mt-0.5 truncate text-[13px] text-muted-foreground">
+						<div className="truncate font-semibold text-2xl tracking-tight">{me.name}</div>
+						<div className="mt-0.5 truncate text-muted-foreground text-sm">
 							@{me.handle} · Your profile
 						</div>
 					</div>
@@ -70,13 +70,13 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 							<CoverImage src={book.coverSrc} alt="" />
 						</div>
 						<div className="min-w-0 flex-1">
-							<div className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+							<div className="font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 								Now reading
 							</div>
 							<div className="mt-0.5 truncate font-semibold text-sm">{book.title}</div>
 							<ProgressBar percent={book.percent} className="mt-1.5 h-1" />
 						</div>
-						<div className="font-bold text-[13px] tabular-nums">{formatPercent(book.percent)}</div>
+						<div className="font-semibold text-sm tabular-nums">{formatPercent(book.percent)}</div>
 					</div>
 				)}
 			</div>

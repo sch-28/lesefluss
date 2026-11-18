@@ -5,6 +5,7 @@ import { SearchX, Tag } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { PageContainer } from "@/components/page-container";
+import { formatCount } from "@/utils/format-number";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { getTags } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -87,8 +88,8 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 									className="flex w-full items-center justify-between gap-3 border-0 bg-transparent px-1 py-3 text-left text-foreground active:opacity-70"
 								>
 									<span className="truncate">{t.label}</span>
-									<span className="shrink-0 text-muted-foreground text-sm">
-										{t.count.toLocaleString()}
+									<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
+										{formatCount(t.count)}
 									</span>
 								</button>
 							</li>

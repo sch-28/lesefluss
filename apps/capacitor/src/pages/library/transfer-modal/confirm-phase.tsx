@@ -97,7 +97,7 @@ const ConfirmPhase: React.FC<Props> = ({
 			)}
 
 			{replacingBook && (
-				<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-900 text-sm dark:text-amber-200">
+				<div className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
 					<span className="font-semibold">"{activeBook?.title}"</span> is currently on the device
 					and will be removed.
 				</div>

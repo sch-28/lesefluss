@@ -40,7 +40,7 @@ describe("CloudStorageSection", () => {
 		view = await render(<CloudStorageSection />);
 		expect(view.text()).toContain("100.0 MB of 500.0 MB used");
 		expect(view.text()).toContain("20%");
-		expect(indicator()).not.toMatch(/bg-amber-500|bg-destructive/);
+		expect(indicator()).not.toMatch(/bg-warning|bg-destructive/);
 		expect(view.container.querySelector("[role=progressbar]")?.getAttribute("aria-valuetext")).toBe(
 			"100.0 MB of 500.0 MB used",
 		);
@@ -50,7 +50,7 @@ describe("CloudStorageSection", () => {
 		storage.current = { quota: { usedBytes: 499 * MIB, quotaBytes: 500 * MIB }, notBackedUp: [] };
 		view = await render(<CloudStorageSection />);
 		expect(view.text()).toContain("99%");
-		expect(indicator()).toContain("bg-amber-500");
+		expect(indicator()).toContain("bg-warning");
 	});
 
 	it("turns red and lists the books once one is refused", async () => {

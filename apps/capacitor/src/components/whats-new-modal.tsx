@@ -81,7 +81,7 @@ const Tile: React.FC<{ entry: ChangelogEntry; onShowMe: (link: ChangelogLink) =>
 	<section className="flex items-start gap-3 rounded-2xl bg-muted p-3" data-testid="whats-new-tile">
 		<EntryIcon icon={entry.icon} />
 		<div className="min-w-0 flex-1">
-			<h3 className="m-0 font-semibold text-[15px]">{entry.title}</h3>
+			<h3 className="m-0 font-semibold text-base">{entry.title}</h3>
 			<p className="m-0 mt-1 text-muted-foreground text-sm">{entry.summary ?? entry.changes[0]}</p>
 			{entry.link && (
 				<Button
@@ -235,10 +235,10 @@ const WhatsNewModal: React.FC = () => {
 	const { Title, Description } = isWide ? DIALOG_SHELL : DRAWER_SHELL;
 	const body = (
 		<div className="flex max-h-[inherit] min-h-0 flex-col px-4 pt-2 pb-3 md:px-5 md:pt-4">
-			<p className="m-0 font-bold text-primary text-xs uppercase tracking-wider">
+			<p className="m-0 font-semibold text-primary text-xs uppercase tracking-wider">
 				{manualOpen ? "All updates" : "What's new"}
 			</p>
-			<Title className="mt-1 mb-3 font-bold text-[22px] leading-tight">
+			<Title className="mt-1 mb-3 font-semibold text-2xl leading-tight">
 				{manualOpen ? "Changelog" : "Recent updates"}
 			</Title>
 			<Description className="sr-only">

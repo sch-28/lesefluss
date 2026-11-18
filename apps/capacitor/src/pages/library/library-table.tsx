@@ -163,7 +163,7 @@ const LibraryTable: React.FC<Props> = ({
 									<span className="truncate">{column.label}</span>
 									{sorted && <Arrow aria-hidden className="size-3 shrink-0" />}
 									{sorted && isTwoLevel && (
-										<sup aria-hidden className="text-[0.625rem] tabular-nums">
+										<sup aria-hidden className="text-2xs tabular-nums">
 											{sorted.rank}
 										</sup>
 									)}

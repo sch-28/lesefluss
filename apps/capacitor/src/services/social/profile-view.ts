@@ -7,6 +7,7 @@ import { socialQueryDefaults } from "./cache";
 
 export function deviceTimeZone(): string | undefined {
 	try {
+		// ui-rules-allow: locale-format -- reads the device time zone, formats nothing
 		return Intl.DateTimeFormat().resolvedOptions().timeZone;
 	} catch {
 		return undefined;

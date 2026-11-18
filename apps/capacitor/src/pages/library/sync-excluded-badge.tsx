@@ -17,7 +17,7 @@ export const SyncExcludedBadge: React.FC<{ book: Book; className?: string }> = (
 	if (!isLoggedIn || isSyncEligible(book)) return null;
 	return (
 		<span
-			className={`inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 font-medium text-[0.65rem] text-amber-700 dark:text-amber-400 ${className ?? ""}`}
+			className={`inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 font-medium text-2xs text-warning ${className ?? ""}`}
 		>
 			<CloudOff className="size-3" />
 			Local only

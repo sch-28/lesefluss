@@ -131,17 +131,17 @@ function Stat({
 }) {
 	return (
 		<div className="text-center">
-			<div className="flex h-7 items-center justify-center font-semibold text-[1.375rem] tabular-nums">
+			<div className="flex h-7 items-center justify-center font-semibold text-2xl tabular-nums">
 				{isPending ? (
 					<Loader2 aria-label="Loading" className="size-5 animate-spin text-muted-foreground" />
 				) : (
 					<AnimatedNumber value={value} format={format} />
 				)}
 			</div>
-			<div className="mt-1 text-[0.8125rem] text-muted-foreground">{label}</div>
+			<div className="mt-1 text-muted-foreground text-sm">{label}</div>
 			{/* The line stays while the previous period loads, so the grid keeps its height. */}
 			{period !== "all" && (
-				<div className="mt-1 h-[15px] font-medium text-[0.625rem] text-muted-foreground">
+				<div className="mt-1 h-[15px] font-medium text-2xs text-muted-foreground">
 					{delta != null && `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}%`}
 				</div>
 			)}

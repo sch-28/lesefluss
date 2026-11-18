@@ -17,23 +17,23 @@ export function GoalStat({
 			<div
 				className={cn(
 					"truncate font-semibold tabular-nums",
-					size === "md" ? "text-[1.0625rem]" : "text-base",
+					size === "md" ? "text-lg" : "text-base",
 					className,
 				)}
 			>
 				{value}
 			</div>
-			<div className="mt-0.5 text-[0.625rem] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-0.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }
 
-/** "12 d" on screen, "12 days" to a screen reader. */
+/** "12d" on screen, "12 days" to a screen reader. */
 export function DayCount({ days }: { days: number }) {
 	return (
 		<>
 			{days}
-			<span aria-hidden="true"> d</span>
+			<span aria-hidden="true">d</span>
 			<span className="sr-only"> {days === 1 ? "day" : "days"}</span>
 		</>
 	);

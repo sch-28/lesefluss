@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatCount } from "@/utils/format-number";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import { ReservedCard } from "../../components/reserved-card";
@@ -62,7 +63,6 @@ import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
 import { openReaderLabel } from "./open-reader-label";
 import { GoalCard } from "./reading-goal/goal-card";
-
 import TransferModal from "./transfer-modal";
 import { useBookDetailReady } from "./use-book-detail-ready";
 import { useAuthorSeriesSuggestion, useBookSeries } from "./use-book-series";
@@ -322,7 +322,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			</button>
 		) : null,
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
-		pages !== null ? `${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"}` : null,
+		pages !== null ? `${formatCount(pages)} ${pages === 1 ? "page" : "pages"}` : null,
 		deviceState.isReachable && deviceState.isOnDevice ? (
 			<DeviceBadge key="device" bookId={book.id} style="text" />
 		) : null,
@@ -368,12 +368,12 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				headerActions={headerActions}
 			>
 				{isLoggedIn && !isSyncEligible(book) && (
-					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+					<div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
 						Stored on this device only. Too large to sync to the cloud.
 					</div>
 				)}
 				{isLoggedIn && isNotBackedUp && (
-					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+					<div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
 						Not backed up: not enough cloud storage, so this book stays on this device only.
 					</div>
 				)}

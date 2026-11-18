@@ -64,7 +64,7 @@ interface DoneProps {
 
 export const DonePhase: React.FC<DoneProps> = ({ book, onClose }) => (
 	<div className="flex flex-col items-center gap-6 py-8">
-		<CheckCircle2 className="size-16 text-green-500" />
+		<CheckCircle2 className="size-16 text-success" />
 		<div className="text-center">
 			<div className="font-semibold text-base">{book.title}</div>
 			<div className="mt-1 text-muted-foreground text-sm">Successfully uploaded to device</div>

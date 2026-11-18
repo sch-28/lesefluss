@@ -98,7 +98,7 @@ function SpeedPreview() {
 					className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-4"
 					data-testid="speed-preview"
 				>
-					<div className="text-[0.8125rem] text-muted-foreground">Preview with this window</div>
+					<div className="text-muted-foreground text-sm">Preview with this window</div>
 					<div className="font-semibold text-2xl tabular-nums">{data.reading.wpm} wpm</div>
 					{book && minutesLeft !== null && (
 						<div className="flex justify-between gap-3 text-sm">

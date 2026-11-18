@@ -229,6 +229,7 @@ function MiniReading({
 					onClick={() => engine.togglePlayPause()}
 					disabled={stoppedAt !== null}
 					aria-label={engine.isPlaying ? "Pause" : "Play"}
+					// ui-rules-allow: font-size -- the RSVP word, sized for the mini window, not interface text
 					className="rsvp-mini-word grid flex-1 grid-cols-[1fr_auto_1fr] items-center px-4 text-[32px] leading-none"
 					style={{ "--mini-focal": focalColor } as CSSProperties}
 				>
@@ -276,7 +277,7 @@ function MiniReading({
 					data-testid="mini-stopped"
 				>
 					<div>
-						<b className="block text-[15px]">Stopped at "{stoppedWord}"</b>
+						<b className="block text-base">Stopped at "{stoppedWord}"</b>
 						<small className="text-muted-foreground">
 							The book was closed in the main tab. Your place is saved.
 						</small>

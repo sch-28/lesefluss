@@ -20,23 +20,44 @@
 @custom-variant short (@media (max-height: 760px));
 @custom-variant high-contrast (&:is(.high-contrast *));
 
-/* Reading-goal colours, chosen per theme for contrast against its background.
- * E-ink overrides them in eink.css. */
+/* Reading-goal and status colours, chosen per theme for contrast against its background.
+ * E-ink overrides them in eink.css. `--heat` fills the streak calendar's ramp and carries
+ * `--heat-foreground` text at full strength. */
 :root {
 	--goal-pending: #b23c1c;
 	--goal-met: #047857;
 	--goal-progress: var(--primary);
+	--success: var(--goal-met);
+	--warning: #b45309;
+	--info: #0369a1;
+	--heat: #10b981;
+	--heat-foreground: #ffffff;
+	--mark: rgb(254 240 138 / 0.6);
 }
 
 .dark {
 	color-scheme: dark;
 	--goal-pending: #f0866a;
 	--goal-met: #34d399;
+	--warning: #fbbf24;
+	--info: #7dd3fc;
+	--mark: rgb(234 179 8 / 0.3);
 }
 
 .theme-sepia {
 	--goal-pending: #6e1a08;
 	--goal-met: #064e3b;
+	--warning: #78350f;
+	--info: #0c4a6e;
+}
+
+@theme inline {
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-info: var(--info);
+	--color-heat: var(--heat);
+	--color-heat-foreground: var(--heat-foreground);
+	--color-mark: var(--mark);
 }
 
 /* High contrast is a dark theme: it always carries .dark too (theme-context's
@@ -74,6 +95,11 @@
 	--sidebar-ring: #ffd60a;
 	--goal-pending: #ff8f73;
 	--goal-met: #4ade80;
+	--success: #ffd60a;
+	--warning: #ffd60a;
+	--info: #ffd60a;
+	--heat: #ffd60a;
+	--heat-foreground: #000000;
 }
 
 html,

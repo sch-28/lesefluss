@@ -25,6 +25,7 @@ import {
 	useUnshareHighlight,
 } from "@/services/social/buddy-read-discussion";
 import { formatAgo } from "@/utils/date-utils";
+import { formatCount } from "@/utils/format-number";
 
 type Props = {
 	item: DiscussionItem;
@@ -180,7 +181,7 @@ export function CommentDraft({
 			/>
 			{tooLong && (
 				<p className="m-0 text-destructive text-xs">
-					At most {BUDDY_COMMENT_MAX_CHARS.toLocaleString()} characters.
+					At most {formatCount(BUDDY_COMMENT_MAX_CHARS)} characters.
 				</p>
 			)}
 			<div className="flex justify-end gap-2">

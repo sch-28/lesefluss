@@ -209,7 +209,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						// Tight items fit four tabs at 390px; a fifth tab or a
 						// large font scale scrolls sideways rather than breaking a label mid-word.
 						className="w-full overflow-x-auto [scrollbar-width:none]"
-						itemClassName="flex-[1_0_auto] gap-1 whitespace-nowrap px-1 text-[0.8125rem]"
+						itemClassName="flex-[1_0_auto] gap-1 whitespace-nowrap px-1 text-sm"
 					/>
 				</div>
 
@@ -324,7 +324,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								onClick={onAddEntry}
 								aria-label="Add glossary entry"
 								data-toast-clear
-								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-[0.97]"
 								style={{ marginBottom: "var(--safe-bottom)" }}
 							>
 								<Plus className="size-5" />

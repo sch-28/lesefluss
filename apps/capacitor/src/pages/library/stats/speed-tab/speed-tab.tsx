@@ -36,12 +36,12 @@ function Headline({ model, view, now }: { model: SpeedModel; view: SpeedView; no
 	return (
 		<div data-testid="speed-hero">
 			<div className="flex items-baseline gap-2">
-				<span className="font-bold text-[2.25rem] tabular-nums leading-none tracking-tight">
+				<span className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
 					{wpm}
 				</span>
 				<span className="text-muted-foreground">wpm</span>
 				{delta !== null && (
-					<span className="ml-auto text-[0.8125rem] tabular-nums">
+					<span className="ml-auto text-sm tabular-nums">
 						{/* A rise is good news; a drop stays neutral, slower isn't a failure. */}
 						<span className={cn(delta > 0 ? "text-[var(--goal-met)]" : "text-muted-foreground")}>
 							{deltaLabel(delta, since ?? undefined)}
@@ -49,7 +49,7 @@ function Headline({ model, view, now }: { model: SpeedModel; view: SpeedView; no
 					</span>
 				)}
 			</div>
-			<div className="mt-1 text-[0.8125rem] text-muted-foreground">
+			<div className="mt-1 text-muted-foreground text-sm">
 				{basis} ·{" "}
 				<Link
 					to="/tabs/settings/speed"

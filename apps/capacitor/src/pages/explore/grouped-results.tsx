@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import type React from "react";
 import { PageContainer } from "@/components/page-container";
+import { formatCount } from "@/utils/format-number";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { type CatalogSearchResult, searchCatalog } from "../../services/catalog/client";
@@ -107,7 +108,7 @@ const GroupedResults: React.FC<Props> = ({
 		);
 	}
 
-	const catalogTitle = `Public domain (${catalog.data?.total.toLocaleString() ?? 0})`;
+	const catalogTitle = `Public domain (${formatCount(catalog.data?.total ?? 0)})`;
 
 	return (
 		<PageContainer width="grid" className="px-4 pt-4 pb-20">
@@ -219,7 +220,7 @@ const GroupedResults: React.FC<Props> = ({
 			{failed.length > 0 && !isSerialsLoading && (
 				<div
 					role="status"
-					className="mb-4 flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300"
+					className="mb-4 flex items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-warning text-xs"
 				>
 					<span>{failed.map(providerLabel).join(", ")} didn't respond.</span>
 					<Button variant="ghost" size="sm" onClick={() => serials.refetch()}>

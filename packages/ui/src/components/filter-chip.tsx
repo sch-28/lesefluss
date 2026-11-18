@@ -1,5 +1,6 @@
 import type * as React from "react";
 
+import { formatCount } from "../lib/format-count";
 import { cn } from "../lib/utils";
 import { SELECTED_TINT } from "./segmented-control";
 
@@ -34,7 +35,7 @@ export function FilterChip({
 		>
 			{children}
 			{count !== undefined && count > 0 && (
-				<span className="text-muted-foreground text-xs tabular-nums">{count.toLocaleString()}</span>
+				<span className="text-muted-foreground text-xs tabular-nums">{formatCount(count)}</span>
 			)}
 		</button>
 	);

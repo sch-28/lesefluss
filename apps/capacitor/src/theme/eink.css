@@ -45,6 +45,12 @@ html.eink {
 	--sidebar-ring: #000000;
 	--goal-pending: #000000;
 	--goal-met: #000000;
+	--success: #000000;
+	--warning: #000000;
+	--info: #000000;
+	--heat: #000000;
+	--heat-foreground: #ffffff;
+	--mark: #d9d9d9;
 }
 
 .eink .reader-theme-light {

@@ -79,16 +79,13 @@ export function BuddyTrack({
 									name={rider.name}
 									avatarUrl={rider.avatarUrl}
 									size="sm"
-									className={cn(
-										"size-[min(30px,calc(18cqw-4px))] text-[11px]",
-										rider.toneClassName,
-									)}
+									className={cn("size-[min(30px,calc(18cqw-4px))] text-2xs", rider.toneClassName)}
 								/>
 							</motion.span>
 							{rider.label && (
 								<span
 									className={cn(
-										"mt-1.5 whitespace-nowrap font-semibold text-[10px] tabular-nums",
+										"mt-1.5 whitespace-nowrap font-semibold text-2xs tabular-nums",
 										rider.isSelf ? "text-foreground" : "@max-[180px]:hidden text-muted-foreground",
 									)}
 								>

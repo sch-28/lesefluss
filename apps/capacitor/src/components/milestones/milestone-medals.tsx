@@ -12,6 +12,7 @@ import { formatDate } from "../../utils/date-utils";
 function RsvpBadge() {
 	return (
 		<span className="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-black ring-2 ring-background">
+			{/* ui-rules-allow: raw-colour -- the RSVP mark's own yellow on its fixed black badge */}
 			<Zap className="size-3 fill-[#ffd60a] text-[#ffd60a]" aria-label="RSVP" />
 		</span>
 	);
@@ -23,14 +24,14 @@ export function ReachedMedal({ milestone }: { milestone: ReachedMilestone }) {
 	return (
 		<div className="flex flex-col items-center text-center" data-testid="milestone-medal">
 			<div
-				className="relative flex size-16 items-center justify-center rounded-full font-extrabold text-base text-white shadow-sm"
+				className="relative flex size-16 items-center justify-center rounded-full font-semibold text-base text-white shadow-sm"
 				style={{ background: `linear-gradient(145deg, ${hue.from}, ${hue.to})` }}
 			>
 				{face.value}
 				{face.rsvp && <RsvpBadge />}
 			</div>
 			<span className="mt-1.5 font-medium text-xs leading-tight">{face.caption}</span>
-			<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+			<span className="text-2xs text-muted-foreground tabular-nums">
 				{formatDate(milestone.reachedAt)}
 			</span>
 		</div>
@@ -48,13 +49,13 @@ export function NextMedal({ milestone }: { milestone: NextMilestone }) {
 					background: `conic-gradient(var(--primary) ${share * 360}deg, color-mix(in oklab, var(--muted-foreground) 25%, transparent) 0)`,
 				}}
 			>
-				<div className="flex size-[52px] items-center justify-center rounded-full bg-background font-bold text-muted-foreground text-sm">
+				<div className="flex size-[52px] items-center justify-center rounded-full bg-background font-semibold text-muted-foreground text-sm">
 					{face.value}
 				</div>
 				{face.rsvp && <RsvpBadge />}
 			</div>
 			<span className="mt-1.5 font-medium text-xs leading-tight">{face.caption}</span>
-			<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+			<span className="text-2xs text-muted-foreground tabular-nums">
 				{milestoneProgress(milestone)}
 			</span>
 		</div>

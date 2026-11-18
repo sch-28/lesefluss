@@ -30,10 +30,7 @@ export function HeaderGoalRing() {
 				isMet={summary.isMet}
 				trackClassName="stroke-muted-foreground/35"
 			>
-				<span
-					className="font-bold text-[0.8125rem] text-foreground"
-					data-testid="header-goal-minutes"
-				>
+				<span className="font-semibold text-foreground text-sm" data-testid="header-goal-minutes">
 					{goalProgressMinutes(summary).read}
 				</span>
 			</GoalRing>

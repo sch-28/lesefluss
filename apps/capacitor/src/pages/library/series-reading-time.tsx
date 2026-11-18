@@ -25,7 +25,7 @@ function useSeriesTimes(chapters: readonly SeriesChapterLength[] | undefined): S
 	};
 }
 
-/** "Left 8h" while the series is under way; nothing when unstarted or finished, as on book cards. */
+/** "8h left" while the series is under way; nothing when unstarted or finished, as on book cards. */
 export function SeriesCardTime({
 	chapters,
 	className,
@@ -37,12 +37,12 @@ export function SeriesCardTime({
 	if (!left) return null;
 	return (
 		<span className={className} data-testid="series-card-time">
-			Left {left}
+			{left} left
 		</span>
 	);
 }
 
-/** "Total 12h 5m · Left 8h" for a series' hero line, at the reader's global pace. */
+/** "Total 12h 5m · 8h left" for a series' hero line, at the reader's global pace. */
 export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapterLength[] }) {
 	const times = useSeriesTimes(chapters);
 	if (!times) return null;
@@ -54,7 +54,7 @@ export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapt
 			data-testid="series-reading-time"
 		>
 			<span>· Total {total}</span>
-			{left && <span>· Left {left}</span>}
+			{left && <span>· {left} left</span>}
 			{unknown > 0 && (
 				<Popover>
 					<PopoverTrigger asChild>

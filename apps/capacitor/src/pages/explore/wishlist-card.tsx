@@ -56,7 +56,7 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 			<div className="px-0.5 pt-1">
 				<div
 					data-clips-text
-					className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+					className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 				>
 					{item.title}
 				</div>

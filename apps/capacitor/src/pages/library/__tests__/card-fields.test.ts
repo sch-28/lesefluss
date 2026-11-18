@@ -60,7 +60,7 @@ describe("card fields", () => {
 		const shown = cardTimeLeft(itemOf(book));
 		const stats = summariseBookReading(book, bookPace(model, book.id)).minutesLeft;
 		expect(stats).not.toBeNull();
-		expect(shown).toBe(`Left ${formatReadingTime(stats ?? 0)}`);
+		expect(shown).toBe(`${formatReadingTime(stats ?? 0)} left`);
 		expect(shown).not.toContain("~");
 	});
 

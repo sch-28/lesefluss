@@ -10,6 +10,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown, X } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
+import { formatCount } from "@/utils/format-number";
 
 type FilterChipProps<T extends string> = {
 	label: string;
@@ -75,7 +76,7 @@ export function FilterChip<T extends string>({
 								<span className="min-w-0 flex-1 truncate">{o.label}</span>
 								{o.count !== undefined && (
 									<span className="whitespace-nowrap text-muted-foreground text-xs tabular-nums">
-										{o.count.toLocaleString()}
+										{formatCount(o.count)}
 									</span>
 								)}
 							</DropdownMenuRadioItem>

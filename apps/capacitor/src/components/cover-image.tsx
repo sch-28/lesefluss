@@ -50,7 +50,8 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 		(alt ? (
 			<TintedCover title={alt} />
 		) : (
-			<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
+			// ui-rules-allow: raw-colour -- sits on the cover's own fixed placeholder fill, not a theme surface
+			<span className="font-semibold text-2xs text-[#bbb] tracking-wide">BOOK</span>
 		));
 
 	return (

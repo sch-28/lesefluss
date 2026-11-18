@@ -583,7 +583,7 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 				</Button>
 				<Button type="button" disabled={!canSave} onClick={save}>
 					Save
-					<kbd className="ml-1 font-sans text-[0.7rem] opacity-70">
+					<kbd className="ml-1 font-sans text-2xs opacity-70">
 						{formatKey("Mod+Enter").join(" ")}
 					</kbd>
 				</Button>

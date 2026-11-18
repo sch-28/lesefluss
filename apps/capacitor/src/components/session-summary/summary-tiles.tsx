@@ -11,6 +11,7 @@ import {
 	Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { formatCount } from "@/utils/format-number";
 import { goalTone } from "../../pages/library/reading-goal/goal-model";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import type { SummaryStats } from "../../services/stats/session-summary";
@@ -37,7 +38,7 @@ function Tile({
 }) {
 	const body = (
 		<>
-			<span className="flex items-center gap-1.5 font-medium text-[0.625rem] text-muted-foreground uppercase tracking-wider">
+			<span className="flex items-center gap-1.5 font-medium text-2xs text-muted-foreground uppercase tracking-wider">
 				{icon}
 				{label}
 				{onClick && <ChevronRight className="ml-auto size-3.5" aria-hidden />}
@@ -70,7 +71,7 @@ const Value = ({ children }: { children: ReactNode }) => (
 );
 
 const Caption = ({ children }: { children: ReactNode }) => (
-	<span className="text-[0.6875rem] text-muted-foreground tabular-nums">{children}</span>
+	<span className="text-2xs text-muted-foreground tabular-nums">{children}</span>
 );
 
 export function TimeTile({ activeMs, todayMinutes }: { activeMs: number; todayMinutes: number }) {
@@ -114,7 +115,7 @@ export function WordsTile({ words }: { words: number }) {
 	const pages = estimatePages(words);
 	return (
 		<Tile icon={<Type className="size-3" />} label="Words" testId="summary-words">
-			<Value>{words.toLocaleString()}</Value>
+			<Value>{formatCount(words)}</Value>
 			<Caption>
 				{pages} {pages === 1 ? "page" : "pages"}
 			</Caption>
@@ -141,14 +142,12 @@ export function SpeedTile({
 		>
 			<span className="flex items-baseline gap-1.5">
 				<Value>{stats.wpm ?? "–"}</Value>
-				<span className="text-[0.6875rem] text-muted-foreground">wpm</span>
+				<span className="text-2xs text-muted-foreground">wpm</span>
 				{delta !== null && (
 					<span
 						className={cn(
-							"ml-auto whitespace-nowrap rounded-full px-1.5 text-[0.625rem] tabular-nums",
-							delta >= 0
-								? "bg-emerald-500/15 text-[var(--goal-met)]"
-								: "bg-muted text-muted-foreground",
+							"ml-auto whitespace-nowrap rounded-full px-1.5 text-2xs tabular-nums",
+							delta >= 0 ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
 						)}
 						data-testid="summary-speed-delta"
 					>
@@ -190,10 +189,7 @@ export function TimeSavedTile({ rsvp }: { rsvp: NonNullable<SummaryStats["rsvp"]
 			<Value>{formatDuration(rsvp.savedMs)}</Value>
 			<div className="flex flex-col gap-1">
 				{bars.map((bar) => (
-					<div
-						key={bar.label}
-						className="flex items-center gap-2 text-[0.6875rem] text-muted-foreground"
-					>
+					<div key={bar.label} className="flex items-center gap-2 text-2xs text-muted-foreground">
 						<span className="w-28 truncate">{bar.label}</span>
 						<span className="h-1.5 flex-1 rounded-full bg-current/10">
 							<span

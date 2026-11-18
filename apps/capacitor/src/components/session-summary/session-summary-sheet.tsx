@@ -25,7 +25,7 @@ import {
 import { sessionCardData } from "../../services/share-card/card-data";
 import type { ShareCardData } from "../../services/share-card/render";
 import { summarize, todayMinutes } from "../../services/stats/session-summary";
-import { startOfLocalDay } from "../../utils/date-utils";
+import { formatClock, startOfLocalDay } from "../../utils/date-utils";
 import BookCover from "../book-cover";
 import { MedalGrid } from "../milestones/milestone-medals";
 import { ShareCardSheet } from "../share-card/share-card-sheet";
@@ -104,10 +104,7 @@ function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 			}),
 		);
 	};
-	const startTime = new Date(startedAt).toLocaleTimeString(undefined, {
-		hour: "numeric",
-		minute: "2-digit",
-	});
+	const startTime = formatClock(startedAt);
 
 	return (
 		// No snap points: vaul places snaps as if the sheet filled the screen, so any
@@ -168,7 +165,7 @@ function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 
 				{earned.length > 0 && (
 					<div className="mt-3 px-4" data-testid="summary-milestones">
-						<div className="mb-2 text-[0.625rem] text-muted-foreground uppercase tracking-wider">
+						<div className="mb-2 text-2xs text-muted-foreground uppercase tracking-wider">
 							Milestones
 						</div>
 						<MedalGrid reached={earned} />

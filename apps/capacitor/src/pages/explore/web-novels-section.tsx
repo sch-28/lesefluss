@@ -94,7 +94,7 @@ function ProviderCard({ id, label, subtitle, color, covers, onTap }: ProviderCar
 			type="button"
 			onClick={handleClick}
 			style={{ "--brand": color } as CSSProperties}
-			className="relative w-44 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-card-foreground transition-transform active:scale-95"
+			className="relative w-44 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-card-foreground transition-transform active:scale-[0.97]"
 			aria-label={`Browse ${label}`}
 		>
 			<span

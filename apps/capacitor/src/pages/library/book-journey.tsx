@@ -48,7 +48,7 @@ export function BookJourney({ book }: { book: Book }) {
 									className={`h-px flex-1 ${index === 0 ? "bg-transparent" : "bg-current/20"}`}
 								/>
 								{isFinish ? (
-									<CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
+									<CheckCircle2 className="size-3.5 shrink-0 text-success" />
 								) : (
 									<span
 										className={`size-2 shrink-0 rounded-full ${
@@ -58,9 +58,7 @@ export function BookJourney({ book }: { book: Book }) {
 								)}
 								<span className={`h-px flex-1 ${isLast ? "bg-transparent" : "bg-current/20"}`} />
 							</div>
-							<span className="text-[0.625rem] uppercase tracking-wide opacity-55">
-								{milestone.label}
-							</span>
+							<span className="text-2xs uppercase tracking-wide opacity-55">{milestone.label}</span>
 							<span className="text-xs tabular-nums">{formatDate(milestone.at)}</span>
 						</li>
 					);

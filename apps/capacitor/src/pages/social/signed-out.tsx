@@ -42,10 +42,10 @@ export function SignedOutSocial({
 	return (
 		<TrailerCard isDemoBook={isDemoBook}>
 			{person && <div className="mt-6">{person}</div>}
-			<h2 className="m-0 mt-6 font-bold text-[30px] text-foreground leading-[1.08] tracking-tight">
+			<h2 className="m-0 mt-6 font-semibold text-3xl text-foreground leading-[1.08] tracking-tight">
 				{title}
 			</h2>
-			<p className="m-0 mt-3 text-[15px] text-muted-foreground leading-relaxed">{message}</p>
+			<p className="m-0 mt-3 text-base text-muted-foreground leading-relaxed">{message}</p>
 			{SYNC_ENABLED ? (
 				<>
 					<Button

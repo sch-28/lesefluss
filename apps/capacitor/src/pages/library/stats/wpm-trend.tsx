@@ -5,7 +5,7 @@ import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
-import { formatDate } from "../../../utils/date-utils";
+import { formatClockHour, formatDate, formatMonth } from "../../../utils/date-utils";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 
 /** Until the card is measured; the chart then draws at its real width so text never scales. */
@@ -59,12 +59,11 @@ export function firstShownBucket(
 }
 
 function formatBucketTick(start: number, granularity: TrendGranularity): string {
-	const d = new Date(start);
 	switch (granularity) {
 		case "hour":
-			return d.toLocaleTimeString(undefined, { hour: "numeric" });
+			return formatClockHour(start);
 		case "month":
-			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+			return formatMonth(start, { month: "short", year: "2-digit" });
 		default:
 			return formatDayTick(start);
 	}
@@ -189,6 +188,7 @@ function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { widt
 								x={PLOT_LEFT - 6}
 								y={y(wpm) + 4}
 								textAnchor="end"
+								// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 								className="fill-muted-foreground text-[10px]"
 							>
 								{wpm}
@@ -260,6 +260,7 @@ function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { widt
 							x={x(start + i)}
 							y={HEIGHT - 10}
 							textAnchor={ticks.length === 1 ? "end" : anchor}
+							// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 							className="fill-muted-foreground text-[10px]"
 							data-testid="wpm-trend-tick"
 						>
@@ -303,6 +304,7 @@ function ReferenceLine({
 					key={text}
 					x={plotRight + 6}
 					y={y - 2 + i * 13}
+					// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 					className="fill-muted-foreground text-[10px]"
 				>
 					{text}

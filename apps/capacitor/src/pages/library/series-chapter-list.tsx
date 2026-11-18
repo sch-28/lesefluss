@@ -96,7 +96,7 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 		case "in-progress":
 			return <Circle className="size-4 shrink-0 text-muted-foreground" aria-label="In progress" />;
 		case "finished":
-			return <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-label="Finished" />;
+			return <CheckCircle2 className="size-4 shrink-0 text-success" aria-label="Finished" />;
 		case "pending":
 			return (
 				<CircleDashed

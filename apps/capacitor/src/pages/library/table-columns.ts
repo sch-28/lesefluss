@@ -1,4 +1,5 @@
 import { BOOK_STATUS_LABELS, displayAuthor, ratingStars } from "@lesefluss/core";
+import { formatCount } from "@/utils/format-number";
 import { formatPercent } from "@/utils/format-percent";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { formatDate } from "../../utils/date-utils";
@@ -104,7 +105,7 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 		width: "6rem",
 		align: "end",
 		sortBy: "words",
-		text: (item) => (item.sortKey.words === null ? "" : item.sortKey.words.toLocaleString()),
+		text: (item) => (item.sortKey.words === null ? "" : formatCount(item.sortKey.words)),
 	},
 	{
 		id: "timeLeft",

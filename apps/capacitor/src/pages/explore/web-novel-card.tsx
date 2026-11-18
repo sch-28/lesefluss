@@ -45,7 +45,7 @@ export const WebNovelCard: React.FC<{
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+						className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 					>
 						{result.title}
 					</div>
@@ -56,7 +56,7 @@ export const WebNovelCard: React.FC<{
 						isInLibrary={quickAdd.isInLibrary}
 					/>
 					{showProvider && (
-						<div className="mt-0.5 text-[0.7rem] text-muted-foreground">
+						<div className="mt-0.5 text-2xs text-muted-foreground">
 							{providerLabel(result.provider)}
 						</div>
 					)}

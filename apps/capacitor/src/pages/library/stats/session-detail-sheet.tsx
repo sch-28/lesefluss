@@ -3,12 +3,13 @@ import { Button } from "@lesefluss/ui/button";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { useId, useState } from "react";
+import { formatCount } from "@/utils/format-number";
 import { EntryDialog } from "../../../components/entry-dialog";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
-import { formatDate } from "../../../utils/date-utils";
+import { formatClock, formatDate } from "../../../utils/date-utils";
 import { formatPercent } from "../../../utils/format-percent";
-import { formatClock, MODE_BADGE_LABELS } from "./session-list";
+import { MODE_BADGE_LABELS } from "./session-list";
 
 const MAX_EDIT_MINUTES = 24 * 60;
 
@@ -93,7 +94,7 @@ function SessionDetailForm({
 		<>
 			<dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
 				<Fact label="Time" value={`${date}, ${formatClock(session.startedAt)}`} />
-				<Fact label="Words" value={session.wordsRead.toLocaleString()} />
+				<Fact label="Words" value={formatCount(session.wordsRead)} />
 				<Fact label="Speed" value={sessionSpeedText(session, isSkimmed)} />
 				{range && <Fact label="Position" value={range} />}
 			</dl>

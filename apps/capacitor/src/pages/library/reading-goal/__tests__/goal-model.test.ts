@@ -117,7 +117,7 @@ describe("display states", () => {
 	it("is behind after a missed day", () => {
 		const plan = makePlan({ position: 0, now: at(3) });
 		expect(goalTone(plan)).toBe("behind");
-		expect(signed(plan.aheadBehind.days, " d")).toBe("−2.0 d");
+		expect(signed(plan.aheadBehind.days, "d")).toBe("−2.0d");
 	});
 
 	it("is ahead when earlier reading went past the plan", () => {

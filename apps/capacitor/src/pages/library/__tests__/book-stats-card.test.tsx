@@ -87,7 +87,7 @@ describe("BookStatsCard before the first sitting", () => {
 		expect(result()).toBe(`Done ${formatDayKey(addDays(today(), 3))}`);
 		await pressOnSlider("End");
 		expect(view.container.querySelector("[data-testid=what-if-wpm]")?.textContent).toBe("1000 wpm");
-		expect(result()).toBe(`Left 23 min · Done ${formatDayKey(today())}`);
+		expect(result()).toBe(`23 min left · Done ${formatDayKey(today())}`);
 	});
 
 	it("projects the finish with a minute goal's daily minutes", async () => {

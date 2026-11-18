@@ -42,8 +42,8 @@ export function FriendsRow({ friends }: { friends: SocialRelationships["friends"
 								size="md"
 								className="mx-auto size-[66px] text-lg"
 							/>
-							<div className="mt-1.5 truncate font-semibold text-[12.5px]">{f.name}</div>
-							<div className="mt-px truncate text-[10.5px] text-muted-foreground">
+							<div className="mt-1.5 truncate font-semibold text-xs">{f.name}</div>
+							<div className="mt-px truncate text-2xs text-muted-foreground">
 								{f.nowReading?.title ?? `@${f.handle}`}
 							</div>
 							{f.nowReading && (

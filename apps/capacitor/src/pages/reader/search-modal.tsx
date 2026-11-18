@@ -169,7 +169,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
 											{r.parts.map((p, i) =>
 												p.highlight ? (
 													// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
-													<strong key={i} className="bg-yellow-200/60 px-0.5 dark:bg-yellow-500/30">
+													<strong key={i} className="bg-mark px-0.5">
 														{p.text}
 													</strong>
 												) : (

@@ -11,7 +11,7 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
 import { lostReadingDays } from "../../../services/stats/session-delete-impact";
-import { formatDuration } from "../../../utils/date-utils";
+import { formatClock, formatDuration } from "../../../utils/date-utils";
 import { formatPercent } from "../../../utils/format-percent";
 import { useLongPress } from "../use-long-press";
 import {
@@ -31,14 +31,10 @@ export const MODE_BADGE_LABELS: Record<ReadingSession["mode"], string> = {
 
 export function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	return (
-		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-[0.65rem] text-muted-foreground uppercase tracking-wide">
+		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wide">
 			{MODE_BADGE_LABELS[mode]}
 		</span>
 	);
-}
-
-export function formatClock(epochMs: number): string {
-	return new Date(epochMs).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 type Confirm = { ids: string[]; title: string; description: string; confirmLabel: string };

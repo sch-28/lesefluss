@@ -37,8 +37,8 @@ function MilestoneIcon({
 			aria-hidden="true"
 			className={
 				isNext
-					? "flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-muted font-bold text-[0.8125rem] text-muted-foreground tabular-nums"
-					: "flex size-10 shrink-0 items-center justify-center rounded-full font-bold text-[0.8125rem] text-white tabular-nums"
+					? "flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-muted font-semibold text-muted-foreground text-sm tabular-nums"
+					: "flex size-10 shrink-0 items-center justify-center rounded-full font-semibold text-sm text-white tabular-nums"
 			}
 			style={isNext ? undefined : { background: `linear-gradient(135deg, ${hue.from}, ${hue.to})` }}
 		>
@@ -109,7 +109,7 @@ export function MilestonesSection() {
 			</div>
 			{next.length > 0 && (
 				<>
-					<div className="mt-4 mb-1 text-[0.8125rem] text-muted-foreground">Next</div>
+					<div className="mt-4 mb-1 text-muted-foreground text-sm">Next</div>
 					<div className="[&>*:last-child>*]:border-b-0">
 						{next.map((m) => (
 							<NextRow key={milestoneKey(m)} milestone={m} />

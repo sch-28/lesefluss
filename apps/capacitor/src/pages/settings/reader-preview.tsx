@@ -46,7 +46,7 @@ export default function ReaderPreview() {
 			data-testid="reader-preview"
 		>
 			<span
-				className="block pt-1.5 font-semibold text-[0.68rem] text-muted-foreground uppercase tracking-[0.08em]"
+				className="block pt-1.5 font-semibold text-2xs text-muted-foreground uppercase tracking-[0.08em]"
 				style={{ paddingInline: `${margin}px` }}
 			>
 				Preview

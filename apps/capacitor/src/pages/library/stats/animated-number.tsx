@@ -1,6 +1,7 @@
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect } from "react";
+import { formatCount } from "@/utils/format-number";
 
 interface Props {
 	value: number;
@@ -16,7 +17,7 @@ interface Props {
  */
 export function AnimatedNumber({ value, durationMs = 800, format, className }: Props) {
 	const mv = useMotionValue(value);
-	const display = useTransform(mv, (v) => (format ? format(v) : Math.round(v).toLocaleString()));
+	const display = useTransform(mv, (v) => (format ? format(v) : formatCount(Math.round(v))));
 
 	const isReducedMotion = usePrefersReducedMotion();
 

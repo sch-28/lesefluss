@@ -61,9 +61,9 @@ describe("GoalCard", () => {
 		expect(text).toContain("today");
 		expect(text).not.toMatch(/\d+ of \d+ min/);
 		expect(text).toContain("−5%vs plan");
-		expect(text).toContain("vs plan · −0.5 d");
-		expect(text).toContain("1 d daydays met");
-		expect(text).toContain("2 d daysdays read");
+		expect(text).toContain("vs plan · −0.5d");
+		expect(text).toContain("1d daydays met");
+		expect(text).toContain("2d daysdays read");
 		expect(text).toContain("Missed day: raise daily target");
 		expect(view.container.querySelector('[data-testid="goal-chart"]')).not.toBeNull();
 		expect(view.container.querySelector(BEHIND)).not.toBeNull();
@@ -73,7 +73,7 @@ describe("GoalCard", () => {
 		const plan = makePlan({ position: 100, sessions: [session(1, 0, 100)], now: at(2, 8) });
 		goalData.current = { goal: makeGoal(), plan };
 		view = await render(<GoalCard book={makeBook({ wordPosition: wordPos(100) })} />);
-		expect(view.text()).toContain("0%vs plan · 0.0 d");
+		expect(view.text()).toContain("0%vs plan · 0.0d");
 		expect(view.container.querySelector(BEHIND)).toBeNull();
 		expect(view.container.querySelector(AHEAD)).toBeNull();
 	});

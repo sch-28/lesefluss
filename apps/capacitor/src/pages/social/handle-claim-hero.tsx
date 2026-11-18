@@ -19,7 +19,7 @@ export function HandleClaimHero({
 			<TrailerCard self={{ name: profile.name, avatarUrl: profile.avatarUrl }}>
 				{isClaiming ? (
 					<div className="mt-5">
-						<h2 className="m-0 mb-4 font-bold text-[22px] text-foreground leading-tight tracking-tight">
+						<h2 className="m-0 mb-4 font-semibold text-2xl text-foreground leading-tight tracking-tight">
 							Pick a handle
 						</h2>
 						<HandleClaimStep
@@ -32,10 +32,10 @@ export function HandleClaimHero({
 					</div>
 				) : (
 					<>
-						<h2 className="m-0 mt-5 font-bold text-[26px] text-foreground leading-tight tracking-tight">
+						<h2 className="m-0 mt-5 font-semibold text-2xl text-foreground leading-tight tracking-tight">
 							Read together, wherever you are.
 						</h2>
-						<p className="m-0 mt-2.5 text-[14.5px] text-muted-foreground leading-relaxed">
+						<p className="m-0 mt-2.5 text-muted-foreground text-sm leading-relaxed">
 							First, pick a handle. Friends will know you by it, and nobody can see you until you
 							confirm.
 						</p>

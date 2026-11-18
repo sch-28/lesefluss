@@ -70,7 +70,7 @@ export function SpeedTestResult({
 			)}
 
 			<div className="mt-4 rounded-lg border border-border p-3" data-testid="speed-test-book">
-				<div className="truncate text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
+				<div className="truncate text-2xs text-muted-foreground uppercase tracking-wider">
 					{book.label}
 				</div>
 				<dl className="mt-2 grid grid-cols-3 gap-2 text-center">

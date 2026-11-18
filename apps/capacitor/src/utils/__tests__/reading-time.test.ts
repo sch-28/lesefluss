@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDuration } from "../date-utils";
-import { estimateMinutesLeft, formatReadingTime } from "../reading-time";
+import { estimateMinutesLeft, formatReadingTime, formatTimeLeft } from "../reading-time";
 
 describe("formatReadingTime", () => {
 	it("shows an estimate in the one duration format, rounded", () => {
@@ -9,6 +9,13 @@ describe("formatReadingTime", () => {
 		expect(formatReadingTime(65)).toBe("1h 5m");
 		expect(formatReadingTime(761)).toBe(formatDuration(761 * 60_000));
 		expect(formatReadingTime(0.5)).toBe("< 1 min");
+	});
+});
+
+describe("formatTimeLeft", () => {
+	it("puts the unit first and 'left' last", () => {
+		expect(formatTimeLeft(39)).toBe("39 min left");
+		expect(formatTimeLeft(480)).toBe("8h left");
 	});
 });
 

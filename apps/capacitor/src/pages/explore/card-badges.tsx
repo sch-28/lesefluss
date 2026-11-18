@@ -7,7 +7,7 @@ export const InLibraryBadge: React.FC<{ className?: string }> = ({ className }) 
 	<span
 		data-testid="in-library-badge"
 		className={cn(
-			"inline-flex items-center gap-0.5 rounded-sm bg-primary px-1.5 py-0.5 font-semibold text-[0.6rem] text-primary-foreground",
+			"inline-flex items-center gap-0.5 rounded-sm bg-primary px-1.5 py-0.5 font-semibold text-2xs text-primary-foreground",
 			className,
 		)}
 	>
@@ -77,16 +77,16 @@ export const CardMeta: React.FC<{
 	// runs into the next card on a phone grid.
 	const lengthFits = labels && !isInLibrary ? "shrink-0" : "min-w-0 overflow-hidden text-ellipsis";
 	const length = labels ? (
-		<span data-testid="card-length" className={cn(lengthFits, "text-[0.7rem] tabular-nums")}>
+		<span data-testid="card-length" className={cn(lengthFits, "text-2xs tabular-nums")}>
 			<LengthText labels={labels} variant="time" />
 		</span>
 	) : lengthFallback ? (
-		<span className={cn(lengthFits, "text-[0.7rem]")}>{lengthFallback}</span>
+		<span className={cn(lengthFits, "text-2xs")}>{lengthFallback}</span>
 	) : null;
 	return (
 		<div
 			data-testid="card-meta"
-			className="mt-0.5 flex h-[1lh] min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[0.75rem] text-muted-foreground"
+			className="mt-0.5 flex h-[1lh] min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-muted-foreground text-xs"
 		>
 			{typeof lead === "string" ? (
 				<span className="min-w-0 overflow-hidden text-ellipsis">{lead}</span>

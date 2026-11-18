@@ -178,9 +178,7 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 					{firstMentionContext && (
 						<blockquote className="m-0 border-border border-l-2 pl-3 text-muted-foreground text-sm italic">
 							...{firstMentionContext.before}
-							<mark className="bg-yellow-200/60 px-0.5 not-italic dark:bg-yellow-500/30">
-								{firstMentionContext.match}
-							</mark>
+							<mark className="bg-mark px-0.5 not-italic">{firstMentionContext.match}</mark>
 							{firstMentionContext.after}...
 						</blockquote>
 					)}

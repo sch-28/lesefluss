@@ -87,7 +87,7 @@ export function DiagnosticsRow() {
 
 			{expanded && (
 				<div className="border-border border-t px-4 py-3">
-					<pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px] text-muted-foreground leading-relaxed">
+					<pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-2xs text-muted-foreground leading-relaxed">
 						{report}
 					</pre>
 					<button

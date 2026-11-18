@@ -354,7 +354,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 					</div>
 				</div>
 				{detail.originUnavailable && (
-					<p className="mt-3 mb-0 rounded-md bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+					<p className="mt-3 mb-0 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
 						This book is no longer available. Progress is no longer shown.
 					</p>
 				)}

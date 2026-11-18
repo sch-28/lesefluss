@@ -1,3 +1,4 @@
+import { formatCount } from "@/utils/format-number";
 import { estimatePages, formatReadingTime } from "../../utils/reading-time";
 
 export const LENGTH_BUCKETS = ["short", "medium", "long", "epic"] as const;
@@ -64,8 +65,7 @@ export type LengthLabels = {
 	spokenTime: string;
 };
 
-const plural = (n: number, unit: string) =>
-	`${n.toLocaleString("en")} ${unit}${n === 1 ? "" : "s"}`;
+const plural = (n: number, unit: string) => `${formatCount(n)} ${unit}${n === 1 ? "" : "s"}`;
 
 function spokenDuration(minutes: number): string {
 	if (minutes < 1) return "under a minute";

@@ -50,6 +50,37 @@ const DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat("en-US", {
 	year: "numeric",
 });
 
+/** "Aug 25" without a year, for chart ticks where a year on some labels would collide. */
+export function formatDayMonth(epochMs: number): string {
+	return Number.isFinite(epochMs) ? DATE_FORMAT.format(epochMs) : "";
+}
+
+type MonthStyle = { month: "long" | "short"; year?: "numeric" | "2-digit" };
+
+/** A month in the app's one locale: "November", "Nov 2026", "Nov 26". */
+export function formatMonth(epochMs: number, style: MonthStyle): string {
+	return new Date(epochMs).toLocaleDateString("en-US", style);
+}
+
+/** The time of day in the device's own hour cycle ("14:05" or "2:05 PM"): a 12h clock is a
+ *  personal setting, so this is the one format that follows the device locale. */
+export function formatClock(epochMs: number): string {
+	return new Date(epochMs).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+/** `formatClock`'s hour alone, for chart ticks: "14" or "2 PM". */
+export function formatClockHour(epochMs: number): string {
+	return new Date(epochMs).toLocaleTimeString(undefined, { hour: "numeric" });
+}
+
+/** "Tue 14:05", on a share card that reads the same whoever's device made it. */
+export function formatWeekdayTime(epochMs: number): string {
+	const d = new Date(epochMs);
+	const day = d.toLocaleDateString("en-US", { weekday: "short" });
+	const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+	return `${day} ${time}`;
+}
+
 /** The app's one calendar date format: "Aug 25", with the year when it is not the current one. */
 export function formatDate(epochMs: number, now: number = Date.now()): string {
 	// Intl's format throws on an invalid time; one bad timestamp must not take down the page.
@@ -68,12 +99,12 @@ export function formatRelative(epochMs: number, now: number = Date.now()): strin
 	return formatDate(epochMs, now);
 }
 
-/** Finer than `formatRelative` for the last day: "just now", "5 min ago", "3 h ago". */
+/** Finer than `formatRelative` for the last day: "just now", "5 min ago", "3h ago". */
 export function formatAgo(epochMs: number, now: number = Date.now()): string {
 	const diff = now - epochMs;
 	if (diff < 60_000) return "just now";
 	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
-	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h ago`;
+	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
 	return formatRelative(epochMs, now);
 }
 

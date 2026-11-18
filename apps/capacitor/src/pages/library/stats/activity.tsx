@@ -77,6 +77,7 @@ export function Activity() {
 									x={PLOT_LEFT - 6}
 									y={y(i * step) + 4}
 									textAnchor="end"
+									// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 									className="fill-muted-foreground text-[11px]"
 								>
 									{i * step} h
@@ -104,6 +105,7 @@ export function Activity() {
 											x={isLast ? x + barWidth : x + barWidth / 2}
 											y={HEIGHT - 6}
 											textAnchor={isLast ? "end" : "middle"}
+											// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 											className="fill-muted-foreground text-[11px]"
 										>
 											{/* An axis tick never carries a year: it would crowd its neighbours. */}

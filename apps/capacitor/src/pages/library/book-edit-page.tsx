@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
+import { formatCount } from "@/utils/format-number";
 import { NotFound } from "../../components/app-shell/not-found";
 import { getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -47,7 +48,7 @@ function plainText(html: string): string {
 
 export function wordCountFact(words: number): string | null {
 	if (words <= 0) return null;
-	return `${words.toLocaleString()} words`;
+	return `${formatCount(words)} words`;
 }
 
 const BookEditPage: React.FC<Props> = ({ id }) => {

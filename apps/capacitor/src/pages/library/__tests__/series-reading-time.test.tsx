@@ -26,7 +26,7 @@ describe("SeriesReadingTime", () => {
 				]}
 			/>,
 		);
-		expect(view.text()).toBe("· Total 1h 30m· Left 1h");
+		expect(view.text()).toBe("· Total 1h 30m· 1h left");
 		expect(view.queryButton("About these times")).not.toBeNull();
 	});
 

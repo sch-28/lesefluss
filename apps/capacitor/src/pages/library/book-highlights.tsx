@@ -81,7 +81,7 @@ export function BookHighlights({
 									{highlight.note}
 								</p>
 							)}
-							<p className="m-0 mt-1 text-[11px] text-muted-foreground/70">
+							<p className="m-0 mt-1 text-2xs text-muted-foreground/70">
 								{formatRelative(highlight.createdAt)}
 							</p>
 						</div>

@@ -33,8 +33,8 @@ export function DeviceBadge({ bookId, style = "inline" }: DeviceBadgeProps) {
 			<div
 				className={
 					state.isActiveOnDevice
-						? "mt-0.5 font-semibold text-[0.7rem] text-accent uppercase tracking-wide"
-						: "mt-0.5 font-semibold text-[0.7rem] text-muted-foreground uppercase tracking-wide"
+						? "mt-0.5 font-semibold text-2xs text-accent uppercase tracking-wide"
+						: "mt-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wide"
 				}
 			>
 				{label}
@@ -46,8 +46,8 @@ export function DeviceBadge({ bookId, style = "inline" }: DeviceBadgeProps) {
 		<span
 			className={
 				state.isActiveOnDevice
-					? "absolute right-1.5 bottom-1.5 rounded-sm bg-accent px-1.5 py-0.5 font-semibold text-[0.6rem] text-accent-foreground"
-					: "absolute right-1.5 bottom-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background"
+					? "absolute right-1.5 bottom-1.5 rounded-sm bg-accent px-1.5 py-0.5 font-semibold text-2xs text-accent-foreground"
+					: "absolute right-1.5 bottom-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-2xs text-background"
 			}
 		>
 			{label}

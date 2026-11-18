@@ -77,13 +77,13 @@ export function BookChapters({
 								} ${isCurrent ? "font-medium" : "opacity-70"}`}
 							>
 								{!isSelfNumbered && (
-									<span className="w-6 shrink-0 text-right text-[11px] tabular-nums opacity-50">
+									<span className="w-6 shrink-0 text-right text-2xs tabular-nums opacity-50">
 										{index + 1}
 									</span>
 								)}
 								<span className="min-w-0 flex-1 truncate">{chapter.title}</span>
 								{isCurrent && (
-									<span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary uppercase tracking-wide">
+									<span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-2xs text-primary uppercase tracking-wide">
 										Here
 									</span>
 								)}

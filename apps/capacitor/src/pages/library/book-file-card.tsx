@@ -1,3 +1,4 @@
+import { formatCount } from "@/utils/format-number";
 import type { Book } from "../../services/db/schema";
 import { formatDate } from "../../utils/date-utils";
 import { useBookJourney } from "./book-journey";
@@ -16,7 +17,7 @@ export function BookFileCard({ book }: { book: Book }) {
 	const { journey } = useBookJourney(book);
 	const rows: Array<[string, string]> = [
 		["Format", book.fileFormat.toUpperCase()],
-		["Length", `${book.wordCount.toLocaleString()} words`],
+		["Length", `${formatCount(book.wordCount)} words`],
 	];
 	if (book.size > 0) rows.push(["Size", formatBytes(book.size)]);
 	if (!journey) {

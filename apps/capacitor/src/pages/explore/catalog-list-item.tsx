@@ -39,7 +39,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 					<CoverImage src={getCoverUrl(result.id, result.coverUrl)} alt="" />
 				</div>
 				<div className={cn("min-w-0 flex-1", LIST_ROW_TEXT_HEIGHT)}>
-					<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+					<div className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
 						{result.title}
 					</div>
 					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-xs">
@@ -49,7 +49,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 					</div>
 					{/* Own line: after author and language it truncated away on a phone. */}
 					{lengthLabels && (
-						<div className="mt-0.5 text-[0.75rem] text-muted-foreground">
+						<div className="mt-0.5 text-muted-foreground text-xs">
 							<LengthText labels={lengthLabels} />
 						</div>
 					)}
@@ -57,7 +57,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 						<div className="mt-1 flex items-center gap-1 overflow-hidden">
 							{isInLibrary && <InLibraryBadge />}
 							{subjects.length > 0 && (
-								<span className="min-w-0 truncate text-[0.75rem] text-muted-foreground">
+								<span className="min-w-0 truncate text-muted-foreground text-xs">
 									{subjects.join(" · ")}
 								</span>
 							)}

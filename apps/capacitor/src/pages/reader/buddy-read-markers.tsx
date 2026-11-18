@@ -1,6 +1,7 @@
 import type { BuddyReadMemberGoal, LiveMember } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { useEffect, useState } from "react";
+import { formatCount } from "@/utils/format-number";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { useBuddyReadProgress, useBuddyReads } from "../../services/social/buddy-reads";
 import { useIsOnline } from "../../services/social/cache";
@@ -62,7 +63,7 @@ export function useBuddyReadMarkers(
 function relativeTo(theirs: number, mine: number): string {
 	const delta = theirs - mine;
 	if (Math.abs(delta) < 10) return "level with you";
-	const words = `${Math.abs(delta).toLocaleString()} words`;
+	const words = `${formatCount(Math.abs(delta))} words`;
 	return delta > 0 ? `${words} ahead` : `${words} behind`;
 }
 
@@ -82,7 +83,7 @@ export function markerDetail(
 			parts.push(marker.live.wpm !== null ? `reading now · ${marker.live.wpm} wpm` : "reading now");
 	}
 	if (!approximate) parts.push(relativeTo(marker.wordPosition, myWord));
-	if (marker.goal) parts.push(`goal ${signed(marker.goal.aheadDays, " d")}`);
+	if (marker.goal) parts.push(`goal ${signed(marker.goal.aheadDays, "d")}`);
 	return parts.join(" · ");
 }
 

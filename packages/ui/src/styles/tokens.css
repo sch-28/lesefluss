@@ -3,6 +3,16 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant sepia (&:is(.theme-sepia *));
 
+/* The type scale's small step below `xs`, and one easing for every transition (durations
+ * 150, 200, 300); a bare `transition` names its properties and picks these up. */
+@theme {
+	--text-2xs: 0.6875rem;
+	--text-2xs--line-height: calc(1 / 0.6875);
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--default-transition-timing-function: var(--ease-out);
+	--default-transition-duration: 150ms;
+}
+
 @theme inline {
 	--font-heading: var(--font-sans);
 	--color-sidebar-ring: var(--sidebar-ring);

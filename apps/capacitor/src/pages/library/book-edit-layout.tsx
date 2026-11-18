@@ -157,7 +157,5 @@ export const BookEditLayout: React.FC<Props> = ({
 };
 
 export const UnsavedMark: React.FC<{ isWide: boolean }> = ({ isWide }) => (
-	<span className="text-amber-600 dark:text-amber-400">
-		● {isWide ? "Unsaved changes" : "Unsaved"}
-	</span>
+	<span className="text-warning">● {isWide ? "Unsaved changes" : "Unsaved"}</span>
 );

@@ -89,11 +89,11 @@ export function GoalCard({ book }: { book: Book }) {
 				<>
 					<div className="flex items-end justify-between gap-4">
 						<div>
-							<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+							<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
 								{figure.done}
 								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
-							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
 								{today.targetMinutes != null
 									? `today · ${formatPercent(today.progressPercent, 1)}`
 									: "today"}
@@ -108,8 +108,8 @@ export function GoalCard({ book }: { book: Book }) {
 							>
 								{formatPercentChange(plan.aheadBehind.percent)}
 							</div>
-							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-								vs plan · {signed(plan.aheadBehind.days, " d")}
+							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
+								vs plan · {signed(plan.aheadBehind.days, "d")}
 							</div>
 						</div>
 					</div>

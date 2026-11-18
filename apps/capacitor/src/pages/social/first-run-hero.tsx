@@ -64,10 +64,10 @@ export function FirstRunHero({
 	return (
 		<>
 			<TrailerCard self={me ? { name: me.name, avatarUrl: me.avatarUrl } : undefined}>
-				<h2 className="m-0 mt-6 font-bold text-[26px] text-foreground leading-tight tracking-tight">
+				<h2 className="m-0 mt-6 font-semibold text-2xl text-foreground leading-tight tracking-tight">
 					Read together, wherever you are.
 				</h2>
-				<p className="m-0 mt-3 text-[14.5px] text-muted-foreground leading-relaxed">
+				<p className="m-0 mt-3 text-muted-foreground text-sm leading-relaxed">
 					Pick a book with a friend and watch each other move through it. React to chapters, leave
 					notes, keep each other going.
 				</p>
@@ -124,20 +124,18 @@ export function FirstRunHero({
 export function HowItWorks() {
 	return (
 		<section className="mt-8">
-			<h3 className="m-0 font-bold text-[11px] text-muted-foreground uppercase tracking-widest">
+			<h3 className="m-0 font-semibold text-2xs text-muted-foreground uppercase tracking-widest">
 				How it works
 			</h3>
 			<ol className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
 				{STEPS.map((step, i) => (
 					<li key={step.title} className="flex gap-3">
-						<span className="w-5 font-extrabold text-[26px] text-primary tabular-nums leading-none">
+						<span className="w-5 font-semibold text-2xl text-primary tabular-nums leading-none">
 							{i + 1}
 						</span>
 						<div>
-							<div className="font-semibold text-[15px] text-foreground">{step.title}</div>
-							<div className="mt-0.5 text-[13px] text-muted-foreground leading-snug">
-								{step.body}
-							</div>
+							<div className="font-semibold text-base text-foreground">{step.title}</div>
+							<div className="mt-0.5 text-muted-foreground text-sm leading-snug">{step.body}</div>
 						</div>
 					</li>
 				))}

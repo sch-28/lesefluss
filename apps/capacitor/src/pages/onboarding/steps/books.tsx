@@ -176,7 +176,10 @@ const BooksStep: React.FC = () => {
 					aria-valuemin={0}
 					aria-valuemax={100}
 				>
-					<div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
+					<div
+						className="h-full origin-left bg-primary transition-transform"
+						style={{ transform: `scaleX(${progress / 100})` }}
+					/>
 				</div>
 			)}
 		</div>

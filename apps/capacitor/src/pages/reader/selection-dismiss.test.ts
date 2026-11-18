@@ -30,9 +30,9 @@ describe("markerDetail", () => {
 	it("adds their standing against their own goal when it is shared", () => {
 		expect(
 			markerDetail({ live: null, wordPosition: 500, goal: { aheadDays: -1.26 } }, 500, false),
-		).toBe("level with you · goal \u22121.3 d");
+		).toBe("level with you · goal \u22121.3d");
 		expect(markerDetail({ live: null, wordPosition: 500, goal: { aheadDays: 2 } }, 500, true)).toBe(
-			"goal +2.0 d",
+			"goal +2.0d",
 		);
 	});
 });

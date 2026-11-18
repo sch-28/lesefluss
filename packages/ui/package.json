@@ -10,6 +10,7 @@
 	"exports": {
 		"./styles/tokens.css": "./src/styles/tokens.css",
 		"./utils": "./src/lib/utils.ts",
+		"./format-count": "./src/lib/format-count.ts",
 		"./use-prefers-reduced-motion": "./src/lib/use-prefers-reduced-motion.ts",
 		"./overlay-back": "./src/lib/overlay-back.ts",
 		"./buddy-trailer": "./src/lib/buddy-trailer.ts",

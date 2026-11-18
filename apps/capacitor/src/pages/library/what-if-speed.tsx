@@ -3,7 +3,7 @@ import { Slider } from "@lesefluss/ui/slider";
 import { useState } from "react";
 import { WHAT_IF_WPM, whatIfEstimate, whatIfStart } from "../../services/stats/what-if";
 import { formatDayKey } from "../../utils/date-utils";
-import { formatReadingTime } from "../../utils/reading-time";
+import { formatReadingTime, formatTimeLeft } from "../../utils/reading-time";
 
 interface Props {
 	wordsLeft: number;
@@ -34,7 +34,7 @@ const RSVP_SOURCE_LABELS: Record<RsvpEstimateSpeed["source"], string> = {
 
 function whatIfLine(minutesLeft: number | null, finishDay: string | null): string {
 	const parts = [
-		minutesLeft === null ? null : `Left ${formatReadingTime(minutesLeft)}`,
+		minutesLeft === null ? null : formatTimeLeft(minutesLeft),
 		finishDay === null ? null : `Done ${formatDayKey(finishDay)}`,
 	].filter((part) => part !== null);
 	return parts.length > 0 ? parts.join(" · ") : "Drag to try another speed";

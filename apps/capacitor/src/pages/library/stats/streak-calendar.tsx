@@ -10,7 +10,7 @@ import {
 	shiftMonth,
 } from "../../../services/stats/calendar";
 import { summariseDays } from "../../../services/stats/summaries";
-import { startOfLocalDay } from "../../../utils/date-utils";
+import { formatMonth, startOfLocalDay } from "../../../utils/date-utils";
 
 const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
@@ -18,15 +18,10 @@ const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 const MONTHS_BEFORE_YEAR_SHOWN = 11;
 
 /** Tailwind can't build class names at runtime, so the steps are spelled out. */
-const INTENSITY_CLASS = [
-	"bg-current/10",
-	"bg-emerald-500/35",
-	"bg-emerald-500/65",
-	"bg-emerald-500",
-] as const;
+const INTENSITY_CLASS = ["bg-current/10", "bg-heat/35", "bg-heat/65", "bg-heat"] as const;
 
 export function monthLabelOf(monthAnchor: number, today: number): string {
-	return new Date(monthAnchor).toLocaleDateString(undefined, {
+	return formatMonth(monthAnchor, {
 		month: "long",
 		year: monthAnchor < shiftMonth(today, -MONTHS_BEFORE_YEAR_SHOWN) ? "numeric" : undefined,
 	});
@@ -139,10 +134,7 @@ export function StreakWeekStrip() {
 }
 
 function WeekMark({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
-	if (day.isFrozen)
-		return (
-			<Snowflake aria-hidden="true" className="size-3 high-contrast:text-primary text-sky-500" />
-		);
+	if (day.isFrozen) return <Snowflake aria-hidden="true" className="size-3 text-info" />;
 	if (day.intensity > 0) return <span className="size-3 rounded-full bg-[var(--goal-met)]" />;
 	if (isToday)
 		return (
@@ -161,7 +153,7 @@ function DotGrid({ days, ariaLabel }: { days: CalendarDay[]; ariaLabel: string }
 					// Weekday initials repeat (T, T and S, S), so the index is the key.
 					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static row
 					key={i}
-					className="pb-1 text-center text-[0.625rem] opacity-40"
+					className="pb-1 text-center text-2xs opacity-40"
 				>
 					{initial}
 				</span>
@@ -186,7 +178,7 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 			{isLinked && (
 				<span
 					aria-hidden="true"
-					className={`absolute inset-y-1 bg-emerald-500/15 ${
+					className={`absolute inset-y-1 bg-heat/15 ${
 						day.linksBefore ? "left-0" : "left-1 rounded-l-full"
 					} ${day.linksAfter ? "right-0" : "right-1 rounded-r-full"}`}
 				/>
@@ -194,12 +186,12 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 			<span
 				data-testid="calendar-day"
 				className={cn(
-					"relative flex size-6 items-center justify-center rounded-full text-[0.625rem] tabular-nums",
+					"relative flex size-6 items-center justify-center rounded-full text-2xs tabular-nums",
 					day.isFrozen
-						? "bg-sky-500/20 high-contrast:bg-primary/20 high-contrast:text-primary text-sky-700 dark:text-sky-300"
+						? "bg-info/20 text-info"
 						: [
 								INTENSITY_CLASS[day.intensity],
-								day.intensity >= 2 ? "font-semibold text-white" : "text-muted-foreground",
+								day.intensity >= 2 ? "font-semibold text-heat-foreground" : "text-muted-foreground",
 							],
 					!day.isInMonth && "opacity-30",
 					isToday && "ring-2 ring-current/40 ring-offset-1 ring-offset-card",
@@ -209,7 +201,7 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 				{day.isFrozen && (
 					<Snowflake
 						aria-hidden="true"
-						className="absolute -top-0.5 -right-0.5 size-2.5 high-contrast:text-primary text-sky-500"
+						className="absolute -top-0.5 -right-0.5 size-2.5 text-info"
 					/>
 				)}
 			</span>

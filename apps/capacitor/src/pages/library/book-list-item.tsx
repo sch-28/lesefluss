@@ -107,7 +107,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="truncate font-medium text-[0.875rem] leading-5">
+					<div className="truncate font-medium text-sm leading-5">
 						{badge && !showsAuthor && <>{badge} </>}
 						{book.title}
 					</div>

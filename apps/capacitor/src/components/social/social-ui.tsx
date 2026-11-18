@@ -72,7 +72,7 @@ export function StatTile({ value, label }: { value: string; label: string }) {
 	return (
 		<div className="rounded-xl border border-current/10 bg-card p-3 text-card-foreground">
 			<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">{value}</div>
-			<div className="mt-1.5 text-[10px] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }
@@ -112,10 +112,10 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 					<div className="mt-2 px-0.5 text-foreground">
 						<div className="line-clamp-1 font-medium text-sm">{item.title}</div>
 						{item.author && (
-							<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{item.author}</div>
+							<div className="mt-0.5 line-clamp-1 text-2xs opacity-60">{item.author}</div>
 						)}
 						{item.detail && (
-							<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground tabular-nums">
+							<div className="mt-0.5 line-clamp-1 text-2xs text-muted-foreground tabular-nums">
 								{item.detail}
 							</div>
 						)}

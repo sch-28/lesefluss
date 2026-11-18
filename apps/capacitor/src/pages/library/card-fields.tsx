@@ -7,7 +7,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { formatPercent } from "@/utils/format-percent";
 import { usePersistentString } from "../../hooks/use-persistent-string";
-import { formatReadingTime } from "../../utils/reading-time";
+import { formatReadingTime, formatTimeLeft } from "../../utils/reading-time";
 import type { LibraryItem } from "./sort-filter";
 import { type CellContext, type ColumnId, TABLE_COLUMNS } from "./table-columns";
 
@@ -116,7 +116,7 @@ export function cardTimeLeft(item: LibraryItem): string {
 	if (item.kind !== "book" || item.sortKey.progress <= 0 || item.sortKey.minutesLeft === null) {
 		return "";
 	}
-	return `Left ${formatReadingTime(item.sortKey.minutesLeft)}`;
+	return formatTimeLeft(item.sortKey.minutesLeft);
 }
 
 export type CardFieldValues = Partial<Record<CardFieldId, string>>;
@@ -141,8 +141,8 @@ export function cardFieldValues(
 }
 
 const SLOT = {
-	grid: "mt-0.5 h-4 text-[0.75rem] leading-4",
-	list: "mt-0.5 h-4 text-[0.75rem] leading-4",
+	grid: "mt-0.5 h-4 text-xs leading-4",
+	list: "mt-0.5 h-4 text-xs leading-4",
 };
 
 /** One line per field that has a value; an empty one (a child that renders nothing) takes no line. */
@@ -191,7 +191,7 @@ export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ sta
 		return (
 			<span id={id} className="flex flex-1 items-center gap-1.5">
 				<Progress value={status.progress} className="h-1 flex-1" aria-label="Reading progress" />
-				<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+				<span className="text-2xs text-muted-foreground tabular-nums">
 					{formatPercent(status.progress)}
 				</span>
 			</span>

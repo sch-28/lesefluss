@@ -67,6 +67,7 @@ export function GoalRing({
 				)}
 			</svg>
 			{label != null && (
+				// ui-rules-allow: font-size -- sized to fit inside the fixed-size ring
 				<span className="absolute inset-0 flex items-center justify-center font-semibold text-[0.5625rem] tabular-nums">
 					{label}
 				</span>

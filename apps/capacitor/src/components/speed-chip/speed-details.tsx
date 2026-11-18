@@ -69,15 +69,13 @@ function ModeRow({
 		>
 			<span className="flex flex-col">
 				<span className="text-sm">{VIEW_LABELS[view]}</span>
-				{sub && <span className="text-[0.6875rem] text-muted-foreground tabular-nums">{sub}</span>}
+				{sub && <span className="text-2xs text-muted-foreground tabular-nums">{sub}</span>}
 			</span>
 			<Sparkline points={points} />
 			<span className="flex flex-col items-end">
 				<span className="font-semibold text-sm tabular-nums">{wpm} wpm</span>
 				{delta !== null && (
-					<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-						{deltaLabel(delta)}
-					</span>
+					<span className="text-2xs text-muted-foreground tabular-nums">{deltaLabel(delta)}</span>
 				)}
 			</span>
 		</div>
@@ -91,7 +89,7 @@ function DialStepper({ dial, onChange }: { dial: number; onChange: (wpm: number)
 		<div className="flex items-center justify-between gap-3">
 			<div className="flex flex-col">
 				<span className="text-sm">Default dial</span>
-				<span className="text-[0.6875rem] text-muted-foreground">Global, all books</span>
+				<span className="text-2xs text-muted-foreground">Global, all books</span>
 			</div>
 			<RsvpSpeedControl wpm={dial} onChange={onChange} />
 		</div>
@@ -134,16 +132,14 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 	return (
 		<div className="flex flex-col gap-3" data-testid="speed-details">
 			<div className="flex items-baseline justify-between">
-				<span className="font-semibold text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
+				<span className="font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 					Your speed
 				</span>
-				<span className="text-[0.6875rem] text-muted-foreground">
-					{WINDOW_LABELS[model.window]}
-				</span>
+				<span className="text-2xs text-muted-foreground">{WINDOW_LABELS[model.window]}</span>
 			</div>
 
 			<div className="flex items-baseline gap-1.5" data-testid="speed-big">
-				<span className="font-bold text-3xl tabular-nums leading-none">{leadWpm}</span>
+				<span className="font-semibold text-3xl tabular-nums leading-none">{leadWpm}</span>
 				<span className="text-muted-foreground text-sm">
 					wpm{views.length > 1 ? ` ${VIEW_LABELS[lead]}` : ""}
 				</span>
@@ -193,9 +189,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 				)}
 			</div>
 
-			<p className="m-0 text-[0.6875rem] text-muted-foreground leading-snug">
-				{footnote(model, showDial)}
-			</p>
+			<p className="m-0 text-2xs text-muted-foreground leading-snug">{footnote(model, showDial)}</p>
 
 			<Link
 				to="/tabs/stats"

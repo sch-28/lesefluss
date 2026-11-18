@@ -48,7 +48,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<div className="truncate font-medium text-[0.875rem] leading-5">{series.title}</div>
+				<div className="truncate font-medium text-sm leading-5">{series.title}</div>
 				<div id={detailsId}>
 					{fields.map((field) =>
 						field === "progress" ? null : (
@@ -64,7 +64,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 						),
 					)}
 					{chapterCount !== undefined && (
-						<div className="mt-0.5 text-[0.75rem] text-muted-foreground">
+						<div className="mt-0.5 text-muted-foreground text-xs">
 							{chapterCountLabel(chapterCount)}
 						</div>
 					)}

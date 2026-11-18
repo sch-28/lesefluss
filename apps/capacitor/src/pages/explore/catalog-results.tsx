@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Loader2, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { formatCount } from "@/utils/format-number";
 import type { ViewMode } from "../../components/view-mode-toggle";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import type { CatalogSearchFilters } from "../../services/catalog/query-keys";
@@ -144,8 +145,8 @@ const CatalogResults: React.FC<Props> = ({
 
 	return (
 		<div className="pb-20">
-			<div className="px-4 pt-2 text-muted-foreground text-xs">
-				{total.toLocaleString()} result{total === 1 ? "" : "s"}
+			<div className="px-4 pt-2 text-muted-foreground text-xs tabular-nums">
+				{formatCount(total)} result{total === 1 ? "" : "s"}
 			</div>
 			{view === "grid" ? (
 				<div className={`${EXPLORE_GRID_CLASS} p-4`}>

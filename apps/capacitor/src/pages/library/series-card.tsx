@@ -65,7 +65,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				{hasChapterBadge && (
 					<span
 						id={chaptersId}
-						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white"
+						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-2xs text-white"
 					>
 						{chapterCountLabel(chapterCount)}
 					</span>
@@ -73,7 +73,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 			</div>
 
 			<div className="px-0.5 pt-2">
-				<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
+				<div className="line-clamp-2 overflow-hidden font-medium text-sm leading-[1.25]">
 					{series.title}
 				</div>
 				<div id={detailsId}>

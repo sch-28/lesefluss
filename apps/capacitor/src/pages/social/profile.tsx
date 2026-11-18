@@ -25,14 +25,15 @@ import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useBlockUser, useRemoveFriend } from "@/services/social/friends";
 import { useProfileView } from "@/services/social/profile-view";
 import { knownMilestones } from "@/services/stats/milestones";
-import { formatDuration } from "@/utils/date-utils";
+import { formatDuration, formatMonth } from "@/utils/date-utils";
+import { formatCount } from "@/utils/format-number";
 import { formatPercent } from "@/utils/format-percent";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
 
 function statTiles(stats: ProfileStats): { label: string; value: string }[] {
 	const tiles = [
 		{ label: "Finished this year", value: String(stats.booksFinishedThisYear) },
-		{ label: "Words read", value: stats.wordsRead.toLocaleString() },
+		{ label: "Words read", value: formatCount(stats.wordsRead) },
 	];
 	if (stats.currentStreakDays !== null) {
 		tiles.push({ label: "Day streak", value: String(stats.currentStreakDays) });
@@ -49,7 +50,7 @@ function statTiles(stats: ProfileStats): { label: string; value: string }[] {
 
 function friendsSinceLabel(ms: number | null): string {
 	if (ms === null) return "Friends";
-	return `Friends since ${new Date(ms).toLocaleDateString(undefined, { month: "short", year: "numeric" })}`;
+	return `Friends since ${formatMonth(ms, { month: "short", year: "numeric" })}`;
 }
 
 function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boolean }) {

@@ -16,18 +16,11 @@ import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
 import { IS_WEB_BUILD } from "@/services/sync";
+import { formatAgo } from "@/utils/date-utils";
 
 export const Route = createFileRoute("/tabs/settings/sync")({
 	component: SyncSettings,
 });
-
-function formatLastSynced(ms: number | null): string {
-	if (!ms) return "Never";
-	const diff = Date.now() - ms;
-	if (diff < 60_000) return "Just now";
-	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
-	return new Date(ms).toLocaleString();
-}
 
 function SyncSettings() {
 	const { isLoggedIn, userEmail, isSyncing, lastSynced, syncError, logout, syncNow } =
@@ -49,11 +42,11 @@ function SyncSettings() {
 					<>
 						<SettingsSection title="Account">
 							<div className="flex items-center gap-3 px-4 py-3">
-								<CloudCheck className="size-5 text-emerald-500" />
+								<CloudCheck className="size-5 text-muted-foreground" />
 								<div className="flex-1">
 									<div className="font-medium text-foreground text-sm">{userEmail}</div>
 									<div className="text-muted-foreground text-xs">
-										Last synced {formatLastSynced(lastSynced)}
+										Last synced {lastSynced ? formatAgo(lastSynced) : "never"}
 									</div>
 								</div>
 							</div>

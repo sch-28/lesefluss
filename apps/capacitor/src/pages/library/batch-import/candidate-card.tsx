@@ -35,7 +35,7 @@ const CandidateCard: React.FC<Props> = ({ candidate, isDuplicate, onToggle }) =>
 				) : (
 					<div className="flex size-full flex-col items-center justify-center gap-1 text-muted-foreground">
 						<BookOpen className="size-6" />
-						<span className="font-medium text-[0.65rem] uppercase">{file.format}</span>
+						<span className="font-medium text-2xs uppercase">{file.format}</span>
 					</div>
 				)}
 
@@ -56,19 +56,19 @@ const CandidateCard: React.FC<Props> = ({ candidate, isDuplicate, onToggle }) =>
 			    a card that grows when its metadata arrives shifts every row below it,
 			    and probing runs one file at a time across the whole grid. */}
 			<div className="px-0.5 pt-1">
-				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-sm leading-[1.2]">
 					{title}
 				</div>
-				<div className="mt-0.5 min-h-[1.2em] truncate text-[0.75rem] text-muted-foreground">
+				<div className="mt-0.5 min-h-[1.2em] truncate text-muted-foreground text-xs">
 					{probe?.author ?? ""}
 				</div>
-				<div className="mt-0.5 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+				<div className="mt-0.5 flex items-center gap-1.5 text-2xs text-muted-foreground">
 					<span className="uppercase">{file.format}</span>
 					<span>·</span>
 					<span className="tabular-nums">{formatBytes(file.size)}</span>
 				</div>
 				{isDuplicate && (
-					<Badge variant="secondary" className="mt-1 text-[0.65rem]">
+					<Badge variant="secondary" className="mt-1 text-2xs">
 						Already in library
 					</Badge>
 				)}

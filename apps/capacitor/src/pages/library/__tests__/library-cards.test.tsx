@@ -349,8 +349,8 @@ describe.each([
 			{ ...chapters[0], wordPosition: 6000, finishedAt: 1 },
 			...chapters.slice(1),
 		]);
-		expect(view.text()).toContain("Left 1h");
-		expect(description(card())).toContain("Left 1h");
+		expect(view.text()).toContain("1h left");
+		expect(description(card())).toContain("1h left");
 
 		view.unmount();
 		view = await show([

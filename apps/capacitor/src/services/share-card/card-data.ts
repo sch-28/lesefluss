@@ -5,7 +5,7 @@ import {
 	type SpeedModel,
 	wpmFrom,
 } from "@lesefluss/core";
-import { formatDuration } from "../../utils/date-utils";
+import { formatDuration, formatMonth, formatWeekdayTime } from "../../utils/date-utils";
 import { formatPercent } from "../../utils/format-percent";
 import type { SessionRow } from "../reading-sessions/rules";
 import { readingDaysOfSitting } from "../stats/aggregate";
@@ -18,16 +18,7 @@ type CardBook = { title: string; author: string | null; coverImage: string | nul
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "±0");
 
-function monthYear(at: number): string {
-	return new Date(at).toLocaleDateString("en", { month: "short", year: "numeric" });
-}
-
-function weekdayTime(at: number): string {
-	const d = new Date(at);
-	const day = d.toLocaleDateString("en", { weekday: "short" });
-	const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-	return `${day} ${time}`;
-}
+const monthYear = (at: number) => formatMonth(at, { month: "short", year: "numeric" });
 
 /** The card for one sitting, from the numbers the session summary already shows. */
 export function sessionCardData(input: {
@@ -66,7 +57,7 @@ export function sessionCardData(input: {
 	}
 	return {
 		kind: "book",
-		kicker: `Session · ${weekdayTime(input.startedAt)}`,
+		kicker: `Session · ${formatWeekdayTime(input.startedAt)}`,
 		title: book.title,
 		author: book.author,
 		cover: book.coverImage,

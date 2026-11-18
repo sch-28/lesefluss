@@ -24,6 +24,7 @@ import { socialErrorMessage, useRespondToRequest } from "@/services/social/frien
 import { useInbox, useMarkAllRead, useMarkRead } from "@/services/social/inbox";
 import { shareFailureMessage, useRespondToShare } from "@/services/social/shares";
 import { formatAgo } from "@/utils/date-utils";
+import { formatCount } from "@/utils/format-number";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
 function describe(item: InboxItem): string {
@@ -99,7 +100,7 @@ function ShareBookCard({ book }: { book: ShareItemBook }) {
 			<div className="min-w-0 flex-1">
 				<div className="truncate font-medium text-foreground text-sm">{book.title}</div>
 				<div className="truncate text-muted-foreground text-xs">
-					{[book.author, book.wordCount ? `${book.wordCount.toLocaleString()} words` : null]
+					{[book.author, book.wordCount ? `${formatCount(book.wordCount)} words` : null]
 						.filter(Boolean)
 						.join(" · ")}
 				</div>

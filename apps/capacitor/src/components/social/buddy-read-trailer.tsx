@@ -26,9 +26,10 @@ const DEMO_PERCENT = 42;
 function DemoCover() {
 	return (
 		<div className="flex h-full flex-col justify-between bg-primary p-2 text-primary-foreground">
-			<span className="font-serif text-[11px] uppercase leading-tight tracking-wide">
+			<span className="font-serif text-2xs uppercase leading-tight tracking-wide">
 				Your next book
 			</span>
+			{/* ui-rules-allow: font-size -- part of the fixed-size cover artwork, not interface text */}
 			<span className="text-[8px] uppercase tracking-widest opacity-70">Lesefluss</span>
 		</div>
 	);
@@ -44,7 +45,7 @@ function NoteOverlay({ tick }: { tick: number }) {
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={{ opacity: 0, y: -10 }}
 						transition={{ type: "spring", stiffness: 500, damping: 18 }}
-						className="absolute bottom-12 flex items-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-medium text-[11px] text-foreground shadow-md"
+						className="absolute bottom-12 flex items-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-medium text-2xs text-foreground shadow-md"
 					>
 						<MessageCircle className="size-3" />
 						That twist!
@@ -144,11 +145,11 @@ export function BuddyReadTrailer({
 							<div className="truncate font-semibold text-foreground text-sm">
 								{book?.title ?? "Any book you like"}
 							</div>
-							<div className="mt-0.5 text-[11px] text-muted-foreground">
+							<div className="mt-0.5 text-2xs text-muted-foreground">
 								{riders.length} reading together
 							</div>
 						</div>
-						<span className="shrink-0 rounded-full border border-border px-2 py-0.5 font-bold text-[9.5px] text-muted-foreground uppercase tracking-wider">
+						<span className="shrink-0 rounded-full border border-border px-2 py-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 							Preview
 						</span>
 					</div>
@@ -163,7 +164,7 @@ export function BuddyReadTrailer({
 				</div>
 			</div>
 			<div className="mt-1 flex min-h-7 items-center justify-between gap-2">
-				<span aria-hidden="true" className="truncate text-[11.5px] text-muted-foreground">
+				<span aria-hidden="true" className="truncate text-muted-foreground text-xs">
 					{buddyTrailerCaptionAt(tick)}
 				</span>
 				{canReplay && (

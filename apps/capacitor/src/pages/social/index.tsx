@@ -324,7 +324,7 @@ function InboxButton() {
 			<Link to="/tabs/social/inbox" aria-label={count > 0 ? `Inbox, ${count} unread` : "Inbox"}>
 				<Inbox className="size-5" />
 				{count > 0 && (
-					<span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-bold text-[10px] text-primary-foreground tabular-nums ring-2 ring-background">
+					<span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-2xs text-primary-foreground tabular-nums ring-2 ring-background">
 						{count > 99 ? "99+" : count}
 					</span>
 				)}

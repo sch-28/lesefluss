@@ -4,8 +4,8 @@ import { cn } from "../lib/utils";
 
 /** Shared by DrawerHeader and SheetHeader: left-aligned, on the 16px page gutter. */
 export const SHEET_HEADER_CLASS = "flex flex-col gap-0.5 px-4 pt-2 pb-3 text-left";
-export const SHEET_TITLE_CLASS = "font-semibold text-[18px] text-foreground leading-tight";
-export const SHEET_SUBTITLE_CLASS = "text-[13px] text-muted-foreground";
+export const SHEET_TITLE_CLASS = "font-semibold text-lg text-foreground leading-tight";
+export const SHEET_SUBTITLE_CLASS = "text-sm text-muted-foreground";
 
 /**
  * A sheet header with a trailing action: title (and subtitle) left, the

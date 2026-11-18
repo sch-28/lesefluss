@@ -1,6 +1,6 @@
 import type { Chapter } from "../../services/db/schema";
 import { currentChapterIndex, hasWordAlignedChapters } from "../../utils/chapters";
-import { formatReadingTime } from "../../utils/reading-time";
+import { formatTimeLeft } from "../../utils/reading-time";
 
 /**
  * The detail page's main button: "Continue · <time> left" once a book is started, with the
@@ -16,6 +16,6 @@ export function openReaderLabel(
 	const chapter = hasWordAlignedChapters(chapters, book.wordCount)
 		? chapters[currentChapterIndex(chapters, book.wordPosition)]?.title
 		: undefined;
-	const label = minutesLeft ? `Continue · ${formatReadingTime(minutesLeft)} left` : "Continue";
+	const label = minutesLeft ? `Continue · ${formatTimeLeft(minutesLeft)}` : "Continue";
 	return chapter ? { label, detail: chapter } : { label };
 }

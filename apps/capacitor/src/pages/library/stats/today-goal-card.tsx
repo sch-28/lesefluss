@@ -86,10 +86,8 @@ export function TodayGoalCard() {
 										isPending && "invisible",
 									)}
 								>
-									<span className="break-words font-semibold text-[1.0625rem] tabular-nums">
-										{primary}
-									</span>
-									<span className="break-words text-[0.8125rem] text-muted-foreground">
+									<span className="break-words font-semibold text-lg tabular-nums">{primary}</span>
+									<span className="break-words text-muted-foreground text-sm">
 										{streakLine(streak.data)}
 									</span>
 								</span>

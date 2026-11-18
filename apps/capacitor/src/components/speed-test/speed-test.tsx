@@ -242,7 +242,7 @@ function IntroStat({ value, label }: { value: string; label: string }) {
 	return (
 		<div className="rounded-lg border border-border px-2 py-2">
 			<div className="whitespace-nowrap font-semibold tabular-nums">{value}</div>
-			<div className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">{label}</div>
+			<div className="text-2xs text-muted-foreground uppercase tracking-wider">{label}</div>
 		</div>
 	);
 }

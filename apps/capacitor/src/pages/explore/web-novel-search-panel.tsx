@@ -234,7 +234,7 @@ const providerLabels = (providers: ProviderId[]) => providers.map(providerLabel)
 
 const UnavailableProviders: React.FC<{ providers: ProviderId[] }> = ({ providers }) =>
 	providers.length > 0 ? (
-		<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300">
+		<div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-warning text-xs">
 			Some providers unavailable: {providerLabels(providers)}
 		</div>
 	) : null;
@@ -295,7 +295,7 @@ const ResultListItem: React.FC<{
 					</div>
 				)}
 				<div className="min-w-0 flex-1">
-					<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+					<div className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
 						{result.title}
 					</div>
 					{result.author && (
@@ -304,11 +304,11 @@ const ResultListItem: React.FC<{
 						</div>
 					)}
 					<div className="mt-1 flex items-center gap-2">
-						<span className="rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background uppercase tracking-wide">
+						<span className="rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-2xs text-background uppercase tracking-wide">
 							{result.provider}
 						</span>
 						{(lengthLabels || chapters) && (
-							<span className="text-[0.75rem] text-muted-foreground">
+							<span className="text-muted-foreground text-xs">
 								{lengthLabels ? <LengthText labels={lengthLabels} /> : chapters}
 							</span>
 						)}

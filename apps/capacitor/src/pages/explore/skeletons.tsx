@@ -15,14 +15,14 @@ export const CardSkeleton: React.FC<{ extraLines?: number }> = ({ extraLines = 0
 		{/* The line boxes of ResultCard's title (two lines) and its author and length line, so a
 		    loaded shelf or grid row keeps the skeleton's height. */}
 		<div className="px-0.5 pt-1">
-			<div className="h-[2lh] text-[0.85rem] leading-[1.2]">
+			<div className="h-[2lh] text-sm leading-[1.2]">
 				<div className={cn(SKELETON_BLOCK, "h-[0.9lh] w-11/12")} />
 			</div>
-			<div className="mt-0.5 flex h-[1lh] items-center text-[0.75rem]">
+			<div className="mt-0.5 flex h-[1lh] items-center text-xs">
 				<div className={cn(SKELETON_BLOCK, "h-3 w-2/3")} />
 			</div>
 			{skeletonKeys(extraLines).map((key) => (
-				<div key={key} className="mt-0.5 h-[1lh] text-[0.7rem]" />
+				<div key={key} className="mt-0.5 h-[1lh] text-2xs" />
 			))}
 		</div>
 	</div>

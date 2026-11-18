@@ -1,3 +1,4 @@
+import { formatDayMonth } from "@/utils/date-utils";
 /**
  * Axis helpers shared by the stats charts. Both plot an index-based x scale
  * where every point is a bucket, so tick placement and labelling are the same
@@ -14,12 +15,10 @@ export function evenTickIndices(count: number, maxTicks: number): number[] {
 	return Array.from({ length: maxTicks }, (_, i) => Math.round(i * step));
 }
 
-const DAY_TICK_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-
 /**
  * "Dec 30", never with the year: a year suffix on some ticks around New Year widens the axis
  * and makes its labels collide. The chart's legend or tooltip carries the year.
  */
 export function formatDayTick(epochMs: number): string {
-	return Number.isFinite(epochMs) ? DAY_TICK_FORMAT.format(epochMs) : "";
+	return formatDayMonth(epochMs);
 }
