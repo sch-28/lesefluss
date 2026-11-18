@@ -4,19 +4,7 @@ import {
 	type NextMilestone,
 	type ReachedMilestone,
 } from "@lesefluss/core";
-import { formatCount } from "@/utils/format-number";
-
-/** "640", "100k", "1.2M": short enough for the inside of a medal. */
-export function compactNumber(n: number): string {
-	if (n >= 1_000_000) return `${trimZero((n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1))}M`;
-	if (n >= 10_000) return `${Math.floor(n / 1000)}k`;
-	if (n >= 1000) return `${trimZero((n / 1000).toFixed(1))}k`;
-	return String(Math.round(n));
-}
-
-function trimZero(s: string): string {
-	return s.endsWith(".0") ? s.slice(0, -2) : s;
-}
+import { formatCompactCount, formatCount } from "@/utils/format-number";
 
 export type MilestoneFace = {
 	value: string;
@@ -27,9 +15,9 @@ export type MilestoneFace = {
 export function milestoneFace(kind: MilestoneKind, threshold: number): MilestoneFace {
 	switch (kind) {
 		case "words":
-			return { value: compactNumber(threshold), caption: "words", rsvp: false };
+			return { value: formatCompactCount(threshold), caption: "words", rsvp: false };
 		case "hours":
-			return { value: `${compactNumber(threshold)}h`, caption: "hours", rsvp: false };
+			return { value: `${formatCompactCount(threshold)}h`, caption: "hours", rsvp: false };
 		case "books":
 			return { value: String(threshold), caption: threshold === 1 ? "book" : "books", rsvp: false };
 		case "streak":
@@ -42,7 +30,7 @@ export function milestoneFace(kind: MilestoneKind, threshold: number): Milestone
 /** "1.2M / 2M", "87h / 100h", "4 / 5". */
 export function milestoneProgress(next: NextMilestone): string {
 	const unit = next.kind === "hours" ? "h" : "";
-	return `${compactNumber(next.current)}${unit} / ${compactNumber(next.threshold)}${unit}`;
+	return `${formatCompactCount(next.current)}${unit} / ${formatCompactCount(next.threshold)}${unit}`;
 }
 
 export const MILESTONE_HUES: Record<MilestoneKind, { from: string; to: string }> = {
@@ -88,5 +76,5 @@ const PROGRESS_UNITS: Record<MilestoneKind, string> = {
 
 /** "88 of 100 h", "1.4M of 2M", "193 of 365 days". */
 export function milestoneProgressLine(next: NextMilestone): string {
-	return `${compactNumber(next.current)} of ${compactNumber(next.threshold)}${PROGRESS_UNITS[next.kind]}`;
+	return `${formatCompactCount(next.current)} of ${formatCompactCount(next.threshold)}${PROGRESS_UNITS[next.kind]}`;
 }

@@ -9,7 +9,7 @@ import { Ban, Flag, Lock, MoreHorizontal, Settings, UserMinus, UserRound } from 
 import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { CARD } from "@/components/card";
+import { CARD, CARD_SURFACE } from "@/components/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MedalGrid } from "@/components/milestones/milestone-medals";
 import { PageBody } from "@/components/page-body";
@@ -91,6 +91,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4 }}
+				// ui-rules-allow: card-surface -- the social hero cards' 2xl radius waits on LESE-215 d-2
 				className="mt-3 rounded-2xl border border-border bg-card p-5 text-card-foreground"
 			>
 				<div className="flex items-start justify-between gap-3">
@@ -149,7 +150,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 
 			{/* The server leaves out bio and sections entirely when the profile is private. */}
 			{view.bio === undefined && (
-				<div className="mt-4 rounded-xl border border-border bg-card px-4 py-5 text-center">
+				<div className={cn(CARD_SURFACE, "mt-4 px-4 py-5 text-center")}>
 					<Lock className="mx-auto mb-2 size-8 text-muted-foreground" />
 					<p className="m-0 text-muted-foreground text-sm">
 						{isPreview
@@ -263,7 +264,12 @@ function ProfileBody({ userId, isPreview }: { userId: string; isPreview: boolean
 	if (view.isError) {
 		if (isNotFound(view.error)) {
 			return (
-				<div className="mt-2 flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-4 py-8 text-center">
+				<div
+					className={cn(
+						CARD_SURFACE,
+						"mt-2 flex flex-col items-center gap-3 px-4 py-8 text-center",
+					)}
+				>
 					<UserRound className="size-8 text-muted-foreground" />
 					<p className="text-muted-foreground text-sm">This profile isn't available.</p>
 					<Button asChild variant="outline" size="sm">

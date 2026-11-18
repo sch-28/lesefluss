@@ -140,7 +140,7 @@ function WeekMark({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 		return (
 			<span className="size-3 rounded-full border-2 border-[var(--goal-pending)] high-contrast:border-primary" />
 		);
-	return <span className="size-3 rounded-full bg-muted" />;
+	return <span className="size-3 rounded-full bg-muted high-contrast:bg-border" />;
 }
 
 function DotGrid({ days, ariaLabel }: { days: CalendarDay[]; ariaLabel: string }) {

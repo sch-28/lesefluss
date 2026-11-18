@@ -2,6 +2,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
+import { CARD_SURFACE } from "@/components/card";
 import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
 import { TintedCover } from "../../../components/tinted-cover";
@@ -56,7 +57,8 @@ export function CurrentlyReading() {
 									onClick={() => router.navigate({ href: book.href })}
 									whileTap={{ scale: 0.98 }}
 									className={cn(
-										"flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left text-card-foreground",
+										CARD_SURFACE,
+										"flex w-full items-center gap-3 p-3 text-left",
 										row && "pr-12",
 									)}
 								>

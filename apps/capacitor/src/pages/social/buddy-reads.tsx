@@ -1,7 +1,9 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { CARD_SURFACE } from "@/components/card";
 import { PageBody } from "@/components/page-body";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { SECTION_ACTION, SocialSection } from "@/components/social/social-ui";
@@ -46,7 +48,7 @@ function BuddyReadsContent() {
 				}
 			>
 				{active.length === 0 ? (
-					<div className="rounded-xl border border-border bg-card px-4 py-6 text-center">
+					<div className={cn(CARD_SURFACE, "px-4 py-6 text-center")}>
 						<Users className="mx-auto mb-2 size-8 text-muted-foreground" />
 						<p className="m-0 text-muted-foreground text-sm">
 							{finished.length > 0

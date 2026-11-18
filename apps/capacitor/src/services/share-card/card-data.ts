@@ -6,10 +6,11 @@ import {
 	wpmFrom,
 } from "@lesefluss/core";
 import { formatDuration, formatMonth, formatWeekdayTime } from "../../utils/date-utils";
+import { formatCompactCount } from "../../utils/format-number";
 import { formatPercent } from "../../utils/format-percent";
 import type { SessionRow } from "../reading-sessions/rules";
 import { readingDaysOfSitting } from "../stats/aggregate";
-import { compactNumber, milestoneFace } from "../stats/milestones";
+import { milestoneFace } from "../stats/milestones";
 import type { SummaryStats } from "../stats/session-summary";
 import { timeSavedMs } from "../stats/speed-tab";
 import type { ShareCardData, ShareCardTile } from "./render";
@@ -37,7 +38,7 @@ export function sessionCardData(input: {
 			rsvp: stats.isRsvp,
 		});
 	}
-	tiles.push({ label: "Words", value: compactNumber(stats.words) });
+	tiles.push({ label: "Words", value: formatCompactCount(stats.words) });
 	if (stats.fromPercent !== null && stats.toPercent !== null) {
 		const gained = Math.round((stats.toPercent - stats.fromPercent) * 10) / 10;
 		tiles.push({ label: "Book", value: `+${formatPercent(gained, 1)}` });
@@ -114,7 +115,7 @@ export function finishedCardData(input: {
 			time,
 			{ label: "wpm", value: readingWpm !== null ? String(readingWpm) : "–" },
 			dayTile,
-			{ label: "Words", value: compactNumber(book.wordCount) },
+			{ label: "Words", value: formatCompactCount(book.wordCount) },
 		];
 	}
 	return {
@@ -147,7 +148,7 @@ export function speedCardData(input: {
 		...(savedMs >= 60_000
 			? [{ label: "Saved", value: formatDuration(savedMs), hot: true }]
 			: year.words > 0
-				? [{ label: "Words", value: compactNumber(year.words) }]
+				? [{ label: "Words", value: formatCompactCount(year.words) }]
 				: []),
 	];
 	let heroes: ShareCardTile[];

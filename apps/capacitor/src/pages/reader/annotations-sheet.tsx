@@ -299,6 +299,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								<div className="flex flex-col">
 									{bookEntries.length > 0 && (
 										<>
+											{/* ui-rules-allow: uppercase-tracked -- the reader stays as it is (LESE-215) */}
 											<div className="sticky top-0 z-10 border-border border-b bg-popover px-5 py-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
 												This book
 											</div>
@@ -309,6 +310,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 									)}
 									{globalEntries.length > 0 && (
 										<>
+											{/* ui-rules-allow: uppercase-tracked -- the reader stays as it is (LESE-215) */}
 											<div className="sticky top-0 z-10 border-border border-b bg-popover px-5 py-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
 												Global
 											</div>
@@ -325,6 +327,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								aria-label="Add glossary entry"
 								data-toast-clear
 								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-[0.97]"
+								// ui-rules-allow: inline-style-type -- the reader stays as it is (LESE-215)
 								style={{ marginBottom: "var(--safe-bottom)" }}
 							>
 								<Plus className="size-5" />

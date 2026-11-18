@@ -23,11 +23,8 @@ import { canHaveGoal } from "./reading-goal/goal-model";
 import { AnimatedNumber } from "./stats/animated-number";
 import { evenTickIndices, formatDayTick } from "./stats/chart-axis";
 import { ChartTooltip } from "./stats/chart-tooltip";
-import { buildNivoTheme } from "./stats/nivo-theme";
+import { buildNivoTheme, themeColor } from "./stats/nivo-theme";
 import { rsvpEstimateSpeed, WhatIfSpeed } from "./what-if-speed";
-
-const LINE_COLOR = "#c94b2a";
-const LINE_COLORS = [LINE_COLOR];
 
 /** Ninety sittings do not fit in a 130px chart. See `bucketSpeedSeries`. */
 const MAX_SPARK_POINTS = 14;
@@ -51,7 +48,7 @@ function SpeedTooltip({ bucket }: { bucket: SpeedBucket }) {
 	return (
 		<ChartTooltip>
 			<strong>{bucket.wpm}</strong> wpm
-			<div style={{ opacity: 0.6, fontSize: "0.6875rem", marginTop: 2 }}>
+			<div className="mt-0.5 text-2xs opacity-60">
 				{bucket.sessions === 1 ? "1 sitting" : `${bucket.sessions} sittings`} ·{" "}
 				{bucket.startedAt === bucket.endedAt
 					? formatDate(bucket.startedAt)
@@ -134,7 +131,10 @@ export function BookStatsCard({ book }: Props) {
 	const speedModel = queryHooks.useStatsSpeedModel();
 	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
+	const { nivoTheme, lineColors } = useMemo(
+		() => ({ nivoTheme: buildNivoTheme(theme), lineColors: [themeColor("--primary")] }),
+		[theme, isEinkMode],
+	);
 
 	const data = stats.data;
 	// Both memos sit above the early return: hooks cannot be skipped, and the
@@ -273,7 +273,7 @@ export function BookStatsCard({ book }: Props) {
 								// is labelled, so the truncation is visible rather than implied.
 								yScale={Y_SCALE}
 								curve="monotoneX"
-								colors={LINE_COLORS}
+								colors={lineColors}
 								lineWidth={2}
 								enableArea={false}
 								enablePoints={true}

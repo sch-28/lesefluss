@@ -9,6 +9,7 @@ import {
 } from "@lesefluss/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { Label } from "@lesefluss/ui/label";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { SheetDoneButton, SheetHeaderBar } from "@lesefluss/ui/sheet-header";
 import { cn } from "@lesefluss/ui/utils";
@@ -472,9 +473,7 @@ export function useShelfEditor({
 	const body = (
 		<div className="flex flex-col gap-3">
 			<div className="flex flex-col gap-2">
-				<label htmlFor={nameId} className="text-muted-foreground text-xs">
-					Shelf name
-				</label>
+				<Label htmlFor={nameId}>Shelf name</Label>
 				<InputHitArea>
 					<Input
 						id={nameId}

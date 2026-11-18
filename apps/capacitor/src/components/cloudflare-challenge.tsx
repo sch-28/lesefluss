@@ -1,7 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { ShieldCheck } from "lucide-react";
 import type React from "react";
+import { CARD_SURFACE } from "@/components/card";
 import { PROVIDER_CHALLENGE_URL } from "../pages/explore/web-novels-providers";
 import type { ProviderId } from "../services/serial-scrapers";
 import { NativeHttp } from "../services/serial-scrapers/native-http";
@@ -16,7 +18,7 @@ export const CloudflareChallenge: React.FC<Props> = (props) => {
 	if (!Capacitor.isNativePlatform() || list.length === 0) return null;
 
 	return (
-		<div className="flex flex-col gap-2 rounded-md border border-border bg-card px-3 py-2 text-card-foreground">
+		<div className={cn(CARD_SURFACE, "flex flex-col gap-2 px-3 py-2")}>
 			<div className="flex items-center gap-2 font-semibold text-xs">
 				<ShieldCheck className="size-4" />
 				Cloudflare verification required

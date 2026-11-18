@@ -3,6 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
+import { LIST_CARD } from "@/components/card";
 import CoverImage from "@/components/cover-image";
 import { SECTION_SPACING, SectionHeader } from "@/components/section-header";
 import { getCoverUrl } from "@/services/catalog/client";
@@ -119,11 +120,7 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 
 /** Rows of people or actions inside a content section. */
 export function ListCard({ children }: { children: React.ReactNode }) {
-	return (
-		<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-			{children}
-		</div>
-	);
+	return <div className={LIST_CARD}>{children}</div>;
 }
 
 type CurrentBook = { id: string; title: string; coverSrc: string | null; percent: number };

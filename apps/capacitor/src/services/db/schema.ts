@@ -41,6 +41,7 @@ export const settings = sqliteTable("settings", {
 	accelStart: real("accel_start").notNull().default(2.0),
 	accelRate: real("accel_rate").notNull().default(0.1),
 	xOffset: integer("x_offset").notNull().default(30),
+	// ui-rules-allow: hex-colour -- the stored default of a user-chosen colour
 	focalLetterColor: text("focal_letter_color").$type<HexColor>().notNull().default("#ff0000"),
 	wordOffset: integer("word_offset").notNull().default(5),
 	inverse: integer("inverse", { mode: "boolean" }).notNull().default(false),

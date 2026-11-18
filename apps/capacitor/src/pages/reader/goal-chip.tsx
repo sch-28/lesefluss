@@ -45,6 +45,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 			</PopoverTrigger>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">
 				<div className="flex items-center justify-between">
+					{/* ui-rules-allow: uppercase-tracked -- the reader's goal chip is uppercase by choice (4edc879d) */}
 					<span className="font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 						Goal · by {formatDayKey(plan.projectedFinishDate)}
 					</span>

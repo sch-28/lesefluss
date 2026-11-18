@@ -31,7 +31,10 @@ export const MODE_BADGE_LABELS: Record<ReadingSession["mode"], string> = {
 
 export function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	return (
-		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wide">
+		<span
+			// ui-rules-allow: uppercase-tracked -- a mode badge, not a caption
+			className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wide"
+		>
 			{MODE_BADGE_LABELS[mode]}
 		</span>
 	);

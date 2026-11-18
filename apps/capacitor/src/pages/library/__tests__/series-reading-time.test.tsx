@@ -26,7 +26,7 @@ describe("SeriesReadingTime", () => {
 				]}
 			/>,
 		);
-		expect(view.text()).toBe("· Total 1h 30m· 1h left");
+		expect(view.text()).toBe("·Total 1h 30m·1h left");
 		expect(view.queryButton("About these times")).not.toBeNull();
 	});
 
@@ -34,7 +34,7 @@ describe("SeriesReadingTime", () => {
 		view = await render(
 			<SeriesReadingTime chapters={[{ wordCount: 6000, wordPosition: 6000, finishedAt: 1 }]} />,
 		);
-		expect(view.text()).toBe("· Total 30 min");
+		expect(view.text()).toBe("·Total 30 min");
 	});
 
 	it("shows nothing while no chapter has a known length", async () => {

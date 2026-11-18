@@ -1,6 +1,6 @@
+import { formatCompactCount } from "@/utils/format-number";
 import {
 	type Facet,
-	formatWords,
 	type LibraryFilter,
 	setValueState,
 	setWordRange,
@@ -186,9 +186,9 @@ function quoteIfNeeded(value: string): string {
 }
 
 function wordPresetToken({ min, max }: WordRange): string {
-	if (min != null && max != null) return `${formatWords(min)}-${formatWords(max)}`;
-	if (min != null) return `>=${formatWords(min)}`;
-	return `<=${formatWords(max ?? 0)}`;
+	if (min != null && max != null) return `${formatCompactCount(min)}-${formatCompactCount(max)}`;
+	if (min != null) return `>=${formatCompactCount(min)}`;
+	return `<=${formatCompactCount(max ?? 0)}`;
 }
 
 const FIELD_HINTS: Record<QueryField, string> = {

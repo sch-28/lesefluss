@@ -42,6 +42,7 @@ export function SignedOutSocial({
 	return (
 		<TrailerCard isDemoBook={isDemoBook}>
 			{person && <div className="mt-6">{person}</div>}
+			{/* ui-rules-allow: font-size -- the signed-out hero headline, kept until LESE-215 d-2 decides the social hero */}
 			<h2 className="m-0 mt-6 font-semibold text-3xl text-foreground leading-[1.08] tracking-tight">
 				{title}
 			</h2>

@@ -13,12 +13,14 @@ import { Button } from "@lesefluss/ui/button";
 import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { IdentityCard, SocialAvatar } from "@lesefluss/ui/social-avatar";
+import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AtSign, CloudOff, Eye, Loader2, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { CARD_SURFACE } from "@/components/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageBody } from "@/components/page-body";
 import { NavRow } from "@/components/settings/settings-row";
@@ -333,7 +335,9 @@ function SocialSettings() {
 		);
 	} else if (profileQuery.isError) {
 		body = (
-			<div className="mt-2 flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-4 py-8 text-center">
+			<div
+				className={cn(CARD_SURFACE, "mt-2 flex flex-col items-center gap-3 px-4 py-8 text-center")}
+			>
 				<CloudOff className="size-8 text-muted-foreground" />
 				<p className="text-muted-foreground text-sm">
 					Can't reach the server. Your profile is only stored online, so there is nothing to show
@@ -346,7 +350,7 @@ function SocialSettings() {
 		);
 	} else if (!profileQuery.data.handle) {
 		body = (
-			<div className="mt-2 rounded-lg border border-border bg-card p-4">
+			<div className={cn(CARD_SURFACE, "mt-2 p-4")}>
 				<h2 className="mb-1 font-semibold text-base text-foreground">Pick a handle</h2>
 				<p className="mb-4 text-muted-foreground text-sm">
 					You need a handle before friends can find you through an invite. Nobody can see you until

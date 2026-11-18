@@ -33,6 +33,7 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 		<Link
 			to="/tabs/social/profile/$userId"
 			params={{ userId: me.userId }}
+			// ui-rules-allow: card-surface -- a hero, not a card
 			className="relative mt-4 block overflow-hidden rounded-3xl border border-border bg-card text-card-foreground no-underline"
 		>
 			<CoverBackdrop src={book?.coverSrc ?? null} />

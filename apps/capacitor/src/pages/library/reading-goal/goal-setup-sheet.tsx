@@ -6,6 +6,7 @@ import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { CARD_TILE } from "@/components/card";
 import { STAT_CAPTION } from "@/components/stat-tile";
 import { SheetOrDialog } from "../../../components/sheet-or-dialog";
 import { toast } from "../../../components/toast";
@@ -341,10 +342,7 @@ function ValueCard({
 			type="button"
 			onClick={onLock}
 			aria-label={`${value}, ${label}. ${lockLabel}`}
-			className={cn(
-				"rounded-lg bg-muted/40 px-2 py-2 text-left",
-				isLocked ? "border-2 border-foreground" : "border border-border",
-			)}
+			className={cn(CARD_TILE, "px-2 py-2 text-left", isLocked && "border-2 border-foreground")}
 		>
 			<span className="flex items-center justify-between gap-2">
 				<span className="font-semibold text-2xl tabular-nums leading-none">{value}</span>

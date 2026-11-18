@@ -17,7 +17,8 @@ import { AlertCircle, CheckCircle2, Circle, CircleDashed, Loader2, Lock } from "
 import type React from "react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { VList, type VListHandle } from "virtua";
-import { SECTION_TITLE } from "@/components/section-header";
+import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_SUB, LIST_ROW_VALUE } from "@/components/list-row";
+import { SectionHeader } from "@/components/section-header";
 import { formatPercent } from "@/utils/format-percent";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
@@ -68,20 +69,25 @@ const ChapterRow = memo<ChapterRowProps>(({ book, isOpen, onTap }) => {
 			aria-current={isOpen ? "location" : undefined}
 			onClick={() => onTap(book.id)}
 			className={cn(
-				"flex w-full items-center gap-3 border-0 bg-transparent px-4 py-3 text-left text-foreground transition-opacity active:opacity-60",
+				LIST_ROW,
+				"min-h-11 w-full border-0 bg-transparent text-left transition-opacity active:opacity-60",
 				isInProgress && "bg-primary/5",
 				isOpen && "bg-primary/10 font-medium",
 			)}
 		>
 			{/* Chapter number, fixed width so titles align regardless of digit count */}
-			<span className="w-8 shrink-0 text-right text-muted-foreground text-sm">{displayIndex}</span>
+			<span className={cn(LIST_ROW_VALUE, "w-8 shrink-0 text-right text-muted-foreground")}>
+				{displayIndex}
+			</span>
 
 			{/* Title, fills remaining space, single-line truncation */}
-			<span className="min-w-0 flex-1 truncate text-sm">{book.title}</span>
+			<span className={cn(LIST_ROW_LABEL, "min-w-0 flex-1 truncate")}>{book.title}</span>
 
 			{/* Progress % for in-progress chapters */}
 			{state.kind === "in-progress" && (
-				<span className="shrink-0 text-muted-foreground text-xs">{formatPercent(state.pct)}</span>
+				<span className={cn(LIST_ROW_SUB, "shrink-0 tabular-nums")}>
+					{formatPercent(state.pct)}
+				</span>
 			)}
 
 			<StateGlyph state={state} />
@@ -112,12 +118,21 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 	}
 };
 
+const ChaptersHeader: React.FC<{ isSyncing?: boolean }> = ({ isSyncing }) => (
+	<SectionHeader
+		className="px-4"
+		title={
+			<span className="flex items-center gap-2">
+				Chapters
+				{isSyncing && <Loader2 className="size-3.5 animate-spin" />}
+			</span>
+		}
+	/>
+);
+
 const ChapterListLoading: React.FC = () => (
-	<div className="mt-6 px-4">
-		<h2 className={cn(SECTION_TITLE, "flex items-center gap-2")}>
-			<span>Chapters</span>
-			<Loader2 className="size-3.5 animate-spin" />
-		</h2>
+	<div className="mt-6">
+		<ChaptersHeader isSyncing />
 	</div>
 );
 
@@ -157,17 +172,14 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing, curren
 	if (isPending) return <ChapterListLoading />;
 	if (!chapters || chapters.length === 0) return null;
 
-	// Approximate row pitch: py-3 (24px) + ~20px text + 8px chrome = ~52px.
-	// Used only to cap listHeight at 30vh (VList measures real heights).
-	const ROW_HEIGHT_PX = 52;
-	const listHeight = Math.min(chapters.length * ROW_HEIGHT_PX, window.innerHeight * 0.3);
+	// A row's min-h-11, which follows the App text size; a larger pitch here leaves an empty band
+	// under a short list, since VList fills the height it is given.
+	const rowHeightPx = 2.75 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+	const listHeight = Math.min(chapters.length * rowHeightPx, window.innerHeight * 0.3);
 
 	return (
 		<div className="mt-6">
-			<h2 className={cn(SECTION_TITLE, "mb-2 flex items-center gap-2 px-4")}>
-				<span>Chapters</span>
-				{isSyncing && <Loader2 className="size-3.5 animate-spin" />}
-			</h2>
+			<ChaptersHeader isSyncing={isSyncing} />
 
 			{/* VList fills its explicit height (overflow: auto). Height calculated
 			 * so short series collapse to fit rather than leaving 30vh of blank. */}

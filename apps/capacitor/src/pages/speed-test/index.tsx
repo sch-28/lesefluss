@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import type React from "react";
@@ -20,9 +20,9 @@ const SpeedTestPage: React.FC = () => {
 			data-testid="speed-test-page"
 		>
 			<div className="flex h-12 items-center justify-end px-4">
-				<Button variant="ghost" size="icon" onClick={close} aria-label="Close">
-					<X className="size-5" />
-				</Button>
+				<HeaderAction onClick={close} aria-label="Close">
+					<X />
+				</HeaderAction>
 			</div>
 			<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
 				<PageContainer width="flow" className="pt-2">

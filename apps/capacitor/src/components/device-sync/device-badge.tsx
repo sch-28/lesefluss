@@ -1,3 +1,4 @@
+import { cn } from "@lesefluss/ui/utils";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 
 type DeviceBadgeProps = {
@@ -31,11 +32,11 @@ export function DeviceBadge({ bookId, style = "inline" }: DeviceBadgeProps) {
 	if (style === "block") {
 		return (
 			<div
-				className={
-					state.isActiveOnDevice
-						? "mt-0.5 font-semibold text-2xs text-accent uppercase tracking-wide"
-						: "mt-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wide"
-				}
+				className={cn(
+					// ui-rules-allow: uppercase-tracked -- a device status badge, styled like the inline badge
+					"mt-0.5 font-semibold text-2xs uppercase tracking-wide",
+					state.isActiveOnDevice ? "text-accent" : "text-muted-foreground",
+				)}
 			>
 				{label}
 			</div>

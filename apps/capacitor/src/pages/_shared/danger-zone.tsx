@@ -8,6 +8,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { type LucideIcon, TriangleAlert } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
+import { CARD_SURFACE } from "@/components/card";
 
 const DangerTitle: React.FC<{ title: string }> = ({ title }) => (
 	<span className="flex items-center gap-3 font-semibold text-destructive text-sm">
@@ -35,7 +36,7 @@ export const DangerZone: React.FC<{
 			<div className="divide-y divide-border border-border border-t">{children}</div>
 		</>
 	);
-	const frame = cn("overflow-hidden rounded-lg border border-border bg-card", className);
+	const frame = cn(CARD_SURFACE, "overflow-hidden", className);
 
 	if (collapsible) {
 		return (

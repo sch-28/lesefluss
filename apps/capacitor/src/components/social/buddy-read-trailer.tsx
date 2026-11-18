@@ -26,10 +26,11 @@ const DEMO_PERCENT = 42;
 function DemoCover() {
 	return (
 		<div className="flex h-full flex-col justify-between bg-primary p-2 text-primary-foreground">
+			{/* ui-rules-allow: uppercase-tracked -- it mirrors the share card's printed trailer */}
 			<span className="font-serif text-2xs uppercase leading-tight tracking-wide">
 				Your next book
 			</span>
-			{/* ui-rules-allow: font-size -- part of the fixed-size cover artwork, not interface text */}
+			{/* ui-rules-allow: font-size, uppercase-tracked -- part of the fixed-size cover artwork, not interface text */}
 			<span className="text-[8px] uppercase tracking-widest opacity-70">Lesefluss</span>
 		</div>
 	);
@@ -149,6 +150,7 @@ export function BuddyReadTrailer({
 								{riders.length} reading together
 							</div>
 						</div>
+						{/* ui-rules-allow: uppercase-tracked -- it mirrors the share card's printed trailer */}
 						<span className="shrink-0 rounded-full border border-border px-2 py-0.5 font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
 							Preview
 						</span>

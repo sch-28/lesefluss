@@ -38,9 +38,13 @@ export function TrailerCard({
 	const currentBook = useCurrentBook();
 	const book = isDemoBook ? null : currentBook;
 	return (
-		<section className="relative mt-4 overflow-hidden rounded-3xl border border-border bg-card text-card-foreground">
+		<section
+			// ui-rules-allow: card-surface -- a hero, not a card
+			className="relative mt-4 overflow-hidden rounded-3xl border border-border bg-card text-card-foreground"
+		>
 			<CoverBackdrop src={book?.coverSrc ?? null} />
 			<div className="relative p-4">
+				{/* ui-rules-allow: card-surface -- a hero, not a card */}
 				<div className="rounded-2xl border border-border bg-card/80 p-3">
 					<BuddyReadTrailer self={self} isDemoBook={isDemoBook} />
 				</div>

@@ -11,6 +11,7 @@ import {
 	Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { CARD_TILE } from "@/components/card";
 import { STAT_CAPTION } from "@/components/stat-tile";
 import { formatCount } from "@/utils/format-number";
 import { goalTone } from "../../pages/library/reading-goal/goal-model";
@@ -47,10 +48,7 @@ function Tile({
 			{children}
 		</>
 	);
-	const tileClass = cn(
-		"flex flex-col gap-1 rounded-xl border border-border bg-muted/40 p-3",
-		className,
-	);
+	const tileClass = cn(CARD_TILE, "flex flex-col gap-1 rounded-xl", className);
 	return onClick ? (
 		<button
 			type="button"

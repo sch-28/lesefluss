@@ -1,7 +1,9 @@
 import type { OwnSocialProfile } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { CloudOff, Loader2 } from "lucide-react";
 import type React from "react";
+import { CARD_SURFACE } from "@/components/card";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useOwnSocialProfile } from "@/services/social/profile";
 import { HandleClaimHero } from "./handle-claim-hero";
@@ -85,7 +87,9 @@ export function OfflineNotice({
 	onRetry?: () => void;
 }) {
 	return (
-		<div className="mt-2 flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-4 py-8 text-center">
+		<div
+			className={cn(CARD_SURFACE, "mt-2 flex flex-col items-center gap-3 px-4 py-8 text-center")}
+		>
 			<CloudOff className="size-8 text-muted-foreground" />
 			<p className="text-muted-foreground text-sm">{children}</p>
 			{onRetry && (

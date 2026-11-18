@@ -88,7 +88,10 @@ export function BookChapters({
 								)}
 								<span className="min-w-0 flex-1 truncate">{chapter.title}</span>
 								{isCurrent && (
-									<span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-2xs text-primary uppercase tracking-wide">
+									<span
+										// ui-rules-allow: uppercase-tracked -- the Here badge, not a caption
+										className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-2xs text-primary uppercase tracking-wide"
+									>
 										Here
 									</span>
 								)}

@@ -50,8 +50,14 @@ export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapt
 
 	return (
 		<span className="inline-flex items-center gap-2 tabular-nums" data-testid="series-reading-time">
-			<span>· Total {total}</span>
-			{left && <span>· {left} left</span>}
+			<span aria-hidden="true">·</span>
+			<span>Total {total}</span>
+			{left && (
+				<>
+					<span aria-hidden="true">·</span>
+					<span>{left} left</span>
+				</>
+			)}
 			{unknown > 0 && (
 				<Popover>
 					<PopoverTrigger asChild>

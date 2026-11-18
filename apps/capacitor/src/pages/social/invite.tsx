@@ -1,10 +1,12 @@
 import type { InvitePreview, OwnSocialProfile } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { IdentityCardBox } from "@lesefluss/ui/social-avatar";
+import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { CARD } from "@/components/card";
 import { PageBody } from "@/components/page-body";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -57,7 +59,7 @@ function Outcome({
 			<>
 				<h2 className="font-semibold text-xl">You've been invited</h2>
 				<OwnerCard preview={preview} />
-				<div className="rounded-lg border border-border bg-card p-4 text-left">
+				<div className={cn(CARD, "text-left")}>
 					<p className="mb-3 text-muted-foreground text-sm">
 						Pick a handle first. It is what your friends will know you by.
 					</p>

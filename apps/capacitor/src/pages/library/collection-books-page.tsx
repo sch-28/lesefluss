@@ -376,6 +376,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 					<button
 						type="button"
 						onClick={importInto}
+						// ui-rules-allow: card-surface -- a dashed drop-zone action by choice (LESE-125.22), not a card
 						className="flex items-center gap-3 rounded-xl border border-border border-dashed bg-card p-3 text-left hover:bg-muted"
 					>
 						<FileUp className="size-5 shrink-0 text-muted-foreground" />

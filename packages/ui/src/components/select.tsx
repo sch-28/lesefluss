@@ -36,6 +36,7 @@ function SelectTrigger({
 		<SelectPrimitive.Trigger
 			data-slot="select-trigger"
 			className={cn(
+				// ui-rules-allow: card-surface -- a select trigger, a form field rather than a card
 				"flex h-8 w-full items-center justify-between rounded-md border border-input bg-card px-3 py-1 text-foreground text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground [&>span]:line-clamp-1",
 				className,
 			)}

@@ -124,6 +124,7 @@ function SelectionPopover<T extends string>({
 							{section.heading && (
 								<>
 									{index > 0 && <div className="my-1 border-border border-t" />}
+									{/* ui-rules-allow: uppercase-tracked -- the reader's selection toolbar stays as it is */}
 									<span className="px-2 py-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
 										{section.heading}
 									</span>

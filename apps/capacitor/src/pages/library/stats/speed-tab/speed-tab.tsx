@@ -141,7 +141,7 @@ export function SpeedTab({ now }: { now: number }) {
 	const hasSpeed = hasOwnSpeed(model, view);
 
 	return (
-		<div className="pb-6" data-testid="speed-tab">
+		<div data-testid="speed-tab">
 			<section className="px-4">
 				{hasSpeed && (
 					<>

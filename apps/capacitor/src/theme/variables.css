@@ -1,6 +1,6 @@
 /* Cascade layer order matches legacy.css (loaded first in main.tsx).
  * - base: Tailwind preflight (button/list/heading resets); shadcn expects it.
- * - legacy: monochrome.css residual reader styles (ap-step-btn, rsvp-display, etc).
+ * - legacy: monochrome.css residual reader styles (rsvp-display, etc).
  * - utilities: Tailwind utility classes beat everything else. */
 @layer theme, base, legacy, tokens, utilities;
 
@@ -47,8 +47,8 @@
 .theme-sepia {
 	--goal-pending: #6e1a08;
 	--goal-met: #064e3b;
-	--warning: #78350f;
-	--info: #0c4a6e;
+	--warning: #6b2e0c;
+	--info: #0a3d5c;
 }
 
 @theme inline {

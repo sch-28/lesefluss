@@ -16,14 +16,9 @@ import { queryHooks } from "../../../../services/db/hooks";
 import type { Insight, InsightId, LockedInsight } from "../../../../services/stats/insights";
 import { type SpeedView, timeSavedMs } from "../../../../services/stats/speed-tab";
 import { formatDate, formatDuration } from "../../../../utils/date-utils";
+import { formatCompactCount } from "../../../../utils/format-number";
 import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "../section-header";
 import { deliveredPercent } from "./rsvp-dial";
-
-function formatWords(words: number): string {
-	if (words >= 1_000_000) return `${(words / 1_000_000).toFixed(1)}M words`;
-	if (words >= 1000) return `${Math.round(words / 1000)}k words`;
-	return `${words} words`;
-}
 
 const INSIGHT_ICONS: Record<InsightId, LucideIcon> = {
 	"time-of-day": Moon,
@@ -141,7 +136,7 @@ function RsvpRows({ model }: { model: SpeedModel }) {
 					icon={Timer}
 					label="Time saved"
 					value={formatDuration(saved)}
-					sub={`${formatWords(model.rsvp.words)} at ${model.rsvp.wpm} instead of ${model.reading.wpm} wpm`}
+					sub={`${formatCompactCount(model.rsvp.words)} words at ${model.rsvp.wpm} instead of ${model.reading.wpm} wpm`}
 				/>
 			)}
 			{ratio !== null && (

@@ -105,7 +105,9 @@ solutions:
 
       **Gap scale:** the fluss standard as Tailwind steps `1`, `2`, `3`, `4`, `6`, `8` (4, 8, 12,
       16, 24, 32 px at the default 16 px App font size; spacing scales with it, as it is in rem);
-      `packages/ui` defines no spacing tokens of its own. Related items sit closer than unrelated
+      `packages/ui` defines no spacing tokens of its own. A gap or `space-*` takes only these
+      steps; a margin or padding takes any whole step of the 4px grid; never an arbitrary px or
+      a half step from 2 up. Related items sit closer than unrelated
       ones, and no space is reserved for content that isn't there. A page's frame has one value per
       role: header to first row 12, control row to control row 8, last control row to content 12,
       one bottom padding (larger only under a phone's floating button or fixed bar), from
@@ -119,10 +121,15 @@ solutions:
         series counts; sittings under a minute count nowhere. Counts, dates, clock times and
         relative times are formatted only in `apps/capacitor/src/utils/` (and `packages/ui/src/lib/`),
         in one locale whatever the device's, with one unit spelling: "12 min ago", "3h ago",
-        "5d ago", "15d", "39 min left". Count columns use tabular figures.
+        "5d ago", "15d", "39 min left". A compact count ("12.5k", "150k", "1.2M") comes only from
+        `formatCompactCount`. Count columns use tabular figures.
+      - Colour: theme tokens only (see Themes); no hex string or raw palette class outside a
+        theme swatch or a user-chosen colour, and no inline style sets a font size, weight or
+        margin.
       - Motion: a CSS transition names its properties (Tailwind's bare `transition`, or
         `transition-colors`/`-opacity`/`-transform`), never `all`, with the one shared ease-out
         and 150, 200 or 300 ms. Scripted entrances (framer-motion) are not on these timings yet.
+        Theme CSS follows the same rules, and the gate reads it too.
         Hover steps the colour or surface and never scales; a press scales to 0.97. Progress
         fills animate a transform; only layout that must reflow animates width or padding.
       - Type: interface sizes come from the scale `2xs` 11, `xs` 12, `sm` 14, `base` 16, `lg` 18,
@@ -132,12 +139,13 @@ solutions:
       - Section: one `Section` and `SectionHeader` (`components/section-header.tsx`) own a
         section's rhythm, 24 to the section before and 8 from the title to its content, and its
         title: 16px semibold in sentence case. A heading that cannot be a SectionHeader takes
-        `SECTION_TITLE`; no uppercase tracked section titles. Spacing sits on the 4px grid, never
-        an arbitrary px or a half step from 2 up; gaps use the scale's steps only.
+        `SECTION_TITLE`; no uppercase tracked section titles.
       - Rows, cards, covers: one `LIST_ROW` (48 tall, 12 between parts, 16 inset in an
         edge-to-edge group, none inside a card; label sm, sub line xs muted, value sm tabular),
         one `Card`/`CARD` (`components/card.tsx`: radius xl, padding 16, title and blocks 12
-        apart, card and border tokens only, tiles inside p-3), and one cover radius per size
+        apart, card and border tokens only; `LIST_CARD` for a card of rows, `CARD_SURFACE` when
+        the padding differs, `CARD_TILE` for a tile inside a card), never a surface rebuilt from
+        `rounded-*`, `border` and `bg-card` by hand, and one cover radius per size
         class: thumbs and grid covers `rounded-sm`, a standalone feature cover `rounded-md`.
         Radii come from the scale, never an arbitrary `rounded-[…]`.
       - Captions and card titles: a figure's caption is xs muted in sentence case (`StatTile`,

@@ -288,7 +288,7 @@ describe("SpeedTab", () => {
 		await click(rsvpButton);
 		expect(q("rsvp-dial")).not.toBeNull();
 		expect(q("dial-line")?.textContent).toBe("Global dial 450 wpm, 92% delivered");
-		expect(q("time-saved")?.textContent).toContain("50k words");
+		expect(q("time-saved")?.textContent).toContain("50.4k words");
 		expect(q("delivered-of-dial")?.textContent).toContain("92%");
 	});
 

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { SquareCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { CARD } from "@/components/card";
 import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { bookKeys } from "../../../services/db/hooks/query-keys";
@@ -100,9 +101,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 	const bookTotals = totalsOf(bookRows, skimCutoff);
 
 	return (
-		<div
-			className={cn("pb-6", isSelecting && "pb-[calc(var(--tab-bar-h)+var(--safe-bottom)+1.5rem)]")}
-		>
+		<div className={cn(isSelecting && "pb-[calc(var(--tab-bar-h)+var(--safe-bottom)+1.5rem)]")}>
 			{selected ? (
 				<SelectionHeader
 					selected={selected}
@@ -153,7 +152,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 			)}
 
 			{bookId && !isSelecting && (
-				<section className="mx-4 mb-2 rounded-lg border border-border bg-card p-4 text-card-foreground">
+				<section className={cn(CARD, "mx-4 mb-2")}>
 					<div className="truncate font-semibold">{titleOf(bookId)}</div>
 					<div className="mt-1 text-muted-foreground text-xs tabular-nums">
 						{bookTotals.count} {bookTotals.count === 1 ? "session" : "sessions"} ·{" "}

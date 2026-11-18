@@ -78,13 +78,14 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 
-	if (isError || !data) return <ErrorState error={error} onRetry={refetch} />;
+	if (isError || !data) return <ErrorState page error={error} onRetry={refetch} />;
 
 	const { results, failedProviders, challengeProviders } = data;
 
 	if (results.length === 0 && failedProviders.length > 0 && challengeProviders.length === 0) {
 		return (
 			<ErrorState
+				page
 				message={`No results. Some providers were unavailable (${providerLabels(failedProviders)}).`}
 				onRetry={refetch}
 			/>
@@ -93,7 +94,9 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 
 	if (results.length === 0 && challengeProviders.length === 0) {
 		return (
-			<EmptyState icon={SearchX}>No results for "{trimmed}". Try a different title.</EmptyState>
+			<EmptyState page icon={SearchX}>
+				No results for "{trimmed}". Try a different title.
+			</EmptyState>
 		);
 	}
 
@@ -121,7 +124,7 @@ const PagedSearch: React.FC<{
 	const pages = queryHooks.useSearchSerialPages(query, { provider, status, enabled: true });
 	if (pages.isPending) return <PanelSkeleton viewMode={viewMode} showProvider={false} />;
 	if (pages.isError && !pages.data) {
-		return <ErrorState error={pages.error} onRetry={() => pages.refetch()} />;
+		return <ErrorState page error={pages.error} onRetry={() => pages.refetch()} />;
 	}
 	const all = pages.data.pages;
 	const seen = new Set<string>();
@@ -139,6 +142,7 @@ const PagedSearch: React.FC<{
 	if (results.length === 0 && lastFailed && challengeProviders.length === 0) {
 		return (
 			<ErrorState
+				page
 				message={`${providerLabel(provider)} didn't respond.`}
 				onRetry={() => pages.refetch()}
 			/>
@@ -146,7 +150,7 @@ const PagedSearch: React.FC<{
 	}
 	if (results.length === 0 && challengeProviders.length === 0) {
 		return (
-			<EmptyState icon={SearchX}>
+			<EmptyState page icon={SearchX}>
 				No results for "{query.trim()}". Try a different title.
 			</EmptyState>
 		);
@@ -195,7 +199,9 @@ const PopularShelf: React.FC<{
 		return <PanelSkeleton viewMode={viewMode} showProvider={!provider} />;
 	}
 	if (isError || !data) {
-		return <ErrorState error={error} message="Failed to load popular series." onRetry={refetch} />;
+		return (
+			<ErrorState page error={error} message="Failed to load popular series." onRetry={refetch} />
+		);
 	}
 
 	if (
@@ -205,6 +211,7 @@ const PopularShelf: React.FC<{
 	) {
 		return (
 			<ErrorState
+				page
 				message={`Failed to load popular series (${providerLabels(data.failedProviders)}).`}
 				onRetry={refetch}
 			/>
@@ -303,6 +310,7 @@ const ResultListItem: React.FC<{
 						</div>
 					)}
 					<div className="mt-1 flex items-center gap-2">
+						{/* ui-rules-allow: uppercase-tracked -- a status badge, not a caption */}
 						<span className="rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-2xs text-background uppercase tracking-wide">
 							{result.provider}
 						</span>

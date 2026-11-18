@@ -16,6 +16,9 @@ export const PROVIDER_BRAND_COLOR: Partial<Record<ProviderId, string>> = {
 	wuxiaworld: "#5e2a82",
 };
 
+/** For a provider without its own brand colour. */
+export const PROVIDER_FALLBACK_COLOR = "#444";
+
 /**
  * Per-card label override. Falls back to the global `providerLabel()` when
  * unset. Used to keep names on a single line at the card's narrow width

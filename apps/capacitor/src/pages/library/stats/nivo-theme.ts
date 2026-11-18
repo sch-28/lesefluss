@@ -11,10 +11,10 @@ type PartialTheme = Record<string, unknown>;
  */
 export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
 	const styles = getComputedStyle(document.body);
-	const text = styles.getPropertyValue("--foreground").trim() || "#000";
-	const muted = styles.getPropertyValue("--muted-foreground").trim() || "#999";
-	const border = styles.getPropertyValue("--border").trim() || "#d9d9d9";
-	const card = styles.getPropertyValue("--popover").trim() || "#fff";
+	const text = styles.getPropertyValue("--foreground").trim() || "currentColor";
+	const muted = styles.getPropertyValue("--muted-foreground").trim() || "currentColor";
+	const border = styles.getPropertyValue("--border").trim() || "currentColor";
+	const card = styles.getPropertyValue("--popover").trim() || "Canvas";
 
 	return {
 		background: "transparent",
@@ -53,25 +53,7 @@ export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
 	};
 }
 
-/**
- * Accent gradient stops used across the page. One brand accent per theme, so
- * the calendar, line and bar charts all stay in family.
- *
- * Brand orange (matches toast surface) plus a warmer gradient partner.
- */
-export function getAccentStops(
-	appTheme: AppTheme,
-	isEinkMode: boolean,
-): { from: string; to: string } {
-	if (isEinkMode) return { from: "#000000", to: "#555555" };
-	switch (appTheme) {
-		case "dark":
-			return { from: "#c94b2a", to: "#f97316" };
-		case "high-contrast":
-			return { from: "#ffd60a", to: "#fff3a3" };
-		case "sepia":
-			return { from: "#b45309", to: "#d97706" };
-		default:
-			return { from: "#c94b2a", to: "#ea580c" };
-	}
+/** A theme colour token's live value, for chart props that take a colour rather than a class. */
+export function themeColor(token: `--${string}`): string {
+	return getComputedStyle(document.body).getPropertyValue(token).trim() || "currentColor";
 }

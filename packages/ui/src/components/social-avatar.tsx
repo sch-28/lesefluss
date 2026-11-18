@@ -61,7 +61,10 @@ export function IdentityCard({
 /** The identity card framed as a standalone panel, as shown on invite screens. */
 export function IdentityCardBox(props: Parameters<typeof IdentityCard>[0]) {
 	return (
-		<div className="rounded-lg border border-border bg-card p-4 text-left">
+		<div
+			// ui-rules-allow: card-surface -- packages/ui cannot import the app's Card; it repeats CARD
+			className="rounded-xl border border-border bg-card p-4 text-left"
+		>
 			<IdentityCard {...props} />
 		</div>
 	);

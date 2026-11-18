@@ -10,6 +10,7 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
+import { cn } from "@lesefluss/ui/utils";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useDeviceLibrary } from "../../contexts/device-library-context";
@@ -19,6 +20,8 @@ import type { DeviceCapabilities } from "../../services/devices/capabilities";
 import { formatBytes } from "../../utils/format-bytes";
 import { formatPercent } from "../../utils/format-percent";
 import { log } from "../../utils/log";
+import { CARD, CARD_SURFACE, LIST_CARD } from "../card";
+import { SectionHeader } from "../section-header";
 
 export type MultiBookSyncProps = {
 	caps: DeviceCapabilities;
@@ -95,18 +98,20 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 	return (
 		<div className="space-y-6 px-4 py-4">
 			<section>
-				<header className="mb-2 flex items-center justify-between">
-					<h2 className="font-semibold text-sm">Library on device</h2>
-					<Button variant="ghost" size="sm" onClick={refresh}>
-						Refresh
-					</Button>
-				</header>
+				<SectionHeader
+					title="Library on device"
+					aside={
+						<Button variant="ghost" size="sm" onClick={refresh}>
+							Refresh
+						</Button>
+					}
+				/>
 				{library.length === 0 ? (
-					<p className="rounded-lg border border-border bg-card px-4 py-6 text-center text-muted-foreground text-sm">
+					<p className={cn(CARD_SURFACE, "px-4 py-6 text-center text-muted-foreground text-sm")}>
 						No books on device yet. Send a book from your library.
 					</p>
 				) : (
-					<ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+					<ul className={LIST_CARD}>
 						{library.map((book) => {
 							const isActive = book.hash === activeHash;
 							return (
@@ -172,8 +177,8 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 
 			{storage && (
 				<section>
-					<h2 className="mb-2 font-semibold text-sm">Storage</h2>
-					<div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+					<SectionHeader title="Storage" />
+					<div className={cn(CARD, "text-sm")}>
 						<p>
 							{formatBytes(storage.totalBytes - storage.freeBytes)} used of{" "}
 							{formatBytes(storage.totalBytes)} ({storage.bookCount} books)

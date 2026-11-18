@@ -1,4 +1,5 @@
 import type React from "react";
+import { LIST_CARD } from "../card";
 import { Section as BaseSection } from "../section-header";
 
 /** A titled card group of rows, the layout every settings and social screen uses. */
@@ -13,9 +14,7 @@ export function Section({
 }) {
 	return (
 		<BaseSection title={title} aside={action} headerClassName="px-4">
-			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-				{children}
-			</div>
+			<div className={LIST_CARD}>{children}</div>
 		</BaseSection>
 	);
 }

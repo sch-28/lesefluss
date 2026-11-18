@@ -138,7 +138,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 			</div>
 
 			<div className="flex items-baseline gap-2" data-testid="speed-big">
-				<span className="font-semibold text-3xl tabular-nums leading-none">{leadWpm}</span>
+				<span className="font-semibold text-2xl tabular-nums leading-none">{leadWpm}</span>
 				<span className="text-muted-foreground text-sm">
 					wpm{views.length > 1 ? ` ${VIEW_LABELS[lead]}` : ""}
 				</span>

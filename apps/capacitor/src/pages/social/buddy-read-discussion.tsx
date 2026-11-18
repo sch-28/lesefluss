@@ -1,10 +1,12 @@
 import type { DiscussionAnchor, DiscussionItem } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import { cn } from "@lesefluss/ui/utils";
 import { PenLine, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyRow } from "@/components/app-shell/section";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { CARD_SURFACE } from "@/components/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CommentDraft, DiscussionItemCard } from "@/components/social/discussion-item";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
@@ -111,7 +113,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 				</Button>
 			</div>
 			{isComposing ? (
-				<div className="mt-3 rounded-xl border border-border bg-card p-3">
+				<div className={cn(CARD_SURFACE, "mt-3 p-3")}>
 					<CommentTargetPicker
 						value={target}
 						disabled={isOffline}
@@ -153,7 +155,10 @@ export function DiscussionPanel({ id }: { id: string }) {
 				<button
 					type="button"
 					onClick={() => setIsComposing(true)}
-					className="mt-3 flex w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 text-left text-muted-foreground text-sm"
+					className={cn(
+						CARD_SURFACE,
+						"mt-3 flex w-full items-center gap-2 px-3 py-3 text-left text-muted-foreground text-sm",
+					)}
 				>
 					<PenLine className="size-4" />
 					Write something about the book…

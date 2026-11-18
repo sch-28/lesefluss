@@ -81,7 +81,7 @@ export function Activity() {
 									// ui-rules-allow: font-size -- SVG text in the chart's user units, scaled with its viewBox
 									className="fill-muted-foreground text-[11px]"
 								>
-									{i * step} h
+									{i * step}h
 								</text>
 							</g>
 						))}

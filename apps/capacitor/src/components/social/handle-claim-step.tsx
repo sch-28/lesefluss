@@ -15,6 +15,7 @@ import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CARD } from "@/components/card";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	checkHandle,
@@ -180,7 +181,7 @@ export function HandleClaimStep({
 				{nameError && <p className="text-destructive text-xs">{nameError}</p>}
 			</div>
 
-			<div className="rounded-lg border border-border bg-card p-4">
+			<div className={CARD}>
 				<p className="mb-3 text-muted-foreground text-xs">
 					This is what other users will see. Nothing is visible until you confirm.
 				</p>

@@ -23,6 +23,7 @@ export function GoalStat({
 			>
 				{value}
 			</div>
+			{/* ui-rules-allow: uppercase-tracked -- it mirrors the reader's goal chip */}
 			<div className="mt-0.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);

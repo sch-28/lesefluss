@@ -70,6 +70,7 @@ export function PhoneSignInDialog({
 						aria-label="QR code for the sign-in link"
 						data-testid="device-link-qr"
 					>
+						{/* ui-rules-allow: hex-colour -- a QR code stays black on white in every theme so it scans */}
 						<path d={qr.d} fill="#000000" />
 					</svg>
 					<p className="m-0 font-mono text-2xl tracking-[0.2em]">

@@ -61,3 +61,15 @@ describe("the app's one locale on a German device", () => {
 		expect(formatWeekdayTime(tuesday)).toBe("Tue 14:05");
 	});
 });
+
+describe("formatCompactCount", () => {
+	it("reads the same for every compact count, with one decimal only on small values", async () => {
+		const { formatCompactCount } = await import("../format-number");
+		expect(
+			[0, 640, 999, 1000, 1200, 12_500, 99_999, 100_000, 150_000, 999_999].map(formatCompactCount),
+		).toEqual(["0", "640", "999", "1k", "1.2k", "12.5k", "99.9k", "100k", "150k", "999k"]);
+		expect(
+			[1_000_000, 1_250_000, 9_990_000, 10_000_000, 12_600_000].map(formatCompactCount),
+		).toEqual(["1M", "1.2M", "9.9M", "10M", "12M"]);
+	});
+});

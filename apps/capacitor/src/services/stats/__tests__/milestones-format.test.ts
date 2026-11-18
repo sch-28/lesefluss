@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { formatCompactCount } from "../../../utils/format-number";
 import {
-	compactNumber,
 	milestoneFace,
 	milestoneProgress,
 	milestoneProgressLine,
@@ -10,7 +10,7 @@ import {
 describe("milestone formatting", () => {
 	it("keeps numbers short enough for a medal", () => {
 		expect(
-			[640, 1200, 100_000, 640_000, 1_000_000, 1_200_000, 10_000_000].map(compactNumber),
+			[640, 1200, 100_000, 640_000, 1_000_000, 1_200_000, 10_000_000].map(formatCompactCount),
 		).toEqual(["640", "1.2k", "100k", "640k", "1M", "1.2M", "10M"]);
 	});
 

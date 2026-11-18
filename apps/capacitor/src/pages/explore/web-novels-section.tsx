@@ -1,15 +1,18 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useCallback, useId } from "react";
+import { CARD_SURFACE } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
 import { type ProviderId, providerLabel } from "../../services/serial-scrapers";
 import { type ProviderCover, providerCovers } from "./provider-covers";
 import {
 	PROVIDER_BRAND_COLOR,
 	PROVIDER_CARD_LABEL,
+	PROVIDER_FALLBACK_COLOR,
 	PROVIDER_SUBTITLE,
 	VISIBLE_PROVIDERS,
 } from "./web-novels-providers";
@@ -66,7 +69,7 @@ const WebNovelsSection: React.FC = () => {
 							id={id}
 							label={PROVIDER_CARD_LABEL[id] ?? providerLabel(id)}
 							subtitle={PROVIDER_SUBTITLE[id] ?? "Web fiction"}
-							color={PROVIDER_BRAND_COLOR[id] ?? "#444"}
+							color={PROVIDER_BRAND_COLOR[id] ?? PROVIDER_FALLBACK_COLOR}
 							covers={providerCovers[id] ?? []}
 							onTap={handleProviderTap}
 						/>
@@ -95,7 +98,10 @@ function ProviderCard({ id, label, subtitle, color, covers, onTap }: ProviderCar
 			type="button"
 			onClick={handleClick}
 			style={{ "--brand": color } as CSSProperties}
-			className="relative w-44 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-card-foreground transition-transform active:scale-[0.97]"
+			className={cn(
+				CARD_SURFACE,
+				"relative w-44 shrink-0 cursor-pointer overflow-hidden text-left transition-transform active:scale-[0.97]",
+			)}
 			aria-label={`Browse ${label}`}
 		>
 			<span
@@ -144,6 +150,7 @@ function CoverFan({ covers }: { covers: ProviderCover[] }) {
 function Ao3Mark({ label }: { label: string }) {
 	return (
 		<span className="flex flex-col items-center justify-end pb-2">
+			{/* ui-rules-allow: font-size -- cover artwork, a stand-in for the provider's cover */}
 			<span className="font-serif text-3xl text-foreground">{label}</span>
 			<span className="mt-1 text-muted-foreground text-xs">Archive of Our Own</span>
 		</span>

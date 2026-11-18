@@ -146,6 +146,7 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({
 							{groupByPartOfSpeech(entry.senses ?? []).map((group, groupIndex) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: entries share a part of speech and glosses repeat, so no content key is unique; the list is immutable per query result
 								<div key={`${groupIndex}-${group.pos}`} className="flex flex-col gap-2">
+									{/* ui-rules-allow: uppercase-tracked -- the reader stays as it is (LESE-215) */}
 									<p className="m-0 font-semibold text-foreground text-xs uppercase tracking-wide">
 										{group.pos}
 									</p>

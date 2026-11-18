@@ -1,4 +1,5 @@
 import { cn } from "@lesefluss/ui/utils";
+import { CARD_SURFACE } from "@/components/card";
 import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_SUB, LIST_ROW_VALUE } from "@/components/list-row";
 import { SECTION_SPACING, Section, SectionHeader } from "../../../components/section-header";
 
@@ -34,12 +35,7 @@ export function StatCard({
 	className?: string;
 }) {
 	return (
-		<div
-			className={cn(
-				"rounded-xl border border-border bg-card px-4 text-card-foreground [&>*:last-child]:border-b-0",
-				className,
-			)}
-		>
+		<div className={cn(CARD_SURFACE, "px-4 [&>*:last-child]:border-b-0", className)}>
 			{children}
 		</div>
 	);

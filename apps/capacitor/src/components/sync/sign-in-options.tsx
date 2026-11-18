@@ -5,6 +5,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { ArrowRight, ChevronDown, Globe, type LucideIcon, Smartphone } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { CARD_SURFACE } from "@/components/card";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -71,7 +72,10 @@ function SecondaryOption({
 				aria-describedby={descriptionId}
 				onClick={onClick}
 				disabled={disabled}
-				className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/60 disabled:opacity-50"
+				className={cn(
+					CARD_SURFACE,
+					"flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/60 disabled:opacity-50",
+				)}
 			>
 				<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
 					<Icon className="size-5" />

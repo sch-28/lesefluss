@@ -327,6 +327,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4 }}
+				// ui-rules-allow: card-surface -- the social hero cards' 2xl radius waits on LESE-215 d-2
 				className="mt-3 rounded-2xl border border-border bg-card p-4 text-card-foreground"
 			>
 				<div className="flex gap-4">

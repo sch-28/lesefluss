@@ -122,7 +122,7 @@ function NotificationSettings() {
 	let body: React.ReactNode;
 	if (!isPushSupported()) {
 		body = (
-			<p className="px-1 text-muted-foreground text-sm">
+			<p className="text-muted-foreground text-sm">
 				Notifications need the Android app. Here, new requests, invites and replies wait in your
 				inbox.
 			</p>

@@ -5,6 +5,7 @@ import {
 	isBookStatus,
 	isSeriesCollectionId,
 } from "@lesefluss/core";
+import { formatCompactCount } from "@/utils/format-number";
 
 /**
  * The library's structured filter: per facet, the values a book must carry one
@@ -234,17 +235,10 @@ export function setWordRange(filter: LibraryFilter, range: WordRange | null): Li
 	return { ...rest, words: ordered };
 }
 
-/** Compact word counts: 150000 → "150k", 1200000 → "1.2M". */
-export function formatWords(n: number): string {
-	if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(1))}M`;
-	if (n >= 1000) return `${Number((n / 1000).toFixed(1))}k`;
-	return String(n);
-}
-
 export function wordRangeLabel({ min, max }: WordRange): string {
-	if (min != null && max != null) return `${formatWords(min)}–${formatWords(max)}`;
-	if (min != null) return `${formatWords(min)}+`;
-	return `< ${formatWords(max ?? 0)}`;
+	if (min != null && max != null) return `${formatCompactCount(min)}–${formatCompactCount(max)}`;
+	if (min != null) return `${formatCompactCount(min)}+`;
+	return `< ${formatCompactCount(max ?? 0)}`;
 }
 
 export const WORD_RANGE_PRESETS: readonly WordRange[] = [

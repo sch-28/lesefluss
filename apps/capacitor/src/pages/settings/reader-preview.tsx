@@ -46,6 +46,7 @@ export default function ReaderPreview() {
 			data-testid="reader-preview"
 		>
 			<span
+				// ui-rules-allow: uppercase-tracked -- it previews the reader, which stays as it is
 				className="block pt-1.5 font-semibold text-2xs text-muted-foreground uppercase tracking-[0.08em]"
 				style={{ paddingInline: `${margin}px` }}
 			>
