@@ -11,6 +11,7 @@ import {
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useMemo, useRef } from "react";
+import { CARD } from "@/components/card";
 import { BookEditLayout, useIsWideLayout } from "./book-edit-layout";
 import { filterToTree } from "./condition-tree";
 import { decodeFilterParam } from "./filter-model";
@@ -66,7 +67,7 @@ const NewShelfPage: React.FC<{ filterParam?: string }> = ({ filterParam }) => {
 				<p className="m-0 text-muted-foreground text-sm">
 					Books matching these conditions appear on the shelf.
 				</p>
-				<div className="rounded-xl border border-border bg-card p-4">{editor.body}</div>
+				<div className={CARD}>{editor.body}</div>
 				{editor.hint && <p className="m-0 text-muted-foreground text-xs">{editor.hint}</p>}
 			</div>
 

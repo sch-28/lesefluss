@@ -1,6 +1,4 @@
-import { cn } from "@lesefluss/ui/utils";
-import { CARD, CARD_BODY } from "@/components/card";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import { formatCount } from "@/utils/format-number";
 import type { Book } from "../../services/db/schema";
 import { formatDate } from "../../utils/date-utils";
@@ -30,8 +28,7 @@ export function BookFileCard({ book }: { book: Book }) {
 	rows.push(["Source", describeSource(book)]);
 
 	return (
-		<section className={cn(CARD, CARD_BODY, "mt-4")}>
-			<h2 className={SECTION_TITLE}>About this file</h2>
+		<Card title="About this file" className="mt-4">
 			{/* One label-value row per line on a phone; two side-by-side pairs were too narrow for "123,456 words". */}
 			<dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
 				{rows.map(([label, value]) => (
@@ -41,7 +38,7 @@ export function BookFileCard({ book }: { book: Book }) {
 					</div>
 				))}
 			</dl>
-		</section>
+		</Card>
 	);
 }
 

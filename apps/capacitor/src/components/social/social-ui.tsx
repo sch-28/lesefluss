@@ -5,7 +5,6 @@ import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import CoverImage from "@/components/cover-image";
 import { SECTION_SPACING, SectionHeader } from "@/components/section-header";
-import { STAT_CAPTION } from "@/components/stat-tile";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
 import { pickNowReading } from "./now-reading";
@@ -66,15 +65,6 @@ export function FinishedLabel({ className }: { className?: string }) {
 			<CheckCircle2 className="size-3.5" />
 			Finished
 		</span>
-	);
-}
-
-export function StatTile({ value, label }: { value: string; label: string }) {
-	return (
-		<div className="rounded-xl border border-border bg-card p-3 text-card-foreground">
-			<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">{value}</div>
-			<div className={cn("mt-1", STAT_CAPTION)}>{label}</div>
-		</div>
 	);
 }
 

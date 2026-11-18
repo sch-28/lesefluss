@@ -13,10 +13,12 @@ import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
 import { useOverlayBack } from "@lesefluss/ui/overlay-back";
 import { Switch } from "@lesefluss/ui/switch";
+import { cn } from "@lesefluss/ui/utils";
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { ChevronRight, FileUp } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CARD } from "@/components/card";
 import { importRequest } from "../../commands/global";
 import { NotFound } from "../../components/app-shell/not-found";
 import { BookSelection, type QuickFilter } from "../../components/collections/book-selection";
@@ -317,7 +319,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 				{mode.kind !== "add" && (
 					// A form, so the Android keyboard's action key submits by implicit submission.
 					<form
-						className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4"
+						className={cn(CARD, "flex flex-col gap-4")}
 						onSubmit={(e) => {
 							e.preventDefault();
 							void save();

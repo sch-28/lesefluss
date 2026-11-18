@@ -15,9 +15,8 @@ import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { CARD, CARD_BODY } from "@/components/card";
+import { Card } from "@/components/card";
 import { PageBody } from "@/components/page-body";
-import { SECTION_TITLE } from "@/components/section-header";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
@@ -288,8 +287,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					)}
 
 					{(description?.html || description?.text) && (
-						<section className={cn(CARD, CARD_BODY, "mt-6")}>
-							<h2 className={SECTION_TITLE}>About</h2>
+						<Card title="About" className="mt-6">
 							<CollapsibleProse>
 								{description.html ? (
 									<SanitizedDescription
@@ -307,7 +305,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									</div>
 								)}
 							</CollapsibleProse>
-						</section>
+						</Card>
 					)}
 
 					{children}

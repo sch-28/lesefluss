@@ -120,11 +120,11 @@ solutions:
         relative times are formatted only in `apps/capacitor/src/utils/` (and `packages/ui/src/lib/`),
         in one locale whatever the device's, with one unit spelling: "12 min ago", "3h ago",
         "5d ago", "15d", "39 min left". Count columns use tabular figures.
-      - Motion: a transition names its properties (Tailwind's bare `transition`, or
+      - Motion: a CSS transition names its properties (Tailwind's bare `transition`, or
         `transition-colors`/`-opacity`/`-transform`), never `all`, with the one shared ease-out
-        and 150, 200 or 300 ms. Hover steps the colour or surface and never scales; a press
-        scales to 0.97. Progress fills animate a transform; only layout that must reflow (the
-        sidebar collapse) animates width or padding.
+        and 150, 200 or 300 ms. Scripted entrances (framer-motion) are not on these timings yet.
+        Hover steps the colour or surface and never scales; a press scales to 0.97. Progress
+        fills animate a transform; only layout that must reflow animates width or padding.
       - Type: interface sizes come from the scale `2xs` 11, `xs` 12, `sm` 14, `base` 16, `lg` 18,
         `xl` 20, `2xl` 24, `4xl` 36 (rem, so they follow the App text size), weights 400, 500 and
         600 only. Reader content, SVG chart text, the RSVP word and cover artwork keep their own

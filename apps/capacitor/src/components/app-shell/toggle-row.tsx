@@ -1,5 +1,7 @@
 import { Switch } from "@lesefluss/ui/switch";
+import { cn } from "@lesefluss/ui/utils";
 import { useId } from "react";
+import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_SUB } from "@/components/list-row";
 
 export function ToggleRow({
 	id,
@@ -20,13 +22,10 @@ export function ToggleRow({
 	const switchId = id ?? fallbackId;
 	return (
 		// The whole row is the label, so a tap anywhere on it flips the switch.
-		<label
-			htmlFor={switchId}
-			className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2"
-		>
+		<label htmlFor={switchId} className={cn(LIST_ROW, "cursor-pointer justify-between")}>
 			<span className="flex min-w-0 flex-col">
-				<span className="text-foreground text-sm">{title}</span>
-				{subtitle && <span className="text-muted-foreground text-xs">{subtitle}</span>}
+				<span className={LIST_ROW_LABEL}>{title}</span>
+				{subtitle && <span className={LIST_ROW_SUB}>{subtitle}</span>}
 			</span>
 			<Switch
 				id={switchId}

@@ -146,6 +146,46 @@ describe("ui rules: the scanner", () => {
 		].join("\n");
 		expect(offendersIn("font-size", path, source)).toEqual([]);
 		expect(offendersIn("font-weight", path, source)).toEqual([]);
+		const bare = '<text className="font-bold text-[34px]" />';
+		expect(offendersIn("font-size", path, bare)).toEqual([`${path}:1`]);
+		expect(offendersIn("font-weight", path, bare)).toEqual([`${path}:1`]);
+	});
+
+	it.each([
+		[
+			"transition-all",
+			'<div className="transition-all" />',
+			'<div className="transition-colors" />',
+		],
+		["hover-scale", '<div className="hover:scale-105" />', '<div className="hover:bg-accent" />'],
+		["font-size", '<p className="text-[13px]" />', '<p className="text-2xs" />'],
+		["font-weight", '<p className="font-extrabold" />', '<p className="font-semibold" />'],
+		[
+			"section-title",
+			'<h2 className="text-xs uppercase" />',
+			'<h2 className="font-medium text-sm" />',
+		],
+		["section-title", '<p className="book-detail-section-title" />', '<p className="text-sm" />'],
+		["raw-colour", '<p className="text-amber-500" />', '<p className="text-warning" />'],
+		["raw-colour", '<div className="bg-[#fff]" />', '<div className="bg-card" />'],
+	] as const)("%s catches %s, but not %s", (rule, bad, good) => {
+		expect(offendersIn(rule, path, `${bad}\n${good}`)).toEqual([`${path}:1`]);
+	});
+
+	it("catches an arbitrary px step and a gap-5 or space-5", () => {
+		const source = [
+			'<div className="mx-[18px]" />',
+			'<div className="-my-[7px]" />',
+			'<div className="gap-5" />',
+			'<div className="space-y-5" />',
+			'<div className="mx-4 gap-4" />',
+		].join("\n");
+		expect(offendersIn("off-grid-spacing", path, source)).toEqual([
+			`${path}:1`,
+			`${path}:2`,
+			`${path}:3`,
+			`${path}:4`,
+		]);
 	});
 
 	it("catches a 2.5 step and an off-scale gap or stack, but not one on the scale", () => {

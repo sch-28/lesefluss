@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { CARD } from "@/components/card";
 import { useElementWidth } from "../../../hooks/use-element-width";
 import { useLocalDayNow } from "../../../hooks/use-local-day";
 import { queryHooks } from "../../../services/db/hooks";
@@ -55,7 +56,7 @@ export function Activity() {
 			aside={`per week · last ${weeks.length} weeks`}
 			data-testid="stats-reading-hours"
 		>
-			<div className="rounded-xl border border-border bg-card p-4">
+			<div className={CARD}>
 				<div ref={frameRef}>
 					<svg
 						viewBox={`0 0 ${width} ${HEIGHT}`}

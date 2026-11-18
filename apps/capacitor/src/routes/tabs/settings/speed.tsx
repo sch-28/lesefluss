@@ -1,8 +1,10 @@
 import { bookPace, DEFAULT_SETTINGS, SPEED_WINDOWS, type SpeedWindow } from "@lesefluss/core";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
+import { cn } from "@lesefluss/ui/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { Gauge } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { CARD } from "@/components/card";
 import { PageBody } from "@/components/page-body";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -94,10 +96,7 @@ function SpeedPreview() {
 			height={lastReadId.data ? PREVIEW_HEIGHT_WITH_BOOK : PREVIEW_HEIGHT}
 		>
 			{data && (
-				<div
-					className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
-					data-testid="speed-preview"
-				>
+				<div className={cn(CARD, "flex flex-col gap-2")} data-testid="speed-preview">
 					<div className="text-muted-foreground text-sm">Preview with this window</div>
 					<div className="font-semibold text-2xl tabular-nums">{data.reading.wpm} wpm</div>
 					{book && minutesLeft !== null && (

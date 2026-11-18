@@ -123,11 +123,7 @@ const BooksStep: React.FC = () => {
 					))}
 				</div>
 			) : landingQuery.isError ? (
-				<ErrorState
-					error={landingQuery.error}
-					onRetry={() => landingQuery.refetch()}
-					className="mt-6"
-				/>
+				<ErrorState error={landingQuery.error} onRetry={() => landingQuery.refetch()} />
 			) : classics.length === 0 ? (
 				<p className="mt-6 text-center text-muted-foreground text-sm">No classics available.</p>
 			) : (

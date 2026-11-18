@@ -2,7 +2,7 @@ import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { PageContainer, type PageWidth } from "./page-container";
 
-/** Header → content and last control row → content: 12px (LESE-215.1). */
+/** Header → content, 12px. PageToolbar's own bottom padding makes the last row → content 12 too. */
 export const PAGE_TOP = "pt-3";
 export const PAGE_TOP_PX = 12;
 /** The phone's floating action button (or fixed action bar) needs the room; desktop has none. */

@@ -1,5 +1,7 @@
+import { cn } from "@lesefluss/ui/utils";
 import { Bug, ChevronDown, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { LIST_ROW } from "@/components/list-row";
 import { toast } from "@/components/toast";
 import { type DeviceDiagnostics, getDeviceDiagnostics } from "@/services/telemetry";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -73,7 +75,10 @@ export function DiagnosticsRow() {
 			<button
 				type="button"
 				onClick={toggle}
-				className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60"
+				className={cn(
+					LIST_ROW,
+					"w-full cursor-pointer text-left no-underline transition-colors hover:bg-muted/60",
+				)}
 			>
 				<Bug className="size-5 text-muted-foreground" />
 				<div className="min-w-0 flex-1">

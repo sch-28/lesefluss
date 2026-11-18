@@ -4,6 +4,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { CARD } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { TintedCover } from "../../components/tinted-cover";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
@@ -66,7 +67,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 			aria-roledescription="carousel"
 			aria-label="Featured books"
 			// Wraps: at a large font scale the text drops below the cover rather than squeeze.
-			className="mb-6 flex touch-pan-y flex-wrap gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground"
+			className={cn(CARD, "mb-6 flex touch-pan-y flex-wrap gap-4")}
 			onMouseEnter={() => {
 				isHoveredRef.current = true;
 			}}

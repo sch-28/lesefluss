@@ -269,6 +269,13 @@ describe("SessionsTab", () => {
 		);
 	});
 
+	it("adds no top space of its own under the tab bar, so every Stats tab starts 12 below it", async () => {
+		state.rows = [session("a", "mm", at(7, 9))];
+		const v = await show();
+		const controls = v.getButton("Select")?.closest(".px-4");
+		expect(controls?.className).not.toMatch(/\b(py|pt|mt)-/);
+	});
+
 	it("has a visible Select button and offers All books in the book filter", async () => {
 		state.rows = [session("a", "mm", at(7, 9)), session("b", "em", at(7, 10))];
 		const v = await show("mm");

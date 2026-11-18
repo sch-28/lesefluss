@@ -3,6 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { CalendarDays, ChevronUp, Target } from "lucide-react";
 import { useState } from "react";
+import { CARD } from "@/components/card";
 import { GoalRing } from "../../../components/goal-ring";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useContinueReading } from "../../../hooks/use-continue-reading";
@@ -57,7 +58,7 @@ export function TodayGoalCard() {
 
 	return (
 		<section className="px-4" data-testid="stats-goal-card">
-			<div className="rounded-xl border border-border bg-card p-4 text-card-foreground">
+			<div className={CARD}>
 				<StreakCalendarToggle>
 					{(calendarButton) => (
 						<div className="flex items-center gap-3">

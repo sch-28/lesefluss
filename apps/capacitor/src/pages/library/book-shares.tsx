@@ -1,7 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { cn } from "@lesefluss/ui/utils";
-import { CARD, CARD_BODY } from "@/components/card";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import { toast } from "@/components/toast";
 import { shareFailureMessage, useRevokeShare, useSharesForBook } from "@/services/social/shares";
 
@@ -11,8 +9,7 @@ export function BookShares({ bookId, enabled }: { bookId: string; enabled: boole
 	const revoke = useRevokeShare(bookId);
 	if (!enabled || !shares.data?.length) return null;
 	return (
-		<section className={cn(CARD, CARD_BODY)}>
-			<h2 className={SECTION_TITLE}>Shared with</h2>
+		<Card title="Shared with">
 			<ul className="m-0 flex list-none flex-col gap-2 p-0">
 				{shares.data.map((share) => (
 					<li key={share.shareId} className="flex items-center justify-between gap-3 text-sm">
@@ -37,6 +34,6 @@ export function BookShares({ bookId, enabled }: { bookId: string; enabled: boole
 					</li>
 				))}
 			</ul>
-		</section>
+		</Card>
 	);
 }

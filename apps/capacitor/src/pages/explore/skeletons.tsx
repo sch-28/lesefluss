@@ -1,5 +1,6 @@
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
+import { CARD } from "@/components/card";
 
 export const EXPLORE_GRID_CLASS =
 	"grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
@@ -105,7 +106,7 @@ export const HeroSkeleton: React.FC = () => (
 		role="status"
 		aria-busy="true"
 		aria-label="Loading"
-		className="mb-6 flex gap-4 rounded-xl border border-border bg-card p-4"
+		className={cn(CARD, "mb-6 flex gap-4")}
 	>
 		<div className="aspect-2/3 w-28 shrink-0 animate-pulse rounded-md border border-border bg-muted" />
 		<div className="flex flex-1 flex-col">

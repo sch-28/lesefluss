@@ -104,7 +104,10 @@ export function ExpanderRow({
 	return (
 		<button
 			type="button"
-			className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+			className={cn(
+				LIST_ROW,
+				"w-full justify-between text-left transition-colors hover:bg-muted/60",
+			)}
 			onClick={onToggle}
 			aria-expanded={open}
 		>

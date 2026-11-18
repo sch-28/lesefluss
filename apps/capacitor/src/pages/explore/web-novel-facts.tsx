@@ -1,4 +1,6 @@
+import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
+import { CARD } from "@/components/card";
 import { formatCount } from "@/utils/format-number";
 import {
 	chapterCountLabel,
@@ -45,7 +47,7 @@ export const Ao3Meta: React.FC<{ meta: NonNullable<SeriesDetails["ao3"]> }> = ({
 	if (rows.length === 0) return null;
 	return (
 		<dl
-			className="mt-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 rounded-xl border border-border bg-card p-4 text-sm"
+			className={cn(CARD, "mt-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm")}
 			data-testid="ao3-meta"
 		>
 			{rows.map((r) => (

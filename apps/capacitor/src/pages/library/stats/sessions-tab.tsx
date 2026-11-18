@@ -112,7 +112,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 					className="px-2 py-2"
 				/>
 			) : (
-				<div className="px-4 py-3">
+				<div className="px-4 pb-3">
 					<div className="flex items-center gap-2">
 						<FilterMenuChip
 							label={bookId ? titleOf(bookId) : "All books"}

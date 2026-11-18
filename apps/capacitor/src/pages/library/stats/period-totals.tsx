@@ -2,6 +2,7 @@ import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { CARD } from "@/components/card";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
@@ -79,10 +80,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -8 }}
 					transition={{ duration: 0.25 }}
-					className={cn(
-						"grid gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground",
-						showFinished ? "grid-cols-3" : "grid-cols-2",
-					)}
+					className={cn(CARD, "grid gap-3", showFinished ? "grid-cols-3" : "grid-cols-2")}
 				>
 					<Stat
 						label="Time"

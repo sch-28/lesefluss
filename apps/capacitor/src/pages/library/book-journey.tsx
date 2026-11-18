@@ -1,7 +1,5 @@
-import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2 } from "lucide-react";
-import { CARD, CARD_BODY } from "@/components/card";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import { STAT_CAPTION } from "@/components/stat-tile";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
@@ -36,9 +34,7 @@ export function BookJourney({ book }: { book: Book }) {
 	const { sessionCount, longestSessionMs, longestSessionAt } = data;
 
 	return (
-		<section className={cn(CARD, CARD_BODY, "mt-4")}>
-			<h2 className={SECTION_TITLE}>Your journey</h2>
-
+		<Card title="Your journey" className="mt-4">
 			<ol className="flex items-start justify-between gap-2">
 				{journey.milestones.map((milestone, index) => {
 					const isLast = index === journey.milestones.length - 1;
@@ -83,6 +79,6 @@ export function BookJourney({ book }: { book: Book }) {
 					</>
 				)}
 			</p>
-		</section>
+		</Card>
 	);
 }

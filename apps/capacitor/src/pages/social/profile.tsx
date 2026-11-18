@@ -2,23 +2,21 @@ import type { ProfileStats, ProfileView } from "@lesefluss/core";
 import { ratingStars } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
+import { cn } from "@lesefluss/ui/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Ban, Flag, Lock, MoreHorizontal, Settings, UserMinus, UserRound } from "lucide-react";
 import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { CARD } from "@/components/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MedalGrid } from "@/components/milestones/milestone-medals";
 import { PageBody } from "@/components/page-body";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
-import {
-	CoverShelf,
-	profileCoverSrc,
-	SocialSection,
-	StatTile,
-} from "@/components/social/social-ui";
+import { CoverShelf, profileCoverSrc, SocialSection } from "@/components/social/social-ui";
 import { SpeedChip, SpeedChipStatic } from "@/components/speed-chip/speed-chip";
+import { StatTile } from "@/components/stat-tile";
 import { toast } from "@/components/toast";
 import { AuthedFetchError } from "@/services/authed-fetch";
 import { useIsOnline } from "@/services/social/cache";
@@ -210,7 +208,13 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 				<SocialSection title="Reading stats">
 					<div className="grid grid-cols-2 gap-3">
 						{statTiles(view.sections.stats).map((tile) => (
-							<StatTile key={tile.label} value={tile.value} label={tile.label} />
+							<StatTile
+								key={tile.label}
+								value={tile.value}
+								label={tile.label}
+								size="lg"
+								className={cn(CARD, "p-3")}
+							/>
 						))}
 					</div>
 				</SocialSection>

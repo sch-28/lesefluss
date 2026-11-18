@@ -8,7 +8,6 @@ import {
 	wordPos,
 } from "@lesefluss/core";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
-import { cn } from "@lesefluss/ui/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
@@ -23,8 +22,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CARD, CARD_BODY } from "@/components/card";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import { formatCount } from "@/utils/format-number";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
@@ -393,12 +391,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				{book.review && (
-					<section className={cn(CARD, CARD_BODY)}>
-						<h2 className={SECTION_TITLE}>Your notes</h2>
+					<Card title="Your notes">
 						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
 							{book.review}
 						</p>
-					</section>
+					</Card>
 				)}
 				<GoalCard book={book} />
 				<BookStatsCard book={book} />

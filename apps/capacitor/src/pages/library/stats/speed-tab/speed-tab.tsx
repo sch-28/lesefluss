@@ -142,7 +142,7 @@ export function SpeedTab({ now }: { now: number }) {
 
 	return (
 		<div className="pb-6" data-testid="speed-tab">
-			<section className="mt-4 px-4">
+			<section className="px-4">
 				{hasSpeed && (
 					<>
 						<Headline model={model} view={view} now={now} />
