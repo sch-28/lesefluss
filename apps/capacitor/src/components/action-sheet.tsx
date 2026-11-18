@@ -10,7 +10,7 @@ import {
 import { cn } from "@lesefluss/ui/utils";
 import type { LucideIcon } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FINE_POINTER_QUERY, useMediaQuery } from "../hooks/use-media-query";
 
@@ -145,13 +145,18 @@ export const AnchorPoint: React.FC<{ anchor: Anchor }> = ({ anchor }) =>
 	);
 
 export const ActionSheet: React.FC<ActionSheetProps> = (props) => {
-	const { open } = props;
+	const { open, onOpenChange } = props;
 	const { anchor, isFinePointer } = useOpenAnchor(open);
+	// Callers derive items from the target they clear on close; keep the last open content
+	// so the exit animation does not show a different menu.
+	const shown = useRef({ title: props.title, items: props.items });
+	if (open) shown.current = { title: props.title, items: props.items };
+	const sheetProps = { open, onOpenChange, ...shown.current };
 	// Touch always gets the sheet, whatever the count (LESE-211.27 d-2).
 	if (anchor && isFinePointer) {
-		return <AnchoredActionMenu {...props} anchor={anchor} />;
+		return <AnchoredActionMenu {...sheetProps} anchor={anchor} />;
 	}
-	return <ActionDrawer {...props} />;
+	return <ActionDrawer {...sheetProps} />;
 };
 
 const AnchoredActionMenu: React.FC<ActionSheetProps & { anchor: Anchor }> = ({

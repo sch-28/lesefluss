@@ -265,7 +265,16 @@ const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
 }));
 
 const ReaderSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
-	<div style={{ padding: "16px 20px", height: "100%", overflow: "hidden", ...style }}>
+	<div
+		style={{
+			padding: "16px 20px",
+			height: "100%",
+			overflow: "hidden",
+			maxWidth: "var(--reader-column, none)",
+			marginInline: "auto",
+			...style,
+		}}
+	>
 		{skeletonLines.map((lineStyle, i) => (
 			// biome-ignore lint/suspicious/noArrayIndexKey: static style array, index is stable
 			<div key={i} className="reader-skeleton-line" style={lineStyle} />

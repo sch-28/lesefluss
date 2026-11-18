@@ -226,3 +226,33 @@ describe("anchorPlacement", () => {
 		});
 	});
 });
+
+describe("ActionSheet closing", () => {
+	it("keeps the open title and items during the exit animation when the caller clears its target", async () => {
+		pointer("fine");
+		const real = window.getComputedStyle;
+		// Radix keeps closing content mounted only while an exit animation runs.
+		vi.spyOn(window, "getComputedStyle").mockImplementation((el, pseudo) => {
+			const style = real(el, pseudo);
+			if (!(el as Element).closest?.('[data-testid="action-menu"]')) return style;
+			return new Proxy(style, {
+				get: (target, key) =>
+					key === "animationName"
+						? (el as Element).getAttribute("data-state") === "closed"
+							? "exit"
+							: "enter"
+						: Reflect.get(target, key, target),
+			});
+		});
+		press();
+		view = await render(
+			<ActionSheet open onOpenChange={() => {}} title="Reading" items={items(1)} />,
+		);
+		await flush();
+		await view.rerender(<ActionSheet open={false} onOpenChange={() => {}} items={items(4)} />);
+		await flush();
+		expect(menu()).not.toBeNull();
+		expect(menu()?.textContent).toContain("Reading");
+		expect(menu()?.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
+	});
+});
