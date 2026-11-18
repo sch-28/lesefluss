@@ -15,3 +15,11 @@
 # Keep line numbers so mapped crash traces show source lines.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# R8 full mode treats an annotation type that nothing keeps as never
+# instantiated, so reads of the stored plugin annotation fold to null and the
+# bridge crashes on the first permission check (LESE-120.4). Capacitor's
+# consumer rules keep the plugin classes but not the annotation types.
+-keep @interface com.getcapacitor.annotation.* { *; }
+-keep @interface com.getcapacitor.PluginMethod { *; }
+-keep @interface com.getcapacitor.NativePlugin { *; }
