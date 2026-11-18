@@ -27,6 +27,7 @@ import { queries } from "../services/db/queries";
 import { devicePositionWrite } from "../services/db/queries/books";
 import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
 import { computeOnDeviceHash, type DeviceCategory } from "../services/devices/hash";
+import { resolveSingleBookSyncTarget } from "../services/devices/single-book/sync-target";
 import { buildRsvpDocument, type RsvpChapter } from "../services/rsvp-format/builder";
 import { log } from "../utils/log";
 import { useBLE } from "./ble-context";
@@ -154,7 +155,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		if (loadedRef.current) return;
 		loadedRef.current = true;
 
-		queries.getBooks().then((allBooks) => {
+		queries.getAllBooks().then((allBooks) => {
 			const active = allBooks.find((b) => b.isActive);
 			updateActiveBookId(active?.id ?? null);
 		});
@@ -315,49 +316,39 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			return;
 		}
 
-		// ── Step 1: Read storage info (includes book_hash) ──
-		// This tells us which book the device currently has, so we can verify
-		// it matches our active book before syncing the position.
 		const storageResult = await ble.readStorage();
-		const deviceBookHash = storageResult.success ? (storageResult.data?.book_hash ?? "") : "";
-
-		const currentBookId = activeBookIdRef.current;
-
-		// ── Step 2: Book identity check ──
-		// The device's book_hash is the same 8-char hex as our book.id.
-		// If they don't match, the device is out of sync.
-		if (currentBookId != null) {
-			if (!deviceBookHash || deviceBookHash !== currentBookId) {
+		if (!storageResult.success) {
+			log.warn("booksync", "readStorage failed:", storageResult.error);
+			return;
+		}
+		const deviceBookHash = storageResult.data?.book_hash ?? "";
+		const libraryBooks = await queries.getAllBooks();
+		const target = resolveSingleBookSyncTarget(
+			deviceBookHash,
+			activeBookIdRef.current,
+			libraryBooks.map((b) => b.id),
+		);
+		if (target.kind !== "sync") {
+			if (target.kind === "unknown") {
 				log.warn(
 					"booksync",
-					`book mismatch - device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
+					`device holds book "${target.deviceHash}", which is not in this library; send the book again to sync its position`,
 				);
-				await queries.updateBook(currentBookId, { isActive: false }, Date.now(), {
+			}
+			if (target.staleActiveId != null) {
+				await queries.updateBook(target.staleActiveId, { isActive: false }, Date.now(), {
 					isDeviceLocal: true,
 				});
 				updateActiveBookId(null);
-				return;
 			}
-		} else if (!deviceBookHash) {
-			// Neither side has a book - nothing to sync
 			return;
-		} else {
-			// Device has a book but app doesn't know which one is active.
-			// Check if any book in the DB matches the device hash (= book id).
-			const allBooks = await queries.getBooks();
-			const match = allBooks.find((b) => b.id === deviceBookHash);
-			if (match) {
-				log("booksync", `found matching book in DB (id=${match.id}), restoring isActive`);
-				await queries.setActiveBook(match.id);
-				updateActiveBookId(match.id);
-				// Fall through to position sync with the restored book
-			} else {
-				// Device has a book we don't recognise - no action
-				return;
-			}
+		}
+		if (target.restored) {
+			log("booksync", `device holds library book ${target.bookId}, marking it active`);
+			await queries.setActiveBook(target.bookId);
+			updateActiveBookId(target.bookId);
 		}
 
-		// ── Step 3: Position sync ──
 		const result = await ble.readPosition();
 		if (!result.success || result.data == null) {
 			log.warn("booksync", "readPosition failed:", result.error);
@@ -370,38 +361,35 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		// This handles the case where the user read on the app since the last
 		// device session - we don't want the device to clobber app progress.
 		let winner = devicePos;
-		// Re-read ref in case it was updated above
-		const confirmedBookId = activeBookIdRef.current;
+		const bookId = target.bookId;
 
-		if (confirmedBookId != null) {
-			// BookSyncContext owns the BLE byte ↔ word conversion (ADR-0002).
-			// Convert app's canonical word position to bytes at the codec
-			// boundary so the single-book esp32 (byte protocol) can compare.
-			const book = await queries.getBook(confirmedBookId);
-			const idx = await queries.loadBookWordIndex(confirmedBookId).catch((err) => {
-				log.warn("booksync", "loadBookWordIndex failed during device sync:", err);
-				return null;
-			});
-			const appPos =
-				book && idx && idx.wordCount > 0
-					? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
-					: 0;
+		// BookSyncContext owns the BLE byte ↔ word conversion (ADR-0002).
+		// Convert app's canonical word position to bytes at the codec
+		// boundary so the single-book esp32 (byte protocol) can compare.
+		const book = await queries.getBook(bookId);
+		const idx = await queries.loadBookWordIndex(bookId).catch((err) => {
+			log.warn("booksync", "loadBookWordIndex failed during device sync:", err);
+			return null;
+		});
+		const appPos =
+			book && idx && idx.wordCount > 0
+				? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
+				: 0;
 
-			if (appPos > devicePos) {
-				winner = appPos;
-				await ble.writePosition(appPos);
-				log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
-			} else if (devicePos > appPos) {
-				if (!idx) {
-					log.warn("booksync", "device ahead but no WordIndex; cannot persist");
-				} else {
-					const word = idx.wordOf(devicePos);
-					const write = devicePositionWrite(word, Date.now(), book?.updatedAt ?? 0);
-					await queries.updateBook(confirmedBookId, write);
-					log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
-					notifyDevicePosition(confirmedBookId, word, write.updatedAt);
-					await queries.markFirstSitting(confirmedBookId, write.lastRead);
-				}
+		if (appPos > devicePos) {
+			winner = appPos;
+			await ble.writePosition(appPos);
+			log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
+		} else if (devicePos > appPos) {
+			if (!idx) {
+				log.warn("booksync", "device ahead but no WordIndex; cannot persist");
+			} else {
+				const word = idx.wordOf(devicePos);
+				const write = devicePositionWrite(word, Date.now(), book?.updatedAt ?? 0);
+				await queries.updateBook(bookId, write);
+				log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
+				notifyDevicePosition(bookId, word, write.updatedAt);
+				await queries.markFirstSitting(bookId, write.lastRead);
 			}
 		}
 
