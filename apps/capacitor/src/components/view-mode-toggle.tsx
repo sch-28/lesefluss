@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { LayoutGrid, List, Table2 } from "lucide-react";
 import type React from "react";
 
@@ -17,8 +17,8 @@ export const ViewModeToggle: React.FC<Props> = ({ viewMode, next, onToggle }) =>
 	const target = next ?? (viewMode === "grid" ? "list" : "grid");
 	const Icon = ICONS[target];
 	return (
-		<Button variant="ghost" size="icon" onClick={onToggle} aria-label={`Switch to ${target} view`}>
+		<HeaderAction onClick={onToggle} aria-label={`Switch to ${target} view`}>
 			<Icon />
-		</Button>
+		</HeaderAction>
 	);
 };

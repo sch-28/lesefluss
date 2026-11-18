@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { buildJourney } from "../../services/stats/journey";
@@ -33,7 +34,7 @@ export function BookJourney({ book }: { book: Book }) {
 
 	return (
 		<section className="book-detail-card mt-4">
-			<h2 className="book-detail-section-title">Your journey</h2>
+			<h2 className={SECTION_TITLE}>Your journey</h2>
 
 			<ol className="mt-4 flex items-start justify-between gap-2">
 				{journey.milestones.map((milestone, index) => {

@@ -595,8 +595,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	 * visible active area only. Focal word at `top: 50%` is then visually
 	 * centered, and bottom-anchored controls sit just above the progress
 	 * bar without per-element magic offsets. Keep in sync with
-	 * `.reader-progress-bar` (content ~52px + safe-area-inset-bottom). */
-	height: calc(100% - var(--safe-bottom) - 52px);
+	 * `.reader-progress-bar` (52px at the default App text size + safe-area-inset-bottom);
+	 * its text lines grow with the text size, so the rem part does too. */
+	height: calc(100% - var(--safe-bottom) - 16px - 2.25rem);
 	width: 100%;
 	pointer-events: none; /* children opt in via `pointer-events: auto` */
 }
@@ -776,7 +777,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-controls .rsvp-wpm-stepper {
 	flex-wrap: nowrap;
 }
-
 .rsvp-wpm-value {
 	font-variant-numeric: tabular-nums;
 	font-weight: 600;
@@ -1799,15 +1799,6 @@ body.dark .explore-hero-arrow:hover {
 	border-radius: 10px;
 }
 
-.book-detail-section-title {
-	margin: 0;
-	font-size: 0.75rem;
-	font-weight: 600;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: var(--muted-foreground);
-}
-
 body.dark .book-detail-cover {
 	background: #242424;
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -1839,7 +1830,6 @@ body.theme-sepia .book-detail-card {
 	border-color: var(--border);
 }
 body.high-contrast .book-detail-eyebrow,
-body.high-contrast .book-detail-section-title,
 body.high-contrast .book-detail-author,
 body.high-contrast .book-detail-stats {
 	color: var(--muted-foreground);

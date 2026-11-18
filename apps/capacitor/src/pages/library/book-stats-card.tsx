@@ -3,6 +3,7 @@ import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { useTheme } from "../../contexts/theme-context";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
@@ -16,7 +17,6 @@ import { formatDate, formatDuration, formatRelative, localDateKey } from "../../
 import { formatPercent } from "../../utils/format-percent";
 import { formatReadingTime } from "../../utils/reading-time";
 import { canHaveGoal } from "./reading-goal/goal-model";
-
 import { AnimatedNumber } from "./stats/animated-number";
 import { evenTickIndices, formatDayTick } from "./stats/chart-axis";
 import { ChartTooltip } from "./stats/chart-tooltip";
@@ -115,7 +115,7 @@ function BookReadingTimeCard({ book }: Props) {
 
 	return (
 		<section className="book-detail-card mt-4" data-testid="book-reading-time">
-			<h2 className="book-detail-section-title">Time to read</h2>
+			<h2 className={SECTION_TITLE}>Time to read</h2>
 			<div className="mt-3">
 				<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
 					{formatReadingTime(minutesLeft ?? 0)}
@@ -193,7 +193,7 @@ export function BookStatsCard({ book }: Props) {
 			transition={{ duration: 0.5 }}
 			className="book-detail-card mt-4"
 		>
-			<h2 className="book-detail-section-title">Your reading</h2>
+			<h2 className={SECTION_TITLE}>Your reading</h2>
 
 			<div className="mt-3 flex items-end justify-between gap-4">
 				<div>

@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type React from "react";
@@ -161,14 +161,9 @@ export const CollectionMenuButton: React.FC<{
 		: allCollections.filter((c) => c.seriesKey === null);
 	return (
 		<>
-			<Button
-				variant="ghost"
-				size="icon"
-				aria-label={`${collection.name} options`}
-				onClick={() => setOpen(true)}
-			>
+			<HeaderAction aria-label={`${collection.name} options`} onClick={() => setOpen(true)}>
 				<MoreHorizontal />
-			</Button>
+			</HeaderAction>
 			<CollectionActions
 				collection={open ? collection : null}
 				collections={siblings}

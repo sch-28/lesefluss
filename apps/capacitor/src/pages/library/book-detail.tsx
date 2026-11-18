@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { formatCount } from "@/utils/format-number";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
@@ -391,7 +392,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				)}
 				{book.review && (
 					<section className="book-detail-card">
-						<h2 className="book-detail-section-title">Your notes</h2>
+						<h2 className={SECTION_TITLE}>Your notes</h2>
 						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
 							{book.review}
 						</p>

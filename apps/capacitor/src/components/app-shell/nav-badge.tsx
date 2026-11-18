@@ -1,3 +1,4 @@
+import { CountBadge } from "@lesefluss/ui/count-badge";
 import type { NavBadge as NavBadgeValue } from "./nav-items";
 
 export function NavBadge({ value }: { value: NavBadgeValue }) {
@@ -8,8 +9,6 @@ export function NavBadge({ value }: { value: NavBadgeValue }) {
 		);
 	}
 	return (
-		<span className="absolute top-0 right-0 flex h-4 min-w-4 translate-x-1/2 -translate-y-1/3 items-center justify-center rounded-full bg-primary px-1 font-semibold text-2xs text-primary-foreground">
-			{value > 99 ? "99+" : value}
-		</span>
+		<CountBadge count={value} className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/3" />
 	);
 }

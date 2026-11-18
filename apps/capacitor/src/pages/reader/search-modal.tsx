@@ -9,7 +9,7 @@
 
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { SearchField } from "@lesefluss/ui/search-field";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatPercent } from "@/utils/format-percent";
@@ -131,19 +131,17 @@ const SearchModal: React.FC<SearchModalProps> = ({
 
 				<div className="flex flex-col overflow-hidden">
 					<div className="px-5 pb-3">
-						<InputHitArea>
-							<Input
-								ref={inputRef}
-								type="search"
-								placeholder="Search in book…"
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								autoComplete="off"
-								autoCorrect="off"
-								autoCapitalize="off"
-								spellCheck={false}
-							/>
-						</InputHitArea>
+						<SearchField
+							ref={inputRef}
+							aria-label="Search in book"
+							placeholder="Search in book…"
+							value={query}
+							onValueChange={setQuery}
+							autoComplete="off"
+							autoCorrect="off"
+							autoCapitalize="off"
+							spellCheck={false}
+						/>
 					</div>
 
 					{query.trim() && (

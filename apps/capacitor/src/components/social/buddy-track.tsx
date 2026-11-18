@@ -48,9 +48,9 @@ export function BuddyTrack({
 	return (
 		<div className={cn("@container overflow-x-clip px-6", className)}>
 			<div className="relative h-14">
-				<div className="absolute inset-x-0 top-[18px] h-1.5 rounded-full bg-current/10" />
+				<div className="absolute inset-x-0 top-4 h-1.5 rounded-full bg-current/10" />
 				<motion.div
-					className="absolute inset-x-0 top-[18px] h-1.5 origin-left rounded-full bg-primary/30"
+					className="absolute inset-x-0 top-4 h-1.5 origin-left rounded-full bg-primary/30"
 					initial={false}
 					animate={{ scaleX: leader / 100 }}
 					transition={transition}

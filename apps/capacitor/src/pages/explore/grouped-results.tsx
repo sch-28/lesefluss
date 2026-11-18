@@ -1,8 +1,10 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import type React from "react";
 import { PageBody } from "@/components/page-body";
+import { SECTION_TITLE } from "@/components/section-header";
 import { formatCount } from "@/utils/format-number";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { useMediaQuery } from "../../hooks/use-media-query";
@@ -134,7 +136,7 @@ const GroupedResults: React.FC<Props> = ({
 				)
 			) : catalog.isError ? (
 				<section className="mb-6">
-					<h2 className="m-0 mb-2 font-semibold text-sm">Public domain</h2>
+					<h2 className={cn(SECTION_TITLE, "mb-2")}>Public domain</h2>
 					<ErrorState
 						error={catalog.error}
 						onRetry={() => catalog.refetch()}

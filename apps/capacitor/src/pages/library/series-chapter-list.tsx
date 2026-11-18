@@ -17,6 +17,7 @@ import { AlertCircle, CheckCircle2, Circle, CircleDashed, Loader2, Lock } from "
 import type React from "react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { VList, type VListHandle } from "virtua";
+import { SECTION_TITLE } from "@/components/section-header";
 import { formatPercent } from "@/utils/format-percent";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
@@ -113,7 +114,7 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 
 const ChapterListLoading: React.FC = () => (
 	<div className="mt-6 px-4">
-		<h2 className="book-detail-section-title flex items-center gap-2">
+		<h2 className={cn(SECTION_TITLE, "flex items-center gap-2")}>
 			<span>Chapters</span>
 			<Loader2 className="size-3.5 animate-spin" />
 		</h2>
@@ -163,7 +164,7 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing, curren
 
 	return (
 		<div className="mt-6">
-			<h2 className="book-detail-section-title mb-2 flex items-center gap-2 px-4">
+			<h2 className={cn(SECTION_TITLE, "mb-2 flex items-center gap-2 px-4")}>
 				<span>Chapters</span>
 				{isSyncing && <Loader2 className="size-3.5 animate-spin" />}
 			</h2>

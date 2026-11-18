@@ -4,7 +4,7 @@ import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
 import { TintedCover } from "../../../components/tinted-cover";
 import type { ShelfBook } from "../../../services/db/queries/stats";
-import { SectionHeader } from "./section-header";
+import { SECTION_SPACING, SectionHeader } from "./section-header";
 
 /** A 120px cover row with its title, author and detail lines, as it renders loaded. */
 const SHELF_ROW_HEIGHT = 253;
@@ -39,7 +39,7 @@ export function BookShelf({
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="mt-6"
+			className={SECTION_SPACING}
 		>
 			<SectionHeader title={title} aside={subtitle} className="px-4" />
 			<ReservedCard isPending={isPending} height={SHELF_ROW_HEIGHT}>

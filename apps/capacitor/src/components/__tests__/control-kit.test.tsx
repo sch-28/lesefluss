@@ -1,4 +1,7 @@
+import { Button } from "@lesefluss/ui/button";
+import { CountBadge } from "@lesefluss/ui/count-badge";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { IconButton } from "@lesefluss/ui/icon-button";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { SheetDoneButton, SheetHeaderBar } from "@lesefluss/ui/sheet-header";
@@ -91,6 +94,42 @@ describe("SegmentedControl", () => {
 		const group = view.container.querySelector('[data-slot="segmented-control"]');
 		expect(group?.className).toContain("p-[3px]");
 		expect(view.getButton("7 days").className).toContain("min-h-[38px]");
+	});
+});
+
+describe("touch targets", () => {
+	// The pseudo-element insets from inside the 1px border: 38 + 2*3 and 30 + 2*7 make 44.
+	it("stretches a text button to 44px on touch without changing its look", async () => {
+		view = await render(
+			<>
+				<Button>Save</Button>
+				<Button size="sm">Clear</Button>
+			</>,
+		);
+		const save = view.getButton("Save").className;
+		expect(save).toContain("h-10");
+		expect(save).toContain("pointer-coarse:after:-inset-y-[3px]");
+		const clear = view.getButton("Clear").className;
+		expect(clear).toContain("h-8");
+		expect(clear).toContain("pointer-coarse:after:-inset-y-[7px]");
+	});
+
+	it("keeps a header action at 32px with a 20px glyph and a 44px hit area", async () => {
+		view = await render(
+			<HeaderAction aria-label="Sync">
+				<svg />
+			</HeaderAction>,
+		);
+		const cls = view.getButton("Sync").className;
+		expect(cls).toContain("size-8");
+		expect(cls).toContain("before:-inset-[7px]");
+		expect(cls).toContain("[&_svg:not([class*='size-'])]:size-5");
+		expect(cls).not.toContain("[&_svg:not([class*='size-'])]:size-4");
+	});
+
+	it("caps a count badge at 99+", async () => {
+		view = await render(<CountBadge count={140} />);
+		expect(view.container.textContent).toBe("99+");
 	});
 });
 

@@ -1,4 +1,4 @@
-import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { SearchField } from "@lesefluss/ui/search-field";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
@@ -57,15 +57,12 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 			<PageHeader width="grid" title="Browse by tag" icon={Tag} />
 			<PageToolbar>
 				<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
-					<InputHitArea>
-						<Input
-							type="search"
-							aria-label="Filter tags"
-							placeholder="Filter tags, e.g. ghost stories"
-							value={filter}
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
-						/>
-					</InputHitArea>
+					<SearchField
+						aria-label="Filter tags"
+						placeholder="Filter tags, e.g. ghost stories"
+						value={filter}
+						onValueChange={setFilter}
+					/>
 				</PageContainer>
 			</PageToolbar>
 			<PageBody width="grid" belowToolbar>

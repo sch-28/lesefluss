@@ -169,7 +169,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 			)}
 
 			{groups.length === 0 ? (
-				<SocialSection className="mt-4">
+				<div className="mt-4">
 					<ListCard>
 						<EmptyRow>
 							{page.hiddenAhead > 0
@@ -177,7 +177,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 								: "No comments yet. Start the conversation, or share a highlight from the reader."}
 						</EmptyRow>
 					</ListCard>
-				</SocialSection>
+				</div>
 			) : (
 				groups.map((g) => (
 					<SocialSection key={g.items[0]?.id ?? g.title ?? "book"} title={g.title ?? "The book"}>

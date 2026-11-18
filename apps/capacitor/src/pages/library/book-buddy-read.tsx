@@ -5,6 +5,7 @@ import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
 import type { ShareBlocker } from "@/components/social/share-sheet";
 import { toast } from "@/components/toast";
@@ -57,7 +58,7 @@ export function BookBuddyRead({
 	return (
 		<section className="book-detail-card">
 			<div className="flex items-center justify-between gap-3">
-				<h2 className="book-detail-section-title">
+				<h2 className={SECTION_TITLE}>
 					{read.status === "finished" ? "Buddy read · finished" : "Buddy read"}
 				</h2>
 				<Button asChild size="sm" variant="ghost">

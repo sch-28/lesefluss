@@ -3,6 +3,7 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2, Target } from "lucide-react";
 import { useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
@@ -41,7 +42,7 @@ export function GoalCard({ book }: { book: Book }) {
 				<section className="book-detail-card mt-4" data-testid="goal-entry">
 					{/* .book-detail-card is an unlayered column, which a row utility on it can't override. */}
 					<div className="flex items-center justify-between gap-3">
-						<h2 className="book-detail-section-title">Goal</h2>
+						<h2 className={SECTION_TITLE}>Goal</h2>
 						<Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
 							<Target aria-hidden />
 							Set goal
@@ -72,12 +73,12 @@ export function GoalCard({ book }: { book: Book }) {
 
 	return (
 		<section
-			className="book-detail-card mt-4 flex flex-col gap-3.5"
+			className="book-detail-card mt-4 flex flex-col gap-3"
 			data-testid="goal-card"
 			data-met={today?.isMet ?? false}
 		>
 			<div className="flex items-center justify-between gap-3">
-				<h2 className="book-detail-section-title">{title}</h2>
+				<h2 className={SECTION_TITLE}>{title}</h2>
 				{canEdit && (
 					<Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
 						Edit

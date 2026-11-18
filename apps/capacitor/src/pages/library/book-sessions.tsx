@@ -1,6 +1,7 @@
 import { isSkimmedSitting, skimCutoffs } from "@lesefluss/core";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { queryHooks } from "../../services/db/hooks";
 import { queries } from "../../services/db/queries";
 import type { Book, ReadingSession } from "../../services/db/schema";
@@ -56,7 +57,7 @@ export function BookSessions({ book }: { book: Book }) {
 					className="-mx-2 -my-1"
 				/>
 			) : (
-				<h2 className="book-detail-section-title">
+				<h2 className={SECTION_TITLE}>
 					Sessions <span className="font-normal opacity-50">· {rows.length}</span>
 				</h2>
 			)}

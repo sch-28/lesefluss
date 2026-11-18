@@ -1,8 +1,7 @@
-import { FilterChip as ToggleChip } from "@lesefluss/ui/filter-chip";
+import { FilterChip, FilterMenuChip } from "@lesefluss/ui/filter-chip";
 import { Moon, Plus, Tag, X } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
-import { FilterChip } from "../../components/filter-chip";
 import {
 	CATALOG_SOURCE_LABELS,
 	type CatalogGenre,
@@ -100,14 +99,14 @@ const FilterRow: React.FC<Props> = ({
 	return (
 		<div className="flex flex-col px-4">
 			<ChipRow label="filters" testId="filter-row">
-				<FilterChip
+				<FilterMenuChip
 					label={SORT_LABELS[sort]}
 					isActive={search.sort !== undefined}
 					value={sort}
 					options={sortOptions}
 					onSelect={(value) => onChange({ sort: value })}
 				/>
-				<FilterChip
+				<FilterMenuChip
 					label={genreLabel ?? "Genre"}
 					isActive={!!search.genre}
 					value={search.genre ?? ANY}
@@ -115,7 +114,7 @@ const FilterRow: React.FC<Props> = ({
 					onSelect={(v) => onChange({ genre: v === ANY ? undefined : v })}
 					onClear={() => onChange({ genre: undefined })}
 				/>
-				<FilterChip
+				<FilterMenuChip
 					label={search.length ? lengthLabel(search.length) : "Length"}
 					isActive={!!search.length}
 					value={search.length ?? ANY}
@@ -123,23 +122,23 @@ const FilterRow: React.FC<Props> = ({
 					onSelect={(v) => onChange({ length: v === ANY ? undefined : v, fits: undefined })}
 					onClear={() => onChange({ length: undefined })}
 				/>
-				<ToggleChip
+				<FilterChip
 					selected={!!search.fits}
 					onClick={() =>
 						onChange(search.fits ? { fits: undefined } : { fits: "tonight", length: undefined })
 					}
 				>
-					<Moon className="size-3.5" />
+					<Moon />
 					Fits tonight
-				</ToggleChip>
-				<FilterChip
+				</FilterChip>
+				<FilterMenuChip
 					label={languageLabel(lang)}
 					isActive={false}
 					value={lang}
 					options={languageOptions}
 					onSelect={(value) => onChange({ lang: value })}
 				/>
-				<FilterChip
+				<FilterMenuChip
 					label={search.source ? CATALOG_SOURCE_LABELS[search.source] : "Source"}
 					isActive={!!search.source}
 					value={search.source ?? ANY}
@@ -148,25 +147,25 @@ const FilterRow: React.FC<Props> = ({
 					onClear={() => onChange({ source: undefined })}
 				/>
 				{search.author && (
-					<ToggleChip
+					<FilterChip
 						selected
 						action
 						onClick={() => onChange({ author: undefined })}
 						aria-label={`Remove author filter ${search.author}`}
 					>
 						By {search.author}
-						<X className="size-3.5" />
-					</ToggleChip>
+						<X />
+					</FilterChip>
 				)}
-				<ToggleChip selected={false} action onClick={onBrowseTags}>
-					<Tag className="size-3.5" />
+				<FilterChip selected={false} action onClick={onBrowseTags}>
+					<Tag />
 					Tags
-				</ToggleChip>
+				</FilterChip>
 			</ChipRow>
 			{(activeTags.length > 0 || (visibleFacets && visibleFacets.length > 0)) && (
 				<ChipRow label="tags" testId="tag-row">
 					{activeTags.map((id) => (
-						<ToggleChip
+						<FilterChip
 							key={id}
 							selected
 							action
@@ -174,11 +173,11 @@ const FilterRow: React.FC<Props> = ({
 							aria-label={`Remove tag ${tagLabels.get(id) ?? id}`}
 						>
 							{tagLabels.get(id) ?? id}
-							<X className="size-3.5" />
-						</ToggleChip>
+							<X />
+						</FilterChip>
 					))}
 					{visibleFacets?.map((f) => (
-						<ToggleChip
+						<FilterChip
 							key={f.id}
 							selected={false}
 							action
@@ -186,9 +185,9 @@ const FilterRow: React.FC<Props> = ({
 							onClick={() => onAddTag(f.id)}
 							aria-label={`Add tag ${f.label}`}
 						>
-							<Plus className="size-3.5" />
+							<Plus />
 							{f.label}
-						</ToggleChip>
+						</FilterChip>
 					))}
 				</ChipRow>
 			)}

@@ -158,7 +158,7 @@ export function GoalChart({ planSeries, actualSeries, historySeries, ariaLabel }
 					animate={false}
 				/>
 			</div>
-			<figcaption className="mt-1 flex gap-3.5 text-2xs opacity-70">
+			<figcaption className="mt-1 flex gap-3 text-2xs opacity-70">
 				<span className="flex items-center gap-1.5">
 					<span className="w-3.5 border-t-2" style={{ borderColor: ACTUAL_COLOR }} />
 					actual

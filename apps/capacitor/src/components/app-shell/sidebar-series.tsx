@@ -100,9 +100,7 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 	return (
 		<section aria-label="Series" className="mt-4 short:mt-2 flex min-h-8 flex-col">
 			<div className="flex shrink-0 items-center justify-between py-1 pr-3 pl-5">
-				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
-					Series
-				</h2>
+				<h2 className="m-0 font-medium text-sidebar-foreground/60 text-xs">Series</h2>
 				<button
 					type="button"
 					onClick={() =>

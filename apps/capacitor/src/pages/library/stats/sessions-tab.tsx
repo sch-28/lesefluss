@@ -1,11 +1,11 @@
 import { isSkimmedSitting, READING_MODES, skimCutoffs } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { FilterMenuChip } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { SquareCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { FilterChip } from "../../../components/filter-chip";
 import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { bookKeys } from "../../../services/db/hooks/query-keys";
@@ -114,7 +114,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 			) : (
 				<div className="px-4 py-3">
 					<div className="flex items-center gap-2">
-						<FilterChip
+						<FilterMenuChip
 							label={bookId ? titleOf(bookId) : "All books"}
 							isActive={bookId !== undefined}
 							value={bookId ?? ""}
@@ -123,7 +123,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 							onClear={() => onBookChange(undefined)}
 							className="min-w-0 shrink"
 						/>
-						<FilterChip<ModeFilter>
+						<FilterMenuChip<ModeFilter>
 							label={mode === "all" ? "All modes" : MODE_BADGE_LABELS[mode]}
 							isActive={mode !== "all"}
 							value={mode}

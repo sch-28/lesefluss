@@ -4,6 +4,9 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
+const TOUCH_44 =
+	"pointer-coarse:relative pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:content-['']";
+
 const buttonVariants = cva(
 	"group/button inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding font-medium text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 	{
@@ -23,9 +26,9 @@ const buttonVariants = cva(
 			// Two text sizes and one radius: callers pick a size, never a height or radius of their own.
 			// Icon sizes stretch their touch target to 44px with a ::before, keeping the look.
 			size: {
-				default:
-					"h-10 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
-				sm: "h-8 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
+				// On touch an ::after stretches the target to 44px tall (inset from inside the border, as below); ::before stays free for a caller's own hit area.
+				default: `h-10 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 ${TOUCH_44} pointer-coarse:after:-inset-y-[3px]`,
+				sm: `h-8 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5 ${TOUCH_44} pointer-coarse:after:-inset-y-[7px]`,
 				// The ::before insets from the padding box, inside the 1px border: each inset is 1px more than half the gap to 44px.
 				icon: "relative size-8 before:absolute before:-inset-[7px] before:content-['']",
 				"icon-xs":

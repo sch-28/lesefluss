@@ -54,7 +54,7 @@ const CollectionChip: React.FC<ChipProps> = ({
 	const handlers = useLongPress({ onTap: onOpen, onMenu: onMenu ?? (() => {}), enabled: !!onMenu });
 	return (
 		<FilterChip {...handlers} selected={active} count={count} data-testid={testId}>
-			{Icon && <Icon aria-hidden className="size-3.5 shrink-0 opacity-70" />}
+			{Icon && <Icon aria-hidden className="shrink-0 opacity-70" />}
 			<span className="max-w-[12rem] truncate">{name}</span>
 		</FilterChip>
 	);
@@ -220,7 +220,7 @@ const CollectionShelfRow: React.FC<{
 					onClick={() => setIsNewOpen(true)}
 					className={cn(CHIP_BASE, "text-muted-foreground")}
 				>
-					<Plus aria-hidden className="size-4" />
+					<Plus aria-hidden />
 					New
 				</button>
 				<FilterChip selected={!activeId && !activeShelfId} onClick={() => open(undefined)}>

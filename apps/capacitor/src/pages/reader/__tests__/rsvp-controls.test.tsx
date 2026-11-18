@@ -60,7 +60,7 @@ describe("RsvpControls", () => {
 		expect(onWpmChange).toHaveBeenLastCalledWith(250);
 	});
 
-	it("gives every button a 44px target", async () => {
+	it("gives every button a 44px target that stays 44px at a large App text size", async () => {
 		view = await render(controls({ audio: { isOn: false, onToggle: noop } }));
 		for (const name of [
 			"Back to sentence start",
@@ -68,9 +68,9 @@ describe("RsvpControls", () => {
 			"Forward one word",
 			"Forward to next sentence",
 		]) {
-			expect(view.getButton(name).className).toContain("size-11");
+			expect(view.getButton(name).className).toContain("size-[44px]");
 		}
-		expect(view.getButton("Listen").className).toContain("size-11");
+		expect(view.getButton("Listen").className).toContain("size-[44px]");
 	});
 
 	it("steps the RSVP speed by 25 within the RSVP limits by default", async () => {

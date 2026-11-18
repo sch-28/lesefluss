@@ -1,9 +1,9 @@
 import { cn } from "@lesefluss/ui/utils";
-import { SectionHeader } from "../../../components/section-header";
+import { SECTION_SPACING, Section, SectionHeader } from "../../../components/section-header";
 
-export { SectionHeader };
+export { SECTION_SPACING, SectionHeader };
 
-/** A Stats section: page gutter and the one vertical rhythm between sections. */
+/** A Stats section: the shared section inside the page gutter. */
 export function StatsSection({
 	title,
 	aside,
@@ -18,10 +18,9 @@ export function StatsSection({
 	"data-testid"?: string;
 }) {
 	return (
-		<section className={cn("mt-6 px-4", className)} data-testid={testId}>
-			{title && <SectionHeader title={title} aside={aside} />}
+		<Section title={title} aside={aside} className={cn("px-4", className)} data-testid={testId}>
 			{children}
-		</section>
+		</Section>
 	);
 }
 

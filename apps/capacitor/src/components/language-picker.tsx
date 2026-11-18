@@ -5,8 +5,8 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
-import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { SearchField } from "@lesefluss/ui/search-field";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -109,14 +109,12 @@ const LanguageList: React.FC<{
 
 	return (
 		<div className="flex flex-col gap-2 p-3">
-			<InputHitArea>
-				<Input
-					aria-label="Search languages"
-					placeholder="Search, e.g. Deutsch or de"
-					value={query}
-					onChange={(e) => setQuery(e.target.value)}
-				/>
-			</InputHitArea>
+			<SearchField
+				aria-label="Search languages"
+				placeholder="Search, e.g. Deutsch or de"
+				value={query}
+				onValueChange={setQuery}
+			/>
 			<div className="flex max-h-[50vh] flex-col overflow-y-auto">
 				{groups.map((group) => (
 					<div key={group.label} className="flex flex-col">

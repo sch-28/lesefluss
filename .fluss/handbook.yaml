@@ -129,6 +129,15 @@ solutions:
         `xl` 20, `2xl` 24, `4xl` 36 (rem, so they follow the App text size), weights 400, 500 and
         600 only. Reader content, SVG chart text, the RSVP word and cover artwork keep their own
         sizes with an allow comment; e-ink may add bold as a cue.
+      - Section: one `Section` and `SectionHeader` (`components/section-header.tsx`) own a
+        section's rhythm, 24 to the section before and 8 from the title to its content, and its
+        title: 16px semibold in sentence case. A heading that cannot be a SectionHeader takes
+        `SECTION_TITLE`; no uppercase tracked section titles. Spacing sits on the 4px grid, never
+        an arbitrary px or a half step above 2.
+      - Controls: one `SearchField` (32px, search glyph, clear button), one `FilterChip` and
+        `FilterMenuChip`, one `HeaderAction` (32px, 20px glyph) for header icons and one
+        `CountBadge`, all in `packages/ui`. Every tappable control has a 44px target on touch,
+        from a pseudo-element hit area, never by growing its look.
 
       **Beyond the standard**
       - Every screen is reviewed in its empty, few-data and full states, in dark and light.

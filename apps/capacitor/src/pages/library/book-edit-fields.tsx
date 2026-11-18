@@ -16,6 +16,7 @@ import { Switch } from "@lesefluss/ui/switch";
 import { BookOpen, Check, Plus, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import CoverImage from "../../components/cover-image";
 import { LanguagePicker } from "../../components/language-picker";
 import { PickerTrigger } from "../../components/picker-trigger";
@@ -56,9 +57,7 @@ type Props = {
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
 	<section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-		<h2 className="m-0 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-			{title}
-		</h2>
+		<h2 className={SECTION_TITLE}>{title}</h2>
 		{children}
 	</section>
 );

@@ -48,6 +48,7 @@ export function SegmentedControl<T extends string>({
 			aria-label={ariaLabel}
 			disabled={disabled}
 			data-slot="segmented-control"
+			// ui-rules-allow: off-grid-spacing -- the 3px track inset keeps the thumb concentric with its track
 			className={cn("flex w-full items-stretch gap-0.5 rounded-[10px] bg-muted p-[3px]", className)}
 			{...rest}
 		>

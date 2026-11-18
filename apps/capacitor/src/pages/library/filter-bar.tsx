@@ -1,12 +1,14 @@
+import { Button } from "@lesefluss/ui/button";
+import { CHIP_BASE, CHIP_SELECTED, FilterChip } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { SlidersHorizontal, X } from "lucide-react";
 import type React from "react";
 import { PageContainer } from "../../components/page-container";
 import {
+	type FilterChip as ActiveChip,
 	activeFilterCount,
 	chipsOf,
 	FACET_LABELS,
-	type FilterChip,
 	type LibraryFilter,
 	removeValue,
 	setWordRange,
@@ -27,7 +29,7 @@ type Props = {
 	shelfRule?: LibraryFilter;
 };
 
-function isInRule(rule: LibraryFilter | undefined, { facet, value, isExcluded }: FilterChip) {
+function isInRule(rule: LibraryFilter | undefined, { facet, value, isExcluded }: ActiveChip) {
 	const selection = rule?.[facet];
 	return !!selection && (isExcluded ? selection.out : selection.in).includes(value);
 }
@@ -41,29 +43,38 @@ const Chip: React.FC<{
 	isExcluded?: boolean;
 	/** Absent for a chip of the shelf's own rule. */
 	onRemove?: () => void;
-}> = ({ name, label, isExcluded = false, onRemove }) => (
-	<span
-		data-excluded={isExcluded || undefined}
-		className={cn(
-			"inline-flex h-7 shrink-0 items-center gap-1 rounded-full border bg-muted py-0 pl-2.5 text-xs",
-			onRemove ? "pr-1" : "pr-2.5",
-			isExcluded ? "border-destructive/50" : "border-transparent",
-		)}
-	>
-		<span className={isExcluded ? "text-destructive" : "text-muted-foreground"}>{name}</span>
-		<span className={cn("max-w-40 truncate", isExcluded && "line-through")}>{label}</span>
-		{onRemove && (
-			<button
-				type="button"
-				aria-label={`Remove filter ${name} ${label}`}
-				onClick={onRemove}
-				className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+}> = ({ name, label, isExcluded = false, onRemove }) => {
+	const content = (
+		<>
+			<span className={isExcluded ? "text-destructive" : "text-muted-foreground"}>{name}</span>
+			<span className={cn("max-w-40 truncate", isExcluded && "line-through")}>{label}</span>
+		</>
+	);
+	const edge = cn("gap-1 border", isExcluded ? "border-destructive/50" : "border-transparent");
+	if (!onRemove) {
+		return (
+			<span
+				data-excluded={isExcluded || undefined}
+				className={cn(CHIP_BASE, CHIP_SELECTED, edge, "pointer-events-none")}
 			>
-				<X className="size-3" />
-			</button>
-		)}
-	</span>
-);
+				{content}
+			</span>
+		);
+	}
+	return (
+		<FilterChip
+			selected
+			action
+			data-excluded={isExcluded || undefined}
+			aria-label={`Remove filter ${name} ${label}`}
+			onClick={onRemove}
+			className={cn(edge, "pr-3")}
+		>
+			{content}
+			<X className="text-muted-foreground" />
+		</FilterChip>
+	);
+};
 
 /** The active filter as chips, removable unless they are the shelf's own rule, an excluded value marked with − and a red edge. */
 const FilterBar: React.FC<Props> = ({
@@ -89,20 +100,21 @@ const FilterBar: React.FC<Props> = ({
 	return (
 		<PageContainer
 			width="grid"
-			className="flex items-center gap-1.5 overflow-x-auto px-4 py-1"
+			className="flex items-center gap-2 overflow-x-auto px-4 py-1"
 			data-testid="filter-bar"
 		>
 			{shelfConditions?.isCustom && (
-				<button
-					type="button"
+				<FilterChip
+					selected={false}
+					action
 					onClick={shelfConditions.onEdit}
 					aria-label="Edit custom conditions"
-					className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-primary/70 border-dashed px-2.5 text-xs hover:bg-muted"
+					className="border border-primary/70 border-dashed bg-transparent"
 				>
-					<SlidersHorizontal className="size-3 text-primary" />
+					<SlidersHorizontal className="text-primary" />
 					Custom conditions
 					<span className="text-primary">· Edit</span>
-				</button>
+				</FilterChip>
 			)}
 			{chips.map((chip) => {
 				const { facet, value, isExcluded } = chip;
@@ -130,33 +142,21 @@ const FilterBar: React.FC<Props> = ({
 				/>
 			)}
 			{(hasExtras || isMissingRule) && (
-				<button
-					type="button"
-					onClick={() => onChange(shelfRule ?? {})}
-					className="shrink-0 px-1 text-primary text-xs hover:underline"
-				>
+				<Button variant="link" size="sm" onClick={() => onChange(shelfRule ?? {})}>
 					Clear
-				</button>
+				</Button>
 			)}
 			{(onSaveShelf || (shelfConditions && !shelfConditions.isCustom)) && (
-				<span className="ml-auto flex shrink-0 gap-2">
+				<span className="ml-auto flex shrink-0">
 					{shelfConditions && !shelfConditions.isCustom && (
-						<button
-							type="button"
-							onClick={shelfConditions.onEdit}
-							className="px-1 text-primary text-xs hover:underline"
-						>
+						<Button variant="link" size="sm" onClick={shelfConditions.onEdit}>
 							Edit conditions
-						</button>
+						</Button>
 					)}
 					{onSaveShelf && (
-						<button
-							type="button"
-							onClick={onSaveShelf}
-							className="px-1 text-primary text-xs hover:underline"
-						>
+						<Button variant="link" size="sm" onClick={onSaveShelf}>
 							Save as smart shelf
-						</button>
+						</Button>
 					)}
 				</span>
 			)}

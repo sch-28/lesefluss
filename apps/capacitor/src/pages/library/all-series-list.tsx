@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { SearchField } from "@lesefluss/ui/search-field";
 import { ChevronDown } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
@@ -169,28 +169,23 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, isPe
 	return (
 		<div ref={rootRef} className="flex min-h-0 flex-col">
 			<div className="mb-4 flex items-center gap-2">
-				<div className="relative min-w-0 flex-1">
-					<InputHitArea>
-						<Input
-							type="search"
-							value={query}
-							onChange={(e) => setQuery(e.target.value)}
-							onKeyDown={onSearchKey}
-							placeholder="Search series"
-							aria-label="Search series"
-							autoFocus={autoFocus}
-							className="pr-16"
-						/>
-					</InputHitArea>
-					<span
-						className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground text-xs tabular-nums"
-						data-testid="all-series-count"
-					>
-						{/* The page summary already gives the total; this counts only a filtered list. */}
-						{isPending || shownCount === entries.length
-							? null
-							: `${shownCount} of ${entries.length}`}
-					</span>
+				<div className="min-w-0 flex-1">
+					<SearchField
+						value={query}
+						onValueChange={setQuery}
+						onKeyDown={onSearchKey}
+						placeholder="Search series"
+						aria-label="Search series"
+						autoFocus={autoFocus}
+						hint={
+							// The page summary already gives the total; this counts only a filtered list.
+							<span data-testid="all-series-count">
+								{isPending || shownCount === entries.length
+									? null
+									: `${shownCount} of ${entries.length}`}
+							</span>
+						}
+					/>
 				</div>
 				<SelectionPopover
 					trigger={

@@ -45,9 +45,11 @@ function type(value: string) {
 }
 
 function press(key: string) {
+	const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
 	act(() => {
-		input().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+		input().dispatchEvent(event);
 	});
+	return event;
 }
 
 describe("SearchAutocomplete", () => {
@@ -80,6 +82,16 @@ describe("SearchAutocomplete", () => {
 		expect(state.filter).toEqual({ tags: { in: ["fantasy"], out: [] } });
 		press("Backspace");
 		expect(state.filter).toEqual({});
+	});
+
+	it("Esc with suggestions open closes them and keeps the typed text", async () => {
+		view = await render(<Harness />);
+		type("tag:fan");
+		expect(view.container.querySelector('[role="option"]')).not.toBeNull();
+		// Without preventDefault, a type=search input clears itself on Esc in Chromium.
+		expect(press("Escape").defaultPrevented).toBe(true);
+		expect(view.container.querySelector('[role="option"]')).toBeNull();
+		expect(state.text).toBe("tag:fan");
 	});
 
 	it("leaves an unknown value as text", async () => {

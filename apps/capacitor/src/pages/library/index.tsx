@@ -1,4 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
+import { CountBadge } from "@lesefluss/ui/count-badge";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -717,12 +719,7 @@ const Library: React.FC = () => {
 			<FilterIcon />
 			{isDesktop && "Filter"}
 			{filterCount > 0 && (
-				<span
-					aria-hidden
-					className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-2xs text-primary-foreground leading-4"
-				>
-					{filterCount}
-				</span>
+				<CountBadge aria-hidden count={filterCount} className="absolute -top-0.5 -right-0.5" />
 			)}
 		</Button>
 	);
@@ -913,9 +910,9 @@ const Library: React.FC = () => {
 							{!activeCollection.ordered && <SubPageCount count={activeCollection.bookCount} />}
 							{headerActions}
 							{!isDesktop && activeCollection.ordered && (
-								<Button variant="ghost" size="icon" aria-label="Add books" onClick={openAddBooks}>
+								<HeaderAction aria-label="Add books" onClick={openAddBooks}>
 									<Plus />
-								</Button>
+								</HeaderAction>
 							)}
 							<CollectionMenuButton
 								collection={activeCollection}
@@ -934,14 +931,12 @@ const Library: React.FC = () => {
 							<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
 							{!activeShelf.isBuiltIn && shelfIsEdited && updateShelfButton("max-sm:hidden")}
 							{headerActions}
-							<Button
-								variant="ghost"
-								size="icon"
+							<HeaderAction
 								aria-label={`${activeShelf.name} options`}
 								onClick={() => setShelfMenuFor(activeShelf)}
 							>
 								<MoreHorizontal />
-							</Button>
+							</HeaderAction>
 						</div>
 					}
 				/>
@@ -957,16 +952,14 @@ const Library: React.FC = () => {
 							{headerActions}
 							{!IS_WEB && <BLEIndicator />}
 							{showSync && (
-								<Button
-									variant="ghost"
-									size="icon"
+								<HeaderAction
 									disabled={isSyncing || isTransferring}
 									onClick={handleRefresh}
 									aria-label="Sync"
 									title="Sync"
 								>
 									{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-								</Button>
+								</HeaderAction>
 							)}
 						</div>
 					}

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import CoverImage from "@/components/cover-image";
-import { SectionHeader } from "@/components/section-header";
+import { SECTION_SPACING, SectionHeader } from "@/components/section-header";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
 import { pickNowReading } from "./now-reading";
@@ -32,7 +32,7 @@ export function SocialSection({
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.2 }}
 			transition={{ duration: 0.4 }}
-			className={cn("mt-8 first:mt-0", className)}
+			className={cn(SECTION_SPACING, className)}
 		>
 			{(title || action) && <SectionHeader title={title} subtitle={subtitle} aside={action} />}
 			{children}

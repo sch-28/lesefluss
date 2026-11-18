@@ -93,9 +93,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 	return (
 		<section aria-label="Collections" className="mt-4 short:mt-2 flex min-h-8 flex-col">
 			<div className="flex shrink-0 items-center justify-between py-1 pr-3 pl-5">
-				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
-					Collections
-				</h2>
+				<h2 className="m-0 font-medium text-sidebar-foreground/60 text-xs">Collections</h2>
 				<button
 					type="button"
 					onClick={newCollection}

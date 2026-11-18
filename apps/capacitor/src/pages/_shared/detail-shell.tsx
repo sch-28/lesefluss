@@ -9,12 +9,14 @@
 
 import { Button } from "@lesefluss/ui/button";
 import { CHIP_BASE, FilterChip } from "@lesefluss/ui/filter-chip";
+import { HeaderAction as HeaderActionButton } from "@lesefluss/ui/header-action";
 import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { PageBody } from "@/components/page-body";
+import { SECTION_TITLE } from "@/components/section-header";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
@@ -133,25 +135,21 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 				right={
 					<div className="flex items-center gap-1">
 						{externalLink && (
-							<Button
+							<HeaderActionButton
 								asChild
-								variant="ghost"
-								size="icon"
 								aria-label={externalLink.label ?? "View original source"}
 								title={externalLink.label ?? "View original source"}
 							>
 								<a href={externalLink.href} target="_blank" rel="noopener noreferrer">
 									<ExternalLink />
 								</a>
-							</Button>
+							</HeaderActionButton>
 						)}
 						{headerActions.map((action) => {
 							const ActionIcon = action.icon;
 							return (
-								<Button
+								<HeaderActionButton
 									key={action.label}
-									variant="ghost"
-									size="icon"
 									onClick={action.onClick}
 									disabled={action.disabled}
 									aria-label={action.label}
@@ -161,7 +159,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									}
 								>
 									<ActionIcon />
-								</Button>
+								</HeaderActionButton>
 							);
 						})}
 					</div>
@@ -292,7 +290,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 
 					{(description?.html || description?.text) && (
 						<section className="book-detail-card mt-6">
-							<h2 className="book-detail-section-title">About</h2>
+							<h2 className={SECTION_TITLE}>About</h2>
 							<CollapsibleProse>
 								{description.html ? (
 									<SanitizedDescription

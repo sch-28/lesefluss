@@ -37,7 +37,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 			}
 		>
 			<FilterChip selected={false} action onClick={onBrowseTags}>
-				<Tag className="size-4" />
+				<Tag />
 				Browse by tag
 			</FilterChip>
 			{withBooks.map((g) => (

@@ -1,9 +1,9 @@
 import { Button } from "@lesefluss/ui/button";
 import { FilterChip } from "@lesefluss/ui/filter-chip";
-import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { SearchField } from "@lesefluss/ui/search-field";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, Search } from "lucide-react";
+import { Check } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 import { Virtualizer } from "virtua";
@@ -180,19 +180,12 @@ export const BookSelection: React.FC<Props> = ({
 
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="relative">
-				<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-				<InputHitArea>
-					<Input
-						type="search"
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search title or author"
-						aria-label="Search books"
-						className="h-9 pl-8"
-					/>
-				</InputHitArea>
-			</div>
+			<SearchField
+				value={search}
+				onValueChange={setSearch}
+				placeholder="Search title or author"
+				aria-label="Search books"
+			/>
 			<div
 				role="toolbar"
 				aria-label="Show"

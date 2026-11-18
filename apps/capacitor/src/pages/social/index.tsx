@@ -1,5 +1,7 @@
 import type { OwnSocialProfile, SocialIdentity, SocialRelationships } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { CountBadge } from "@lesefluss/ui/count-badge";
+import { HeaderAction } from "@lesefluss/ui/header-action";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
 import { Ban, Flag, Inbox, MoreHorizontal, Plus, ShieldOff, UserCog, Users } from "lucide-react";
@@ -320,16 +322,14 @@ function InboxButton() {
 	const unread = useUnreadCount();
 	const count = unread.data?.count ?? 0;
 	return (
-		<Button asChild variant="ghost" size="icon" className="relative">
-			<Link to="/tabs/social/inbox" aria-label={count > 0 ? `Inbox, ${count} unread` : "Inbox"}>
-				<Inbox className="size-5" />
+		<HeaderAction asChild aria-label={count > 0 ? `Inbox, ${count} unread` : "Inbox"}>
+			<Link to="/tabs/social/inbox">
+				<Inbox />
 				{count > 0 && (
-					<span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-2xs text-primary-foreground tabular-nums ring-2 ring-background">
-						{count > 99 ? "99+" : count}
-					</span>
+					<CountBadge count={count} className="absolute top-1 right-0.5 ring-2 ring-background" />
 				)}
 			</Link>
-		</Button>
+		</HeaderAction>
 	);
 }
 
@@ -339,9 +339,9 @@ function SocialMenu() {
 	return (
 		<>
 			<InboxButton />
-			<Button variant="ghost" size="icon" aria-label="More" onClick={() => setIsOpen(true)}>
-				<MoreHorizontal className="size-5" />
-			</Button>
+			<HeaderAction aria-label="More" onClick={() => setIsOpen(true)}>
+				<MoreHorizontal />
+			</HeaderAction>
 			<ActionSheet
 				open={isOpen}
 				onOpenChange={setIsOpen}

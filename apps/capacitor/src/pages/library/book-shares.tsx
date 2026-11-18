@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { SECTION_TITLE } from "@/components/section-header";
 import { toast } from "@/components/toast";
 import { shareFailureMessage, useRevokeShare, useSharesForBook } from "@/services/social/shares";
 
@@ -9,7 +10,7 @@ export function BookShares({ bookId, enabled }: { bookId: string; enabled: boole
 	if (!enabled || !shares.data?.length) return null;
 	return (
 		<section className="book-detail-card">
-			<h2 className="book-detail-section-title">Shared with</h2>
+			<h2 className={SECTION_TITLE}>Shared with</h2>
 			<ul className="m-0 flex list-none flex-col gap-2 p-0">
 				{shares.data.map((share) => (
 					<li key={share.shareId} className="flex items-center justify-between gap-3 text-sm">

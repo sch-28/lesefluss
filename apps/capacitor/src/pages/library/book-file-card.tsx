@@ -1,3 +1,4 @@
+import { SECTION_TITLE } from "@/components/section-header";
 import { formatCount } from "@/utils/format-number";
 import type { Book } from "../../services/db/schema";
 import { formatDate } from "../../utils/date-utils";
@@ -28,7 +29,7 @@ export function BookFileCard({ book }: { book: Book }) {
 
 	return (
 		<section className="book-detail-card mt-4">
-			<h2 className="book-detail-section-title">About this file</h2>
+			<h2 className={SECTION_TITLE}>About this file</h2>
 			{/* One label-value row per line on a phone; two side-by-side pairs were too narrow for "123,456 words". */}
 			<dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2.5 text-sm sm:grid-cols-2">
 				{rows.map(([label, value]) => (

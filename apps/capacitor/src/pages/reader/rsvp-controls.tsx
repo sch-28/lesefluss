@@ -29,6 +29,11 @@ interface Props {
 
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 
+/** px, not rem: at a 200 % App text size rem buttons grow to 88px and push both rows off a
+ *  phone. The buttons and glyphs keep play/pause's 44px; the speed text still scales. */
+const BUTTON = "size-[44px]";
+const GLYPH = "size-[20px]";
+
 const RsvpControls: React.FC<Props> = ({
 	wpm,
 	range,
@@ -49,20 +54,24 @@ const RsvpControls: React.FC<Props> = ({
 			onPointerDown={stop}
 		>
 			<div className="rsvp-controls-row">
-				<IconButton onClick={onBackSentence} aria-label="Back to sentence start">
-					<ChevronsLeft />
+				<IconButton className={BUTTON} onClick={onBackSentence} aria-label="Back to sentence start">
+					<ChevronsLeft className={GLYPH} />
 				</IconButton>
-				<IconButton onClick={onBackWord} aria-label="Back one word">
-					<Undo2 />
+				<IconButton className={BUTTON} onClick={onBackWord} aria-label="Back one word">
+					<Undo2 className={GLYPH} />
 				</IconButton>
 				<button type="button" className="rsvp-playpause" onClick={onPlayPause} aria-label="Play">
-					<Play className="size-6" />
+					<Play className="size-[24px]" />
 				</button>
-				<IconButton onClick={onForwardWord} aria-label="Forward one word">
-					<Redo2 />
+				<IconButton className={BUTTON} onClick={onForwardWord} aria-label="Forward one word">
+					<Redo2 className={GLYPH} />
 				</IconButton>
-				<IconButton onClick={onForwardSentence} aria-label="Forward to next sentence">
-					<ChevronsRight />
+				<IconButton
+					className={BUTTON}
+					onClick={onForwardSentence}
+					aria-label="Forward to next sentence"
+				>
+					<ChevronsRight className={GLYPH} />
 				</IconButton>
 			</div>
 
@@ -72,9 +81,9 @@ const RsvpControls: React.FC<Props> = ({
 						onClick={audio.onToggle}
 						aria-label="Listen"
 						aria-pressed={audio.isOn}
-						className={cn(audio.isOn && "text-primary")}
+						className={cn(BUTTON, audio.isOn && "text-primary")}
 					>
-						<Headphones />
+						<Headphones className={GLYPH} />
 					</IconButton>
 				)}
 				<RsvpSpeedControl
@@ -82,7 +91,7 @@ const RsvpControls: React.FC<Props> = ({
 					range={range}
 					label={audio?.isOn ? "Voice speed" : "Speed"}
 					onChange={onWpmChange}
-					className="text-[var(--reader-text)]"
+					className="text-[var(--reader-text)] [&>button]:size-[44px]"
 				/>
 			</div>
 		</div>

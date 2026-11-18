@@ -20,6 +20,11 @@ const RULES = {
 	"hover-scale": { pattern: /\bhover:scale-/ },
 	"font-size": { pattern: /\btext-\[[0-9.]/ },
 	"font-weight": { pattern: /\bfont-(bold|extrabold|black)\b/ },
+	"off-grid-spacing": {
+		pattern:
+			/(^|[\s"'`:])-?(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([3-9]|1\d)\.5\b)/,
+	},
+	"section-title": { pattern: /book-detail-section-title|<h[1-6]\b[^>]*\buppercase\b/ },
 	"raw-colour": {
 		pattern:
 			/\b(text|bg|border|ring|fill|stroke|from|to|via|shadow|outline|decoration|accent|caret|divide)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d|\b[a-z]+-\[#[0-9a-fA-F]{3,8}\]/,
@@ -137,6 +142,14 @@ describe("ui rules (LESE-215)", () => {
 
 	it("interface type uses the type scale and the 400, 500 and 600 weights", () => {
 		expect([...offenders("font-size"), ...offenders("font-weight")]).toEqual([]);
+	});
+
+	it("spacing stays on the 4px grid: no arbitrary px and no half steps above 2", () => {
+		expect(offenders("off-grid-spacing")).toEqual([]);
+	});
+
+	it("section titles share one style, in sentence case", () => {
+		expect(offenders("section-title")).toEqual([]);
 	});
 
 	it("status and accent colours come from theme tokens, never a raw palette or hex class", () => {

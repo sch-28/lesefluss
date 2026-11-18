@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useCallback, useId } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { type ProviderId, providerLabel } from "../../services/serial-scrapers";
 import { type ProviderCover, providerCovers } from "./provider-covers";
 import {
@@ -39,7 +40,7 @@ const WebNovelsSection: React.FC = () => {
 	return (
 		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
-				<h2 id={titleId} className="m-0 font-semibold text-sm">
+				<h2 id={titleId} className={SECTION_TITLE}>
 					Web novels
 				</h2>
 				<Button

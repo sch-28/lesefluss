@@ -46,11 +46,11 @@ const LengthFact: React.FC<Props> = ({ length, speed, estimateNote = CATALOG_EST
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
-				{/* The negative margins match the padding added, so the badge keeps its height while the target reaches 25px. */}
+				{/* The hit area grows on ::before, so the badge keeps its line height. */}
 				<button
 					type="button"
 					aria-label={`${labels.spoken}. How is this worked out?`}
-					className="-mx-2 -my-[7px] cursor-pointer border-0 bg-transparent px-2 py-[7px] text-inherit leading-none underline decoration-dotted underline-offset-2"
+					className="relative cursor-pointer border-0 bg-transparent p-0 text-inherit leading-none underline decoration-dotted underline-offset-2 before:absolute before:-inset-x-2 before:-inset-y-2 before:content-['']"
 					data-testid="length-fact"
 				>
 					{labels.text}

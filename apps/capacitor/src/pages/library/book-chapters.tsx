@@ -1,5 +1,6 @@
 import type { WordPosition } from "@lesefluss/core";
 import { useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import type { Chapter } from "../../services/db/schema";
 import { currentChapterIndex, hasWordAlignedChapters } from "../../utils/chapters";
 
@@ -59,7 +60,7 @@ export function BookChapters({
 
 	return (
 		<section className="book-detail-card mt-4">
-			<h2 className="book-detail-section-title">
+			<h2 className={SECTION_TITLE}>
 				Chapters <span className="font-normal opacity-50">· {chapters.length}</span>
 			</h2>
 			<ol className="mt-3 space-y-0.5">

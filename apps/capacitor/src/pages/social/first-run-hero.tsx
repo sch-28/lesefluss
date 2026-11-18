@@ -4,6 +4,7 @@ import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Link2 } from "lucide-react";
 import type React from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { BuddyReadTrailer } from "@/components/social/buddy-read-trailer";
 import { CoverBackdrop } from "@/components/social/cover-backdrop";
 import { PasteInviteField } from "@/components/social/paste-invite-field";
@@ -124,9 +125,7 @@ export function FirstRunHero({
 export function HowItWorks() {
 	return (
 		<section className="mt-8">
-			<h3 className="m-0 font-semibold text-2xs text-muted-foreground uppercase tracking-widest">
-				How it works
-			</h3>
+			<h3 className={SECTION_TITLE}>How it works</h3>
 			<ol className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
 				{STEPS.map((step, i) => (
 					<li key={step.title} className="flex gap-3">

@@ -141,7 +141,7 @@ function Stat({
 			<div className="mt-1 text-muted-foreground text-sm">{label}</div>
 			{/* The line stays while the previous period loads, so the grid keeps its height. */}
 			{period !== "all" && (
-				<div className="mt-1 h-[15px] font-medium text-2xs text-muted-foreground">
+				<div className="mt-1 h-lh font-medium text-2xs text-muted-foreground">
 					{delta != null && `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}%`}
 				</div>
 			)}

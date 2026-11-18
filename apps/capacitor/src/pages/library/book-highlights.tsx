@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { Download, Loader2, Share2 } from "lucide-react";
 import { useState } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { useToast } from "../../components/toast";
 import type { Highlight } from "../../services/db/schema";
 import { exportHighlights } from "../../services/export";
@@ -44,7 +45,7 @@ export function BookHighlights({
 	return (
 		<section className="book-detail-card mt-4">
 			<div className="flex items-center justify-between gap-3">
-				<h2 className="book-detail-section-title">
+				<h2 className={SECTION_TITLE}>
 					Highlights <span className="font-normal opacity-50">· {highlights.length}</span>
 				</h2>
 				<Button

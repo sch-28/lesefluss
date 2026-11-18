@@ -1,5 +1,5 @@
-import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { SearchField } from "@lesefluss/ui/search-field";
 import { cn } from "@lesefluss/ui/utils";
 import { CircleHelp } from "lucide-react";
 import type React from "react";
@@ -36,7 +36,7 @@ const SyntaxHelp: React.FC = () => (
 				type="button"
 				aria-label="Search help"
 				title="Search help"
-				className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground before:absolute before:-inset-2 before:content-[''] hover:text-foreground"
+				className="relative flex size-7 items-center justify-center rounded-full text-muted-foreground before:absolute before:-inset-2 before:content-[''] hover:text-foreground"
 			>
 				<CircleHelp className="size-4" />
 			</button>
@@ -116,6 +116,8 @@ export const SearchAutocomplete: React.FC<Props> = ({
 			const next = withoutLastChip(filter);
 			if (next !== filter) onFilterChange(next);
 		} else if (e.key === "Escape" && suggestions.length > 0) {
+			// A search input clears itself on Esc by default; here Esc only closes the list.
+			e.preventDefault();
 			e.stopPropagation();
 			setDismissed(true);
 		} else if (e.key === "Escape" && onEscape) {
@@ -125,32 +127,28 @@ export const SearchAutocomplete: React.FC<Props> = ({
 	};
 
 	return (
-		<div className="relative flow-root">
-			<InputHitArea className="relative">
-				<Input
-					ref={inputRef}
-					value={value}
-					className="pr-9"
-					placeholder="Search title, author, tag…"
-					aria-label="Search library"
-					role="combobox"
-					aria-expanded={suggestions.length > 0}
-					aria-controls={listId}
-					aria-autocomplete="list"
-					aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-					onChange={(e) => {
-						setActive(-1);
-						setDismissed(false);
-						const next = e.target.value;
-						if (/\s$/.test(next)) commit(next, false);
-						else onValueChange(next);
-					}}
-					onKeyDown={handleKeyDown}
-					onBlur={() => setDismissed(true)}
-					onFocus={() => setDismissed(false)}
-				/>
-				<SyntaxHelp />
-			</InputHitArea>
+		<SearchField
+			ref={inputRef}
+			value={value}
+			className="flow-root"
+			placeholder="Search title, author, tag…"
+			aria-label="Search library"
+			role="combobox"
+			aria-expanded={suggestions.length > 0}
+			aria-controls={listId}
+			aria-autocomplete="list"
+			aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+			onValueChange={(next) => {
+				setActive(-1);
+				setDismissed(false);
+				if (/\s$/.test(next)) commit(next, false);
+				else onValueChange(next);
+			}}
+			onKeyDown={handleKeyDown}
+			onBlur={() => setDismissed(true)}
+			onFocus={() => setDismissed(false)}
+			trailing={<SyntaxHelp />}
+		>
 			{suggestions.length > 0 && (
 				<div
 					id={listId}
@@ -181,6 +179,6 @@ export const SearchAutocomplete: React.FC<Props> = ({
 					))}
 				</div>
 			)}
-		</div>
+		</SearchField>
 	);
 };

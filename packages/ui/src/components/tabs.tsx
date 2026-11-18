@@ -20,6 +20,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
+	// ui-rules-allow: off-grid-spacing -- the 3px track inset keeps the thumb concentric with its track
 	"group/tabs-list inline-flex w-fit items-center justify-center gap-0.5 rounded-[10px] p-[3px] text-muted-foreground data-[variant=line]:rounded-none group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col",
 	{
 		variants: {

@@ -1,7 +1,9 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
 import { useId, useRef } from "react";
+import { SECTION_TITLE } from "@/components/section-header";
 import { StripArrows } from "./strip-arrows";
 import {
 	HIDDEN_SCROLLBAR_X,
@@ -46,7 +48,7 @@ const ShelfFrame: React.FC<Props> = ({
 			{/* Wraps: at a large font scale the title takes its own line rather than truncate.
 			    min-h-7 is See all's height, so the header keeps one height with or without it. */}
 			<header className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
-				<h2 id={titleId} className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-sm">
+				<h2 id={titleId} className={cn(SECTION_TITLE, "min-w-0 flex-[1_1_8rem] break-words")}>
 					{title}
 				</h2>
 				<div className="ml-auto flex shrink-0 items-center gap-1">

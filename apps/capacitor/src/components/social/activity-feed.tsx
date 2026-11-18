@@ -170,7 +170,10 @@ export function ActivityFeed({ isHiddenWhenEmpty = false }: { isHiddenWhenEmpty?
 					onRetry={() => void feed.refetch()}
 				/>
 				<div className="relative mt-1">
-					<div aria-hidden="true" className="absolute top-2 bottom-6 left-[15px] w-px bg-border" />
+					<div
+						aria-hidden="true"
+						className="absolute top-2 bottom-6 left-4 w-px -translate-x-px bg-border"
+					/>
 					<ol className="relative m-0 list-none p-0">
 						{items.map((item) => (
 							<FeedRow

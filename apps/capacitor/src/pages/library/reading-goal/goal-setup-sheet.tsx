@@ -286,7 +286,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 
 				{rsvp && (
 					<div
-						className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
+						className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm"
 						data-testid="goal-rsvp"
 					>
 						<span className="text-muted-foreground">RSVP at {rsvp.wpm} wpm</span>

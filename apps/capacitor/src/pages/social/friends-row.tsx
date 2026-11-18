@@ -23,7 +23,7 @@ export function FriendsRow({ friends }: { friends: SocialRelationships["friends"
 				</div>
 			}
 		>
-			<ul className="m-0 -mx-4 flex list-none gap-3.5 overflow-x-auto px-4 pt-1 pb-2">
+			<ul className="m-0 -mx-4 flex list-none gap-3 overflow-x-auto px-4 pt-1 pb-2">
 				{friends.map((f) => (
 					<li key={f.userId} className="w-[72px] shrink-0">
 						<Link

@@ -38,8 +38,8 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 			className="relative mt-4 block overflow-hidden rounded-3xl border border-border bg-card text-card-foreground no-underline"
 		>
 			<CoverBackdrop src={book?.coverSrc ?? null} />
-			<div className="relative px-[18px] pt-5 pb-4">
-				<div className="flex items-center gap-3.5">
+			<div className="relative px-4 pt-5 pb-4">
+				<div className="flex items-center gap-3">
 					<SocialAvatar
 						name={me.name}
 						avatarUrl={me.avatarUrl}
@@ -54,7 +54,7 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 					<ChevronRight className="size-[18px] self-start text-muted-foreground" />
 				</div>
 
-				<div className="mt-[18px] grid grid-cols-3">
+				<div className="mt-4 grid grid-cols-3">
 					<Stat value={friendCount} label={friendCount === 1 ? "Friend" : "Friends"} />
 					<Stat value={activeReads} label="Buddy reads" />
 					<Stat
