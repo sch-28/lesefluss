@@ -9,10 +9,16 @@ const scrollToIndex = vi.fn();
 const chapterData: { current: Book[] } = { current: [] };
 
 vi.mock("virtua", () => ({
-	VList: forwardRef<unknown, { children: React.ReactNode }>(({ children }, ref) => {
-		useImperativeHandle(ref, () => ({ scrollToIndex }));
-		return <div>{children}</div>;
-	}),
+	VList: forwardRef<unknown, { children: React.ReactNode; style?: React.CSSProperties }>(
+		({ children, style }, ref) => {
+			useImperativeHandle(ref, () => ({ scrollToIndex }));
+			return (
+				<div data-testid="chapter-vlist" style={style}>
+					{children}
+				</div>
+			);
+		},
+	),
 }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 vi.mock("../../../services/db/hooks", () => ({
@@ -33,6 +39,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	vi.clearAllMocks();
+	document.documentElement.style.fontSize = "";
 });
 
 describe("SeriesChapterList", () => {
@@ -58,5 +65,13 @@ describe("SeriesChapterList", () => {
 		view = await render(<SeriesChapterList seriesId="s" />);
 		expect(view.container.querySelector("[aria-current]")).toBeNull();
 		expect(scrollToIndex).not.toHaveBeenCalled();
+	});
+
+	it("sizes a short list to its rows at the App text size, leaving no empty band", async () => {
+		document.documentElement.style.fontSize = "20px";
+		chapterData.current = chapters(3);
+		view = await render(<SeriesChapterList seriesId="s" />);
+		const list = view.container.querySelector("[data-testid=chapter-vlist]") as HTMLElement;
+		expect(list.style.height).toBe(`${3 * 2.75 * 20}px`);
 	});
 });

@@ -129,7 +129,7 @@ solutions:
       - Motion: a CSS transition names its properties (Tailwind's bare `transition`, or
         `transition-colors`/`-opacity`/`-transform`), never `all`, with the one shared ease-out
         and 150, 200 or 300 ms. Scripted entrances (framer-motion) are not on these timings yet.
-        Theme CSS follows the same rules, and the gate reads it too.
+        Theme CSS follows the same rules; the gate reads it for `transition: all` only.
         Hover steps the colour or surface and never scales; a press scales to 0.97. Progress
         fills animate a transform; only layout that must reflow animates width or padding.
       - Type: interface sizes come from the scale `2xs` 11, `xs` 12, `sm` 14, `base` 16, `lg` 18,

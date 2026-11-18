@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, Minus, Plus } from "lucide-react";
+import { CARD_TILE } from "@/components/card";
 import { STAT_CAPTION } from "@/components/stat-tile";
 import { queryHooks } from "../../services/db/hooks";
 import {
@@ -71,7 +72,7 @@ export function SpeedTestResult({
 				</dl>
 			)}
 
-			<div className="mt-4 rounded-lg border border-border p-3" data-testid="speed-test-book">
+			<div className={cn("mt-4", CARD_TILE)} data-testid="speed-test-book">
 				<div className={cn("truncate", STAT_CAPTION)}>{book.label}</div>
 				<dl className="mt-2 grid grid-cols-3 gap-2 text-center">
 					<div>

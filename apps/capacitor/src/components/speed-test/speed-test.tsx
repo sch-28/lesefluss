@@ -242,7 +242,8 @@ export function SpeedTest({
 
 function IntroStat({ value, label }: { value: string; label: string }) {
 	return (
-		<div className={CARD_TILE}>
+		// px-2: three nowrap tiles share a phone row and must fit at large App text sizes.
+		<div className={cn(CARD_TILE, "px-2")}>
 			<div className="whitespace-nowrap font-semibold tabular-nums">{value}</div>
 			<div className={STAT_CAPTION}>{label}</div>
 		</div>

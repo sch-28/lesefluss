@@ -5,6 +5,7 @@ import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { queries } from "../../../services/db/queries";
 import { formatDuration, formatRelative } from "../../../utils/date-utils";
+import { formatCompactCount } from "../../../utils/format-number";
 import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "./section-header";
 import { SessionDetailSheet } from "./session-detail-sheet";
 import { useSessionDelete } from "./session-list";
@@ -52,7 +53,7 @@ export function RecordsCard() {
 	if (data?.longestBookFinished) {
 		items.push({
 			label: "Longest finished",
-			value: formatWordCount(data.longestBookFinished.words),
+			value: `${formatCompactCount(data.longestBookFinished.words)} words`,
 			detail: data.longestBookFinished.title,
 		});
 	}
@@ -98,12 +99,6 @@ export function RecordsCard() {
 			)}
 		</StatsSection>
 	);
-}
-
-/** Thousands read better at book length, but a short work must not round to
- *  "0k words". */
-function formatWordCount(words: number): string {
-	return words < 1000 ? `${words} words` : `${Math.round(words / 1000)}k words`;
 }
 
 /** The record's sitting in the same sheet Stats › Sessions opens, loaded only once tapped. */

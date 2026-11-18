@@ -29,7 +29,7 @@ const RULES = {
 	// stacks take only the handbook's scale 1, 2, 3, 4, 6, 8.
 	"off-grid-spacing": {
 		pattern:
-			/(^|[\s"'`:])-?(?:(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([2-9]|1\d)\.5\b)|(gap|space)(-[xy])?-(?!(0|1|2|3|4|6|8)(?![\d.]))\d+(\.\d+)?\b)/,
+			/(^|[\s"'`:])-?(?:(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([2-9]|1\d)\.5\b)|(gap|space)(-[xy])?-(?!(0|1|2|3|4|6|8)(?![\d.]))(\d+(\.\d+)?|px)\b)/,
 	},
 	"arbitrary-radius": { pattern: /\brounded(-[a-z]{1,2})?-\[/ },
 	"uppercase-tracked": {
@@ -237,7 +237,7 @@ describe("ui rules: the scanner", () => {
 		expect(offendersIn(rule, path, `${bad}\n${good}`)).toEqual([`${path}:1`]);
 	});
 
-	it("catches an arbitrary px step and a gap off the scale (5, 12)", () => {
+	it("catches an arbitrary px step and a gap off the scale (5, 7, 10, 12, px)", () => {
 		const source = [
 			'<div className="mx-[18px]" />',
 			'<div className="-my-[7px]" />',
@@ -245,6 +245,10 @@ describe("ui rules: the scanner", () => {
 			'<div className="space-y-5" />',
 			'<div className="mx-4 gap-4" />',
 			'<div className="gap-12" />',
+			'<div className="gap-7" />',
+			'<div className="gap-x-10" />',
+			'<div className="gap-px" />',
+			'<div className="gap-8 p-5 px-px" />',
 		].join("\n");
 		expect(offendersIn("off-grid-spacing", path, source)).toEqual([
 			`${path}:1`,
@@ -252,6 +256,9 @@ describe("ui rules: the scanner", () => {
 			`${path}:3`,
 			`${path}:4`,
 			`${path}:6`,
+			`${path}:7`,
+			`${path}:8`,
+			`${path}:9`,
 		]);
 	});
 
@@ -336,18 +343,6 @@ describe("ui rules: the scanner", () => {
 			`${path}:1`,
 			`${path}:2`,
 			`${path}:3`,
-		]);
-	});
-
-	it("catches a 7 or 10 gap, which the scale does not have", () => {
-		const source = [
-			'<div className="gap-7" />',
-			'<div className="gap-x-10" />',
-			'<div className="gap-8 p-5" />',
-		];
-		expect(offendersIn("off-grid-spacing", path, source.join("\n"))).toEqual([
-			`${path}:1`,
-			`${path}:2`,
 		]);
 	});
 

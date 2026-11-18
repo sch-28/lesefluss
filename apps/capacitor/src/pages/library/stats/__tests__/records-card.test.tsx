@@ -7,6 +7,7 @@ import { UNDO_WINDOW_MS } from "../use-undoable-delete";
 
 const mutateAsync = vi.fn();
 const toastSuccess = vi.fn();
+const longestBookFinished: { current: { words: number; title: string } | null } = { current: null };
 
 const sitting = {
 	id: "long",
@@ -35,7 +36,7 @@ vi.mock("../../../../services/db/hooks", () => ({
 				},
 				bestDay: { durationMs: 7_200_000, dayStart: sitting.startedAt },
 				fastestBook: null,
-				longestBookFinished: null,
+				longestBookFinished: longestBookFinished.current,
 			},
 		}),
 		useAllReadingSessions: () => ({ data: [sitting], isPending: false }),
@@ -65,6 +66,7 @@ afterEach(() => {
 	vi.useRealTimers();
 	view?.unmount();
 	view = undefined;
+	longestBookFinished.current = null;
 });
 
 describe("RecordsCard", () => {
@@ -96,5 +98,11 @@ describe("RecordsCard", () => {
 			vi.advanceTimersByTime(UNDO_WINDOW_MS);
 		});
 		expect(mutateAsync).not.toHaveBeenCalled();
+	});
+
+	it("shows the longest finished book's words in the app's one compact count", async () => {
+		longestBookFinished.current = { words: 12_500, title: "Middlemarch" };
+		view = await render(<RecordsCard />);
+		expect(view.container.textContent).toContain("12.5k words");
 	});
 });

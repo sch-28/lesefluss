@@ -47,8 +47,8 @@
 .theme-sepia {
 	--goal-pending: #6e1a08;
 	--goal-met: #064e3b;
-	--warning: #6b2e0c;
-	--info: #0a3d5c;
+	--warning: #5e280a;
+	--info: #082e47;
 }
 
 @theme inline {

@@ -82,3 +82,24 @@ describe("destructive contrast", () => {
 		}
 	});
 });
+
+function tint(color: string, alpha: number, surface: string): string {
+	const [fg, bg] = [srgb(color), srgb(surface)];
+	return `#${fg
+		.map((c, i) => Math.round((c * alpha + bg[i] * (1 - alpha)) * 255))
+		.map((c) => c.toString(16).padStart(2, "0"))
+		.join("")}`;
+}
+
+describe("sepia status text contrast", () => {
+	// Status text mostly renders on its own tint (bg-warning/10 badges, bg-info/20 frozen days).
+	it.each([
+		["--warning", 0.1],
+		["--info", 0.2],
+	] as const)("%s text reaches 4.5:1 on the page and on its own tint", (name, alpha) => {
+		const color = variable(variables, ".theme-sepia", name);
+		const surface = variable(tokens, ".theme-sepia", "--background");
+		expect(contrast(color, surface)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(color, tint(color, alpha, surface))).toBeGreaterThanOrEqual(4.5);
+	});
+});

@@ -53,6 +53,16 @@ async function runToFinish(finishLabel: string) {
 }
 
 describe("SpeedTest", () => {
+	it("keeps the intro tiles narrow so three fit a phone row at large App text sizes", async () => {
+		view = await render(
+			<SpeedTest onSkip={vi.fn()} onFinish={vi.fn()} skipLabel="Skip" finishLabel="Done" />,
+		);
+		const value = [...view.container.querySelectorAll("div")].find(
+			(el) => el.textContent === "Read · RSVP",
+		);
+		expect(value?.parentElement?.className.split(" ")).toContain("px-2");
+	});
+
 	it("offers the skip during the reading round", async () => {
 		const onSkip = vi.fn();
 		view = await render(

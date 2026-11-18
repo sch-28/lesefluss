@@ -145,6 +145,7 @@ const RatingEditor: React.FC<{
 			onKeyDown={(e) => {
 				if (e.key === "Delete" || e.key === "Backspace") onPick(null);
 			}}
+			// ui-rules-allow: off-grid-spacing -- stars sit a hairline apart so the row fits a table cell
 			className="flex items-center justify-end gap-px px-1"
 		>
 			{STAR_POSITIONS.map((star) => (

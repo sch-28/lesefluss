@@ -370,16 +370,6 @@
 	white-space: nowrap;
 }
 
-/* Hide the native 'x' clear button - we clear on close */
-
-.search-empty {
-	font-size: 0.9rem; /* ui-rules-allow: font-size -- the reader stays as it is (LESE-215) */
-	color: #888888;
-	text-align: center;
-	padding: 32px 24px;
-	margin: 0;
-}
-
 /* ── RSVP mode ── */
 
 .rsvp-display {
@@ -1187,59 +1177,6 @@ html.eink .reading-ruler-band {
 .rsvp-preview-stage .rsvp-focal-line::after {
 	top: calc(0.45rem + 2rem);
 	height: 0.45rem;
-}
-
-/* ── Sidebar (hidden on mobile) ── */
-
-@media (min-width: 1081px) {
-	/* Sidebar width drives both its own box and the router-outlet's left margin.
-	   Toggled collapsed/expanded by body.sidebar-collapsed (set by DesktopSidebar). */
-	:root {
-		--sidebar-width: 220px;
-	}
-
-	body.sidebar-collapsed {
-		--sidebar-width: 64px;
-	}
-
-	/* Dark theme sidebar overrides */
-	body.dark .desktop-sidebar {
-		background: var(--background);
-		border-right-color: var(--border);
-	}
-
-	body.dark .desktop-sidebar-item:hover {
-		background: #242424;
-	}
-
-	body.dark .desktop-sidebar-toggle {
-		background: var(--background);
-		border-color: var(--border);
-	}
-
-	body.dark .desktop-sidebar-toggle:hover {
-		background: #242424;
-		color: var(--foreground);
-	}
-
-	body.theme-sepia .desktop-sidebar {
-		background: var(--background);
-		border-right-color: var(--border);
-	}
-
-	body.theme-sepia .desktop-sidebar-item:hover {
-		background: #b29f6f;
-	}
-
-	body.theme-sepia .desktop-sidebar-toggle {
-		background: var(--background);
-		border-color: var(--border);
-	}
-
-	body.theme-sepia .desktop-sidebar-toggle:hover {
-		background: #b29f6f;
-		color: var(--foreground);
-	}
 }
 
 /* ── Cover images ── */
