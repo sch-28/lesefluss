@@ -115,7 +115,7 @@ src/
       settings.ts           # ble.readSettings(), ble.writeSettings() - mapping driven by ESP32_SETTING_KEYS in core
       position.ts           # ble.readPosition(), ble.writePosition()
       transfer.ts           # ble.transferBook() - START/CHUNK/END state machine
-      storage.ts            # ble.readStorage() - flash storage info {free_bytes, total_bytes}
+      storage.ts            # ble.readStorage() - flash storage info + stored book {free_bytes, total_bytes, book_hash, title?}
     utils/
       encoding.ts           # dataViewToString, stringToDataView, chunkString
   services/

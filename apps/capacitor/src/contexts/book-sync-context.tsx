@@ -27,6 +27,7 @@ import { queries } from "../services/db/queries";
 import { devicePositionWrite } from "../services/db/queries/books";
 import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
 import { computeOnDeviceHash, type DeviceCategory } from "../services/devices/hash";
+import { linkSingleBook, readSingleBookLinks } from "../services/devices/single-book/book-links";
 import { resolveSingleBookSyncTarget } from "../services/devices/single-book/sync-target";
 import { buildRsvpDocument, type RsvpChapter } from "../services/rsvp-format/builder";
 import { log } from "../utils/log";
@@ -321,18 +322,22 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			log.warn("booksync", "readStorage failed:", storageResult.error);
 			return;
 		}
-		const deviceBookHash = storageResult.data?.book_hash ?? "";
+		const deviceBook = {
+			hash: storageResult.data?.book_hash ?? "",
+			title: storageResult.data?.title,
+		};
 		const libraryBooks = await queries.getAllBooks();
 		const target = resolveSingleBookSyncTarget(
-			deviceBookHash,
+			deviceBook,
 			activeBookIdRef.current,
-			libraryBooks.map((b) => b.id),
+			libraryBooks,
+			readSingleBookLinks(),
 		);
 		if (target.kind !== "sync") {
 			if (target.kind === "unknown") {
 				log.warn(
 					"booksync",
-					`device holds book "${target.deviceHash}", which is not in this library; send the book again to sync its position`,
+					`device holds book "${target.deviceHash}" (title ${JSON.stringify(deviceBook.title ?? null)}), which matches no single book in this library; send the book again to sync its position`,
 				);
 			}
 			if (target.staleActiveId != null) {
@@ -342,6 +347,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				updateActiveBookId(null);
 			}
 			return;
+		}
+		if (target.matchedByTitle) {
+			log(
+				"booksync",
+				`device book ${deviceBook.hash} matched library book ${target.bookId} by title, linked`,
+			);
+			linkSingleBook(deviceBook.hash, target.bookId);
 		}
 		if (target.restored) {
 			log("booksync", `device holds library book ${target.bookId}, marking it active`);

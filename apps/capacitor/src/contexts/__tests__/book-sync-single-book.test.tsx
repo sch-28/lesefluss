@@ -2,7 +2,13 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flush, type Rendered, render } from "../../test/render";
 
-type Row = { id: string; isActive: boolean; wordPosition: number; updatedAt: number };
+type Row = {
+	id: string;
+	title: string;
+	isActive: boolean;
+	wordPosition: number;
+	updatedAt: number;
+};
 
 // Storage characteristic value from the LESE-218 logcat, as the device sent it.
 const LOGGED_STORAGE_HEX =
@@ -60,6 +66,7 @@ vi.mock("../device-library-context", () => ({
 }));
 
 import { dataViewToString } from "../../services/ble/utils/encoding";
+import { readSingleBookLinks } from "../../services/devices/single-book/book-links";
 import { BookSyncProvider, useBookSync } from "../book-sync-context";
 
 function loggedStorage() {
@@ -77,8 +84,17 @@ function Probe() {
 
 let view: Rendered | undefined;
 
-function book(id: string, isActive = false): Row {
-	return { id, isActive, wordPosition: 0, updatedAt: 1 };
+function book(id: string, isActive = false, title = `Book ${id}`): Row {
+	return { id, title, isActive, wordPosition: 0, updatedAt: 1 };
+}
+
+const PRIDE = "Pride and Prejudice";
+
+function deviceSendsTitle(title: string) {
+	mocks.ble.readStorage.mockImplementation(async () => {
+		const logged = loggedStorage();
+		return { ...logged, data: { ...logged.data, title } };
+	});
 }
 
 async function syncWithDeviceAt(byteOffset: number) {
@@ -94,6 +110,7 @@ async function syncWithDeviceAt(byteOffset: number) {
 }
 
 beforeEach(() => {
+	localStorage.clear();
 	mocks.ble.readStorage.mockImplementation(async () => loggedStorage());
 	mocks.library = [];
 	mocks.chapters = [];
@@ -169,5 +186,57 @@ describe("single-book syncPosition (LESE-218)", () => {
 
 		expect(mocks.queries.updateBook).not.toHaveBeenCalled();
 		expect(ctx.activeBookId).toBe("57569a1c");
+	});
+});
+
+describe("single-book syncPosition title fallback (LESE-219)", () => {
+	it("syncs the one library book with the device's title and links it", async () => {
+		mocks.library = [book("2a41e018", false, PRIDE), book("0badf00d", false, "Emma")];
+		deviceSendsTitle(PRIDE);
+		await syncWithDeviceAt(5000);
+
+		expect(mocks.queries.setActiveBook).toHaveBeenCalledWith("2a41e018");
+		expect(mocks.queries.updateBook).toHaveBeenCalledWith(
+			"2a41e018",
+			expect.objectContaining({ wordPosition: 1000 }),
+		);
+		expect(ctx.activeBookId).toBe("2a41e018");
+		expect(readSingleBookLinks()).toEqual({ "57569a1c": "2a41e018" });
+	});
+
+	it("matches the linked book directly on the next sync", async () => {
+		mocks.library = [book("2a41e018", false, PRIDE)];
+		deviceSendsTitle(PRIDE);
+		await syncWithDeviceAt(5000);
+		view?.unmount();
+		vi.clearAllMocks();
+
+		// A second book with the same title would make a title match ambiguous.
+		mocks.library = [book("2a41e018", false, PRIDE), book("0badf00d", false, PRIDE)];
+		await syncWithDeviceAt(6000);
+
+		expect(mocks.queries.updateBook).toHaveBeenCalledWith(
+			"2a41e018",
+			expect.objectContaining({ wordPosition: 1200 }),
+		);
+		expect(mocks.warn).not.toHaveBeenCalled();
+	});
+
+	it("syncs nothing when two library books share the device's title", async () => {
+		mocks.library = [book("2a41e018", false, PRIDE), book("0badf00d", false, PRIDE)];
+		deviceSendsTitle(PRIDE);
+		await syncWithDeviceAt(5000);
+
+		expect(mocks.ble.readPosition).not.toHaveBeenCalled();
+		expect(mocks.queries.updateBook).not.toHaveBeenCalled();
+		expect(mocks.warn).toHaveBeenCalledWith("booksync", expect.stringContaining("57569a1c"));
+	});
+
+	it("syncs nothing by title for old firmware that sends none", async () => {
+		mocks.library = [book("2a41e018", false, PRIDE)];
+		await syncWithDeviceAt(5000);
+
+		expect(mocks.ble.readPosition).not.toHaveBeenCalled();
+		expect(mocks.queries.updateBook).not.toHaveBeenCalled();
 	});
 });

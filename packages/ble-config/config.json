@@ -17,7 +17,7 @@
 		},
 		"storage": {
 			"uuid": "b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7",
-			"description": "Flash storage info (read-only). Returns JSON: {free_bytes, total_bytes}."
+			"description": "Flash storage info and the stored book (read-only). Returns JSON: {free_bytes, total_bytes, book_hash, title?}."
 		}
 	},
 	"transfer": {

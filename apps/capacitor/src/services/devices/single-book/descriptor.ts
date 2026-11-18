@@ -24,6 +24,8 @@ export type SingleBookStorage = {
 	total_bytes: number;
 	/** 8-char hex ID of the book currently on the device, or "" if none. */
 	book_hash: string;
+	/** Title the book was sent with; firmware before LESE-219 omits it. */
+	title?: string;
 };
 
 export const SINGLE_BOOK_DESCRIPTOR_ID = "lesefluss-single-book-v1";

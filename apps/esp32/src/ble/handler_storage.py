@@ -4,7 +4,10 @@ BLE Storage Characteristic Handler
 Read-only characteristic that exposes ESP32 flash storage usage.
 
 Protocol:
-  Read → {"free_bytes": <int>, "total_bytes": <int>}
+  Read → {"free_bytes": <int>, "total_bytes": <int>, "book_hash": <str>[, "title": <str>]}
+
+`title` is the stored book's title, sent only when the book has one. It lets
+the app find the book again after a re-import gave it a new library id.
 
 Uses os.statvfs('/') which reports the flash filesystem (littlefs).
   statvfs result: (f_bsize, f_frsize, f_blocks, f_bfree, f_bavail, ...)
@@ -17,6 +20,32 @@ import json
 import os
 
 _HASH_FILE = "book.hash"
+_TITLE_FILE = "book.title"
+# One ATT read carries at most MTU - 1 = 511 bytes.
+_MAX_PAYLOAD = 500
+
+
+def _read_text(path):
+    try:
+        with open(path, "r") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def build_payload(free, total, book_hash, title):
+    """Storage JSON as bytes, the title shortened until it fits one read."""
+    data = {"free_bytes": free, "total_bytes": total, "book_hash": book_hash}
+    while True:
+        if title:
+            data["title"] = title
+        else:
+            data.pop("title", None)
+        encoded = json.dumps(data).encode("utf-8")
+        over = len(encoded) - _MAX_PAYLOAD
+        if over <= 0 or not title:
+            return encoded
+        title = title[: max(0, len(title) - over)].rstrip()
 
 
 class StorageHandler:
@@ -51,13 +80,9 @@ class StorageHandler:
             total = 0
             free  = 0
 
-        book_hash = ""
-        try:
-            with open(_HASH_FILE, "r") as f:
-                book_hash = f.read().strip()
-        except OSError:
-            pass  # No book transferred yet
+        book_hash = _read_text(_HASH_FILE)
+        title = _read_text(_TITLE_FILE) if book_hash else ""
 
-        data = json.dumps({"free_bytes": free, "total_bytes": total, "book_hash": book_hash}).encode("utf-8")
+        data = build_payload(free, total, book_hash, title)
         self.ble.gatts_write(self.handle, data)
-        print(f"[storage] read request → free={free} total={total} book_hash={book_hash!r}")
+        print(f"[storage] read request → free={free} total={total} book_hash={book_hash!r} title={title!r}")

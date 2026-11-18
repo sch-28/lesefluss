@@ -137,7 +137,7 @@ etc/
 - `handler_settings.py` - Settings characteristic (R/W): read config JSON, write updates `config_override.py` + soft reset
 - `handler_position.py` - Position characteristic (R/W): read/write `position.txt`
 - `handler_file_transfer.py` - File Transfer characteristic (Write + Notify): START/CHUNK/END state machine, base64 chunks, CRC32 verify, `book.tmp` → `book.txt`. Exposes `get_progress()` → `(in_progress, bytes_done, total_bytes)` for transfer overlay
-- `handler_storage.py` - Storage characteristic (R): reads `os.statvfs('/')`, returns `{"free_bytes": n, "total_bytes": n}`
+- `handler_storage.py` - Storage characteristic (R): reads `os.statvfs('/')`, returns `{"free_bytes": n, "total_bytes": n, "book_hash": id, "title": t}` (`title` from `book.title`, omitted when empty, shortened to keep the JSON within 500 bytes); the app matches an unknown `book_hash` by title (LESE-219). `tests/` holds CPython unit tests, run by `pnpm check-python`
 - `ble_config.py` - generated from `packages/ble-config`; do not edit manually
 - Stops advertising when BLE resource is needed elsewhere
 - `server.check_settings_updated()` / `server.check_transfer_completed()` / `server.get_transfer_progress()` - polled by App

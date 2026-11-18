@@ -382,6 +382,8 @@ The capacitor-app UI component that dispatches between device-specific sync flow
 
 The convention by which a lesefluss book (UUID-keyed) correlates with the same book on a device (hash-keyed). The app uploads books with the filename `{lesefluss-uuid}.rsvp` so the device-side FNV-1a hash of the SD path is reproducible client-side without a lookup.
 
+The single-book ESP32 keeps the library id the book was sent under (`book_hash`) and its title. When a re-import changed the id, the app finds the book by its title (exactly one library book, compared as lowercase ASCII letters and digits) and stores a **single-book link** (device `book_hash` → library id, device-local) so later syncs follow the link directly.
+
 ---
 
 ## Packages

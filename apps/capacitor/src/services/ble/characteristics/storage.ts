@@ -15,6 +15,8 @@ export interface StorageInfo {
 	free_bytes: number;
 	total_bytes: number;
 	book_hash: string; // 8-char hex ID of the book currently on the device, or "" if none
+	/** Title the book was sent with; firmware before LESE-219 omits it. */
+	title?: string;
 }
 
 /** Read flash storage stats from the device. */
