@@ -7,28 +7,29 @@ const CSS = readFileSync(
 	join(dirname(fileURLToPath(import.meta.url)), "../../../theme/monochrome.css"),
 	"utf8",
 ).replace(/\/\*[\s\S]*?\*\//g, "");
-/** The cascade's value of `prop` for `selector`: the last rule that lists it and sets it. */
-const px = (selector: string, prop: string) => {
-	let value = Number.NaN;
-	for (const [, selectors, body] of CSS.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
-		if (!selectors.split(",").some((s) => s.trim() === selector)) continue;
-		const set = body.match(new RegExp(`(?:^|;|\\s)${prop}: (\\d+)px;`))?.[1];
-		if (set) value = Number(set);
-	}
-	return value;
-};
 
 describe("RSVP paused controls layout", () => {
-	it("sit above the secondary pills, and above both stacked rows with the read-aloud pills", () => {
-		const PILL = 44;
-		const GAP = 8;
-		const pillsTop = px(".rsvp-pills", "bottom") + PILL;
-		expect(px(".rsvp-controls", "bottom")).toBeGreaterThanOrEqual(pillsTop + GAP);
-		const stackGap = CSS.match(/\.rsvp-pill-stack \{[^}]*gap: (\d+)px;/)?.[1];
-		expect(px(".rsvp-controls--voice", "bottom")).toBeGreaterThanOrEqual(
-			pillsTop + Number(stackGap) + PILL + GAP,
+	it("sit on the progress bar, in one band with the side buttons, not floating above them", () => {
+		const band = CSS.match(/\.rsvp-band \{([^}]*)\}/)?.[1] ?? "";
+		expect(band).toContain("bottom: calc(12px + var(--rsvp-bar-overlap, 0px));");
+		const card = CSS.match(/\.rsvp-controls \{([^}]*)\}/)?.[1] ?? "";
+		expect(card).toContain("grid-area: card");
+		expect(card).not.toMatch(/position: absolute|bottom:/);
+		expect(CSS).toMatch(/grid-template-areas: "start card end";/);
+	});
+
+	it("place the word halfway between the paused and the playing centre, so it never sits low behind the controls", () => {
+		const word = CSS.match(/\.rsvp-word-container \{([^}]*)\}/)?.[1] ?? "";
+		expect(word).toContain("top: calc(50% - var(--rsvp-band-space) / 4);");
+		const guide = CSS.match(/\.rsvp-display \.rsvp-focal-line \{([^}]*)\}/)?.[1] ?? "";
+		expect(guide, "the focal guide frames the word").toContain(
+			"top: calc(50% - var(--rsvp-band-space) / 4 - 2.2rem);",
 		);
-		expect(CSS).not.toMatch(/\.rsvp-controls:has/);
+		const peek = (name: string) => CSS.match(new RegExp(`\\${name} \\{([^}]*)\\}`))?.[1] ?? "";
+		expect(peek(".rsvp-context-prev")).toContain("50cqh - var(--rsvp-band-space) / 4");
+		expect(peek(".rsvp-context-next"), "stops at the band").toContain(
+			"50cqh - var(--rsvp-band-space) * 0.75",
+		);
 	});
 
 	it("keeps Listen beside the speed instead of wrapping it onto its own row", () => {

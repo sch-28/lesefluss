@@ -391,6 +391,8 @@
 	 * focal-word offset on desktop/web embeds where the reader isn't
 	 * full viewport width). */
 	container-type: inline-size;
+	/* The paused band's height above the progress bar, measured by useRsvpBandLayout. */
+	--rsvp-band-space: 127px;
 }
 
 /* Paused state enables native scroll-to-scrub. The overlay-root is
@@ -451,7 +453,9 @@
 
 .rsvp-word-container {
 	position: absolute;
-	top: calc(50% - var(--rsvp-word-lift, 0px));
+	/* Halfway between the centre of the paused view and of the playing one, which has no
+	 * band: centred on either, the word looks off in the other, and it must not jump. */
+	top: calc(50% - var(--rsvp-band-space) / 4);
 	font-family: var(--rsvp-focal-font);
 	font-weight: 700;
 	color: var(--reader-text);
@@ -495,6 +499,10 @@
 	transform: translateX(-50%);
 }
 
+.rsvp-display .rsvp-focal-line {
+	top: calc(50% - var(--rsvp-band-space) / 4 - 2.2rem);
+}
+
 /* Second indicator below the word */
 .rsvp-focal-line::after {
 	content: "";
@@ -517,29 +525,19 @@
 	white-space: nowrap;
 }
 
-/* Above the labelled corner pills, which are too wide to sit beside it on a phone. */
 .rsvp-controls {
-	position: absolute;
-	left: 50%;
-	bottom: 80px;
-	max-width: calc(100% - 32px);
-	transform: translateX(-50%);
+	grid-area: card;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 4px;
-	padding: 8px 12px;
+	padding: 8px;
 	background: var(--reader-bg);
 	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
 	border-radius: 20px;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	color: var(--reader-text);
 	z-index: 10;
-}
-
-/* Clears the two stacked rows of pills. */
-.rsvp-controls--voice {
-	bottom: 136px;
 }
 
 .rsvp-controls-row {
@@ -581,6 +579,11 @@
 	border-top: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
 	width: 100%;
 	justify-content: center;
+}
+
+/* No gaps between the 44px buttons: the card then leaves a 384px phone room for a button on each side. */
+.rsvp-controls .rsvp-controls-row {
+	gap: 0;
 }
 
 /* Listen sits beside the speed, never on a row of its own. */
@@ -699,15 +702,15 @@
 	opacity: 0.9;
 	text-align: var(--reader-text-align, left);
 	hyphens: var(--reader-hyphens, manual);
-	/* The column less the 16px insets of the progress track and pills, so all share one edge. */
+	/* The column less the progress track's 16px insets, so both share one edge. */
 	width: calc(100cqw - 32px);
 	word-break: normal;
 	overflow-wrap: break-word;
 }
 
 /* The peeks fill only the room between the word and the screen's edge above,
- * or the paused controls below (measured into --rsvp-next-max by RsvpView), and
- * fade out where they are cut. 50 words run far past that on a small phone. */
+ * or the paused band below, and fade out where they are cut. 50 words run far
+ * past that on a small phone. */
 .rsvp-context-prev {
 	bottom: calc(100% + 0.6em);
 	display: flex;
@@ -715,7 +718,7 @@
 	justify-content: flex-end;
 	max-height: max(
 		0px,
-		calc(50cqh - var(--rsvp-word-lift, 0px) - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 8px)
+		calc(50cqh - var(--rsvp-band-space) / 4 - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 8px)
 	);
 	overflow: hidden;
 	-webkit-mask-image: linear-gradient(to top, #000 calc(100% - 2.5em), transparent);
@@ -726,7 +729,7 @@
 	top: calc(100% + 0.6em);
 	max-height: max(
 		0px,
-		var(--rsvp-next-max, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 215px - 0.6em))
+		calc(50cqh - var(--rsvp-band-space) * 0.75 - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 12px)
 	);
 	overflow: hidden;
 	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
@@ -759,40 +762,59 @@
 	color: var(--reader-text);
 }
 
-/* ── RSVP pills (paused): one row under the controls card, icon and label ── */
+/* ── RSVP band (paused): the control card on the progress bar, the side buttons beside it ──
+ * useRsvpBandLayout sets data-pills: labelled where they fit, icon only where not, and on a
+ * row above the card where not even the icons fit beside it. The names stay as aria-labels. */
 
-.rsvp-pills {
+.rsvp-band {
 	position: absolute;
-	left: 16px;
-	right: 16px;
-	bottom: 24px;
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-end;
-	gap: 8px;
+	left: 8px;
+	right: 8px;
+	bottom: calc(12px + var(--rsvp-bar-overlap, 0px));
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	grid-template-areas: "start card end";
+	align-items: end;
+	/* 4px, not 8: at 8 the 44px icons miss fitting beside the card on a 360px phone by 3px. */
+	gap: 8px 4px;
 	pointer-events: none;
 	z-index: 10;
-	container-type: inline-size;
+}
+
+.rsvp-band[data-pills="above"] {
+	grid-template-columns: auto 1fr auto;
+	grid-template-areas:
+		"start . end"
+		"card card card";
+}
+
+.rsvp-band[data-pills="above"] .rsvp-controls {
+	justify-self: center;
 }
 
 /* Read-aloud's Voice and Sleep timer stack above RSVP settings and Look up. */
 .rsvp-pill-stack {
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
 	gap: 12px;
 }
 
-.rsvp-pill-stack:last-child {
+.rsvp-pill-stack--start {
+	grid-area: start;
+	align-items: flex-start;
+}
+
+.rsvp-pill-stack--end {
+	grid-area: end;
 	align-items: flex-end;
 }
 
-/* Labels that don't fit the row (large text) drop to their icons; the names stay as
- * aria-labels. em follows the text size, so the cut does too. */
-@container (max-width: 20em) {
-	.rsvp-pills span {
-		display: none;
-	}
+.rsvp-band:is([data-pills="icons"], [data-pills="above"]) .rsvp-pill-stack span {
+	display: none;
+}
+
+.rsvp-band:is([data-pills="icons"], [data-pills="above"]) .rsvp-pill-stack button {
+	padding: 0;
 }
 
 .rsvp-dict-button,
@@ -803,6 +825,7 @@
 	min-width: 44px;
 	height: 44px;
 	padding: 0 14px 0 12px;
+	white-space: nowrap;
 	gap: 6px;
 	border-radius: 22px;
 	background: var(--reader-bg);

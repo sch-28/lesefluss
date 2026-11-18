@@ -53,7 +53,7 @@ const props = {
 };
 
 const pillLabels = (rendered: Rendered) =>
-	[...rendered.container.querySelectorAll(".rsvp-pills button")].map((b) =>
+	[...rendered.container.querySelectorAll(".rsvp-pill-stack button")].map((b) =>
 		b.getAttribute("aria-label"),
 	);
 
@@ -78,7 +78,7 @@ describe("RsvpView paused", () => {
 		expect(word?.style.getPropertyValue("--reader-text-align")).toBe("justify");
 	});
 
-	it("stacks Voice above RSVP settings and Sleep timer above Look up", async () => {
+	it("puts the card between the side buttons, Voice above RSVP settings and Sleep timer above Look up", async () => {
 		view = await render(
 			<RsvpView
 				content={content}
@@ -92,51 +92,100 @@ describe("RsvpView paused", () => {
 				audio={audio}
 			/>,
 		);
-		const stacks = [...view.container.querySelectorAll(".rsvp-pills > .rsvp-pill-stack")].map(
-			(stack) => [...stack.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")),
+		const band = [...(view.container.querySelector(".rsvp-band")?.children ?? [])].map((child) =>
+			child.classList.contains("rsvp-controls")
+				? "card"
+				: [...child.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")),
 		);
-		expect(stacks).toEqual([
-			["Voice", "RSVP settings"],
-			["Sleep timer", "Look up"],
-		]);
-		expect(view.container.querySelector(".rsvp-controls--voice")).not.toBeNull();
+		expect(band).toEqual([["Voice", "RSVP settings"], "card", ["Sleep timer", "Look up"]]);
 	});
 
 	it("keeps RSVP settings before Look up when there is no voice, and labels them in full", async () => {
 		view = await render(<RsvpView {...props} />);
 		expect(pillLabels(view)).toEqual(["RSVP settings", "Look up"]);
-		expect(view.container.querySelector(".rsvp-controls--voice")).toBeNull();
 	});
 
-	const layout = (rects: Record<string, Partial<DOMRect>>) =>
+	/** Lays the band out: rects by class, widths by class (labelled pills are 130px). */
+	const layout = (rects: Record<string, Partial<DOMRect>>, widths: Record<string, number>) => {
+		const find = <T,>(el: Element, by: Record<string, T>) =>
+			Object.keys(by).find((cls) => el.classList.contains(cls));
 		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
 			this: Element,
 		) {
-			const match = Object.keys(rects).find((cls) => this.classList.contains(cls));
+			const match = find(this, rects);
 			return { top: 0, bottom: 0, ...(match ? rects[match] : {}) } as DOMRect;
 		});
-
-	it("bounds the context below the word by the controls card's top, and drops the bound on play", async () => {
-		layout({
-			"rsvp-controls": { top: 600 },
-			"rsvp-word-line": { bottom: 300 },
-			"rsvp-context-next": { top: 320 },
+		const width = (el: HTMLElement) => {
+			const match = find(el, widths);
+			if (!match) return 0;
+			const labelled = el.closest(".rsvp-band")?.getAttribute("data-pills") === "labels";
+			return match === "rsvp-band" || match === "rsvp-controls" || labelled ? widths[match] : 44;
+		};
+		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (
+			this: HTMLElement,
+		) {
+			return width(this);
 		});
-		view = await render(<RsvpView {...props} />);
-		const display = view.container.querySelector<HTMLElement>(".rsvp-display");
-		expect(display?.style.getPropertyValue("--rsvp-next-max")).toBe("268px");
-		expect(display?.style.getPropertyValue("--rsvp-word-lift")).toBe("0px");
-
-		await click(view.container.querySelector<HTMLElement>(".rsvp-display") as HTMLElement);
-		expect(display?.style.getPropertyValue("--rsvp-next-max")).toBe("");
-		expect(display?.style.getPropertyValue("--rsvp-word-lift")).toBe("");
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (
+			this: HTMLElement,
+		) {
+			return width(this);
+		});
+	};
+	const pillWidths = (band: number) => ({
+		"rsvp-band": band,
+		"rsvp-controls": 246,
+		"rsvp-settings-button": 130,
+		"rsvp-dict-button": 100,
 	});
 
-	it("raises the word clear of the controls card on a screen too short to centre it", async () => {
-		layout({ "rsvp-controls": { top: 300 }, "rsvp-word-line": { bottom: 330 } });
+	it("centres the word in the room above the band, and keeps it there while playing", async () => {
+		layout({ "rsvp-display-inner": { bottom: 700 }, "rsvp-band": { top: 573 } }, pillWidths(676));
 		view = await render(<RsvpView {...props} />);
 		const display = view.container.querySelector<HTMLElement>(".rsvp-display");
-		expect(display?.style.getPropertyValue("--rsvp-word-lift")).toBe("42px");
+		expect(display?.style.getPropertyValue("--rsvp-band-space")).toBe("127px");
+
+		await click(display as HTMLElement);
+		expect(view.container.querySelector(".rsvp-band")).toBeNull();
+		expect(display?.style.getPropertyValue("--rsvp-band-space")).toBe("127px");
+	});
+
+	it("lifts the band off a progress bar taller than the overlay allows for", async () => {
+		layout(
+			{
+				"rsvp-display-inner": { bottom: 700 },
+				"reader-progress-bar": { top: 684 },
+				"rsvp-band": { top: 557 },
+			},
+			pillWidths(676),
+		);
+		view = await render(
+			<div>
+				<RsvpView {...props} />
+				<div className="reader-progress-bar" />
+			</div>,
+		);
+		const display = view.container.querySelector<HTMLElement>(".rsvp-display");
+		expect(display?.style.getPropertyValue("--rsvp-bar-overlap")).toBe("16px");
+		expect(display?.style.getPropertyValue("--rsvp-band-space")).toBe("143px");
+	});
+
+	it("labels the side buttons where they fit, else shows icons, else lifts them above the card", async () => {
+		for (const [band, fit] of [
+			[676, "labels"],
+			[360, "icons"],
+			[320, "above"],
+		] as const) {
+			layout({}, pillWidths(band));
+			view = await render(<RsvpView {...props} />);
+			expect(
+				view.container.querySelector(".rsvp-band")?.getAttribute("data-pills"),
+				`${band}`,
+			).toBe(fit);
+			view.unmount();
+			view = undefined;
+			vi.restoreAllMocks();
+		}
 	});
 
 	it("shows the ramp-up toward the set speed while it accelerates", async () => {

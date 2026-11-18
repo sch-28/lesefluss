@@ -35,6 +35,7 @@ import {
 } from "../../hooks/use-appearance-settings";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import { FOCAL_FONT_MULTIPLIER } from "./focal-font";
+import { useRsvpBandLayout } from "./rsvp-band-layout";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpSwipe } from "./rsvp-swipe";
 import { useRsvpEngine } from "./use-rsvp-engine";
@@ -321,7 +322,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		}
 	}, [wordIndex, isShowingPlayback, reAnchor]);
 
-	useControlsClearance(containerRef, !isShowingPlayback && Boolean(currentWord));
+	useRsvpBandLayout(containerRef, !isShowingPlayback && words.length > 0);
 
 	const handleScroll = useCallback(() => {
 		if (suppressScrollRef.current) return;
@@ -562,7 +563,32 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 						)}
 
 						{!isShowingPlayback && (
-							<>
+							<div className="rsvp-band">
+								<div className="rsvp-pill-stack rsvp-pill-stack--start">
+									{voice && (
+										<button
+											type="button"
+											className="rsvp-voice-button"
+											aria-label="Voice"
+											onClick={(e) => {
+												e.stopPropagation();
+												voice.onOpenVoice();
+											}}
+										>
+											<AudioLines className="size-5" />
+											<span>Voice</span>
+										</button>
+									)}
+									<button
+										type="button"
+										className="rsvp-settings-button"
+										aria-label="RSVP settings"
+										onClick={handleSettingsClick}
+									>
+										<Settings className="size-5" />
+										<span>RSVP settings</span>
+									</button>
+								</div>
 								<RsvpControls
 									wpm={speed.wpm}
 									range={speed.range}
@@ -574,64 +600,37 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									onForwardSentence={forwardSentence}
 									onWpmChange={speed.onChange}
 								/>
-								<div className="rsvp-pills">
-									<div className="rsvp-pill-stack">
-										{voice && (
-											<button
-												type="button"
-												className="rsvp-voice-button"
-												aria-label="Voice"
-												onClick={(e) => {
-													e.stopPropagation();
-													voice.onOpenVoice();
-												}}
-											>
-												<AudioLines className="size-5" />
-												<span>Voice</span>
-											</button>
-										)}
+								<div className="rsvp-pill-stack rsvp-pill-stack--end">
+									{voice && (
 										<button
 											type="button"
-											className="rsvp-settings-button"
-											aria-label="RSVP settings"
-											onClick={handleSettingsClick}
+											className={
+												voice.isSleepTimerOn
+													? "rsvp-sleep-button rsvp-sleep-button--on"
+													: "rsvp-sleep-button"
+											}
+											aria-label="Sleep timer"
+											onClick={(e) => {
+												e.stopPropagation();
+												voice.onOpenSleepTimer();
+											}}
+											aria-pressed={voice.isSleepTimerOn}
 										>
-											<Settings className="size-5" />
-											<span>RSVP settings</span>
+											<Moon className="size-5" />
+											<span>Sleep timer</span>
 										</button>
-									</div>
-									<div className="rsvp-pill-stack">
-										{voice && (
-											<button
-												type="button"
-												className={
-													voice.isSleepTimerOn
-														? "rsvp-sleep-button rsvp-sleep-button--on"
-														: "rsvp-sleep-button"
-												}
-												aria-label="Sleep timer"
-												onClick={(e) => {
-													e.stopPropagation();
-													voice.onOpenSleepTimer();
-												}}
-												aria-pressed={voice.isSleepTimerOn}
-											>
-												<Moon className="size-5" />
-												<span>Sleep timer</span>
-											</button>
-										)}
-										<button
-											type="button"
-											className="rsvp-dict-button"
-											aria-label="Look up"
-											onClick={handleDictClick}
-										>
-											<BookOpen className="size-5" />
-											<span>Look up</span>
-										</button>
-									</div>
+									)}
+									<button
+										type="button"
+										className="rsvp-dict-button"
+										aria-label="Look up"
+										onClick={handleDictClick}
+									>
+										<BookOpen className="size-5" />
+										<span>Look up</span>
+									</button>
 								</div>
-							</>
+							</div>
 						)}
 					</div>
 				</div>
@@ -670,48 +669,3 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 });
 
 export default React.memo(RsvpView);
-
-const CONTROLS_GAP_PX = 12;
-
-/**
- * Bounds the paused context below the word by the controls card's measured top,
- * so it fades out above the card instead of running behind it whatever the card's
- * height (the Listen button, a wrapped speed row, a short window).
- */
-function useControlsClearance(
-	containerRef: React.RefObject<HTMLDivElement | null>,
-	isPaused: boolean,
-): void {
-	useLayoutEffect(() => {
-		const container = containerRef.current;
-		if (!isPaused || !container) return;
-		let lift = 0;
-		const measure = () => {
-			const controls = container.querySelector(".rsvp-controls");
-			const word = container.querySelector(".rsvp-word-line");
-			if (!controls || !word) return;
-			const controlsTop = controls.getBoundingClientRect().top;
-			// On a short screen the centred word itself would sit under the card: raise it just clear.
-			const restingBottom = word.getBoundingClientRect().bottom + lift;
-			lift = Math.max(0, Math.ceil(restingBottom + CONTROLS_GAP_PX - controlsTop));
-			container.style.setProperty("--rsvp-word-lift", `${lift}px`);
-			const next = container.querySelector(".rsvp-context-next");
-			const nextTop = next ? next.getBoundingClientRect().top : word.getBoundingClientRect().bottom;
-			const room = controlsTop - nextTop - CONTROLS_GAP_PX;
-			container.style.setProperty("--rsvp-next-max", `${Math.max(0, Math.floor(room))}px`);
-		};
-		measure();
-		const observer = new ResizeObserver(measure);
-		observer.observe(container);
-		// The word line is inline and never reports a resize; its block box grows with the font size.
-		for (const selector of [".rsvp-controls", ".rsvp-word-container"]) {
-			const el = container.querySelector(selector);
-			if (el) observer.observe(el);
-		}
-		return () => {
-			observer.disconnect();
-			container.style.removeProperty("--rsvp-next-max");
-			container.style.removeProperty("--rsvp-word-lift");
-		};
-	}, [containerRef, isPaused]);
-}
