@@ -11,6 +11,7 @@ import {
 	Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { formatCount } from "@/utils/format-number";
 import { goalTone } from "../../pages/library/reading-goal/goal-model";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
@@ -38,7 +39,7 @@ function Tile({
 }) {
 	const body = (
 		<>
-			<span className="flex items-center gap-1.5 font-medium text-2xs text-muted-foreground uppercase tracking-wider">
+			<span className={cn("flex items-center gap-2", STAT_CAPTION)}>
 				{icon}
 				{label}
 				{onClick && <ChevronRight className="ml-auto size-3.5" aria-hidden />}
@@ -140,7 +141,7 @@ export function SpeedTile({
 			label={stats.isRsvp ? "RSVP speed" : "Speed"}
 			testId="summary-speed"
 		>
-			<span className="flex items-baseline gap-1.5">
+			<span className="flex items-baseline gap-2">
 				<Value>{stats.wpm ?? "–"}</Value>
 				<span className="text-2xs text-muted-foreground">wpm</span>
 				{delta !== null && (

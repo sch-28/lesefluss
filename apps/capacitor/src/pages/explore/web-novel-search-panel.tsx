@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { SearchX } from "lucide-react";
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import CoverImage from "../../components/cover-image";
 import type { ViewMode } from "../../components/view-mode-toggle";
@@ -295,9 +296,7 @@ const ResultListItem: React.FC<{
 					</div>
 				)}
 				<div className="min-w-0 flex-1">
-					<div className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
-						{result.title}
-					</div>
+					<div className={CARD_TITLE}>{result.title}</div>
 					{result.author && (
 						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 							{result.author}

@@ -3,7 +3,7 @@ import type * as React from "react";
 import { cn } from "../lib/utils";
 
 /** Shared by DrawerHeader and SheetHeader: left-aligned, on the 16px page gutter. */
-export const SHEET_HEADER_CLASS = "flex flex-col gap-0.5 px-4 pt-2 pb-3 text-left";
+export const SHEET_HEADER_CLASS = "flex flex-col gap-1 px-4 pt-2 pb-3 text-left";
 export const SHEET_TITLE_CLASS = "font-semibold text-lg text-foreground leading-tight";
 export const SHEET_SUBTITLE_CLASS = "text-sm text-muted-foreground";
 
@@ -27,7 +27,7 @@ export function SheetHeaderBar({
 			data-slot="sheet-header-bar"
 			className={cn("flex items-center gap-2 pt-2 pr-1 pb-3 pl-4", className)}
 		>
-			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				{title}
 				{subtitle}
 			</div>

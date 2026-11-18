@@ -1,5 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { Check, Minus, Plus } from "lucide-react";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { queryHooks } from "../../services/db/hooks";
 import {
 	COMPARISON_BOOK_WORDS,
@@ -70,9 +72,7 @@ export function SpeedTestResult({
 			)}
 
 			<div className="mt-4 rounded-lg border border-border p-3" data-testid="speed-test-book">
-				<div className="truncate text-2xs text-muted-foreground uppercase tracking-wider">
-					{book.label}
-				</div>
+				<div className={cn("truncate", STAT_CAPTION)}>{book.label}</div>
 				<dl className="mt-2 grid grid-cols-3 gap-2 text-center">
 					<div>
 						<dt className="text-muted-foreground text-xs">Reading</dt>

@@ -27,8 +27,8 @@ const buttonVariants = cva(
 			// Icon sizes stretch their touch target to 44px with a ::before, keeping the look.
 			size: {
 				// On touch an ::after stretches the target to 44px tall (inset from inside the border, as below); ::before stays free for a caller's own hit area.
-				default: `h-10 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 ${TOUCH_44} pointer-coarse:after:-inset-y-[3px]`,
-				sm: `h-8 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5 ${TOUCH_44} pointer-coarse:after:-inset-y-[7px]`,
+				default: `h-10 gap-2 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 ${TOUCH_44} pointer-coarse:after:-inset-y-[3px]`,
+				sm: `h-8 gap-2 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5 ${TOUCH_44} pointer-coarse:after:-inset-y-[7px]`,
 				// The ::before insets from the padding box, inside the 1px border: each inset is 1px more than half the gap to 44px.
 				icon: "relative size-8 before:absolute before:-inset-[7px] before:content-['']",
 				"icon-xs":

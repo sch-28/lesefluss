@@ -113,9 +113,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 				/>
 			</button>
 			<div className="flex min-w-0 flex-[1_1_10rem] flex-col" aria-live="off">
-				<div className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-					Featured
-				</div>
+				<div className="font-semibold text-muted-foreground text-xs">Featured</div>
 				<h2 className="m-0 mt-1 break-words font-semibold text-base leading-tight">{book.title}</h2>
 				{book.author && <p className="m-0 mt-1 text-muted-foreground text-sm">{book.author}</p>}
 				{book.summary && (

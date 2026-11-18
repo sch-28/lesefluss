@@ -155,7 +155,7 @@ export const SearchAutocomplete: React.FC<Props> = ({
 					role="listbox"
 					aria-label="Suggestions"
 					data-testid="search-suggestions"
-					className="absolute inset-x-0 top-full z-30 mt-1 flex gap-1.5 overflow-x-auto rounded-md border border-border bg-popover p-1.5 shadow-md md:flex-col md:gap-0 md:overflow-visible"
+					className="absolute inset-x-0 top-full z-30 mt-1 flex gap-2 overflow-x-auto rounded-md border border-border bg-popover p-1.5 shadow-md md:flex-col md:gap-0 md:overflow-visible"
 				>
 					{suggestions.map((s, i) => (
 						<button

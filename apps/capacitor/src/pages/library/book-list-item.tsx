@@ -120,7 +120,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 							values={values}
 							seriesBadge={badge}
 						/>
-						<div className="mt-1 flex flex-wrap items-center gap-1.5 empty:hidden">
+						<div className="mt-1 flex flex-wrap items-center gap-2 empty:hidden">
 							<DeviceBadge bookId={book.id} style="block" />
 							<SyncExcludedBadge book={book} />
 						</div>

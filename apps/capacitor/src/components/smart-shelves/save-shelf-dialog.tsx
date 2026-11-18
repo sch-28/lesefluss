@@ -84,7 +84,7 @@ export const SaveShelfDialog: React.FC<Props> = ({ open, onOpenChange, filter })
 						onChange={(e) => setName(e.target.value)}
 					/>
 				</InputHitArea>
-				<div className="flex flex-col gap-1.5">
+				<div className="flex flex-col gap-2">
 					<span className="text-muted-foreground text-xs">Books that match</span>
 					<ConditionChips filter={filter} options={options} />
 				</div>

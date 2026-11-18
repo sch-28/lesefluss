@@ -42,7 +42,7 @@ export default function ReaderPreview() {
 		<div
 			// A fixed window onto the text: cutting it off is the point (e2e layout check).
 			data-clips-text
-			className={`reader-theme-${theme} flex h-52 flex-col overflow-hidden rounded-[10px] border border-border bg-(--reader-bg)`}
+			className={`reader-theme-${theme} flex h-52 flex-col overflow-hidden rounded-lg border border-border bg-(--reader-bg)`}
 			data-testid="reader-preview"
 		>
 			<span

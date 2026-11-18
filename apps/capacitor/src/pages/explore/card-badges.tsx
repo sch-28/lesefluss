@@ -7,7 +7,7 @@ export const InLibraryBadge: React.FC<{ className?: string }> = ({ className }) 
 	<span
 		data-testid="in-library-badge"
 		className={cn(
-			"inline-flex items-center gap-0.5 rounded-sm bg-primary px-1.5 py-0.5 font-semibold text-2xs text-primary-foreground",
+			"inline-flex items-center gap-1 rounded-sm bg-primary px-1.5 py-0.5 font-semibold text-2xs text-primary-foreground",
 			className,
 		)}
 	>

@@ -81,7 +81,7 @@ interface ErrorProps {
 }
 
 export const ErrorPhase: React.FC<ErrorProps> = ({ message, onClose }) => (
-	<div className="flex flex-col gap-5 pt-4">
+	<div className="flex flex-col gap-4 pt-4">
 		<div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
 			{message ?? "An unknown error occurred."}
 		</div>

@@ -1,6 +1,6 @@
 import type { WordPosition } from "@lesefluss/core";
 import { useState } from "react";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import type { Chapter } from "../../services/db/schema";
 import { currentChapterIndex, hasWordAlignedChapters } from "../../utils/chapters";
 
@@ -59,11 +59,15 @@ export function BookChapters({
 		: collapsedRange(chapters.length, Math.max(0, currentIndex));
 
 	return (
-		<section className="book-detail-card mt-4">
-			<h2 className={SECTION_TITLE}>
-				Chapters <span className="font-normal opacity-50">· {chapters.length}</span>
-			</h2>
-			<ol className="mt-3 space-y-0.5">
+		<Card
+			className="mt-4"
+			title={
+				<>
+					Chapters <span className="font-normal opacity-50">· {chapters.length}</span>
+				</>
+			}
+		>
+			<ol className="space-y-0.5">
 				{chapters.slice(from, to).map((chapter, offset) => {
 					const index = from + offset;
 					const isCurrent = hasStarted && index === currentIndex;
@@ -73,7 +77,7 @@ export function BookChapters({
 								type="button"
 								disabled={!canJump}
 								onClick={() => onJump(chapter.startWord)}
-								className={`flex w-full items-baseline gap-2.5 rounded-md px-1 py-1.5 text-left text-sm ${
+								className={`flex w-full items-baseline gap-3 rounded-md px-1 py-1.5 text-left text-sm ${
 									canJump ? "active:bg-current/5" : "cursor-default"
 								} ${isCurrent ? "font-medium" : "opacity-70"}`}
 							>
@@ -97,11 +101,11 @@ export function BookChapters({
 				<button
 					type="button"
 					onClick={() => setIsExpanded((v) => !v)}
-					className="mt-2 h-9 rounded-md px-1 text-primary text-sm"
+					className="h-9 rounded-md px-1 text-primary text-sm"
 				>
 					{isExpanded ? "Show fewer" : `Show all ${chapters.length} chapters`}
 				</button>
 			)}
-		</section>
+		</Card>
 	);
 }

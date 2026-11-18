@@ -48,7 +48,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 				onClick={onExpand}
 				title="Collections"
 				aria-label="Show collections"
-				className="flex w-16 shrink-0 items-center justify-center py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+				className="flex w-16 shrink-0 items-center justify-center py-2 text-sidebar-foreground/70 hover:text-sidebar-foreground"
 			>
 				<Library className="size-5" />
 			</button>

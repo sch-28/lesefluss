@@ -156,7 +156,7 @@ function SignedOutInvite({ token }: { token: string }) {
 					/>
 				)
 			}
-			title={inviter ? `${inviter.name} invited you.` : "A friend invited you."}
+			title={inviter ? `${inviter.name} invited you` : "A friend invited you"}
 			message="Sign in and the invitation is waiting for you: add them as a friend and read together."
 			isDemoBook
 		/>

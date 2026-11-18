@@ -57,7 +57,7 @@ export function TodayGoalCard() {
 
 	return (
 		<section className="px-4" data-testid="stats-goal-card">
-			<div className="rounded-[14px] border border-border bg-card p-4 text-card-foreground">
+			<div className="rounded-xl border border-border bg-card p-4 text-card-foreground">
 				<StreakCalendarToggle>
 					{(calendarButton) => (
 						<div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export function TodayGoalCard() {
 								onClick={() =>
 									target === "goals" ? navigate({ to: "/tabs/settings/goals" }) : setSheetOpen(true)
 								}
-								className="-m-1 flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-[10px] p-1 text-left hover:bg-muted"
+								className="-m-1 flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-lg p-1 text-left hover:bg-muted"
 							>
 								<GoalRing
 									size={RING_SIZE}

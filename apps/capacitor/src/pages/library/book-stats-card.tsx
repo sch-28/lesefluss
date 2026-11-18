@@ -1,9 +1,12 @@
 import { bookPace, type MeasuredReadingMode, type Pace } from "@lesefluss/core";
+import { cn } from "@lesefluss/ui/utils";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { SECTION_TITLE } from "@/components/section-header";
+import { CARD, CARD_BODY, Card } from "@/components/card";
+import { SectionHeader } from "@/components/section-header";
+import { STAT_CAPTION, StatTile } from "@/components/stat-tile";
 import { useTheme } from "../../contexts/theme-context";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
@@ -114,18 +117,14 @@ function BookReadingTimeCard({ book }: Props) {
 	const { minutesLeft, isPaceEstimated } = summariseBookReading(book, pace);
 
 	return (
-		<section className="book-detail-card mt-4" data-testid="book-reading-time">
-			<h2 className={SECTION_TITLE}>Time to read</h2>
-			<div className="mt-3">
-				<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
-					{formatReadingTime(minutesLeft ?? 0)}
-				</div>
-				<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
-					whole book{!isPaceEstimated && " · at your pace"}
-				</div>
-			</div>
+		<Card className="mt-4" title="Time to read" data-testid="book-reading-time">
+			<StatTile
+				size="xl"
+				value={formatReadingTime(minutesLeft ?? 0)}
+				label={<>Whole book{!isPaceEstimated && " · at your pace"}</>}
+			/>
 			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
-		</section>
+		</Card>
 	);
 }
 
@@ -191,123 +190,116 @@ export function BookStatsCard({ book }: Props) {
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="book-detail-card mt-4"
+			className={cn(CARD, CARD_BODY, "mt-4")}
 		>
-			<h2 className={SECTION_TITLE}>Your reading</h2>
-
-			<div className="mt-3 flex items-end justify-between gap-4">
-				<div>
-					<div className="font-semibold text-4xl tabular-nums leading-none tracking-tight">
-						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
-					</div>
-					<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">time read</div>
-				</div>
-				{restartMinutes !== null && (
-					<div className="text-right">
-						<div className="font-semibold text-xl tabular-nums leading-none">
-							{formatReadingTime(restartMinutes)}
+			<SectionHeader className="mb-0" title="Your reading" />
+			<div className={CARD_BODY}>
+				<div className="flex items-end justify-between gap-4">
+					<StatTile
+						size="xl"
+						value={<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />}
+						label="Time read"
+					/>
+					{restartMinutes !== null && (
+						<StatTile
+							size="lg"
+							align="end"
+							value={formatReadingTime(restartMinutes)}
+							label="To read"
+						/>
+					)}
+					{isFinished && (
+						<div className="text-right">
+							<div className="flex items-center justify-end gap-2 font-semibold text-success text-xl leading-none">
+								<CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
+								Finished
+							</div>
+							{book.finishedAt != null && (
+								<div className={cn("mt-1", STAT_CAPTION)}>{formatRelative(book.finishedAt)}</div>
+							)}
 						</div>
-						<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">to read</div>
+					)}
+				</div>
+
+				{book.wordCount > 0 && (
+					<div>
+						<div className="h-1.5 overflow-hidden rounded-full bg-current/10">
+							<motion.div
+								className={`h-full rounded-full ${isFinished ? "bg-success" : "bg-primary"}`}
+								initial={{ width: 0 }}
+								animate={{ width: `${percent}%` }}
+								transition={{ duration: 0.6, ease: "easeOut" }}
+							/>
+						</div>
+						<p className="mt-2 text-xs tabular-nums opacity-70">
+							{/* Only the page fragment is suppressed for a serial chapter;
+						    how far through it the reader is still means something. */}
+							{totalPages !== null && (
+								<>
+									Page <span className="font-semibold">{pagesIn}</span> of {totalPages} ·{" "}
+								</>
+							)}
+							{formatPercent(percent)} read
+						</p>
 					</div>
 				)}
-				{isFinished && (
-					<div className="text-right">
-						<div className="flex items-center justify-end gap-1.5 font-semibold text-success text-xl leading-none">
-							<CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
-							Finished
+
+				{!isFinished && wordsLeft !== null && (
+					<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
+				)}
+
+				{data.measuredWpm != null && (
+					<div className="border-current/10 border-t pt-3">
+						<Stat
+							value={<AnimatedNumber value={data.measuredWpm} />}
+							label={
+								data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "Words per minute"
+							}
+						/>
+					</div>
+				)}
+
+				{showSparkline && (
+					<div>
+						<div className="h-[130px]" role="img" aria-label={sparklineSummary}>
+							<ResponsiveLine
+								role="presentation"
+								data={chartData}
+								margin={CHART_MARGIN}
+								xScale={X_SCALE}
+								// Not anchored at zero. Nobody reads at 12 wpm, so a zero baseline
+								// spends four fifths of the height on an empty band and flattens the
+								// only thing this chart is for: the shape of the change. The axis
+								// is labelled, so the truncation is visible rather than implied.
+								yScale={Y_SCALE}
+								curve="monotoneX"
+								colors={LINE_COLORS}
+								lineWidth={2}
+								enableArea={false}
+								enablePoints={true}
+								pointSize={5}
+								pointColor={POINT_COLOR}
+								pointBorderWidth={2}
+								pointBorderColor={POINT_COLOR}
+								enableGridX={false}
+								enableGridY={true}
+								gridYValues={GRID_LINES}
+								axisBottom={axisBottom}
+								axisLeft={AXIS_LEFT}
+								theme={nivoTheme}
+								animate={!isEinkMode}
+								motionConfig="gentle"
+								useMesh={true}
+								tooltip={renderTooltip}
+							/>
 						</div>
-						{book.finishedAt != null && (
-							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
-								{formatRelative(book.finishedAt)}
-							</div>
-						)}
 					</div>
 				)}
 			</div>
-
-			{book.wordCount > 0 && (
-				<div className="mt-4">
-					<div className="h-1.5 overflow-hidden rounded-full bg-current/10">
-						<motion.div
-							className={`h-full rounded-full ${isFinished ? "bg-success" : "bg-primary"}`}
-							initial={{ width: 0 }}
-							animate={{ width: `${percent}%` }}
-							transition={{ duration: 0.6, ease: "easeOut" }}
-						/>
-					</div>
-					<p className="mt-2 text-xs tabular-nums opacity-70">
-						{/* Only the page fragment is suppressed for a serial chapter;
-						    how far through it the reader is still means something. */}
-						{totalPages !== null && (
-							<>
-								Page <span className="font-semibold">{pagesIn}</span> of {totalPages} ·{" "}
-							</>
-						)}
-						{formatPercent(percent)} read
-					</p>
-				</div>
-			)}
-
-			{!isFinished && wordsLeft !== null && (
-				<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
-			)}
-
-			{data.measuredWpm != null && (
-				<div className="mt-4 border-current/10 border-t pt-3">
-					<Stat
-						value={<AnimatedNumber value={data.measuredWpm} />}
-						label={
-							data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"
-						}
-					/>
-				</div>
-			)}
-
-			{showSparkline && (
-				<div className="mt-4">
-					<div className="h-[130px]" role="img" aria-label={sparklineSummary}>
-						<ResponsiveLine
-							role="presentation"
-							data={chartData}
-							margin={CHART_MARGIN}
-							xScale={X_SCALE}
-							// Not anchored at zero. Nobody reads at 12 wpm, so a zero baseline
-							// spends four fifths of the height on an empty band and flattens the
-							// only thing this chart is for: the shape of the change. The axis
-							// is labelled, so the truncation is visible rather than implied.
-							yScale={Y_SCALE}
-							curve="monotoneX"
-							colors={LINE_COLORS}
-							lineWidth={2}
-							enableArea={false}
-							enablePoints={true}
-							pointSize={5}
-							pointColor={POINT_COLOR}
-							pointBorderWidth={2}
-							pointBorderColor={POINT_COLOR}
-							enableGridX={false}
-							enableGridY={true}
-							gridYValues={GRID_LINES}
-							axisBottom={axisBottom}
-							axisLeft={AXIS_LEFT}
-							theme={nivoTheme}
-							animate={!isEinkMode}
-							motionConfig="gentle"
-							useMesh={true}
-							tooltip={renderTooltip}
-						/>
-					</div>
-				</div>
-			)}
 		</motion.section>
 	);
 }
 
 function Stat({ value, label }: { value: React.ReactNode; label: string }) {
-	return (
-		<div>
-			<div className="font-semibold text-lg tabular-nums tracking-tight">{value}</div>
-			<div className="mt-0.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
-		</div>
-	);
+	return <StatTile value={value} label={label} valueClassName="tracking-tight" />;
 }

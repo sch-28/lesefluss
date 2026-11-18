@@ -55,7 +55,7 @@ export function Activity() {
 			aside={`per week · last ${weeks.length} weeks`}
 			data-testid="stats-reading-hours"
 		>
-			<div className="rounded-[14px] border border-border bg-card p-4">
+			<div className="rounded-xl border border-border bg-card p-4">
 				<div ref={frameRef}>
 					<svg
 						viewBox={`0 0 ${width} ${HEIGHT}`}

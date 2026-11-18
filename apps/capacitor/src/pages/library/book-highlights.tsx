@@ -1,7 +1,9 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { useMutation } from "@tanstack/react-query";
 import { Download, Loader2, Share2 } from "lucide-react";
 import { useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
 import { useToast } from "../../components/toast";
 import type { Highlight } from "../../services/db/schema";
@@ -43,7 +45,7 @@ export function BookHighlights({
 	const hidden = ordered.length - visible.length;
 
 	return (
-		<section className="book-detail-card mt-4">
+		<section className={cn(CARD, CARD_BODY, "mt-4")}>
 			<div className="flex items-center justify-between gap-3">
 				<h2 className={SECTION_TITLE}>
 					Highlights <span className="font-normal opacity-50">· {highlights.length}</span>
@@ -66,9 +68,9 @@ export function BookHighlights({
 					Export
 				</Button>
 			</div>
-			<ul className="mt-3 space-y-3">
+			<ul className="space-y-3">
 				{visible.map((highlight) => (
-					<li key={highlight.id} className="flex gap-2.5">
+					<li key={highlight.id} className="flex gap-3">
 						<span
 							className={`mt-0.5 w-1 shrink-0 rounded-full ${SWATCH[highlight.color as HighlightColor]}`}
 							aria-hidden="true"
@@ -93,7 +95,7 @@ export function BookHighlights({
 				<button
 					type="button"
 					onClick={() => setIsExpanded(true)}
-					className="mt-3 w-full rounded-md border border-border py-2 text-muted-foreground text-xs"
+					className="w-full rounded-md border border-border py-2 text-muted-foreground text-xs"
 				>
 					Show {hidden} more
 				</button>

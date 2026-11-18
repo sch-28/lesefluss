@@ -70,7 +70,7 @@ export function StartBuddyReadPicker({
 										}}
 										className="flex items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted/60"
 									>
-										<div className="relative aspect-[2/3] w-9 shrink-0 overflow-hidden rounded bg-muted">
+										<div className="relative aspect-[2/3] w-9 shrink-0 overflow-hidden rounded-sm bg-muted">
 											<PickerCover bookId={book.id} />
 										</div>
 										<div className="min-w-0 flex-1">

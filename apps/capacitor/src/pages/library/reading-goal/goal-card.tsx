@@ -3,7 +3,9 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2, Target } from "lucide-react";
 import { useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
+import { STAT_CAPTION, StatTile } from "@/components/stat-tile";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
@@ -21,7 +23,7 @@ import {
 	todayFigure,
 } from "./goal-model";
 import { GoalSetupSheet } from "./goal-setup-sheet";
-import { DayCount, GoalStat } from "./goal-stat";
+import { DayCount } from "./goal-stat";
 
 /** The book page's goal card, or the entry point to set one. Not offered for serial chapters. */
 export function GoalCard({ book }: { book: Book }) {
@@ -39,8 +41,7 @@ export function GoalCard({ book }: { book: Book }) {
 		if (!canStartGoal(book)) return null;
 		return (
 			<>
-				<section className="book-detail-card mt-4" data-testid="goal-entry">
-					{/* .book-detail-card is an unlayered column, which a row utility on it can't override. */}
+				<section className={cn(CARD, CARD_BODY, "mt-4")} data-testid="goal-entry">
 					<div className="flex items-center justify-between gap-3">
 						<h2 className={SECTION_TITLE}>Goal</h2>
 						<Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
@@ -73,7 +74,7 @@ export function GoalCard({ book }: { book: Book }) {
 
 	return (
 		<section
-			className="book-detail-card mt-4 flex flex-col gap-3"
+			className={cn(CARD, CARD_BODY, "mt-4")}
 			data-testid="goal-card"
 			data-met={today?.isMet ?? false}
 		>
@@ -94,10 +95,10 @@ export function GoalCard({ book }: { book: Book }) {
 								{figure.done}
 								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
-							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
+							<div className={cn("mt-1", STAT_CAPTION)}>
 								{today.targetMinutes != null
-									? `today · ${formatPercent(today.progressPercent, 1)}`
-									: "today"}
+									? `Today · ${formatPercent(today.progressPercent, 1)}`
+									: "Today"}
 							</div>
 						</div>
 						<div className="text-right">
@@ -109,7 +110,7 @@ export function GoalCard({ book }: { book: Book }) {
 							>
 								{formatPercentChange(plan.aheadBehind.percent)}
 							</div>
-							<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">
+							<div className={cn("mt-1", STAT_CAPTION)}>
 								vs plan · {signed(plan.aheadBehind.days, "d")}
 							</div>
 						</div>
@@ -127,7 +128,7 @@ export function GoalCard({ book }: { book: Book }) {
 			)}
 
 			{isComplete && (
-				<div className="flex items-center gap-1.5 font-semibold text-[var(--goal-met)] text-xl leading-none">
+				<div className="flex items-center gap-2 font-semibold text-[var(--goal-met)] text-xl leading-none">
 					<CheckCircle2 className="size-5 shrink-0" aria-hidden />
 					Done
 				</div>
@@ -135,13 +136,13 @@ export function GoalCard({ book }: { book: Book }) {
 
 			{plan && (
 				<div className="grid grid-cols-4 gap-2 border-current/10 border-t pt-3">
-					<GoalStat value={formatDayKey(plan.projectedFinishDate)} label="finish" />
-					<GoalStat value={<DayCount days={plan.daysLeft} />} label="left" />
-					<GoalStat
+					<StatTile value={formatDayKey(plan.projectedFinishDate)} label="Finish" />
+					<StatTile value={<DayCount days={plan.daysLeft} />} label="Left" />
+					<StatTile
 						value={<DayCount days={today ? daysMetWithToday(plan, today) : plan.daysTargetMet} />}
-						label="days met"
+						label="Days met"
 					/>
-					<GoalStat value={<DayCount days={plan.daysRead} />} label="days read" />
+					<StatTile value={<DayCount days={plan.daysRead} />} label="Days read" />
 				</div>
 			)}
 

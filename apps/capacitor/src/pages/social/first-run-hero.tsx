@@ -4,7 +4,7 @@ import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Link2 } from "lucide-react";
 import type React from "react";
-import { SECTION_TITLE } from "@/components/section-header";
+import { SectionHeader } from "@/components/section-header";
 import { BuddyReadTrailer } from "@/components/social/buddy-read-trailer";
 import { CoverBackdrop } from "@/components/social/cover-backdrop";
 import { PasteInviteField } from "@/components/social/paste-invite-field";
@@ -66,7 +66,7 @@ export function FirstRunHero({
 		<>
 			<TrailerCard self={me ? { name: me.name, avatarUrl: me.avatarUrl } : undefined}>
 				<h2 className="m-0 mt-6 font-semibold text-2xl text-foreground leading-tight tracking-tight">
-					Read together, wherever you are.
+					Read together, wherever you are
 				</h2>
 				<p className="m-0 mt-3 text-muted-foreground text-sm leading-relaxed">
 					Pick a book with a friend and watch each other move through it. React to chapters, leave
@@ -124,9 +124,9 @@ export function FirstRunHero({
 
 export function HowItWorks() {
 	return (
-		<section className="mt-8">
-			<h3 className={SECTION_TITLE}>How it works</h3>
-			<ol className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
+		<section className="mt-6">
+			<SectionHeader title="How it works" />
+			<ol className="m-0 flex list-none flex-col gap-4 p-0">
 				{STEPS.map((step, i) => (
 					<li key={step.title} className="flex gap-3">
 						<span className="w-5 font-semibold text-2xl text-primary tabular-nums leading-none">

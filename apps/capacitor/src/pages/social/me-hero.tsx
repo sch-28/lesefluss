@@ -17,9 +17,7 @@ function Stat({ value, label, icon }: { value: number; label: string; icon?: Rea
 				{value}
 				{icon}
 			</div>
-			<div className="mt-1.5 truncate font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
-				{label}
-			</div>
+			<div className="mt-1 truncate text-2xs text-muted-foreground">{label}</div>
 		</div>
 	);
 }
@@ -65,14 +63,12 @@ export function MeHero({ me, friendCount }: { me: OwnSocialProfile; friendCount:
 				</div>
 
 				{book && (
-					<div className="mt-4 flex items-center gap-3 rounded-2xl bg-card/75 p-2.5">
-						<div className="relative aspect-[2/3] w-[30px] shrink-0 overflow-hidden rounded bg-muted">
+					<div className="mt-4 flex items-center gap-3 rounded-2xl bg-card/75 p-3">
+						<div className="relative aspect-[2/3] w-[30px] shrink-0 overflow-hidden rounded-sm bg-muted">
 							<CoverImage src={book.coverSrc} alt="" />
 						</div>
 						<div className="min-w-0 flex-1">
-							<div className="font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
-								Now reading
-							</div>
+							<div className="font-semibold text-2xs text-muted-foreground">Now reading</div>
 							<div className="mt-0.5 truncate font-semibold text-sm">{book.title}</div>
 							<ProgressBar percent={book.percent} className="mt-1.5 h-1" />
 						</div>

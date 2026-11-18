@@ -122,8 +122,8 @@ export function HandleClaimStep({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-5">
-			<div className="flex flex-col gap-1.5">
+		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
+			<div className="flex flex-col gap-2">
 				<label htmlFor="social-handle" className="font-medium text-foreground text-sm">
 					Handle
 				</label>
@@ -164,7 +164,7 @@ export function HandleClaimStep({
 				</p>
 			</div>
 
-			<div className="flex flex-col gap-1.5">
+			<div className="flex flex-col gap-2">
 				<label htmlFor="social-name" className="font-medium text-foreground text-sm">
 					Display name
 				</label>

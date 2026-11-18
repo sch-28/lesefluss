@@ -63,7 +63,7 @@ function FeedRow({
 					<span className="text-muted-foreground text-xs">★ {ratingStars(item.book.rating)}</span>
 				)}
 			</span>
-			<span className="relative aspect-[2/3] w-9 shrink-0 overflow-hidden rounded bg-muted">
+			<span className="relative aspect-[2/3] w-9 shrink-0 overflow-hidden rounded-sm bg-muted">
 				<CoverImage src={profileCoverSrc(item.book.cover)} alt="" />
 			</span>
 		</span>
@@ -226,7 +226,7 @@ export function ActivityFeed({ isHiddenWhenEmpty = false }: { isHiddenWhenEmpty?
 					</DrawerHeader>
 					{details && (
 						<div className="flex gap-4 px-4 pb-8">
-							<div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+							<div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-md bg-muted">
 								<CoverImage src={profileCoverSrc(details.book.cover)} alt="" />
 							</div>
 							<div className="min-w-0 text-sm">

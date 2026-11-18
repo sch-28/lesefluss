@@ -13,7 +13,7 @@ import {
 import { SELECTED_TINT } from "./segmented-control";
 
 export const CHIP_BASE =
-	"inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full [&_svg:not([class*='size-'])]:size-4 bg-muted px-4 font-medium text-foreground text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";
+	"inline-flex h-11 shrink-0 items-center gap-2 rounded-full [&_svg:not([class*='size-'])]:size-4 bg-muted px-4 font-medium text-foreground text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";
 
 export const CHIP_SELECTED = `${SELECTED_TINT} hover:bg-[color-mix(in_oklab,var(--primary)_22%,transparent)]`;
 

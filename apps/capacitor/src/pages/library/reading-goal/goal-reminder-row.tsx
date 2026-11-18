@@ -53,7 +53,7 @@ export function GoalReminderRow({
 		permission === "prompt" || permission === "denied" ? value !== null || wasRefused : false;
 
 	return (
-		<div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+		<div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm">
 			<div className="flex min-h-9 items-center gap-3">
 				<label htmlFor="goal-reminder" className="flex-1 text-muted-foreground">
 					Reminder

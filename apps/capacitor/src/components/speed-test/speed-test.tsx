@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { queryHooks } from "../../services/db/hooks";
 import {
@@ -242,7 +243,7 @@ function IntroStat({ value, label }: { value: string; label: string }) {
 	return (
 		<div className="rounded-lg border border-border px-2 py-2">
 			<div className="whitespace-nowrap font-semibold tabular-nums">{value}</div>
-			<div className="text-2xs text-muted-foreground uppercase tracking-wider">{label}</div>
+			<div className={STAT_CAPTION}>{label}</div>
 		</div>
 	);
 }

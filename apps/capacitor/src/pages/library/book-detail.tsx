@@ -8,6 +8,7 @@ import {
 	wordPos,
 } from "@lesefluss/core";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
+import { cn } from "@lesefluss/ui/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
 import { formatCount } from "@/utils/format-number";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
@@ -379,11 +381,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				{tags.length > 0 && (
-					<div className="flex flex-wrap gap-1.5">
+					<div className="flex flex-wrap gap-2">
 						{tags.map((tag) => (
 							<span
 								key={tag}
-								className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
+								className="rounded-full border border-border bg-muted px-3 py-0.5 text-muted-foreground text-xs"
 							>
 								{tag}
 							</span>
@@ -391,7 +393,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				{book.review && (
-					<section className="book-detail-card">
+					<section className={cn(CARD, CARD_BODY)}>
 						<h2 className={SECTION_TITLE}>Your notes</h2>
 						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
 							{book.review}

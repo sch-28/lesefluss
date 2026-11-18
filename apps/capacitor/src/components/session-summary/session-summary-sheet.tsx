@@ -13,9 +13,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { cn } from "@lesefluss/ui/utils";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { MoreHorizontal, Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { queryHooks } from "../../services/db/hooks";
 import {
 	dismissSummary,
@@ -165,9 +167,7 @@ function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 
 				{earned.length > 0 && (
 					<div className="mt-3 px-4" data-testid="summary-milestones">
-						<div className="mb-2 text-2xs text-muted-foreground uppercase tracking-wider">
-							Milestones
-						</div>
+						<div className={cn("mb-2", STAT_CAPTION)}>Milestones</div>
 						<MedalGrid reached={earned} />
 					</div>
 				)}

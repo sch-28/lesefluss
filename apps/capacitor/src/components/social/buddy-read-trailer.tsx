@@ -45,7 +45,7 @@ function NoteOverlay({ tick }: { tick: number }) {
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={{ opacity: 0, y: -10 }}
 						transition={{ type: "spring", stiffness: 500, damping: 18 }}
-						className="absolute bottom-12 flex items-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-medium text-2xs text-foreground shadow-md"
+						className="absolute bottom-12 flex items-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-3 py-1 font-medium text-2xs text-foreground shadow-md"
 					>
 						<MessageCircle className="size-3" />
 						That twist!

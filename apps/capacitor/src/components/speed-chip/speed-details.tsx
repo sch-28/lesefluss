@@ -20,6 +20,7 @@ import { formatDuration } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
 import { RsvpSpeedControl } from "../rsvp-speed-control";
 import { Sparkline } from "../sparkline";
+import { STAT_CAPTION } from "../stat-tile";
 import { WINDOW_LABELS } from "./speed-chip-model";
 
 export type SpeedChipBook = { id: string; wordsLeft: number | null };
@@ -132,13 +133,11 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 	return (
 		<div className="flex flex-col gap-3" data-testid="speed-details">
 			<div className="flex items-baseline justify-between">
-				<span className="font-semibold text-2xs text-muted-foreground uppercase tracking-wider">
-					Your speed
-				</span>
+				<span className={STAT_CAPTION}>Your speed</span>
 				<span className="text-2xs text-muted-foreground">{WINDOW_LABELS[model.window]}</span>
 			</div>
 
-			<div className="flex items-baseline gap-1.5" data-testid="speed-big">
+			<div className="flex items-baseline gap-2" data-testid="speed-big">
 				<span className="font-semibold text-3xl tabular-nums leading-none">{leadWpm}</span>
 				<span className="text-muted-foreground text-sm">
 					wpm{views.length > 1 ? ` ${VIEW_LABELS[lead]}` : ""}
@@ -165,7 +164,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 
 			{showDial && <DialStepper dial={dial} onChange={changeDial} />}
 
-			<div className="flex flex-col gap-1.5 border-border border-t pt-3 empty:hidden">
+			<div className="flex flex-col gap-2 border-border border-t pt-3 empty:hidden">
 				{showDial && <Row label="RSVP at dial" value={`${rsvpAtDial} wpm`} />}
 				{ownBook && ownBook.activeMs >= BOOK_SPEED_MIN_ACTIVE_MS && (
 					<Row
@@ -195,7 +194,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 				to="/tabs/stats"
 				search={{ tab: "speed" }}
 				onClick={onNavigate}
-				className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 font-medium text-sm hover:bg-muted"
+				className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 font-medium text-sm hover:bg-muted"
 			>
 				Speed details <ArrowRight className="size-4" />
 			</Link>

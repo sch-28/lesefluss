@@ -1,6 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { Library, X } from "lucide-react";
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { TintedCover } from "../../components/tinted-cover";
 import { getCoverUrl } from "../../services/catalog/client";
@@ -54,10 +55,7 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 				<CoverImage src={cover} alt={item.title} fallback={<TintedCover title={item.title} />} />
 			</div>
 			<div className="px-0.5 pt-1">
-				<div
-					data-clips-text
-					className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
-				>
+				<div data-clips-text className={CARD_TITLE}>
 					{item.title}
 				</div>
 				<CardMeta author={item.author} isInLibrary={isInLibrary} />

@@ -92,7 +92,7 @@ export function DesktopSidebar() {
 								to={item.to}
 								data-active={isActive}
 								title={isCollapsed ? item.label : undefined}
-								className="relative flex items-center justify-start py-2.5 short:py-1.5 text-left text-sidebar-foreground/70 text-sm no-underline transition-colors hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
+								className="relative flex items-center justify-start py-2 short:py-1.5 text-left text-sidebar-foreground/70 text-sm no-underline transition-colors hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
 							>
 								<span className="relative flex w-16 shrink-0 items-center justify-center">
 									<span className="relative">

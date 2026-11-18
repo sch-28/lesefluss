@@ -208,7 +208,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 
 			{view.sections.stats && (
 				<SocialSection title="Reading stats">
-					<div className="grid grid-cols-2 gap-2.5">
+					<div className="grid grid-cols-2 gap-3">
 						{statTiles(view.sections.stats).map((tile) => (
 							<StatTile key={tile.label} value={tile.value} label={tile.label} />
 						))}

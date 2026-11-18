@@ -72,7 +72,7 @@ describe("invite page, signed out", () => {
 		};
 		view = await render(<InvitePage token="tok" />);
 
-		expect(view.text()).toContain("Jan invited you.");
+		expect(view.text()).toContain("Jan invited you");
 		expect(view.text()).toContain("@jan");
 		expect(view.container.querySelector('img[src="/avatars/jan.png"]')).not.toBeNull();
 		expect(view.text()).not.toContain("My Secret Diary");
@@ -83,7 +83,7 @@ describe("invite page, signed out", () => {
 		state.preview = { isPending: true, fetchStatus: "idle", data: undefined };
 		view = await render(<InvitePage token="tok" />);
 
-		expect(view.text()).toContain("A friend invited you.");
+		expect(view.text()).toContain("A friend invited you");
 		expect(view.text()).not.toContain("My Secret Diary");
 	});
 

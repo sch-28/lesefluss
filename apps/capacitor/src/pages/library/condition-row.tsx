@@ -59,7 +59,7 @@ const NumberInput: React.FC<{
 	label: string;
 	unit?: string;
 }> = ({ value, onChange, label, unit }) => (
-	<span className="flex min-w-0 flex-1 items-center gap-1.5">
+	<span className="flex min-w-0 flex-1 items-center gap-2">
 		<InputHitArea className="min-w-0 flex-1">
 			<Input
 				type="number"
@@ -80,7 +80,7 @@ const StarPicker: React.FC<{ value: unknown; onChange: (stars: number) => void }
 }) => {
 	const stars = typeof value === "number" ? value : 0;
 	return (
-		<span className="flex items-center gap-0.5">
+		<span className="flex items-center gap-1">
 			{STAR_POSITIONS.map((star) => (
 				<button
 					key={star}
@@ -162,7 +162,7 @@ const ValueInput: React.FC<{
 			const set = (bound: "min" | "max", n: number | null) =>
 				onChange({ min: range.min ?? null, max: range.max ?? null, [bound]: n });
 			return (
-				<span className="flex min-w-0 items-center gap-1.5">
+				<span className="flex min-w-0 items-center gap-2">
 					<NumberInput value={range.min} onChange={(n) => set("min", n)} label={`${label} from`} />
 					<span className="shrink-0 text-muted-foreground text-xs">and</span>
 					<NumberInput
@@ -252,7 +252,7 @@ export const ConditionRow: React.FC<Props> = ({
 	if (isStacked) {
 		return (
 			<div
-				className={cn(frame, "flex flex-col gap-2 border border-border bg-card p-2.5")}
+				className={cn(frame, "flex flex-col gap-2 border border-border bg-card p-3")}
 				data-testid="condition-row"
 				data-incomplete={isIncomplete || undefined}
 			>

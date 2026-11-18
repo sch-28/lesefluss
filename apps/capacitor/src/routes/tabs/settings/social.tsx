@@ -127,7 +127,7 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 			</SettingsSection>
 
 			<SettingsSection title="Profile">
-				<div className="flex flex-col gap-1.5 px-4 py-3">
+				<div className="flex flex-col gap-2 px-4 py-3">
 					<label htmlFor="social-display-name" className="font-medium text-foreground text-sm">
 						Display name
 					</label>
@@ -142,7 +142,7 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					</InputHitArea>
 					{nameError && <p className="text-destructive text-xs">{nameError}</p>}
 				</div>
-				<div className="flex flex-col gap-1.5 px-4 py-3">
+				<div className="flex flex-col gap-2 px-4 py-3">
 					<label htmlFor="social-bio" className="font-medium text-foreground text-sm">
 						Bio
 					</label>

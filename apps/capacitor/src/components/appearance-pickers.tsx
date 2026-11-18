@@ -37,7 +37,7 @@ export function ThemeCards({
 			<div
 				className={cn(
 					"grid @max-[12rem]:grid-cols-1 grid-cols-4",
-					compact ? "@max-[16rem]:grid-cols-2 gap-1.5" : "@max-[28rem]:grid-cols-2 gap-3",
+					compact ? "@max-[16rem]:grid-cols-2 gap-2" : "@max-[28rem]:grid-cols-2 gap-3",
 				)}
 			>
 				{THEMES.map((t) => (
@@ -91,7 +91,7 @@ export function FontCards({
 	compact?: boolean;
 }) {
 	return (
-		<div className={cn("grid w-full grid-cols-2", compact ? "gap-1.5" : "gap-3")}>
+		<div className={cn("grid w-full grid-cols-2", compact ? "gap-2" : "gap-3")}>
 			{FONT_FAMILIES.map((f) => (
 				<button
 					key={f.value}

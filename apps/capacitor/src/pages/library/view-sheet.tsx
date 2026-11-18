@@ -47,7 +47,7 @@ type Props = ViewPanelProps & {
 	focusGroupBy: boolean;
 };
 
-const HEADING = "m-0 mb-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide";
+const HEADING = "m-0 mb-1.5 font-medium text-muted-foreground text-xs";
 
 /** The View control: a popover on desktop, a bottom sheet on the phone. */
 export const ViewSheet: React.FC<Props> = ({

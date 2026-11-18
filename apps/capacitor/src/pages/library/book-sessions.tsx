@@ -1,6 +1,8 @@
 import { isSkimmedSitting, skimCutoffs } from "@lesefluss/core";
+import { cn } from "@lesefluss/ui/utils";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
 import { queryHooks } from "../../services/db/hooks";
 import { queries } from "../../services/db/queries";
@@ -47,7 +49,7 @@ export function BookSessions({ book }: { book: Book }) {
 	if (rows.length === 0) return dialog;
 
 	return (
-		<section aria-label="Sessions" className="book-detail-card mt-4">
+		<section aria-label="Sessions" className={cn(CARD, CARD_BODY, "mt-4")}>
 			{selected ? (
 				<SelectionHeader
 					selected={selected}

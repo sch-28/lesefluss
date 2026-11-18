@@ -95,7 +95,7 @@ function SpeedPreview() {
 		>
 			{data && (
 				<div
-					className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-4"
+					className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
 					data-testid="speed-preview"
 				>
 					<div className="text-muted-foreground text-sm">Preview with this window</div>

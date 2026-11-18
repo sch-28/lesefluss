@@ -1,4 +1,5 @@
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
@@ -46,10 +47,7 @@ const ResultCard: React.FC<Props> = ({
 				</div>
 				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
-					<div
-						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
-					>
+					<div data-clips-text className={CARD_TITLE}>
 						{result.title}
 					</div>
 					<CardMeta author={result.author} labels={lengthLabels} isInLibrary={isInLibrary} />

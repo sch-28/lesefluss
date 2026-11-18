@@ -205,6 +205,7 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 					</div>
 
 					<div className="flex items-start justify-between gap-3 border-border border-b py-3">
+						{/* ui-rules-allow: off-grid-spacing -- the reader stays as it is (LESE-215) */}
 						<div className="flex flex-col gap-0.5">
 							<span className="font-medium text-foreground text-sm">Available in all books</span>
 							<span className="text-muted-foreground text-xs">
@@ -219,6 +220,7 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 					</div>
 
 					<div className="flex items-start justify-between gap-3 border-border border-b py-3">
+						{/* ui-rules-allow: off-grid-spacing -- the reader stays as it is (LESE-215) */}
 						<div className="flex flex-col gap-0.5">
 							<span className="font-medium text-foreground text-sm">Hide marker</span>
 							<span className="text-muted-foreground text-xs">

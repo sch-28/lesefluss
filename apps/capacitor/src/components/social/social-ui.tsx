@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import CoverImage from "@/components/cover-image";
 import { SECTION_SPACING, SectionHeader } from "@/components/section-header";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
 import { pickNowReading } from "./now-reading";
@@ -72,7 +73,7 @@ export function StatTile({ value, label }: { value: string; label: string }) {
 	return (
 		<div className="rounded-xl border border-current/10 bg-card p-3 text-card-foreground">
 			<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">{value}</div>
-			<div className="mt-1.5 text-2xs uppercase tracking-wider opacity-60">{label}</div>
+			<div className={cn("mt-1", STAT_CAPTION)}>{label}</div>
 		</div>
 	);
 }
@@ -100,7 +101,7 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 					transition={{ duration: 0.4, delay: index * 0.06 }}
 					className="w-[108px] flex-shrink-0 snap-start"
 				>
-					<div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-muted">
+					<div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-muted">
 						<CoverImage src={item.coverSrc} alt={item.title} />
 						<div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/40 to-transparent" />
 						{item.percent !== undefined && item.percent > 0 && item.percent < 100 && (

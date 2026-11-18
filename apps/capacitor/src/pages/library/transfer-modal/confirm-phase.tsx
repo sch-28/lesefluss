@@ -30,7 +30,7 @@ const ConfirmPhase: React.FC<Props> = ({
 	const replacingBook = !isMultiBook && activeBook != null && activeBook.id !== book.id;
 
 	return (
-		<div className="flex flex-col gap-5 pt-2">
+		<div className="flex flex-col gap-4 pt-2">
 			<div className="flex gap-4">
 				<BookCover book={book} size="md" />
 				<div className="flex min-w-0 flex-col justify-center gap-1">

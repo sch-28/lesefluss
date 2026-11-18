@@ -107,7 +107,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 				/>
 				<SettingsRow>
 					<RowLabel title="Focal letter color" hint={focalColorName(settings.focalLetterColor)} />
-					<div className="ml-auto flex gap-1.5">
+					<div className="ml-auto flex gap-2">
 						{FOCAL_LETTER_COLOR_PRESETS.map((color) => {
 							const isActive = settings.focalLetterColor.toLowerCase() === color;
 							return (

@@ -22,7 +22,12 @@ const RULES = {
 	"font-weight": { pattern: /\bfont-(bold|extrabold|black)\b/ },
 	"off-grid-spacing": {
 		pattern:
-			/(^|[\s"'`:])-?(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([3-9]|1\d)\.5\b)/,
+			/(^|[\s"'`:])-?(?:(m|p|gap|space)[trblxyse]?-(x-|y-)?(\[-?\d+(\.\d+)?px\]|([2-9]|1\d)\.5\b)|gap(-[xy])?-(0\.5|1\.5|5)\b)/,
+	},
+	"arbitrary-radius": { pattern: /\brounded(-[a-z]{1,2})?-\[/ },
+	"uppercase-tracked": {
+		pattern:
+			/\buppercase\b[^"`]*\btracking-(wide|wider|widest|\[)|\btracking-(wide|wider|widest|\[)[^"`]*\buppercase\b/,
 	},
 	"section-title": { pattern: /book-detail-section-title|<h[1-6]\b[^>]*\buppercase\b/ },
 	"raw-colour": {
@@ -35,6 +40,24 @@ type RuleName = keyof typeof RULES;
 
 /** Files a rule exempts as a whole, each with its reason. */
 const FILE_ALLOW: Partial<Record<RuleName, Record<string, string>>> = {
+	"uppercase-tracked": {
+		"apps/capacitor/src/pages/reader/goal-chip.tsx":
+			"the reader's goal chip is uppercase by choice (4edc879d)",
+		"apps/capacitor/src/pages/library/reading-goal/goal-stat.tsx":
+			"only the reader's goal chip uses it",
+		"apps/capacitor/src/pages/reader/annotations-sheet.tsx": "the reader stays as it is (LESE-215)",
+		"apps/capacitor/src/components/selection-popover.tsx":
+			"the reader's selection toolbar stays as it is",
+		"apps/capacitor/src/pages/reader/dictionary-modal.tsx": "the reader stays as it is (LESE-215)",
+		"apps/capacitor/src/pages/settings/reader-preview.tsx":
+			"it previews the reader, which stays as it is",
+		"apps/capacitor/src/components/social/buddy-read-trailer.tsx":
+			"it mirrors the share card's printed trailer",
+		"apps/capacitor/src/components/device-sync/device-badge.tsx": "a badge, not a caption",
+		"apps/capacitor/src/pages/library/book-chapters.tsx": "the Here badge, not a caption",
+		"apps/capacitor/src/pages/library/stats/session-list.tsx": "a mode badge, not a caption",
+		"apps/capacitor/src/pages/explore/web-novel-search-panel.tsx": "a badge, not a caption",
+	},
 	"raw-colour": {
 		"apps/capacitor/src/components/appearance-pickers.tsx":
 			"theme swatches show each theme's own colours, whatever theme is active",
@@ -125,6 +148,33 @@ describe("ui rules: the scanner", () => {
 		expect(offendersIn("font-weight", path, source)).toEqual([]);
 	});
 
+	it("catches a 2.5 step and an off-scale gap, but not a gap on the scale", () => {
+		const source = [
+			'<div className="px-2.5" />',
+			'<div className="gap-1.5" />',
+			'<div className="gap-6 py-0.5" />',
+		].join("\n");
+		expect(offendersIn("off-grid-spacing", path, source)).toEqual([`${path}:1`, `${path}:2`]);
+	});
+
+	it("catches an arbitrary radius, but not one on the scale", () => {
+		const source = [
+			'<div className="rounded-[10px]" />',
+			'<div className="rounded-tl-[4px]" />',
+			'<div className="rounded-lg" />',
+		].join("\n");
+		expect(offendersIn("arbitrary-radius", path, source)).toEqual([`${path}:1`, `${path}:2`]);
+	});
+
+	it("catches uppercase with wide tracking in either order, but not a plain uppercase badge", () => {
+		const source = [
+			'<p className="uppercase tracking-wider" />',
+			'<p className="tracking-wide text-xs uppercase" />',
+			'<p className="text-xs uppercase" />',
+		].join("\n");
+		expect(offendersIn("uppercase-tracked", path, source)).toEqual([`${path}:1`, `${path}:2`]);
+	});
+
 	it("keeps a URL in a string as code", () => {
 		const source = 'const u = "https://x.org"; n.toLocaleString();';
 		expect(offendersIn("locale-format", path, source)).toEqual([`${path}:1`]);
@@ -144,8 +194,16 @@ describe("ui rules (LESE-215)", () => {
 		expect([...offenders("font-size"), ...offenders("font-weight")]).toEqual([]);
 	});
 
-	it("spacing stays on the 4px grid: no arbitrary px and no half steps above 2", () => {
+	it("spacing stays on the 4px grid: no arbitrary px, no half steps above 2, gaps on the scale", () => {
 		expect(offenders("off-grid-spacing")).toEqual([]);
+	});
+
+	it("radii come from the radius scale, never an arbitrary value", () => {
+		expect(offenders("arbitrary-radius")).toEqual([]);
+	});
+
+	it("captions and eyebrows are sentence case, never uppercase with wide tracking", () => {
+		expect(offenders("uppercase-tracked")).toEqual([]);
 	});
 
 	it("section titles share one style, in sentence case", () => {

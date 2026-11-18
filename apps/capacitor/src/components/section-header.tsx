@@ -11,7 +11,7 @@ export function SectionHeader({
 	aside,
 	className,
 }: {
-	title?: string;
+	title?: React.ReactNode;
 	subtitle?: React.ReactNode;
 	/** A muted count or a control, at the end of the row. */
 	aside?: React.ReactNode;
@@ -19,7 +19,7 @@ export function SectionHeader({
 }) {
 	return (
 		<header className={cn("mb-2 flex items-end justify-between gap-3", className)}>
-			<div className="flex min-w-0 flex-col gap-0.5">
+			<div className="flex min-w-0 flex-col gap-1">
 				{title && <h2 className={SECTION_TITLE}>{title}</h2>}
 				{subtitle != null && <p className="m-0 text-muted-foreground text-sm">{subtitle}</p>}
 			</div>

@@ -1,4 +1,5 @@
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { providerLabel, type SearchResult } from "../../services/serial-scrapers";
 import { CardMeta, QuickAddOnCover } from "./card-badges";
@@ -34,7 +35,7 @@ export const WebNovelCard: React.FC<{
 				onClick={() => onPick(result)}
 				className="flex w-full cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left text-foreground active:opacity-70"
 			>
-				<div className="relative aspect-2/3 w-full overflow-hidden rounded-md border border-border bg-muted">
+				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage
 						src={result.coverImage}
 						alt={result.title}
@@ -43,10 +44,7 @@ export const WebNovelCard: React.FC<{
 				</div>
 				<div className="px-0.5 pt-1">
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
-					<div
-						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
-					>
+					<div data-clips-text className={CARD_TITLE}>
 						{result.title}
 					</div>
 					<CardMeta

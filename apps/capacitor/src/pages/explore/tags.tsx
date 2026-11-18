@@ -5,6 +5,7 @@ import { useRouter } from "@tanstack/react-router";
 import { SearchX, Tag } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_VALUE } from "@/components/list-row";
 import { PageBody, PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { formatCount } from "@/utils/format-number";
@@ -83,10 +84,13 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 								<button
 									type="button"
 									onClick={() => openTag(t.id)}
-									className="flex w-full items-center justify-between gap-3 border-0 bg-transparent px-1 py-3 text-left text-foreground active:opacity-70"
+									className={cn(
+										LIST_ROW,
+										"w-full justify-between border-0 bg-transparent px-0 text-left active:opacity-70",
+									)}
 								>
-									<span className="truncate">{t.label}</span>
-									<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
+									<span className={cn("truncate", LIST_ROW_LABEL)}>{t.label}</span>
+									<span className={cn("shrink-0 text-muted-foreground", LIST_ROW_VALUE)}>
 										{formatCount(t.count)}
 									</span>
 								</button>

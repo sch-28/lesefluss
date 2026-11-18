@@ -330,7 +330,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 				className="mt-3 rounded-2xl border border-current/10 bg-card p-4 text-card-foreground"
 			>
 				<div className="flex gap-4">
-					<div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+					<div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-md bg-muted">
 						<CoverImage src={cover} alt={detail.title} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col">
@@ -564,7 +564,7 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 				<SocialGate
 					returnTo={`/tabs/social/buddy-read/${id}`}
 					signedOut={{
-						title: "Sign in to open this buddy read.",
+						title: "Sign in to open this buddy read",
 						message: "It belongs to your Lesefluss account, so it shows once you are signed in.",
 					}}
 				>

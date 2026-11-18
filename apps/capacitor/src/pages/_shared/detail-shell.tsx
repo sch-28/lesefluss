@@ -15,6 +15,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { PageBody } from "@/components/page-body";
 import { SECTION_TITLE } from "@/components/section-header";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -223,9 +224,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 						</div>
 						<div className="flex min-w-0 flex-[1_1_10rem] flex-col">
 							{eyebrow && (
-								<span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-									{eyebrow}
-								</span>
+								<span className="font-semibold text-muted-foreground text-xs">{eyebrow}</span>
 							)}
 							<h1 className="m-0 mt-1 break-words font-semibold text-xl leading-tight">{title}</h1>
 							{author &&
@@ -289,7 +288,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					)}
 
 					{(description?.html || description?.text) && (
-						<section className="book-detail-card mt-6">
+						<section className={cn(CARD, CARD_BODY, "mt-6")}>
 							<h2 className={SECTION_TITLE}>About</h2>
 							<CollapsibleProse>
 								{description.html ? (

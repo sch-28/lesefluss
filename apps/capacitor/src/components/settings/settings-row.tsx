@@ -2,6 +2,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
+import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_SUB } from "@/components/list-row";
 
 export function SettingsRow({
 	stacked = false,
@@ -16,9 +17,9 @@ export function SettingsRow({
 	return (
 		<div
 			className={cn(
-				"flex min-h-12 gap-3 px-4",
+				LIST_ROW,
 				// Wrapping lets a large OS font scale drop the control below its label.
-				stacked ? "flex-col items-stretch py-3" : "flex-wrap items-center py-2",
+				stacked ? "flex-col items-stretch py-3" : "flex-wrap",
 				className,
 			)}
 		>
@@ -31,8 +32,8 @@ export function RowLabel({ title, hint }: { title: string; hint?: React.ReactNod
 	return (
 		// Takes the row's slack, so the control (ml-auto) sits right, wrapped or not.
 		<div className="flex min-w-0 flex-[1_1_6rem] flex-col">
-			<span className="text-foreground text-sm">{title}</span>
-			{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
+			<span className={LIST_ROW_LABEL}>{title}</span>
+			{hint && <span className={LIST_ROW_SUB}>{hint}</span>}
 		</div>
 	);
 }
@@ -66,15 +67,17 @@ export function NavRow(props: NavRowProps) {
 		<>
 			{Icon && <Icon className={iconClassName ?? "size-5 text-muted-foreground"} />}
 			<div className="min-w-0 flex-1">
-				<div className="text-foreground text-sm">{title}</div>
+				<div className={LIST_ROW_LABEL}>{title}</div>
 				{/* Two lines, not one: a large font scale would leave a single line a few words. */}
-				<div className="line-clamp-2 text-muted-foreground text-xs">{subtitle}</div>
+				<div className={cn("line-clamp-2", LIST_ROW_SUB)}>{subtitle}</div>
 			</div>
 			{!inPlace && <ChevronRight className="size-4 text-muted-foreground" />}
 		</>
 	);
-	const cls =
-		"flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60";
+	const cls = cn(
+		LIST_ROW,
+		"w-full cursor-pointer text-left no-underline transition-colors hover:bg-muted/60",
+	);
 	if (props.to) {
 		return (
 			<Link to={props.to} params={props.params} search={props.search} className={cls}>

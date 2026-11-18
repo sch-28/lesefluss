@@ -17,7 +17,7 @@ export const CloudflareChallenge: React.FC<Props> = (props) => {
 
 	return (
 		<div className="flex flex-col gap-2 rounded-md border border-border bg-card px-3 py-2 text-card-foreground">
-			<div className="flex items-center gap-1.5 font-semibold text-xs">
+			<div className="flex items-center gap-2 font-semibold text-xs">
 				<ShieldCheck className="size-4" />
 				Cloudflare verification required
 			</div>

@@ -27,7 +27,7 @@ export function showPromptToast(opts: PromptToastOptions): void {
 					<Icon className="size-5" />
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					<div className="flex flex-col gap-0.5">
+					<div className="flex flex-col gap-1">
 						<p className="font-semibold text-foreground text-sm">{opts.title}</p>
 						<p className="text-muted-foreground text-xs">{opts.body}</p>
 					</div>

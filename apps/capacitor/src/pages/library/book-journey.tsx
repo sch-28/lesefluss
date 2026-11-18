@@ -1,5 +1,8 @@
+import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2 } from "lucide-react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { buildJourney } from "../../services/stats/journey";
@@ -33,15 +36,15 @@ export function BookJourney({ book }: { book: Book }) {
 	const { sessionCount, longestSessionMs, longestSessionAt } = data;
 
 	return (
-		<section className="book-detail-card mt-4">
+		<section className={cn(CARD, CARD_BODY, "mt-4")}>
 			<h2 className={SECTION_TITLE}>Your journey</h2>
 
-			<ol className="mt-4 flex items-start justify-between gap-2">
+			<ol className="flex items-start justify-between gap-2">
 				{journey.milestones.map((milestone, index) => {
 					const isLast = index === journey.milestones.length - 1;
 					const isFinish = isLast && journey.isFinished;
 					return (
-						<li key={milestone.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+						<li key={milestone.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
 							<div className="flex w-full items-center">
 								{/* Connectors are drawn as half-segments either side of the dot so
 								    the line meets it rather than running underneath. */}
@@ -59,7 +62,7 @@ export function BookJourney({ book }: { book: Book }) {
 								)}
 								<span className={`h-px flex-1 ${isLast ? "bg-transparent" : "bg-current/20"}`} />
 							</div>
-							<span className="text-2xs uppercase tracking-wide opacity-55">{milestone.label}</span>
+							<span className={STAT_CAPTION}>{milestone.label}</span>
 							<span className="text-xs tabular-nums">{formatDate(milestone.at)}</span>
 						</li>
 					);

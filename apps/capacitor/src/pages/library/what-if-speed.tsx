@@ -47,9 +47,9 @@ export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvp }: 
 	const estimate = whatIfEstimate(wordsLeft, wpm, minutesPerDay, today);
 
 	return (
-		<div className="mt-4 border-current/10 border-t pt-3" data-testid="what-if-speed">
+		<div className="border-current/10 border-t pt-3" data-testid="what-if-speed">
 			<div className="flex items-baseline justify-between text-xs">
-				<span className="uppercase tracking-wider opacity-60">What if</span>
+				<span className="text-muted-foreground">What if</span>
 				<span className="font-semibold tabular-nums" data-testid="what-if-wpm">
 					{wpm} wpm
 				</span>

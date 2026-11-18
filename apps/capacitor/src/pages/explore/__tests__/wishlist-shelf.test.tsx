@@ -110,7 +110,7 @@ describe("wishlist shelf", () => {
 		const titles = cards(view).map((c) => c.querySelector("[data-clips-text]"));
 		expect(titles.length).toBeGreaterThan(0);
 		for (const title of titles) {
-			expect(title?.className).toContain("[-webkit-line-clamp:2]");
+			expect(title?.className).toContain("line-clamp-2");
 			expect(title?.className).not.toMatch(/min-h-/);
 		}
 	});

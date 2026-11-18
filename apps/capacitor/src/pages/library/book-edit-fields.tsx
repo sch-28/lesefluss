@@ -16,7 +16,7 @@ import { Switch } from "@lesefluss/ui/switch";
 import { BookOpen, Check, Plus, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { SECTION_TITLE } from "@/components/section-header";
+import { Card } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { LanguagePicker } from "../../components/language-picker";
 import { PickerTrigger } from "../../components/picker-trigger";
@@ -25,7 +25,7 @@ import type { BookEditValues } from "./book-edit-form";
 import { FIELD_LIMITS } from "./book-fields";
 
 export const textareaClass =
-	"w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
+	"w-full min-w-0 rounded-lg border border-input bg-transparent px-3 py-1.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
 export type EditForm = {
 	values: BookEditValues;
@@ -55,20 +55,13 @@ type Props = {
 	catalogDescription?: string | null;
 };
 
-const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-	<section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-		<h2 className={SECTION_TITLE}>{title}</h2>
-		{children}
-	</section>
-);
-
 /** Label beside the field on desktop, above it on a phone. */
 export const Field: React.FC<{
 	label: string;
 	htmlFor?: string;
 	children: React.ReactNode;
 }> = ({ label, htmlFor, children }) => (
-	<div className="flex flex-col gap-1.5 md:grid md:grid-cols-[110px_1fr] md:items-start md:gap-3">
+	<div className="flex flex-col gap-2 md:grid md:grid-cols-[110px_1fr] md:items-start md:gap-3">
 		<Label htmlFor={htmlFor} className="md:pt-2">
 			{label}
 		</Label>
@@ -330,7 +323,7 @@ const TagsField: React.FC<{ form: EditForm }> = ({
 				{values.tags.map((tag) => (
 					<span
 						key={tag}
-						className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-sm"
+						className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
 					>
 						{tag}
 						<button

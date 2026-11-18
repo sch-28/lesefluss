@@ -91,7 +91,7 @@ function BuddyReadsPreview() {
 					</Button>
 				</div>
 			) : (
-				<div className="flex flex-col gap-2.5">
+				<div className="flex flex-col gap-3">
 					{active.slice(0, PREVIEW_READS).map((read, i) => (
 						<BuddyReadCard key={read.id} read={read} index={i} isFeatured={i === 0} />
 					))}
@@ -190,7 +190,7 @@ function SocialLists({
 	return (
 		<>
 			{data.incoming.length > 0 && (
-				<div className="mt-4 flex flex-col gap-2.5">
+				<div className="mt-4 flex flex-col gap-3">
 					{data.incoming.map((r) => (
 						<RequestCard
 							key={r.requestId}

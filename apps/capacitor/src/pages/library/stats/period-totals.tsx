@@ -80,7 +80,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					exit={{ opacity: 0, y: -8 }}
 					transition={{ duration: 0.25 }}
 					className={cn(
-						"grid gap-3 rounded-[14px] border border-border bg-card p-4 text-card-foreground",
+						"grid gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground",
 						showFinished ? "grid-cols-3" : "grid-cols-2",
 					)}
 				>

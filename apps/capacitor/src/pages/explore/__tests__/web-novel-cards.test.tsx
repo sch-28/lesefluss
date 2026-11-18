@@ -143,7 +143,7 @@ describe("web-novel grid card lines", () => {
 		view = await render(<WebNovelCard result={fresh} onPick={vi.fn()} showProvider={false} />);
 		const title = view.container.querySelector("[data-clips-text]");
 		expect(title?.textContent).toBe("Fresh Series");
-		expect(title?.className).toContain("[-webkit-line-clamp:2]");
+		expect(title?.className).toContain("line-clamp-2");
 		expect(title?.className).not.toMatch(/min-h-/);
 	});
 });

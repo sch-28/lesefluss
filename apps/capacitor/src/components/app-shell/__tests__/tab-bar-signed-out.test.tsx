@@ -63,7 +63,8 @@ describe("Social while signed out", () => {
 				<div>feed</div>
 			</SocialGate>,
 		);
-		expect(view.text()).toContain("Reading is better with company.");
+		expect(view.text()).toContain("Reading is better with company");
+		expect(view.text()).not.toContain("company.");
 		expect(view.queryButton("Sign in to get started")).not.toBeNull();
 		expect(view.text()).not.toContain("feed");
 	});
@@ -72,14 +73,14 @@ describe("Social while signed out", () => {
 		view = await render(
 			<SocialGate
 				returnTo="/tabs/social/buddy-read/r1"
-				signedOut={{ title: "Sign in to open this buddy read.", message: "It waits." }}
+				signedOut={{ title: "Sign in to open this buddy read", message: "It waits." }}
 			>
 				<div>buddy read</div>
 			</SocialGate>,
 		);
-		expect(view.text()).toContain("Sign in to open this buddy read.");
+		expect(view.text()).toContain("Sign in to open this buddy read");
 		expect(view.text()).toContain("It waits.");
-		expect(view.text()).not.toContain("Reading is better with company.");
+		expect(view.text()).not.toContain("Reading is better with company");
 		expect(view.queryButton("Sign in to get started")).not.toBeNull();
 	});
 });

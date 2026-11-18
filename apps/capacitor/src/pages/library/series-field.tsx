@@ -188,14 +188,14 @@ const SeriesStatusLine: React.FC<{ detected: DetectedSeries; isKept: boolean }> 
 	}
 	if (status.kind === "waits") {
 		return (
-			<p className="m-0 mt-1.5 flex items-center gap-1.5 text-muted-foreground text-sm">
+			<p className="m-0 mt-1.5 flex items-center gap-2 text-muted-foreground text-sm">
 				<Clock className="size-3.5 shrink-0" />
 				Becomes a series once a 2nd book of it is added
 			</p>
 		);
 	}
 	return (
-		<p className="m-0 mt-1.5 flex items-center gap-1.5 text-sm text-success">
+		<p className="m-0 mt-1.5 flex items-center gap-2 text-sm text-success">
 			{status.kind === "joins" ? (
 				<>
 					<Check className="size-3.5 shrink-0" />

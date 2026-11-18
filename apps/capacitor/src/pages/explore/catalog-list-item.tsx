@@ -1,5 +1,6 @@
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
@@ -39,9 +40,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 					<CoverImage src={getCoverUrl(result.id, result.coverUrl)} alt="" />
 				</div>
 				<div className={cn("min-w-0 flex-1", LIST_ROW_TEXT_HEIGHT)}>
-					<div className="overflow-hidden text-ellipsis font-semibold text-sm leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
-						{result.title}
-					</div>
+					<div className={CARD_TITLE}>{result.title}</div>
 					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 						{[result.author, result.language ? languageLabel(result.language) : null]
 							.filter(Boolean)

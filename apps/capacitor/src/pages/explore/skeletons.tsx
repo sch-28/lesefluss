@@ -15,7 +15,7 @@ export const CardSkeleton: React.FC<{ extraLines?: number }> = ({ extraLines = 0
 		{/* The line boxes of ResultCard's title (two lines) and its author and length line, so a
 		    loaded shelf or grid row keeps the skeleton's height. */}
 		<div className="px-0.5 pt-1">
-			<div className="h-[2lh] text-sm leading-[1.2]">
+			<div className="h-[2lh] text-sm leading-[1.25]">
 				<div className={cn(SKELETON_BLOCK, "h-[0.9lh] w-11/12")} />
 			</div>
 			<div className="mt-0.5 flex h-[1lh] items-center text-xs">
@@ -36,7 +36,7 @@ export const LIST_ROW_TEXT_HEIGHT = "min-h-[6.5rem]";
 
 export const ListItemSkeleton: React.FC<{ textClassName?: string }> = ({ textClassName }) => (
 	<div className="flex items-center gap-3 py-3" data-testid="card-skeleton">
-		<div className="h-16 w-11 shrink-0 animate-pulse rounded border border-border bg-muted" />
+		<div className="h-16 w-11 shrink-0 animate-pulse rounded-sm border border-border bg-muted" />
 		<div className={cn("flex-1", textClassName)}>
 			<div className={cn(SKELETON_BLOCK, "h-3.5 w-3/4")} />
 			<div className={cn(SKELETON_BLOCK, "mt-1.5 h-3 w-1/3")} />

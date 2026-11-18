@@ -11,6 +11,7 @@
 
 import type React from "react";
 import { useId } from "react";
+import { CARD_TITLE } from "@/components/card";
 import CoverImage from "../../components/cover-image";
 import { TintedCover } from "../../components/tinted-cover";
 import type { Series } from "../../services/db/schema";
@@ -73,9 +74,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 			</div>
 
 			<div className="px-0.5 pt-2">
-				<div className="line-clamp-2 overflow-hidden font-medium text-sm leading-[1.25]">
-					{series.title}
-				</div>
+				<div className={CARD_TITLE}>{series.title}</div>
 				<div id={detailsId}>
 					{fields.map((field) =>
 						field === "progress" ? null : (

@@ -1,6 +1,8 @@
 import { Badge } from "@lesefluss/ui/badge";
+import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, Check } from "lucide-react";
 import type React from "react";
+import { CARD_TITLE } from "@/components/card";
 import { formatBytes } from "../transfer-modal/utils";
 import { type Candidate, candidateTitle } from "./candidates";
 
@@ -56,13 +58,11 @@ const CandidateCard: React.FC<Props> = ({ candidate, isDuplicate, onToggle }) =>
 			    a card that grows when its metadata arrives shifts every row below it,
 			    and probing runs one file at a time across the whole grid. */}
 			<div className="px-0.5 pt-1">
-				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-sm leading-[1.2]">
-					{title}
-				</div>
+				<div className={cn(CARD_TITLE, "min-h-[2.5em]")}>{title}</div>
 				<div className="mt-0.5 min-h-[1.2em] truncate text-muted-foreground text-xs">
 					{probe?.author ?? ""}
 				</div>
-				<div className="mt-0.5 flex items-center gap-1.5 text-2xs text-muted-foreground">
+				<div className="mt-0.5 flex items-center gap-2 text-2xs text-muted-foreground">
 					<span className="uppercase">{file.format}</span>
 					<span>·</span>
 					<span className="tabular-nums">{formatBytes(file.size)}</span>

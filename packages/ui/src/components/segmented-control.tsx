@@ -49,7 +49,7 @@ export function SegmentedControl<T extends string>({
 			disabled={disabled}
 			data-slot="segmented-control"
 			// ui-rules-allow: off-grid-spacing -- the 3px track inset keeps the thumb concentric with its track
-			className={cn("flex w-full items-stretch gap-0.5 rounded-[10px] bg-muted p-[3px]", className)}
+			className={cn("flex w-full items-stretch gap-1 rounded-lg bg-muted p-[3px]", className)}
 			{...rest}
 		>
 			{options.map((o) => (
@@ -58,7 +58,7 @@ export function SegmentedControl<T extends string>({
 					value={o.value}
 					aria-label={o.ariaLabel}
 					className={cn(
-						"inline-flex min-h-[38px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[8px] px-3 font-medium text-muted-foreground text-sm outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+						"inline-flex min-h-[38px] min-w-0 flex-1 items-center justify-center gap-2 rounded-md px-3 font-medium text-muted-foreground text-sm outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
 						o.value === value && `${SELECTED_TINT} hover:text-primary`,
 						itemClassName,
 					)}

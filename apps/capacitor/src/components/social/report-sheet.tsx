@@ -34,7 +34,7 @@ export type ReportTarget = {
 };
 
 const textareaClass =
-	"w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
+	"w-full min-w-0 rounded-lg border border-input bg-transparent px-3 py-1.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
 function errorMessage(err: unknown): string {
 	if (err instanceof AuthedFetchError && err.status === 400) {
@@ -117,7 +117,7 @@ export function ReportSheet({
 					<DrawerTitle>Report {target?.name ?? ""}</DrawerTitle>
 				</DrawerHeader>
 				<div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto px-4 pb-2">
-					<fieldset className="flex flex-col gap-1.5">
+					<fieldset className="flex flex-col gap-2">
 						<legend className="mb-1.5 text-sm">What's wrong?</legend>
 						{NOTICE_REASONS.map((r) => (
 							<label key={r} className="flex items-center gap-3 py-1 text-sm">
@@ -133,7 +133,7 @@ export function ReportSheet({
 							</label>
 						))}
 					</fieldset>
-					<div className="flex flex-col gap-1.5">
+					<div className="flex flex-col gap-2">
 						<Label htmlFor="report-text">
 							Tell us more{" "}
 							<span className="text-muted-foreground text-xs">

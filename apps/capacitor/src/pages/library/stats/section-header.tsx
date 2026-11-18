@@ -1,4 +1,5 @@
 import { cn } from "@lesefluss/ui/utils";
+import { LIST_ROW, LIST_ROW_LABEL, LIST_ROW_SUB, LIST_ROW_VALUE } from "@/components/list-row";
 import { SECTION_SPACING, Section, SectionHeader } from "../../../components/section-header";
 
 export { SECTION_SPACING, SectionHeader };
@@ -35,7 +36,7 @@ export function StatCard({
 	return (
 		<div
 			className={cn(
-				"rounded-[14px] border border-border bg-card px-4 text-card-foreground [&>*:last-child]:border-b-0",
+				"rounded-xl border border-border bg-card px-4 text-card-foreground [&>*:last-child]:border-b-0",
 				className,
 			)}
 		>
@@ -44,7 +45,7 @@ export function StatCard({
 	);
 }
 
-/** One 56px list row: a label (and sub line) on the left, a value (and detail) on the right. */
+/** One list row: a label (and sub line) on the left, a value (and detail) on the right. */
 export function StatRow({
 	icon,
 	label,
@@ -63,19 +64,16 @@ export function StatRow({
 	"data-testid"?: string;
 }) {
 	return (
-		<div
-			className="flex min-h-14 items-center gap-3 border-border border-b py-2"
-			data-testid={testId}
-		>
+		<div className={cn(LIST_ROW, "border-border border-b px-0")} data-testid={testId}>
 			{icon}
 			<div className="min-w-0 flex-1">
-				<div className="text-sm">{label}</div>
-				{sub != null && <div className="text-muted-foreground text-sm">{sub}</div>}
+				<div className={LIST_ROW_LABEL}>{label}</div>
+				{sub != null && <div className={LIST_ROW_SUB}>{sub}</div>}
 			</div>
 			{value != null && (
 				<div className="min-w-0 max-w-[55%] text-right">
-					<div className="font-semibold text-sm tabular-nums">{value}</div>
-					{detail != null && <div className="truncate text-muted-foreground text-sm">{detail}</div>}
+					<div className={cn("font-semibold", LIST_ROW_VALUE)}>{value}</div>
+					{detail != null && <div className={cn("truncate", LIST_ROW_SUB)}>{detail}</div>}
 				</div>
 			)}
 			{action}
@@ -83,5 +81,5 @@ export function StatRow({
 	);
 }
 
-/** A list row is at least 56px; cards reserve that per row while loading. */
-export const STAT_ROW_HEIGHT = 56;
+/** A row with a sub line and its border: 16 padding, a 20 and a 16 line, 1 border. Cards reserve that per row while loading. */
+export const STAT_ROW_HEIGHT = 53;

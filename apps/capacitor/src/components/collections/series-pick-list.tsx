@@ -93,9 +93,7 @@ export const SeriesPickList: React.FC<Props> = ({
 };
 
 export const PickGroupLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<p className="m-0 px-2 pt-3 pb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-		{children}
-	</p>
+	<p className="m-0 px-2 pt-3 pb-1 font-semibold text-muted-foreground text-xs">{children}</p>
 );
 
 export const PickRow: React.FC<{

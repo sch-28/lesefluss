@@ -8,6 +8,7 @@
 import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
+import { CARD_TITLE } from "@/components/card";
 import BookCover from "../../components/book-cover";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
@@ -126,9 +127,7 @@ const BookCard: React.FC<BookCardProps> = ({
 				</div>
 
 				<div className="px-0.5 pt-2">
-					<div className="line-clamp-2 overflow-hidden font-medium text-sm leading-[1.25]">
-						{book.title}
-					</div>
+					<div className={CARD_TITLE}>{book.title}</div>
 					<div id={detailsId}>
 						<BookFieldLines
 							surface="grid"

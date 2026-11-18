@@ -59,7 +59,7 @@ export function BookShelf({
 								whileTap={{ scale: 0.97 }}
 								className="relative w-[120px] flex-shrink-0 snap-start border-0 bg-transparent p-0 text-left"
 							>
-								<div className="relative aspect-[2/3] overflow-hidden rounded-xl">
+								<div className="relative aspect-[2/3] overflow-hidden rounded-sm">
 									<CoverImage
 										src={book.coverImage}
 										alt={book.title}

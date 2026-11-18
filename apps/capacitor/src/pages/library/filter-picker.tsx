@@ -151,7 +151,7 @@ const FacetSection: React.FC<PanelProps & { facet: Facet }> = ({
 					aria-expanded={isOpen}
 					aria-controls={sectionId}
 					onClick={() => setIsOpen((o) => !o)}
-					className="flex w-full items-center gap-2 py-2.5 text-left font-medium text-sm"
+					className="flex w-full items-center gap-2 py-3 text-left font-medium text-sm"
 				>
 					{isOpen ? (
 						<ChevronDown className="size-3.5 text-muted-foreground" />
@@ -269,7 +269,7 @@ const LengthSection: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({ filt
 					aria-expanded={isOpen}
 					aria-controls={sectionId}
 					onClick={() => setIsOpen((o) => !o)}
-					className="flex w-full items-center gap-2 py-2.5 text-left font-medium text-sm"
+					className="flex w-full items-center gap-2 py-3 text-left font-medium text-sm"
 				>
 					{isOpen ? (
 						<ChevronDown className="size-3.5 text-muted-foreground" />
@@ -289,7 +289,7 @@ const LengthSection: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({ filt
 			</h3>
 			{isOpen && (
 				<div id={sectionId} className="flex flex-col gap-2 pb-3">
-					<div className="flex flex-wrap gap-1.5">
+					<div className="flex flex-wrap gap-2">
 						{WORD_RANGE_PRESETS.map((preset) => {
 							const isActive = sameRange(range, preset);
 							const label = wordRangeLabel(preset);
@@ -300,7 +300,7 @@ const LengthSection: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({ filt
 									aria-pressed={isActive}
 									onClick={() => onChange(setWordRange(filter, isActive ? null : preset))}
 									className={cn(
-										"h-7 rounded-full border px-2.5 text-xs",
+										"h-7 rounded-full border px-3 text-xs",
 										isActive
 											? "border-primary bg-primary text-primary-foreground"
 											: "border-border hover:bg-muted",

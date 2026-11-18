@@ -58,12 +58,12 @@ describe("GoalCard", () => {
 		const text = view.text();
 		expect(text).toContain("Goal · by");
 		expect(text).toMatch(/5% \/ 11\.3%/);
-		expect(text).toContain("today");
+		expect(text).toContain("Today");
 		expect(text).not.toMatch(/\d+ of \d+ min/);
 		expect(text).toContain("−5%vs plan");
 		expect(text).toContain("vs plan · −0.5d");
-		expect(text).toContain("1d daydays met");
-		expect(text).toContain("2d daysdays read");
+		expect(text).toContain("1d dayDays met");
+		expect(text).toContain("2d daysDays read");
 		expect(text).toContain("Missed day: raise daily target");
 		expect(view.container.querySelector('[data-testid="goal-chart"]')).not.toBeNull();
 		expect(view.container.querySelector(BEHIND)).not.toBeNull();

@@ -53,7 +53,7 @@ export function MonthPager({ monthAnchor, onStep }: PagerProps) {
 			</button>
 			{/* Fixed width so stepping between "May" and "September" doesn't shift
 			    the chevrons out from under the reader's thumb. */}
-			<span className="w-[5.5rem] text-center font-medium text-xs uppercase tracking-wider opacity-70">
+			<span className="w-[5.5rem] text-center font-medium text-xs opacity-70">
 				{monthLabelOf(monthAnchor, today)}
 			</span>
 			<button

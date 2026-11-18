@@ -124,7 +124,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor, onOpen
 									type="button"
 									onClick={() => setPickingFont(true)}
 									aria-label={`Font: ${font.name}`}
-									className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1 rounded-[10px] border border-border pr-1 pl-3 text-left hover:bg-muted"
+									className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1 rounded-lg border border-border pr-1 pl-3 text-left hover:bg-muted"
 								>
 									<span className="truncate text-base" style={{ fontFamily: font.stack }}>
 										{font.label}

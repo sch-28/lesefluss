@@ -83,7 +83,7 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 				onClick={() => navigate({ to: ALL_SERIES_PATH })}
 				title="All series"
 				aria-label="All series"
-				className="flex w-16 shrink-0 items-center justify-center py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+				className="flex w-16 shrink-0 items-center justify-center py-2 text-sidebar-foreground/70 hover:text-sidebar-foreground"
 			>
 				<Layers className="size-5" />
 			</button>

@@ -1,9 +1,11 @@
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { EMPTY_STATE_PAGE, EmptyState } from "@/components/empty-state";
+import { LIST_ROW, LIST_ROW_LABEL } from "@/components/list-row";
 import { PageBody } from "@/components/page-body";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -95,12 +97,9 @@ function GoalRow({ entry }: { entry: { goal: ReadingGoal; plan: ReadingGoalPlan 
 	const { data: book } = queryHooks.useBook(entry.goal.bookId);
 	const reminder = entry.goal.reminderTime;
 	return (
-		<div
-			className="flex items-center gap-3 border-border border-b px-4 py-3 last:border-b-0"
-			data-testid="goal-row"
-		>
+		<div className={cn(LIST_ROW, "border-border border-b last:border-b-0")} data-testid="goal-row">
 			<div className="min-w-0 flex-1">
-				<div className="min-h-[1lh] truncate text-foreground text-sm">{book?.title}</div>
+				<div className={cn("min-h-[1lh] truncate", LIST_ROW_LABEL)}>{book?.title}</div>
 				<div className="text-muted-foreground text-xs tabular-nums">
 					{goalAmountLabel(entry.goal, entry.plan)}
 				</div>

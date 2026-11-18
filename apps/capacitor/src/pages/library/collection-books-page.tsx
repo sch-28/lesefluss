@@ -323,7 +323,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 							void save();
 						}}
 					>
-						<div className="flex flex-col gap-1.5">
+						<div className="flex flex-col gap-2">
 							<Label htmlFor="collection-name">Name</Label>
 							<InputHitArea>
 								<Input

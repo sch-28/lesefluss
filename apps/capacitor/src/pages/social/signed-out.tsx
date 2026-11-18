@@ -12,7 +12,7 @@ import { TrailerCard } from "./first-run-hero";
  */
 export function SignedOutSocial({
 	returnTo,
-	title = "Reading is better with company.",
+	title = "Reading is better with company",
 	message = "Read the same book with friends, see where everyone is and talk about each chapter as you go.",
 	isDemoBook = false,
 	person,

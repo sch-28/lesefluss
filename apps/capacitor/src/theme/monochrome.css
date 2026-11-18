@@ -1785,66 +1785,6 @@ body.dark .explore-hero-arrow:hover {
 /* Dark-mode searchbar: Ionic's default dark colors make the input almost
    unreadable over our toolbar background. Override the CSS vars it exposes. */
 
-/* ── Book detail pages (shared explore + library) ───────────────────────── */
-
-.book-detail-card {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-	padding: 1rem 1.15rem;
-	/* A variable so CollapsibleProse's fade inside the card matches it. */
-	--detail-card-bg: #fafafa;
-	background: var(--detail-card-bg);
-	border: 1px solid #e8e8e8;
-	border-radius: 10px;
-}
-
-body.dark .book-detail-cover {
-	background: #242424;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-body.dark .book-detail-author,
-body.dark .book-detail-stats {
-	color: #999;
-}
-
-body.dark .book-detail-stat-active {
-	color: #e4e4e4;
-}
-
-body.dark .book-detail-eyebrow {
-	color: #888;
-}
-
-body.dark .book-detail-card {
-	--detail-card-bg: #1a1a1a;
-	border-color: #2a2a2a;
-}
-
-/* The dark greys above fall under AAA on high contrast's black; the light card is a white
-   patch on sepia's paper. */
-body.high-contrast .book-detail-card,
-body.theme-sepia .book-detail-card {
-	--detail-card-bg: var(--card);
-	border-color: var(--border);
-}
-body.high-contrast .book-detail-eyebrow,
-body.high-contrast .book-detail-author,
-body.high-contrast .book-detail-stats {
-	color: var(--muted-foreground);
-}
-
-body.dark .book-detail-subject {
-	background: #242424;
-	border-color: #333;
-	color: #ccc;
-}
-
-body.dark .book-detail-summary {
-	color: #bbb;
-}
-
 /* ─────────────────────────────────────────────────────────────────
    Chapter list — used in SeriesDetail via SeriesChapterList
    ───────────────────────────────────────────────────────────────── */

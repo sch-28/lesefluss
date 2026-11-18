@@ -146,7 +146,7 @@ export const BookSelection: React.FC<Props> = ({
 				}}
 				className={cn(
 					"relative w-full rounded-lg border text-left transition-colors disabled:cursor-default",
-					layout === "grid" ? "flex flex-col gap-1.5 p-1.5" : "flex items-center gap-3 p-2",
+					layout === "grid" ? "flex flex-col gap-2 p-1.5" : "flex items-center gap-3 p-2",
 					isOn && !locked ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted",
 					locked ? "opacity-60" : "",
 				)}

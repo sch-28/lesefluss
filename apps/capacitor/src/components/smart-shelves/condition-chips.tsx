@@ -14,13 +14,13 @@ export const ConditionChips: React.FC<{ filter: LibraryFilter; options: FacetOpt
 }) => {
 	const matchesAllTags = filter.tags?.mode === "all";
 	return (
-		<ul className="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label="Conditions">
+		<ul className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="Conditions">
 			{chipsOf(filter).map(({ facet, value, isExcluded }) => {
 				const all = facet === "tags" && matchesAllTags && !isExcluded ? " (all)" : "";
 				return (
 					<li
 						key={`${facet}:${value}:${isExcluded}`}
-						className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-2.5 text-xs"
+						className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-3 text-xs"
 					>
 						<span className={isExcluded ? "text-destructive" : "text-muted-foreground"}>
 							{isExcluded ? "− " : ""}
@@ -34,7 +34,7 @@ export const ConditionChips: React.FC<{ filter: LibraryFilter; options: FacetOpt
 				);
 			})}
 			{filter.words && (
-				<li className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-2.5 text-xs">
+				<li className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-3 text-xs">
 					<span className="text-muted-foreground">Length:</span>
 					<span>{wordRangeLabel(filter.words)} words</span>
 				</li>

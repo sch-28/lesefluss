@@ -133,7 +133,8 @@ describe("SocialPage", () => {
 		});
 		view = await render(<SocialPage />);
 
-		expect(view.text()).toContain("Read together, wherever you are.");
+		expect(view.text()).toContain("Read together, wherever you are");
+		expect(view.text()).not.toContain("wherever you are.");
 		expect(view.text()).toContain("Invite a friend");
 		expect(view.text()).toContain("Bea hasn't accepted yet");
 		expect(
@@ -149,7 +150,8 @@ describe("SocialPage", () => {
 		state.buddyReads = [{ id: "br1", status: "finished", members: [] }];
 		view = await render(<SocialPage />);
 
-		expect(view.text()).toContain("Read together, wherever you are.");
+		expect(view.text()).toContain("Read together, wherever you are");
+		expect(view.text()).not.toContain("wherever you are.");
 		expect(headings()).toContain("Buddy reads");
 		expect(view.container.querySelector('a[href="/tabs/social/buddy-reads"]')).not.toBeNull();
 	});
@@ -223,7 +225,8 @@ describe("SocialPage", () => {
 		state.relationships = relationships({});
 		view = await render(<SocialPage />);
 
-		expect(view.text()).toContain("Read together, wherever you are.");
+		expect(view.text()).toContain("Read together, wherever you are");
+		expect(view.text()).not.toContain("wherever you are.");
 		expect(view.text()).toContain("How it works");
 		expect(view.container.querySelector("#social-handle")).toBeNull();
 

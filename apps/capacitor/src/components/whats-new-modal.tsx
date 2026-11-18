@@ -235,7 +235,7 @@ const WhatsNewModal: React.FC = () => {
 	const { Title, Description } = isWide ? DIALOG_SHELL : DRAWER_SHELL;
 	const body = (
 		<div className="flex max-h-[inherit] min-h-0 flex-col px-4 pt-2 pb-3 md:px-5 md:pt-4">
-			<p className="m-0 font-semibold text-primary text-xs uppercase tracking-wider">
+			<p className="m-0 font-semibold text-primary text-xs">
 				{manualOpen ? "All updates" : "What's new"}
 			</p>
 			<Title className="mt-1 mb-3 font-semibold text-2xl leading-tight">

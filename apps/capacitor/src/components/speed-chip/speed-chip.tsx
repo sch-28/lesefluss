@@ -7,7 +7,7 @@ import { type ChipPart, type ChipSpeeds, chipParts, modelSpeeds } from "./speed-
 import { type SpeedChipBook, SpeedDetails } from "./speed-details";
 
 const CHIP_CLASS =
-	"relative inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 text-xs tabular-nums";
+	"relative inline-flex min-h-8 shrink-0 items-center gap-2 rounded-full border border-border bg-muted/40 px-3 text-xs tabular-nums";
 
 function ChipText({ parts }: { parts: ChipPart[] }) {
 	return parts.map((part, i) => (

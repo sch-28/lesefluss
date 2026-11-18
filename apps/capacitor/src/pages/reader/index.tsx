@@ -2789,6 +2789,7 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 					data-testid="reader-bar"
 					ref={headerRef}
 				>
+					{/* ui-rules-allow: off-grid-spacing -- the reader stays as it is (LESE-215); its icon row is packed for a phone */}
 					<div className="mx-auto flex h-12 w-full max-w-[var(--reader-column,none)] items-center gap-0.5 border-border border-b px-1">
 						<IconButton
 							aria-label="Back"
@@ -2996,13 +2997,13 @@ const BookReader: React.FC<{ id: string; isRsvpStart?: boolean }> = ({ id, isRsv
 				{/* In flow, not over the text: it would cover the chapter heading and the ruler. */}
 				{mini.isAttached && (
 					<div
-						className="flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap border-border border-b bg-card px-3 py-1.5 text-sm"
+						className="flex shrink-0 items-center justify-center gap-2.5 whitespace-nowrap border-border border-b bg-card px-3 py-1.5 text-sm" // ui-rules-allow: off-grid-spacing -- the reader stays as it is (LESE-215)
 						data-testid="mini-banner"
 					>
 						{mini.isPlaying ? (
 							<span className="size-2 rounded-full bg-[var(--goal-met)]" />
 						) : (
-							<span className="size-2 rounded-[2px] bg-muted-foreground" />
+							<span className="size-2 rounded-xs bg-muted-foreground" />
 						)}
 						<span>
 							{mini.isPlaying

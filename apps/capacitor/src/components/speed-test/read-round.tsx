@@ -30,7 +30,7 @@ export function ReadRound({ paragraphs, words, begun, onBegin }: Props) {
 						onClick={onBegin}
 						className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg bg-background/60 text-center"
 					>
-						<span className="text-2xs text-muted-foreground uppercase tracking-wider">Round 1</span>
+						<span className="text-2xs text-muted-foreground">Round 1</span>
 						<span className="font-semibold text-lg">Read normally</span>
 						<span className="text-muted-foreground text-sm">Tap to begin</span>
 					</button>

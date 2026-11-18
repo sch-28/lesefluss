@@ -89,7 +89,7 @@ function Reactions({
 			{ onError: (err) => toast.error(discussionFailureMessage(err)) },
 		);
 	return (
-		<div className="mt-2 flex flex-wrap items-center gap-1.5">
+		<div className="mt-2 flex flex-wrap items-center gap-2">
 			{reactions.map((r) => (
 				<button
 					key={r.emoji}

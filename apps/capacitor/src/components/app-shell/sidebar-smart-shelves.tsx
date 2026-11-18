@@ -33,7 +33,7 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 				onClick={onExpand}
 				title="Smart shelves"
 				aria-label="Show smart shelves"
-				className="flex w-16 shrink-0 items-center justify-center py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+				className="flex w-16 shrink-0 items-center justify-center py-2 text-sidebar-foreground/70 hover:text-sidebar-foreground"
 			>
 				<Sparkles className="size-5" />
 			</button>

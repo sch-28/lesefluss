@@ -46,14 +46,14 @@ const reservedHeights = (v: Rendered) =>
 
 describe("Stats cards while their query loads", () => {
 	it.each([
-		["Records", <RecordsCard key="r" />, "170px"],
+		["Records", <RecordsCard key="r" />, "161px"],
 		["Currently reading", <CurrentlyReading key="c" />, "98px"],
 		["Finished", <FinishedShelf key="f" />, "253px"],
-		["Milestones", <MilestonesSection key="m" />, "261px"],
-		["Insights", <SpeedInsights key="i" model={model} view="reading" />, "224px"],
-		["RSVP insights", <SpeedInsights key="ir" model={model} view="rsvp" />, "280px"],
-		["Personal bests", <PersonalBests key="s" />, "114px"],
-		["Books", <BookSpeedList key="b" model={model} />, "260px"],
+		["Milestones", <MilestonesSection key="m" />, "249px"],
+		["Insights", <SpeedInsights key="i" model={model} view="reading" />, "212px"],
+		["RSVP insights", <SpeedInsights key="ir" model={model} view="rsvp" />, "265px"],
+		["Personal bests", <PersonalBests key="s" />, "108px"],
+		["Books", <BookSpeedList key="b" model={model} />, "248px"],
 	])("%s holds its loaded height instead of rendering nothing", async (_name, card, height) => {
 		view = await render(card);
 		expect(reservedHeights(view)).toEqual([height]);

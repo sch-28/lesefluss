@@ -189,7 +189,7 @@ export function cardStatus(
 export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ status, id }) => {
 	if (status.kind === "reading") {
 		return (
-			<span id={id} className="flex flex-1 items-center gap-1.5">
+			<span id={id} className="flex flex-1 items-center gap-2">
 				<Progress value={status.progress} className="h-1 flex-1" aria-label="Reading progress" />
 				<span className="text-2xs text-muted-foreground tabular-nums">
 					{formatPercent(status.progress)}

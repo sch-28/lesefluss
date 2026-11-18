@@ -49,10 +49,7 @@ export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapt
 	const { total, left, unknown, wpm } = times;
 
 	return (
-		<span
-			className="inline-flex items-center gap-1.5 tabular-nums"
-			data-testid="series-reading-time"
-		>
+		<span className="inline-flex items-center gap-2 tabular-nums" data-testid="series-reading-time">
 			<span>· Total {total}</span>
 			{left && <span>· {left} left</span>}
 			{unknown > 0 && (

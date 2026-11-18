@@ -38,7 +38,7 @@ export function CurrentlyReading() {
 		>
 			<SectionHeader title="Currently reading" />
 			<ReservedCard isPending={books.isPending} height={BOOK_ROW_HEIGHT}>
-				<div className="flex flex-col gap-2.5">
+				<div className="flex flex-col gap-3">
 					{rows.map((book, index) => {
 						// A rolled-up serial has no single book row, so no book menu.
 						const row = library?.books.find((b) => b.id === book.id);
@@ -60,7 +60,7 @@ export function CurrentlyReading() {
 										row && "pr-12",
 									)}
 								>
-									<div className="relative aspect-[2/3] w-12 flex-shrink-0 overflow-hidden rounded-md">
+									<div className="relative aspect-[2/3] w-12 flex-shrink-0 overflow-hidden rounded-sm">
 										<CoverImage
 											src={book.coverImage}
 											alt={book.title}

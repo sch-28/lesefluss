@@ -133,7 +133,17 @@ solutions:
         section's rhythm, 24 to the section before and 8 from the title to its content, and its
         title: 16px semibold in sentence case. A heading that cannot be a SectionHeader takes
         `SECTION_TITLE`; no uppercase tracked section titles. Spacing sits on the 4px grid, never
-        an arbitrary px or a half step above 2.
+        an arbitrary px or a half step from 2 up; gaps use the scale's steps only.
+      - Rows, cards, covers: one `LIST_ROW` (48 tall, 12 between parts, 16 inset in an
+        edge-to-edge group, none inside a card; label sm, sub line xs muted, value sm tabular),
+        one `Card`/`CARD` (`components/card.tsx`: radius xl, padding 16, title and blocks 12
+        apart, card and border tokens only, tiles inside p-3), and one cover radius per size
+        class: thumbs and grid covers `rounded-sm`, a standalone feature cover `rounded-md`.
+        Radii come from the scale, never an arbitrary `rounded-[…]`.
+      - Captions and card titles: a figure's caption is xs muted in sentence case (`StatTile`,
+        `STAT_CAPTION`), never uppercase-tracked; badges and the reader's chips may be. A title
+        under a cover is `CARD_TITLE` (14px medium, two lines at most, no reserved second line).
+        Headlines carry no closing full stop.
       - Controls: one `SearchField` (32px, search glyph, clear button), one `FilterChip` and
         `FilterMenuChip`, one `HeaderAction` (32px, 20px glyph) for header icons and one
         `CountBadge`, all in `packages/ui`. Every tappable control has a 44px target on touch,

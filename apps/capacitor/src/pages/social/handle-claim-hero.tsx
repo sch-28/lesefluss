@@ -33,9 +33,9 @@ export function HandleClaimHero({
 				) : (
 					<>
 						<h2 className="m-0 mt-5 font-semibold text-2xl text-foreground leading-tight tracking-tight">
-							Read together, wherever you are.
+							Read together, wherever you are
 						</h2>
-						<p className="m-0 mt-2.5 text-muted-foreground text-sm leading-relaxed">
+						<p className="m-0 mt-2 text-muted-foreground text-sm leading-relaxed">
 							First, pick a handle. Friends will know you by it, and nobody can see you until you
 							confirm.
 						</p>

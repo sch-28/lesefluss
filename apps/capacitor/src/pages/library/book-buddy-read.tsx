@@ -2,9 +2,11 @@ import { type BuddyReadSummary, isOnPace, isSyncEligible, readingProgress } from
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
+import { cn } from "@lesefluss/ui/utils";
 import { Link, useRouter } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { useState } from "react";
+import { CARD, CARD_BODY } from "@/components/card";
 import { SECTION_TITLE } from "@/components/section-header";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
 import type { ShareBlocker } from "@/components/social/share-sheet";
@@ -56,7 +58,7 @@ export function BookBuddyRead({
 			: null;
 	const others = (detail.data?.participants ?? []).filter((p) => !p.isSelf);
 	return (
-		<section className="book-detail-card">
+		<section className={cn(CARD, CARD_BODY)}>
 			<div className="flex items-center justify-between gap-3">
 				<h2 className={SECTION_TITLE}>
 					{read.status === "finished" ? "Buddy read · finished" : "Buddy read"}

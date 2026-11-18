@@ -6,6 +6,7 @@ import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { STAT_CAPTION } from "@/components/stat-tile";
 import { SheetOrDialog } from "../../../components/sheet-or-dialog";
 import { toast } from "../../../components/toast";
 import { useDesktopOverlay } from "../../../hooks/use-media-query";
@@ -165,7 +166,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 			aside={isDesktop ? readLabel : `${book.title} · ${readLabel}`}
 		>
 			<div className="flex flex-col gap-4 overflow-y-auto px-4 pb-4">
-				<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+				<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
 					<ValueCard
 						isLocked={!dateLocked}
 						onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
@@ -212,10 +213,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 				</div>
 
 				<div className="flex flex-col gap-3">
-					<span
-						id="goal-duration-label"
-						className="font-semibold text-muted-foreground text-xs uppercase tracking-wider"
-					>
+					<span id="goal-duration-label" className="font-semibold text-muted-foreground text-xs">
 						Duration
 					</span>
 					<Slider
@@ -344,7 +342,7 @@ function ValueCard({
 			onClick={onLock}
 			aria-label={`${value}, ${label}. ${lockLabel}`}
 			className={cn(
-				"rounded-lg bg-muted/40 px-2.5 py-2 text-left",
+				"rounded-lg bg-muted/40 px-2 py-2 text-left",
 				isLocked ? "border-2 border-foreground" : "border border-border",
 			)}
 		>
@@ -358,9 +356,7 @@ function ValueCard({
 					aria-hidden
 				/>
 			</span>
-			<span className="mt-1 block text-2xs text-muted-foreground uppercase tracking-wider">
-				{label}
-			</span>
+			<span className={cn("mt-1 block", STAT_CAPTION)}>{label}</span>
 		</button>
 	);
 }

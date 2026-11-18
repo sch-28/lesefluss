@@ -109,7 +109,7 @@ export function BuddyReadDeadline({
 			<ListCard>
 				<div className="flex items-center gap-3 px-4 py-3">
 					<CalendarClock className="size-5 shrink-0 text-muted-foreground" />
-					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+					<div className="flex min-w-0 flex-1 flex-col gap-1">
 						{isHost ? (
 							<InputHitArea>
 								<input

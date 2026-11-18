@@ -340,7 +340,7 @@ const CollectionRow: React.FC<{
 		aria-pressed={mark === "all" ? true : mark === "some" ? "mixed" : false}
 		data-testid="collection-picker-row"
 		onClick={onPick}
-		className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
+		className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted"
 	>
 		<span
 			className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${

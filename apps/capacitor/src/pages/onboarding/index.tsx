@@ -118,7 +118,7 @@ const Onboarding: React.FC = () => {
 						{/* Kept on the first step too, hidden, so the primary button never moves. */}
 						<div
 							className={cn(
-								"mb-1 flex h-1.5 items-center justify-center gap-1.5",
+								"mb-1 flex h-1.5 items-center justify-center gap-2",
 								step === 0 && "invisible",
 							)}
 							aria-hidden

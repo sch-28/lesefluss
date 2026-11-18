@@ -159,16 +159,16 @@ export function GoalChart({ planSeries, actualSeries, historySeries, ariaLabel }
 				/>
 			</div>
 			<figcaption className="mt-1 flex gap-3 text-2xs opacity-70">
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-2">
 					<span className="w-3.5 border-t-2" style={{ borderColor: ACTUAL_COLOR }} />
 					actual
 				</span>
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-2">
 					<span className="w-3.5 border-current/55 border-t-2 border-dashed" />
 					plan
 				</span>
 				{hasHistory && (
-					<span className="flex items-center gap-1.5">
+					<span className="flex items-center gap-2">
 						<span className="w-3.5 border-current/35 border-t-2" />
 						before goal
 					</span>

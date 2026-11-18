@@ -45,7 +45,7 @@ export const Ao3Meta: React.FC<{ meta: NonNullable<SeriesDetails["ao3"]> }> = ({
 	if (rows.length === 0) return null;
 	return (
 		<dl
-			className="mt-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-lg border border-border bg-card p-4 text-sm"
+			className="mt-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 rounded-lg border border-border bg-card p-4 text-sm"
 			data-testid="ao3-meta"
 		>
 			{rows.map((r) => (

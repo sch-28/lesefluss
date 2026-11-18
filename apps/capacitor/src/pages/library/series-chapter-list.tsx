@@ -68,7 +68,7 @@ const ChapterRow = memo<ChapterRowProps>(({ book, isOpen, onTap }) => {
 			aria-current={isOpen ? "location" : undefined}
 			onClick={() => onTap(book.id)}
 			className={cn(
-				"flex w-full items-center gap-3 border-0 bg-transparent px-4 py-2.5 text-left text-foreground transition-opacity active:opacity-60",
+				"flex w-full items-center gap-3 border-0 bg-transparent px-4 py-3 text-left text-foreground transition-opacity active:opacity-60",
 				isInProgress && "bg-primary/5",
 				isOpen && "bg-primary/10 font-medium",
 			)}
@@ -157,9 +157,9 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing, curren
 	if (isPending) return <ChapterListLoading />;
 	if (!chapters || chapters.length === 0) return null;
 
-	// Approximate row pitch: py-2.5 (20px) + ~20px text + 8px chrome = ~48px.
+	// Approximate row pitch: py-3 (24px) + ~20px text + 8px chrome = ~52px.
 	// Used only to cap listHeight at 30vh (VList measures real heights).
-	const ROW_HEIGHT_PX = 48;
+	const ROW_HEIGHT_PX = 52;
 	const listHeight = Math.min(chapters.length * ROW_HEIGHT_PX, window.innerHeight * 0.3);
 
 	return (

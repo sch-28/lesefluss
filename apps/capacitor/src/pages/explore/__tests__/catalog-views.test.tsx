@@ -190,7 +190,7 @@ describe("catalog card membership and quick add", () => {
 		const title = [...(card()?.querySelectorAll("div") ?? [])].find(
 			(el) => el.textContent === "Frankenstein",
 		);
-		expect(title?.className).toContain("[-webkit-line-clamp:2]");
+		expect(title?.className).toContain("line-clamp-2");
 		expect(title?.className).not.toMatch(/min-h-/);
 	});
 

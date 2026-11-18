@@ -106,7 +106,7 @@ const BatchImportSheet: React.FC<Props> = ({
 					    a status line that mounts and unmounts shifts the whole grid under
 					    it every time probing finishes. */}
 					{phase === "review" && (
-						<p className="m-0 flex items-center gap-1.5 text-muted-foreground text-xs">
+						<p className="m-0 flex items-center gap-2 text-muted-foreground text-xs">
 							{folder.pendingProbes > 0 ? (
 								<>
 									<Loader2 className="size-3 animate-spin" />

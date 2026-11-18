@@ -37,7 +37,7 @@ function RatingStars({
 	return (
 		<span
 			role="img"
-			className={cn("inline-flex items-center gap-0.5 align-middle", className)}
+			className={cn("inline-flex items-center gap-1 align-middle", className)}
 			aria-label={`Rated ${ratingStars(rating)} out of ${RATING_STARS}`}
 			{...props}
 		>

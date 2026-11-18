@@ -117,7 +117,7 @@ const MoveStrip: React.FC<{ id: string; editing: Editing; label: string }> = ({
 		{ label: "Into group", icon: Plus, next: moveIntoGroup(root, id) },
 	];
 	return (
-		<div role="toolbar" aria-label={`Move ${label}`} className="flex flex-wrap gap-1.5 pl-1">
+		<div role="toolbar" aria-label={`Move ${label}`} className="flex flex-wrap gap-2 pl-1">
 			{moves.map(({ label: name, icon: Icon, next }) => (
 				<Button
 					key={name}
@@ -219,7 +219,7 @@ const MenuButton: React.FC<{ id: string; editing: Editing; label: string }> = ({
 const GroupTools: React.FC<{ group: DraftGroup; editing: Editing }> = ({ group, editing }) => {
 	const { root } = editing;
 	return (
-		<div className="flex gap-1.5" {...dropHandlers(editing, group.id, group.items.length)}>
+		<div className="flex gap-2" {...dropHandlers(editing, group.id, group.items.length)}>
 			<Button
 				type="button"
 				size="sm"
@@ -282,11 +282,7 @@ const NodeView: React.FC<{
 	}
 
 	return (
-		<div
-			data-drag-node
-			className="flex flex-col gap-1.5"
-			{...dropHandlers(editing, group.id, index)}
-		>
+		<div data-drag-node className="flex flex-col gap-2" {...dropHandlers(editing, group.id, index)}>
 			<ConditionRow
 				cond={node}
 				options={editing.options}
@@ -475,7 +471,7 @@ export function useShelfEditor({
 
 	const body = (
 		<div className="flex flex-col gap-3">
-			<div className="flex flex-col gap-1.5">
+			<div className="flex flex-col gap-2">
 				<label htmlFor={nameId} className="text-muted-foreground text-xs">
 					Shelf name
 				</label>
@@ -547,7 +543,7 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" data-vaul-no-drag>
 					{body}
 				</div>
-				<div className="flex flex-col gap-1.5 border-border border-t p-3">
+				<div className="flex flex-col gap-2 border-border border-t p-3">
 					{hint && <p className="m-0 text-center text-muted-foreground text-xs">{hint}</p>}
 					<Button type="button" disabled={!canSave} onClick={save} data-testid="shelf-live-count">
 						Show {count} {count === 1 ? "book" : "books"}
@@ -560,14 +556,14 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 	return (
 		<div className="flex min-h-0 flex-col gap-4" onKeyDown={keyboard}>
 			<DialogHeader className="flex-row items-start gap-4 pr-8">
-				<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+				<div className="flex min-w-0 flex-1 flex-col gap-2">
 					<DialogTitle>{shelf ? "Edit conditions" : "New smart shelf"}</DialogTitle>
 					<DialogDescription>
 						Books matching these conditions appear on the shelf.
 					</DialogDescription>
 				</div>
 				<span
-					className="flex shrink-0 items-center gap-1.5 pt-0.5 text-muted-foreground text-xs"
+					className="flex shrink-0 items-center gap-2 pt-0.5 text-muted-foreground text-xs"
 					data-testid="shelf-live-count"
 					aria-live="polite"
 				>

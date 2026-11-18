@@ -118,7 +118,7 @@ const BarAction: React.FC<{
 		disabled={disabled}
 		onClick={onClick}
 		className={cn(
-			"flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 py-1 text-xs outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 md:min-h-9 md:flex-none md:flex-row md:gap-2 md:px-2.5 md:text-sm",
+			"flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 py-1 text-xs outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 md:min-h-9 md:flex-none md:flex-row md:gap-2 md:px-3 md:text-sm",
 			destructive ? "text-destructive" : "text-foreground",
 		)}
 	>
