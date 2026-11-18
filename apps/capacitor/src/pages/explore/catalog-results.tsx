@@ -144,8 +144,8 @@ const CatalogResults: React.FC<Props> = ({
 	}
 
 	return (
-		<div className="pb-20">
-			<div className="px-4 pt-2 text-muted-foreground text-xs tabular-nums">
+		<div className="pb-10">
+			<div className="px-4 text-muted-foreground text-xs tabular-nums">
 				{formatCount(total)} result{total === 1 ? "" : "s"}
 			</div>
 			{view === "grid" ? (

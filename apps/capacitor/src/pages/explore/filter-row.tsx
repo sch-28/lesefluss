@@ -98,7 +98,7 @@ const FilterRow: React.FC<Props> = ({
 	];
 
 	return (
-		<div className="flex flex-col gap-1 px-4 pt-2">
+		<div className="flex flex-col px-4">
 			<ChipRow label="filters" testId="filter-row">
 				<FilterChip
 					label={SORT_LABELS[sort]}

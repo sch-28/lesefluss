@@ -32,7 +32,7 @@ export function SocialSection({
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.2 }}
 			transition={{ duration: 0.4 }}
-			className={cn("mt-8 first:mt-4", className)}
+			className={cn("mt-8 first:mt-0", className)}
 		>
 			{(title || action) && <SectionHeader title={title} subtitle={subtitle} aside={action} />}
 			{children}

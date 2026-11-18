@@ -32,8 +32,8 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 			aria-label="Browse"
 			className={
 				hasFinePointer
-					? `flex min-w-0 flex-1 items-center gap-2 pb-1 ${HIDDEN_SCROLLBAR_X}`
-					: `-mx-4 -mt-2 mb-5 flex items-center gap-2 px-4 py-2 ${HIDDEN_SCROLLBAR_X}`
+					? `flex min-w-0 flex-1 items-center gap-2 py-1 ${HIDDEN_SCROLLBAR_X}`
+					: `-mx-4 mb-2 flex items-center gap-2 px-4 py-1 ${HIDDEN_SCROLLBAR_X}`
 			}
 		>
 			<FilterChip selected={false} action onClick={onBrowseTags}>
@@ -51,7 +51,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 
 	// A mouse has no swipe, so it gets the shelves' arrows, together at the right like theirs.
 	return (
-		<div className="mb-6 flex items-start gap-2">
+		<div className="mb-2 flex items-start gap-2">
 			{row}
 			{edges.overflows && <StripArrows label="genres" edges={edges} onScroll={scroll} />}
 		</div>

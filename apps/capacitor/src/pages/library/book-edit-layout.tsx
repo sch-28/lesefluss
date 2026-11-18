@@ -6,7 +6,7 @@ import { hasOpenOverlay } from "../../commands/guard";
 import { formatKey, matchesKey } from "../../commands/keys";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
-import { PageContainer } from "../../components/page-container";
+import { PageBody } from "../../components/page-body";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import type { EditForm } from "./book-edit-fields";
 import type { BookEditValues } from "./book-edit-form";
@@ -136,14 +136,14 @@ export const BookEditLayout: React.FC<Props> = ({
 					</>
 				}
 			/>
-			<PageContainer as="main" width="text" className="flex-1 px-4 py-4 pb-24 md:pb-8">
+			<PageBody as="main" width="text" fab className="flex-1">
 				{children}
 				{isWide && (
 					<p className="m-0 mt-4 text-center text-muted-foreground text-xs">
 						{formatKey(SAVE_KEY).join("+")} save · Esc cancel (asks when unsaved)
 					</p>
 				)}
-			</PageContainer>
+			</PageBody>
 			{!isWide && (
 				<div
 					data-toast-clear

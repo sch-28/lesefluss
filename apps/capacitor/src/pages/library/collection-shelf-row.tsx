@@ -213,7 +213,7 @@ const CollectionShelfRow: React.FC<{
 				role="toolbar"
 				aria-label="Collections and shelves"
 				// The fade tells the row scrolls on; the right padding lets the last chip clear it.
-				className="flex gap-2 overflow-x-auto py-2 pr-8 pl-4 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+				className="flex gap-2 overflow-x-auto py-1 pr-8 pl-4 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 			>
 				<button
 					type="button"

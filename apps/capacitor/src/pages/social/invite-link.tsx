@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { PasteInviteField } from "@/components/social/paste-invite-field";
 import { toast } from "@/components/toast";
 import { DangerRow, DangerZone } from "@/pages/_shared/danger-zone";
@@ -162,11 +162,11 @@ export default function InviteLinkPage() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Invite a friend" icon={Link2} backTo="/tabs/social" />
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<SocialGate returnTo="/tabs/social/invite-link">
 					<InviteLinkContent />
 				</SocialGate>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

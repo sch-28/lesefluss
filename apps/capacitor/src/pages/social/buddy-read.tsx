@@ -23,7 +23,7 @@ import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import CoverImage from "@/components/cover-image";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
@@ -560,7 +560,7 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<SocialGate
 					returnTo={`/tabs/social/buddy-read/${id}`}
 					signedOut={{
@@ -570,7 +570,7 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 				>
 					<BuddyReadContent id={id} tab={tab} />
 				</SocialGate>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

@@ -23,8 +23,10 @@ export const EmptyState: React.FC<
 > = ({ icon: Icon, title, children, action, page, className, ...rest }) => (
 	<div
 		className={cn(
-			"flex flex-col items-center justify-center gap-3 p-8 text-center",
-			page && EMPTY_STATE_PAGE,
+			"flex flex-col items-center justify-center gap-3 px-8 pb-8 text-center",
+			// Inline it keeps its distance from the block above; as a page's first block PageBody
+			// drops the margin, so it starts at the frame's content gap.
+			page ? ["pt-8", EMPTY_STATE_PAGE] : "mt-8",
 			className,
 		)}
 		data-empty-state={page ? "page" : "inline"}

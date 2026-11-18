@@ -1,9 +1,11 @@
 import { Input, InputHitArea } from "@lesefluss/ui/input";
+import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { SearchX, Tag } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { PageBody, PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { formatCount } from "@/utils/format-number";
 import { PageHeader } from "../../components/app-shell/page-header";
@@ -53,23 +55,22 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 	return (
 		<div className="bg-background">
 			<PageHeader width="grid" title="Browse by tag" icon={Tag} />
-			<PageContainer width="grid" className="px-4 pt-4 pb-20">
-				<InputHitArea>
-					<Input
-						type="search"
-						aria-label="Filter tags"
-						placeholder="Filter tags, e.g. ghost stories"
-						value={filter}
-						onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
-					/>
-				</InputHitArea>
+			<PageToolbar>
+				<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
+					<InputHitArea>
+						<Input
+							type="search"
+							aria-label="Filter tags"
+							placeholder="Filter tags, e.g. ghost stories"
+							value={filter}
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
+						/>
+					</InputHitArea>
+				</PageContainer>
+			</PageToolbar>
+			<PageBody width="grid" belowToolbar>
 				{tags.isPending ? (
-					<div
-						className="mt-4 flex flex-col gap-2"
-						role="status"
-						aria-busy="true"
-						aria-label="Loading"
-					>
+					<div className="flex flex-col gap-2" role="status" aria-busy="true" aria-label="Loading">
 						{SKELETON_ROWS.map((k) => (
 							<div key={k} className="h-11 animate-pulse rounded-md bg-muted" />
 						))}
@@ -79,7 +80,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 				) : tags.data.tags.length === 0 ? (
 					<EmptyState icon={SearchX}>No tags match "{filter}".</EmptyState>
 				) : (
-					<ul className="m-0 mt-4 flex list-none flex-col divide-y divide-border p-0">
+					<ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
 						{tags.data.tags.map((t) => (
 							<li key={t.id}>
 								<button
@@ -96,7 +97,7 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 						))}
 					</ul>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 };

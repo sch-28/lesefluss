@@ -3,7 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { isTelemetryEnabled, setTelemetryEnabled } from "@/services/telemetry";
@@ -22,7 +22,7 @@ function DiagnosticsSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Diagnostics" icon={ShieldCheck} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				<SettingsSection title="Privacy">
 					{IS_WEB ? (
 						<p className="m-0 px-4 py-3 text-muted-foreground text-sm">
@@ -42,7 +42,7 @@ function DiagnosticsSettings() {
 				<SettingsSection title="This device">
 					<DiagnosticsRow />
 				</SettingsSection>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

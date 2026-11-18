@@ -3,7 +3,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type CacheSnapshot, Virtualizer, type VirtualizerHandle } from "virtua";
-import { PAGE_WIDTH_PX, PageContainer } from "../../components/page-container";
+import { PAGE_TOP_PX, PageBody } from "../../components/page-body";
+import { PAGE_WIDTH_PX } from "../../components/page-container";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
 import { rowTokens } from "./library-focus";
 import type { LibraryItem } from "./sort-filter";
@@ -22,6 +23,7 @@ const COLUMN_BREAKPOINTS: readonly [minWidth: number, cols: number][] = [
 const TWO_COLUMNS_BELOW_REM = 20;
 const GRID_CLASS = "grid gap-4 pb-4";
 
+/** The grid's side padding; its top one is the page frame's (PAGE_TOP_PX, or none under a toolbar). */
 const PADDING_PX = 16;
 const GAP_PX = 16;
 /** Cover (2:3) plus title, author and status lines under it. */
@@ -131,6 +133,7 @@ type Props = {
 	onBackgroundTap?: () => void;
 	/** The item the library's arrow keys are on. */
 	focusedKey?: string | null;
+	belowToolbar?: boolean;
 };
 
 const TAP_SLOP_PX = 10;
@@ -180,6 +183,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 	collapsed = NONE_COLLAPSED,
 	onToggleGroup,
 	focusedKey = null,
+	belowToolbar = false,
 }) => {
 	const ownAnchor = useRef<HTMLDivElement>(null);
 	const anchor = containerRef ?? ownAnchor;
@@ -212,10 +216,11 @@ const VirtualBookGrid: React.FC<Props> = ({
 	);
 
 	return (
-		<PageContainer
+		<PageBody
 			width="grid"
 			ref={anchor}
-			className="p-4 pb-24"
+			fixedBar
+			belowToolbar={belowToolbar}
 			data-testid="library-items"
 			onPointerDown={(e) => {
 				pressAt.current = { x: e.clientX, y: e.clientY };
@@ -235,7 +240,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 			<Virtualizer
 				ref={virtualizer}
 				scrollRef={scrollRef}
-				startMargin={startMargin + PADDING_PX}
+				startMargin={startMargin + (belowToolbar ? 0 : PAGE_TOP_PX)}
 				bufferSize={600}
 				itemSize={estimateRowPx(viewMode, cols, window.innerWidth)}
 				cache={initialCache}
@@ -287,7 +292,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 					);
 				})}
 			</Virtualizer>
-		</PageContainer>
+		</PageBody>
 	);
 };
 

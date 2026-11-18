@@ -2,7 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import type React from "react";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { formatCount } from "@/utils/format-number";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { useMediaQuery } from "../../hooks/use-media-query";
@@ -95,7 +95,7 @@ const GroupedResults: React.FC<Props> = ({
 
 	if (isUnreachable) {
 		return (
-			<PageContainer width="grid" className="px-4 pt-4 pb-20">
+			<PageBody width="grid" belowToolbar>
 				<ErrorState
 					error={catalog.error}
 					onRetry={() => {
@@ -104,14 +104,14 @@ const GroupedResults: React.FC<Props> = ({
 					}}
 					className="min-h-[50vh]"
 				/>
-			</PageContainer>
+			</PageBody>
 		);
 	}
 
 	const catalogTitle = `Public domain (${formatCount(catalog.data?.total ?? 0)})`;
 
 	return (
-		<PageContainer width="grid" className="px-4 pt-4 pb-20">
+		<PageBody width="grid" belowToolbar>
 			{catalog.isPending ? (
 				isWide ? (
 					<ShelfSkeleton />
@@ -135,7 +135,11 @@ const GroupedResults: React.FC<Props> = ({
 			) : catalog.isError ? (
 				<section className="mb-6">
 					<h2 className="m-0 mb-2 font-semibold text-sm">Public domain</h2>
-					<ErrorState error={catalog.error} onRetry={() => catalog.refetch()} className="p-4" />
+					<ErrorState
+						error={catalog.error}
+						onRetry={() => catalog.refetch()}
+						className="mt-0 p-4"
+					/>
 				</section>
 			) : catalogResults.length === 0 ? null : isWide ? (
 				<Shelf
@@ -229,7 +233,7 @@ const GroupedResults: React.FC<Props> = ({
 				</div>
 			)}
 			{serials.isError && (
-				<ErrorState error={serials.error} onRetry={() => serials.refetch()} className="p-4" />
+				<ErrorState error={serials.error} onRetry={() => serials.refetch()} className="mt-0 p-4" />
 			)}
 
 			{isEverythingEmpty && (
@@ -249,7 +253,7 @@ const GroupedResults: React.FC<Props> = ({
 					</div>
 				</div>
 			)}
-		</PageContainer>
+		</PageBody>
 	);
 };
 

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import CoverImage from "@/components/cover-image";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { EnableNotificationsRow } from "@/components/push/enable-notifications-row";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import { toast } from "@/components/toast";
@@ -450,11 +450,11 @@ export default function InboxPage() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Inbox" icon={Inbox} backTo="/tabs/social" />
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<SocialGate returnTo="/tabs/social/inbox">
 					<InboxContent />
 				</SocialGate>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

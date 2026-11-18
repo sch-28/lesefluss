@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EMPTY_STATE_PAGE } from "@/components/empty-state";
+import { PageBody, PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ReservedCard } from "../../components/reserved-card";
@@ -46,24 +47,28 @@ const Stats: React.FC = () => {
 	return (
 		<div className="bg-background text-foreground">
 			<TabHeader width="text" title="Stats" icon={BarChart3} />
-			<PageContainer width="text">
-				<Tabs
-					value={tab}
-					onValueChange={(v) => {
-						if (isStatsTab(v)) setSearch(v === "overview" ? {} : { tab: v });
-					}}
-					className="@container sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background px-4 py-2"
-				>
-					{/* Stacks where the three labels no longer fit one row (large system text):
+			<PageToolbar sticky className="bg-background">
+				<PageContainer width="text" className={cn("px-4", TOOLBAR_ROW)}>
+					<Tabs
+						value={tab}
+						onValueChange={(v) => {
+							if (isStatsTab(v)) setSearch(v === "overview" ? {} : { tab: v });
+						}}
+						className="@container"
+					>
+						{/* Stacks where the three labels no longer fit one row (large system text):
 					    one tab a row reads better than a 2+1 wrap. */}
-					<TabsList className="min-h-11 w-full @max-[13.5em]:flex-col @max-[13.5em]:items-stretch group-data-[orientation=horizontal]/tabs:h-auto">
-						{STATS_TABS.map((t) => (
-							<TabsTrigger key={t} value={t} className="min-h-[calc(2.75rem-7px)]">
-								{STATS_TAB_LABELS[t]}
-							</TabsTrigger>
-						))}
-					</TabsList>
-				</Tabs>
+						<TabsList className="min-h-11 w-full @max-[13.5em]:flex-col @max-[13.5em]:items-stretch group-data-[orientation=horizontal]/tabs:h-auto">
+							{STATS_TABS.map((t) => (
+								<TabsTrigger key={t} value={t} className="min-h-[calc(2.75rem-7px)]">
+									{STATS_TAB_LABELS[t]}
+								</TabsTrigger>
+							))}
+						</TabsList>
+					</Tabs>
+				</PageContainer>
+			</PageToolbar>
+			<PageBody width="text" belowToolbar className="px-0">
 				{tab === "sessions" ? (
 					<SessionsTab
 						now={now}
@@ -77,12 +82,12 @@ const Stats: React.FC = () => {
 				) : !hasSessions ? (
 					// The goal card sits above the empty state, so the pair takes the page's free
 					// height and the empty state centres in what the card leaves.
-					<div className={cn("flex flex-col pt-2", EMPTY_STATE_PAGE)}>
+					<div className={cn("flex flex-col", EMPTY_STATE_PAGE)}>
 						<TodayGoalCard />
 						<EmptyState page={false} className="flex-1 pb-20" />
 					</div>
 				) : (
-					<div className="pt-2">
+					<div>
 						<TodayGoalCard />
 
 						<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
@@ -103,13 +108,13 @@ const Stats: React.FC = () => {
 
 						<FinishedShelf />
 
-						<p className="px-4 py-6 text-muted-foreground text-xs">
+						<p className="px-4 pt-6 text-muted-foreground text-xs">
 							Only reading in this app is tracked. Time spent on a book you uploaded to a device
 							isn't counted here.
 						</p>
 					</div>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 };

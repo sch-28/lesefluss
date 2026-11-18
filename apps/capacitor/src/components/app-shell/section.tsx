@@ -12,7 +12,7 @@ export function Section({
 	children: React.ReactNode;
 }) {
 	return (
-		<section className="mt-6 first:mt-2">
+		<section className="mt-6 first:mt-0">
 			{(title || action) && <SectionHeader title={title} aside={action} className="mb-2 px-4" />}
 			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
 				{children}

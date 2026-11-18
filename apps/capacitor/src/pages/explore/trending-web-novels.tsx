@@ -21,7 +21,7 @@ const TrendingWebNovels: React.FC<Props> = ({ onOpen }) => {
 	const body = popular.isPending ? (
 		<ShelfStripSkeleton extraLines={webNovelCardExtraLines(true)} />
 	) : popular.isError ? (
-		<ErrorState error={popular.error} onRetry={() => popular.refetch()} className="p-4" />
+		<ErrorState error={popular.error} onRetry={() => popular.refetch()} className="mt-0 p-4" />
 	) : undefined;
 
 	return (

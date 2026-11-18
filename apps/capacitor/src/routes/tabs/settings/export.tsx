@@ -14,7 +14,7 @@ import { Download, Highlighter, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { EmptyState } from "@/components/empty-state";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { useToast } from "@/components/toast";
@@ -53,7 +53,7 @@ function ExportSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Export highlights" icon={Download} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				{hasNoHighlights ? (
 					<NoHighlights />
 				) : (
@@ -69,7 +69,7 @@ function ExportSettings() {
 						onExport={() => exportMutation.mutate()}
 					/>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

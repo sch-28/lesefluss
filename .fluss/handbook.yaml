@@ -106,7 +106,10 @@ solutions:
       **Gap scale:** the fluss standard as Tailwind steps `1`, `2`, `3`, `4`, `6`, `8` (4, 8, 12,
       16, 24, 32 px at the default 16 px App font size; spacing scales with it, as it is in rem);
       `packages/ui` defines no spacing tokens of its own. Related items sit closer than unrelated
-      ones, and no space is reserved for content that isn't there.
+      ones, and no space is reserved for content that isn't there. A page's frame has one value per
+      role: header to first row 12, control row to control row 8, last control row to content 12,
+      one bottom padding (larger only under a phone's floating button or fixed bar), from
+      `PageBody` and `PageToolbar` in `components/page-body.tsx`.
 
       **Roles:** one role, one value on every screen, from one shared component, token or
       formatter; a page never rebuilds a role with its own values. The greppable ones are gated by

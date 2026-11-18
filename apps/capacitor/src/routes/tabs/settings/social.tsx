@@ -20,7 +20,7 @@ import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
@@ -362,9 +362,7 @@ function SocialSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Social profile" icon={Users} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
-				{body}
-			</PageContainer>
+			<PageBody width="text">{body}</PageBody>
 		</div>
 	);
 }

@@ -1,5 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
+import { cn } from "@lesefluss/ui/utils";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -35,6 +36,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { EmptyState } from "../../components/empty-state";
 import { HeaderGoalRing } from "../../components/header-goal-ring";
 import { NoticeBar } from "../../components/notice-bar";
+import { PageToolbar, TOOLBAR_ROW } from "../../components/page-body";
 import { PageContainer } from "../../components/page-container";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
@@ -725,12 +727,17 @@ const Library: React.FC = () => {
 		</Button>
 	);
 	const hasToolbar = controls.search || controls.filter || controls.sort || controls.view;
+	const hasUpdateShelfRow = !isDesktop && !!activeShelf && !activeShelf.isBuiltIn && shelfIsEdited;
+	// Desktop shows collections in the sidebar; a hidden row would still keep the toolbar's padding.
+	const hasCollectionRow =
+		!isDesktop && (books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0);
+	const hasFilterRow = !isCollectionEmpty && (books.length > 0 || series.length > 0);
 	const toolbar = hasToolbar && !isCollectionEmpty && (
 		<PageContainer
 			width="grid"
 			role="toolbar"
 			aria-label="Library view"
-			className="flex flex-wrap items-center gap-2 px-4 pt-6 md:pt-4"
+			className={cn("flex flex-wrap items-center gap-2 px-4", TOOLBAR_ROW)}
 		>
 			{controls.search ? (
 				// Takes its own row once a large system text size leaves it less than ~10 characters.
@@ -829,6 +836,7 @@ const Library: React.FC = () => {
 			</div>
 		</PageContainer>
 	);
+	const hasToolbarRows = !!toolbar || hasUpdateShelfRow || hasCollectionRow || hasFilterRow;
 	const addLabel = collectionId ? "Add books" : "Add book";
 	const selectMode = selectControl({
 		isDesktop,
@@ -917,31 +925,26 @@ const Library: React.FC = () => {
 					}
 				/>
 			) : activeShelf ? (
-				<>
-					<PageHeader
-						title={activeShelf.name}
-						width="grid"
-						backTo="/tabs/library"
-						right={
-							<div className="flex shrink-0 items-center gap-3" data-testid="smart-shelf-header">
-								<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
-								{!activeShelf.isBuiltIn && shelfIsEdited && updateShelfButton("max-sm:hidden")}
-								{headerActions}
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label={`${activeShelf.name} options`}
-									onClick={() => setShelfMenuFor(activeShelf)}
-								>
-									<MoreHorizontal />
-								</Button>
-							</div>
-						}
-					/>
-					{!activeShelf.isBuiltIn && shelfIsEdited && (
-						<div className="flex justify-end px-4 pt-2 sm:hidden">{updateShelfButton()}</div>
-					)}
-				</>
+				<PageHeader
+					title={activeShelf.name}
+					width="grid"
+					backTo="/tabs/library"
+					right={
+						<div className="flex shrink-0 items-center gap-3" data-testid="smart-shelf-header">
+							<SubPageCount count={smart.counts.get(activeShelf.id) ?? 0} />
+							{!activeShelf.isBuiltIn && shelfIsEdited && updateShelfButton("max-sm:hidden")}
+							{headerActions}
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label={`${activeShelf.name} options`}
+								onClick={() => setShelfMenuFor(activeShelf)}
+							>
+								<MoreHorizontal />
+							</Button>
+						</div>
+					}
+				/>
 			) : (
 				<TabHeader
 					width="grid"
@@ -972,11 +975,36 @@ const Library: React.FC = () => {
 
 			{selection.isSelecting && <BulkActionBar selection={selection} />}
 
-			{toolbar}
-
-			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
-				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
-			)}
+			<PageToolbar>
+				{hasUpdateShelfRow && (
+					<PageContainer
+						width="grid"
+						className={cn("flex justify-end px-4 sm:hidden", TOOLBAR_ROW)}
+					>
+						{updateShelfButton()}
+					</PageContainer>
+				)}
+				{toolbar}
+				{hasCollectionRow && <CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />}
+				{hasFilterRow && (
+					<FilterBar
+						filter={activeFilter}
+						onChange={setFilter}
+						options={options}
+						onSaveShelf={
+							canSaveFilter && (!activeShelf || shelfIsEdited)
+								? () => setIsSavingShelf(true)
+								: undefined
+						}
+						shelfConditions={
+							activeShelf && !activeShelf.isBuiltIn && activeShelf.tree
+								? { isCustom: !activeShelf.filter, onEdit: () => setIsEditingShelf(true) }
+								: undefined
+						}
+						shelfRule={activeShelf?.filter ?? undefined}
+					/>
+				)}
+			</PageToolbar>
 
 			<ShelfActions
 				shelf={shelfMenuFor}
@@ -994,24 +1022,6 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{!isCollectionEmpty && (books.length > 0 || series.length > 0) && (
-				<FilterBar
-					filter={activeFilter}
-					onChange={setFilter}
-					options={options}
-					onSaveShelf={
-						canSaveFilter && (!activeShelf || shelfIsEdited)
-							? () => setIsSavingShelf(true)
-							: undefined
-					}
-					shelfConditions={
-						activeShelf && !activeShelf.isBuiltIn && activeShelf.tree
-							? { isCustom: !activeShelf.filter, onEdit: () => setIsEditingShelf(true) }
-							: undefined
-					}
-					shelfRule={activeShelf?.filter ?? undefined}
-				/>
-			)}
 			{!isDesktop && (
 				<FilterSheet
 					open={isFilterOpen}
@@ -1055,24 +1065,28 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{notice === "local-storage" && (
-				<NoticeBar onDismiss={dismissNotice}>
-					Your books are stored locally in this browser only and will be lost if you clear browser
-					data.{" "}
-					<Link
-						to="/tabs/settings/sync"
-						className="relative font-medium text-primary underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline"
-					>
-						Sign in
-					</Link>{" "}
-					to keep them safe across devices.
-				</NoticeBar>
-			)}
-			{notice === "web-limits" && <WebLimitsLine />}
+			{/* Content right under the toolbar starts flush, so a notice in between brings the gap below it. */}
+			<div className={cn("empty:hidden", hasToolbarRows && "mb-3")}>
+				{notice === "local-storage" && (
+					<NoticeBar onDismiss={dismissNotice}>
+						Your books are stored locally in this browser only and will be lost if you clear browser
+						data.{" "}
+						<Link
+							to="/tabs/settings/sync"
+							className="relative font-medium text-primary underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline"
+						>
+							Sign in
+						</Link>{" "}
+						to keep them safe across devices.
+					</NoticeBar>
+				)}
+				{notice === "web-limits" && <WebLimitsLine />}
+			</div>
 
 			{activeCollection?.ordered ? (
 				<OrderedCollectionView
 					collection={activeCollection}
+					belowToolbar={hasToolbarRows}
 					items={allItems}
 					viewMode={shownView === "list" ? "list" : "grid"}
 					renderCard={(item, ordered) =>
@@ -1193,6 +1207,7 @@ const Library: React.FC = () => {
 					draggable={canDragBooks}
 					containerRef={gridRef}
 					focusedKey={focusedKey}
+					belowToolbar={hasToolbarRows}
 				/>
 			) : (
 				<VirtualBookGrid
@@ -1205,6 +1220,7 @@ const Library: React.FC = () => {
 					collapsed={collapsedGroups}
 					onToggleGroup={toggleGroup}
 					focusedKey={focusedKey}
+					belowToolbar={hasToolbarRows}
 				/>
 			)}
 

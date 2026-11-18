@@ -48,7 +48,7 @@ const Shelf: React.FC<Props> = ({
 	const body = isLoading ? (
 		<ShelfStripSkeleton />
 	) : error ? (
-		overSpacer(<ErrorState error={error} onRetry={onRetry} className="p-4" />)
+		overSpacer(<ErrorState error={error} onRetry={onRetry} className="mt-0 p-4" />)
 	) : isEmpty ? (
 		overSpacer(
 			<p className="m-0 text-muted-foreground text-xs">{emptyLabel ?? "Nothing here yet."}</p>,

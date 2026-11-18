@@ -97,7 +97,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	}
 
 	return (
-		<div className="flex flex-col gap-3 pt-3">
+		<div className="flex flex-col gap-3">
 			{challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={challengeProviders} onResolved={refetch} />
 			)}
@@ -151,7 +151,7 @@ const PagedSearch: React.FC<{
 		);
 	}
 	return (
-		<div className="flex flex-col gap-3 pt-3">
+		<div className="flex flex-col gap-3">
 			{challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={challengeProviders} onResolved={() => pages.refetch()} />
 			)}
@@ -162,7 +162,7 @@ const PagedSearch: React.FC<{
 				<ErrorState
 					message="The next page didn't load."
 					onRetry={() => pages.refetch()}
-					className="p-4"
+					className="mt-0 p-4"
 				/>
 			)}
 			{pages.hasNextPage && (
@@ -213,7 +213,7 @@ const PopularShelf: React.FC<{
 	if (data.results.length === 0 && data.challengeProviders.length === 0) return null;
 
 	return (
-		<div className="flex flex-col gap-3 pt-3">
+		<div className="flex flex-col gap-3">
 			{data.challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={data.challengeProviders} onResolved={refetch} />
 			)}
@@ -336,6 +336,5 @@ const PanelSkeleton: React.FC<{ viewMode: ViewMode; showProvider: boolean }> = (
 		layout={viewMode}
 		count={viewMode === "grid" ? 12 : 6}
 		extraLines={webNovelCardExtraLines(showProvider)}
-		className="pt-3"
 	/>
 );

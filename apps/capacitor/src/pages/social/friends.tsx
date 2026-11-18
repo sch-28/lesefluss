@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { EmptyRow, Section } from "@/components/app-shell/section";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { useRelationships } from "@/services/social/friends";
 import { formatPercent } from "@/utils/format-percent";
 import { PersonRow } from "./person-row";
@@ -60,11 +60,11 @@ export default function FriendsPage() {
 					</Button>
 				}
 			/>
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<SocialGate returnTo="/tabs/social/friends">
 					<FriendsContent />
 				</SocialGate>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

@@ -14,7 +14,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon, SearchX } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
@@ -321,9 +321,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 };
 
 const DetailFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<PageContainer width="text" className="px-4 pt-4 pb-12">
-		{children}
-	</PageContainer>
+	<PageBody width="text">{children}</PageBody>
 );
 
 /** Without `onTagTap` the tags are plain labels in the same chip shape. */

@@ -56,7 +56,7 @@ export function TodayGoalCard() {
 	const isPending = !plans.data || streak.isPending;
 
 	return (
-		<section className="mt-3 px-4" data-testid="stats-goal-card">
+		<section className="px-4" data-testid="stats-goal-card">
 			<div className="rounded-[14px] border border-border bg-card p-4 text-card-foreground">
 				<StreakCalendarToggle>
 					{(calendarButton) => (

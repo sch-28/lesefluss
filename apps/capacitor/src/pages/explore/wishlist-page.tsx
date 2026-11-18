@@ -2,7 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { useRouter } from "@tanstack/react-router";
 import { Compass, Heart } from "lucide-react";
 import type React from "react";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { queryHooks } from "../../services/db/hooks";
 import { EmptyState } from "../_shared/load-states";
@@ -15,7 +15,7 @@ const ExploreWishlist: React.FC = () => {
 	return (
 		<div className="bg-background">
 			<PageHeader width="grid" title="Wishlist" icon={Heart} backTo="/tabs/explore" />
-			<PageContainer width="grid" className="px-4 pt-4 pb-20">
+			<PageBody width="grid">
 				{items === undefined ? (
 					<CardGridSkeleton count={6} />
 				) : items.length === 0 ? (
@@ -41,7 +41,7 @@ const ExploreWishlist: React.FC = () => {
 						))}
 					</ul>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 };

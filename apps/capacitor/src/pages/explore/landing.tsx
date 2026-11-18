@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import {
 	type CatalogSearchResult,
 	getLanding,
@@ -97,7 +97,7 @@ const ExploreLanding: React.FC<Props> = ({
 
 	if (isUnreachable) {
 		return (
-			<PageContainer width="grid" className="px-4 pt-4 pb-20">
+			<PageBody width="grid">
 				<ErrorState
 					page
 					error={landingQuery.error}
@@ -106,12 +106,12 @@ const ExploreLanding: React.FC<Props> = ({
 						void randomQuery.refetch();
 					}}
 				/>
-			</PageContainer>
+			</PageBody>
 		);
 	}
 
 	return (
-		<PageContainer width="grid" className="px-4 pt-4 pb-20">
+		<PageBody width="grid" belowToolbar>
 			<BrowseRow
 				lang={lang}
 				onGenreTap={(genre) => onBrowse({ genre })}
@@ -177,7 +177,7 @@ const ExploreLanding: React.FC<Props> = ({
 					/>
 				</>
 			)}
-		</PageContainer>
+		</PageBody>
 	);
 };
 

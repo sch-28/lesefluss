@@ -10,7 +10,7 @@ import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MedalGrid } from "@/components/milestones/milestone-medals";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
 	CoverShelf,
@@ -286,11 +286,11 @@ export default function ProfilePage({ userId, isPreview }: { userId: string; isP
 				icon={UserRound}
 				backTo="/tabs/social"
 			/>
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<SocialGate returnTo={`/tabs/social/profile/${encodeURIComponent(userId)}`}>
 					<ProfileBody userId={userId} isPreview={isPreview} />
 				</SocialGate>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

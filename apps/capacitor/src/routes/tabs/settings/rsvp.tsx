@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { SpeedTestButton } from "@/components/speed-test-button";
 import RsvpPreview from "@/pages/settings/rsvp-preview";
 import RsvpSettingsForm from "@/pages/settings/rsvp-settings-form";
@@ -28,11 +28,11 @@ function RsvpSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="RSVP" icon={Zap} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				{previewSettings && <RsvpPreview settings={previewSettings} />}
 				<SpeedTestButton className="mt-4 first:mt-0" />
 				<RsvpSettingsForm />
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

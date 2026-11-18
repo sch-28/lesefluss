@@ -4,7 +4,7 @@ import { Layers, Plus } from "lucide-react";
 import type React from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { EmptyState } from "../../components/empty-state";
-import { PageContainer } from "../../components/page-container";
+import { PageBody } from "../../components/page-body";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { AllSeriesList } from "./all-series-list";
 import { seriesSummary } from "./series-nav";
@@ -37,7 +37,7 @@ const AllSeriesPage: React.FC = () => {
 					</Button>
 				}
 			/>
-			<PageContainer width="grid" className="p-4">
+			<PageBody width="grid">
 				<p
 					className="m-0 mb-3 min-h-[1lh] text-muted-foreground text-sm"
 					data-testid="all-series-summary"
@@ -69,7 +69,7 @@ const AllSeriesPage: React.FC = () => {
 						autoFocus={isDesktop}
 					/>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 };

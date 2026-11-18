@@ -4,7 +4,7 @@ import { Bell, BellOff, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { EMPTY_STATE_PAGE, EmptyState } from "@/components/empty-state";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { ReservedCard } from "@/components/reserved-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { GoalBookPicker } from "@/pages/library/reading-goal/goal-book-picker";
@@ -30,7 +30,7 @@ function Goals() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Goals" icon={Target} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				{!plans.data ? (
 					// Either loaded state can follow, so the spinner holds the empty state's page height.
 					<ReservedCard isPending height="12rem" className={EMPTY_STATE_PAGE} />
@@ -48,7 +48,7 @@ function Goals() {
 						{addGoal}
 					</>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

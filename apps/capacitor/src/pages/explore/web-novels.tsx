@@ -1,8 +1,10 @@
 import { FilterChip } from "@lesefluss/ui/filter-chip";
+import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { PageBody, PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
@@ -109,17 +111,19 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 					/>
 				}
 			/>
-			<PageContainer width="grid" className="px-4 pt-4 pb-20">
-				<SearchField
-					value={query}
-					onChange={setQuery}
-					onSubmit={submitQuery}
-					label="Search web novels"
-					placeholder="e.g. The Wandering Inn, Cradle"
-					hasRecents={false}
-				/>
+			<PageToolbar>
+				<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
+					<SearchField
+						value={query}
+						onChange={setQuery}
+						onSubmit={submitQuery}
+						label="Search web novels"
+						placeholder="e.g. The Wandering Inn, Cradle"
+						hasRecents={false}
+					/>
+				</PageContainer>
 
-				<div className="mt-3 flex flex-wrap gap-2">
+				<PageContainer width="grid" className={cn("flex flex-wrap gap-2 px-4", TOOLBAR_ROW)}>
 					<FilterChip selected={!provider} onClick={() => setProvider(undefined)}>
 						All
 					</FilterChip>
@@ -128,35 +132,41 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 							{providerLabel(id)}
 						</FilterChip>
 					))}
-				</div>
+				</PageContainer>
 
 				{caps.statusFilter && query.trim() && (
-					<fieldset className="m-0 mt-2 flex flex-wrap gap-2 border-0 p-0" aria-label="Status">
-						{STATUS_OPTIONS.map((o) => (
-							<FilterChip
-								key={o.label}
-								selected={search.status === o.value}
-								onClick={() => navigateSearch({ status: o.value })}
-							>
-								{o.label}
-							</FilterChip>
-						))}
-					</fieldset>
+					<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
+						<fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0" aria-label="Status">
+							{STATUS_OPTIONS.map((o) => (
+								<FilterChip
+									key={o.label}
+									selected={search.status === o.value}
+									onClick={() => navigateSearch({ status: o.value })}
+								>
+									{o.label}
+								</FilterChip>
+							))}
+						</fieldset>
+					</PageContainer>
 				)}
 				{windows.length > 0 && !query.trim() && (
-					<fieldset className="m-0 mt-2 flex flex-wrap gap-2 border-0 p-0" aria-label="Popular">
-						{windows.map((w) => (
-							<FilterChip
-								key={w}
-								selected={(search.window ?? windows[0]) === w}
-								onClick={() => navigateSearch({ window: w })}
-							>
-								{WINDOW_LABELS[w]}
-							</FilterChip>
-						))}
-					</fieldset>
+					<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
+						<fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0" aria-label="Popular">
+							{windows.map((w) => (
+								<FilterChip
+									key={w}
+									selected={(search.window ?? windows[0]) === w}
+									onClick={() => navigateSearch({ window: w })}
+								>
+									{WINDOW_LABELS[w]}
+								</FilterChip>
+							))}
+						</fieldset>
+					</PageContainer>
 				)}
+			</PageToolbar>
 
+			<PageBody width="grid" belowToolbar>
 				<WebNovelSearchPanel
 					query={query}
 					provider={provider}
@@ -165,7 +175,7 @@ const WebNovels: React.FC<Props> = ({ search }) => {
 					viewMode={viewMode}
 					onPick={handlePick}
 				/>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 };

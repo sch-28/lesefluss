@@ -5,6 +5,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import { EmptyState } from "../../components/empty-state";
+import { PAGE_TOP } from "../../components/page-body";
 import { PageContainer } from "../../components/page-container";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
@@ -54,6 +55,7 @@ type Props = {
 	canDrag: boolean;
 	/** Without it, every member shows in series order. */
 	view?: OrderedViewOptions;
+	belowToolbar?: boolean;
 };
 
 type DropTarget = { index: number; after: boolean };
@@ -73,6 +75,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 	onAddBooks,
 	canDrag: canMouseDrag,
 	view,
+	belowToolbar = false,
 }) => {
 	const members = queryHooks.useCollectionMembers(collection.id);
 	const reorder = queryHooks.useReorderCollection();
@@ -202,7 +205,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 
 	return (
 		<div data-testid="ordered-collection">
-			<PageContainer width="grid" className="px-4 pt-3">
+			<PageContainer width="grid" className={cn("px-4", !belowToolbar && PAGE_TOP)}>
 				<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
 					{[
 						seriesAuthor(rows),

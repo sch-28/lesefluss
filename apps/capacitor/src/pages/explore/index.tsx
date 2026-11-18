@@ -1,7 +1,9 @@
+import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 import type React from "react";
 import { useEffect } from "react";
+import { PageToolbar, TOOLBAR_ROW } from "@/components/page-body";
 import { PageContainer } from "@/components/page-container";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import { ViewModeToggle } from "../../components/view-mode-toggle";
@@ -136,20 +138,23 @@ const Explore: React.FC<Props> = ({ search }) => {
 
 	return (
 		<div className="bg-background">
-			<TabHeader width="grid">
-				<Compass className="size-5 shrink-0 text-muted-foreground" />
-				<h1 className="m-0 flex-1 font-semibold text-base leading-none">Explore</h1>
-				{mode === "catalog" && (
-					<ViewModeToggle
-						viewMode={view}
-						onToggle={() => patch({ view: view === "grid" ? "list" : undefined })}
-					/>
-				)}
-			</TabHeader>
-			{/* Sticks under the header (safe area + 48px row + 1px border) so search
-			    and filters stay in reach on a long list. */}
-			<div className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background/95 pb-2 backdrop-blur">
-				<PageContainer width="grid" className="px-4 pt-3">
+			<TabHeader
+				width="grid"
+				icon={Compass}
+				title="Explore"
+				right={
+					mode === "catalog" && (
+						<ViewModeToggle
+							viewMode={view}
+							onToggle={() => patch({ view: view === "grid" ? "list" : undefined })}
+						/>
+					)
+				}
+			/>
+			{/* Sticky, so search and filters stay in reach on a long list. The landing's
+			    browse row carries on the toolbar's rows below it, out of the sticky band. */}
+			<PageToolbar sticky className={cn(mode === "landing" && "pb-0")}>
+				<PageContainer width="grid" className={cn("px-4", TOOLBAR_ROW)}>
 					<SearchField
 						value={queryText.text}
 						onChange={queryText.setText}
@@ -172,10 +177,14 @@ const Explore: React.FC<Props> = ({ search }) => {
 						/>
 					</PageContainer>
 				)}
-			</div>
+			</PageToolbar>
 
 			{lang === undefined ? (
-				<CardGridSkeleton count={12} className="p-4" />
+				<CardGridSkeleton
+					count={12}
+					// The landing toolbar drops its bottom padding; its row's py-1 plus pt-2 is the 12.
+					className={cn("px-4 pb-4", mode === "landing" && "pt-2")}
+				/>
 			) : mode === "landing" ? (
 				<ExploreLanding
 					lang={lang}

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { CloudStorageSection } from "@/components/sync/cloud-storage";
@@ -37,7 +37,7 @@ function SyncSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Cloud sync" icon={isLoggedIn ? CloudCheck : Cloud} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				{isLoggedIn ? (
 					<>
 						<SettingsSection title="Account">
@@ -126,7 +126,7 @@ function SyncSettings() {
 						<DangerZone isSynced={false} />
 					</>
 				)}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

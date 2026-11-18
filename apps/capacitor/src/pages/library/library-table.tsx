@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef } from "react";
 import { Virtualizer } from "virtua";
-import { PageContainer } from "../../components/page-container";
+import { PageBody } from "../../components/page-body";
 import type { BulkAction } from "../../services/db/hooks/use-bulk-books";
 import type { Book, Series } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
@@ -51,6 +51,7 @@ type Props = {
 	containerRef?: React.RefObject<HTMLDivElement | null>;
 	/** The row the library's arrow keys are on. */
 	focusedKey?: string | null;
+	belowToolbar?: boolean;
 };
 
 /**
@@ -77,6 +78,7 @@ const LibraryTable: React.FC<Props> = ({
 	draggable,
 	containerRef,
 	focusedKey = null,
+	belowToolbar = false,
 }) => {
 	const ownAnchor = useRef<HTMLDivElement>(null);
 	const anchor = containerRef ?? ownAnchor;
@@ -111,7 +113,7 @@ const LibraryTable: React.FC<Props> = ({
 		item.kind === "book" ? onBookMenu(item.book) : onSeriesMenu(item.series);
 
 	return (
-		<PageContainer width="grid" className="px-4 pb-24" data-testid="library-table">
+		<PageBody width="grid" fixedBar belowToolbar={belowToolbar} data-testid="library-table">
 			<div
 				className="sticky top-[calc(var(--safe-top,0px)+3rem)] z-10 grid items-center border-border border-b bg-background text-muted-foreground text-xs"
 				style={{ gridTemplateColumns: template }}
@@ -306,7 +308,7 @@ const LibraryTable: React.FC<Props> = ({
 					})}
 				</Virtualizer>
 			</div>
-		</PageContainer>
+		</PageBody>
 	);
 };
 

@@ -26,7 +26,7 @@ import {
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { AppVersionLine } from "@/components/settings/app-version";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -124,7 +124,7 @@ function SettingsLanding() {
 	return (
 		<div className="bg-background">
 			<TabHeader width="text" title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				<SettingsSection title="Reading">
 					<NavRow
 						icon={BookOpen}
@@ -266,7 +266,7 @@ function SettingsLanding() {
 				</SettingsSection>
 
 				{IS_WEB && <OnTheWebCard />}
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

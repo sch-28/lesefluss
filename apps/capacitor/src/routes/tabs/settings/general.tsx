@@ -4,7 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ThemeCards } from "@/components/appearance-pickers";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { ModeCards, READER_MODE_OPTIONS } from "@/components/rsvp-pickers";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -29,7 +29,7 @@ function GeneralSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="General" icon={SlidersHorizontal} />
-			<PageContainer width="text" className="px-4 pt-4 pb-10">
+			<PageBody width="text">
 				<SettingsSection title="Theme">
 					<SettingsRow stacked>
 						<ThemeCards value={storedTheme} onChange={setTheme} disabled={isEinkMode} />
@@ -91,7 +91,7 @@ function GeneralSettings() {
 						/>
 					</SettingsRow>
 				</SettingsSection>
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }

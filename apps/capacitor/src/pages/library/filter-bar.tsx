@@ -89,7 +89,7 @@ const FilterBar: React.FC<Props> = ({
 	return (
 		<PageContainer
 			width="grid"
-			className="flex items-center gap-1.5 overflow-x-auto px-4 py-2"
+			className="flex items-center gap-1.5 overflow-x-auto px-4 py-1"
 			data-testid="filter-bar"
 		>
 			{shelfConditions?.isCustom && (

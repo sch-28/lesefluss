@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { PageContainer } from "@/components/page-container";
+import { PageBody } from "@/components/page-body";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { useSyncContext } from "@/contexts/sync-context";
 import { clearPendingLink, setPendingLink } from "@/services/deep-links/pending-link";
@@ -215,9 +215,9 @@ export default function InvitePage({ token }: { token: string }) {
 	return (
 		<div className="bg-background">
 			<PageHeader width="text" title="Invitation" icon={UserPlus} backTo="/tabs/social" />
-			<PageContainer width="text" className="px-4 pb-10">
+			<PageBody width="text">
 				<InviteContent token={token} />
-			</PageContainer>
+			</PageBody>
 		</div>
 	);
 }
