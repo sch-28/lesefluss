@@ -45,7 +45,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 
 	const card = page.getByTestId("goal-card");
 	await expect(card).toBeVisible();
-	await expect(card).toContainText("today");
+	await expect(card).toContainText(/today/i);
 	await expect(card).toContainText("vs plan");
 	await expect(card).toContainText("Missed day: raise daily target");
 

@@ -559,9 +559,11 @@ export const reader = {
 	},
 
 	// ── RSVP playback ────────────────────────────────────────────────────
-	/** Click the RSVP display to flip play/pause. */
+	/** Tap where the RSVP word sits to flip play/pause; a tap on a context word moves there instead. */
 	rsvpTogglePlay: async (page: Page) => {
-		await page.locator(".rsvp-display").click();
+		const box = await page.locator(".rsvp-word-line").boundingBox();
+		if (!box) return page.locator(".rsvp-display").click();
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 	},
 
 	rsvpIsPlaying: async (page: Page): Promise<boolean> => {
